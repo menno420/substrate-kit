@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Kit test suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pytest
+        run: python3 -m pip install pytest
+      - name: Run the kit's own test suite
+        run: python3 -m pytest tests/ -q
+
+  adoption-smoke:
+    name: Cold-adoption smoke (adopt + check --strict)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Adopt into a scratch repo and gate it
+        run: |
+          scratch="$(mktemp -d)"
+          cp dist/bootstrap.py "$scratch/"
+          cd "$scratch"
+          python3 bootstrap.py adopt
+          python3 bootstrap.py check --strict
