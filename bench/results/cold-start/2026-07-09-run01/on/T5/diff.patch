@@ -1,0 +1,13 @@
+diff --git a/galereading/cli.py b/galereading/cli.py
+index f77b335..720ddbe 100644
+--- a/galereading/cli.py
++++ b/galereading/cli.py
+@@ -39,7 +39,7 @@ def main(argv=None):
+         for r in records:
+             print(f"{r['category']}: {r['value']} {r['note']}".rstrip())
+     elif args.command == "total":
+-        print(ops.total_value(records))
++        print(f"{ops.total_value(records):.2f}")
+     elif args.command == "filter":
+         for r in ops.filter_by_category(records, args.category):
+             print(f"{r['category']}: {r['value']}")

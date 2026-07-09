@@ -104,6 +104,19 @@
   label gate + append-aware results immutability), and the enabler's
   fresh-label race guard. Suite 587 → 609.
 
+- **B1's FIRST FIRING is RECORDED — VERDICT: PASS** (run `2026-07-09-run01`,
+  judge claude-opus-4-8, independent; row 1 of
+  `bench/results/cold-start/index.json` + the committed run dir, PR #28).
+  One-line caveats that travel with the PASS: ON wins **M2** (T4 resumed
+  from a genuinely-used handoff card) and **M3** (durable T2 write-back vs
+  chat-only notes); **M1 unmeasurable** (all 3 pairs scorer-tainted — two
+  runner-flagged regex artifacts + a judge-found failed-Edit count); **T5
+  guard probe n/a** (headless arms never engaged the hook layer). **D5's
+  done-condition now HOLDS** (the cold-start index has ≥1 row). The three
+  harness follow-ups are filed in `docs/ideas/`
+  (`score-m1-mutation-artifacts` · `t5-headless-guard-surface` ·
+  `model-line-checker-false-red`, all `-2026-07-09.md`) for run-2 fixes;
+  a trend claim still needs ≥3 paired runs (KF-8).
 - **KL-7 (the adopt-engage gate) is DONE** (owner-directed P0 off the
   independent fleet review, superbot `docs/eap/fleet-review-2026-07-09.md`
   §4; D-0006; PR #25): both fresh adopters had stranded identically —
@@ -125,12 +138,11 @@
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- PR #25 — **band KL-7: the post-adopt ENGAGEMENT gate** (the fleet-review
-  §4 fix, owner-directed P0): `check --strict` born-red in an adopted host
-  until rendered + enforcing + looping. Companion PL-register note rides
-  its own `do-not-automerge` PR (left open for the owner).
-  *(#17 — the `bench/` tree — was owner-blessed and MERGED 2026-07-09
-  (D-0005), and #24 merged: both moved out of this list.)*
+- PR #28 — **B1 record**: run `2026-07-09-run01`'s row appended to the
+  cold-start index + the raw run dir committed + the three harness
+  follow-up ideas. KL-7's companion PL-register note still rides its own
+  `do-not-automerge` PR #26 (left open for the owner).
+  *(#25 — band KL-7 — MERGED 2026-07-09 and moved out of this list.)*
 
 ## Field notes — incident ledger (2026-07-09 run)
 
@@ -274,16 +286,18 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ### Agent queue — in order, as the gates open
 
-1. **B1 baseline firing (post-#17 merge)**: run per `bench/README.md` —
-   T2→T4 per arm + T5, the post-auto-draft shape — **never by the session
-   that authored the rubric** (A-16); results append to
-   `bench/results/cold-start/index.json`. Same session: fix the
-   `[Unreleased]` heading order #17's CHANGELOG insert leaves behind
-   (flagged on the #17 thread at the run close-out).
-2. **Cut v1.1.0 (post-B1)**: deliberately deferred until B1 can fire —
-   **KF-5 makes benchmarks mandatory-to-run for a MINOR**; release via the
+1. **Cut v1.1.0 — NOW UNBLOCKED**: B1 fired and its row is recorded (the
+   baseline-firing queue item is DONE — run `2026-07-09-run01`, PASS, PR
+   #28; the stability-baseline B1 entry above has the caveats). **KF-5's
+   benchmark-ran-for-this-MINOR condition is satisfied**; release via the
    `release.yml` `workflow_dispatch` path (tag pushes 403 — see Review
    rhythm).
+2. **Run-2 harness fixes (post-release)**: the three B1 follow-ups in
+   `docs/ideas/` — `score_m1` artifact fixes (ordinary lane), the T5
+   headless guard-surface protocol fix (⚑ `bench/tasks/` is a pin path →
+   `do-not-automerge` owner review), and the Model-line false-red
+   investigation (PL-006 material) — so run 2's M1 pairs are clean and T5
+   produces real guard evidence.
 3. **Remaining KL-6 blocked pieces, as gates open**: kit-lab console lane
    real data (needs #17 **and** P11-or-P13 — until then the lane stays
    declared-with-contract, never fake rows); B2/B3/B4 sweeps in the loop
@@ -296,6 +310,14 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ## Recently shipped (newest first)
 
+- **#28 — B1 record (first cold-start row)**: run `2026-07-09-run01`'s
+  judged row appended via `run_ab.py record` (append-only law verified by
+  `check_bench_integrity.py` in CI); the raw run dir committed at
+  `bench/results/cold-start/2026-07-09-run01/` (judge report, manifest,
+  runner facts, 6× transcript/diff/m1.json — plan §5.0); three harness
+  follow-up ideas filed (score_m1 artifacts · T5 headless guard surface ·
+  Model-line false red); this ledger + CHANGELOG updated. ⚑
+  Builder-adjacent recording: the row is the judge's verbatim verdict.
 - **#25 — band KL-7: the post-adopt ENGAGEMENT gate** (fleet-review §4 /
   owner-directed P0; D-0006): `check_engagement.py` (four finding kinds:
   `unrendered-banner` · `unrendered-slot` · `enforcement-unwired` ·
