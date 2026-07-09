@@ -1,4 +1,4 @@
-"""Status-freshness checker — the ``control/`` heartbeat must exist and beat.
+"""Status-freshness checker — the ``control/`` heartbeat(s) must exist and beat.
 
 Why + provenance: the fleet coordination protocol (canonical spec: superbot
 ``docs/planning/fleet-coordination-protocol-2026-07-09.md``; kit band KL-8,
@@ -7,33 +7,45 @@ manager treats a stale status as a **dark** Project. The protocol's whole
 value collapses if a Project silently stops writing it, so the discipline is
 enforced, not exhorted (PL-007), exactly like the session-card gate.
 
+Multi-Project repos (inbox ORDER 004): a SHARED repo hosting several
+Projects keeps one heartbeat file *per lane* (the superbot-games pattern —
+``control/status-mining.md`` + ``control/status-exploration.md``), preserving
+one-writer-per-file per lane. The validated path set is therefore
+**configurable**: ``substrate.config.json`` → ``heartbeat_files`` (default
+``["control/status.md"]``); every listed heartbeat is checked independently
+and each finding names its own file. Callers pass the configured list via
+``status_files``; unset/empty falls back to the single-file default (a
+misconfiguration must not silently disable the gate).
+
 Two postures, deliberately split (the spec's "warns → graduates to the
 born-red post-adopt gate" wording, resolved so a *required CI check* never
 reds on wall-clock time alone):
 
 - **Gate findings** (ride the ordinary strict finding loop — RED under
   ``check --strict``): *static, deterministic* protocol states —
-  ``status-missing`` (the control bus exists but ``status.md`` doesn't) and
-  ``status-no-heartbeat`` (``status.md`` is still the adopt-time seed, or
-  carries no parseable ``updated:`` ISO-8601 line). These are the born-red
-  graduation: an adopted host stays red until its first real heartbeat, the
-  same shape as ``session-loop-idle``.
+  ``status-missing`` (the control bus exists but a configured heartbeat file
+  doesn't) and ``status-no-heartbeat`` (the file is still the adopt-time
+  seed, or carries no parseable ``updated:`` ISO-8601 line). These are the
+  born-red graduation: an adopted host stays red until its first real
+  heartbeat, the same shape as ``session-loop-idle``.
 - **Advisory findings** (warn-only — emitted + telemetry-recorded, **never**
   exit-affecting): ``status-stale`` — the heartbeat parses but is older than
   ``max_age_hours`` (default 72h). Time-based red in a required check would
   be a bomb: an untouched-for-a-week repo's next unrelated PR would arrive
   pre-reddened. The warning still surfaces in every ``check`` run and the
-  Stop hook separately nags when ``status.md`` wasn't overwritten this
+  Stop hook separately nags when no heartbeat file was overwritten this
   session (``hooks/stop_check.py``).
 
 Input-gated like every checker: engages only when the protocol is present
-(any ``control/{README,inbox,status}.md`` exists) — a host that never adopted
-the bus adds nothing here. Stdlib only; unreadable files fail open.
+(any ``control/{README,inbox}.md`` or configured heartbeat file exists) — a
+host that never adopted the bus adds nothing here. Stdlib only; unreadable
+files fail open.
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -78,37 +90,40 @@ def parse_heartbeat(text: str) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
-def _control_present(target: Path) -> bool:
-    """True when the control bus exists (any of the three protocol files)."""
-    return any(
-        (target / rel).is_file()
-        for rel in (STATUS_RELPATH, INBOX_RELPATH, CONTROL_README_RELPATH)
-    )
+def heartbeat_relpaths(status_files: Sequence[str] | None) -> list[str]:
+    """Normalize the configured heartbeat list (unset/empty → the default).
 
-
-def check_status_current(
-    target: Path,
-    *,
-    now: datetime | None = None,
-    max_age_hours: int = DEFAULT_MAX_AGE_HOURS,
-) -> tuple[list[Finding], list[Finding]]:
-    """Return ``(gate_findings, advisory_findings)`` for ``target``'s heartbeat.
-
-    Gate findings ride the strict finding loop (exit-affecting under
-    ``--strict``); advisory findings are surfaced + telemetry-recorded but
-    must never touch the exit code (see module docstring). Both lists are
-    empty when the ``control/`` protocol is absent.
+    The fallback-on-empty is deliberate: a stray ``"heartbeat_files": []``
+    must degrade to the protocol's single-file default, never silently
+    disable the gate (same fail-safe instinct as the fast lane's
+    empty-diff-runs-the-full-suite rule).
     """
-    if not _control_present(target):
-        return [], []
-    status_path = target / STATUS_RELPATH
+    files = [str(rel) for rel in (status_files or []) if str(rel).strip()]
+    return files or [STATUS_RELPATH]
+
+
+def _control_present(target: Path, status_relpaths: Sequence[str]) -> bool:
+    """True when the control bus exists (any protocol/heartbeat file)."""
+    candidates = [INBOX_RELPATH, CONTROL_README_RELPATH, *status_relpaths]
+    return any((target / rel).is_file() for rel in candidates)
+
+
+def _check_one_status(
+    target: Path,
+    rel: str,
+    *,
+    now: datetime,
+    max_age_hours: int,
+) -> tuple[list[Finding], list[Finding]]:
+    """Return ``(gate, advisory)`` findings for one heartbeat file ``rel``."""
+    status_path = target / rel
     if not status_path.is_file():
         return (
             [
                 Finding(
-                    STATUS_RELPATH,
+                    rel,
                     "status-missing",
-                    "the control/ bus exists but status.md doesn't — the "
+                    f"the control/ bus exists but {rel} doesn't — the "
                     "manager reads this file as your heartbeat; write it "
                     "(format: control/README.md).",
                 ),
@@ -124,7 +139,7 @@ def check_status_current(
         return (
             [
                 Finding(
-                    STATUS_RELPATH,
+                    rel,
                     "status-no-heartbeat",
                     "no parseable `updated:` ISO-8601 heartbeat — still the "
                     "adopt seed? Overwrite the whole file with your real "
@@ -133,20 +148,55 @@ def check_status_current(
             ],
             [],
         )
-    current = now or datetime.now(timezone.utc)
-    age = current - heartbeat
+    age = now - heartbeat
     if age > timedelta(hours=max_age_hours):
         hours = int(age.total_seconds() // 3600)
         return (
             [],
             [
                 Finding(
-                    STATUS_RELPATH,
+                    rel,
                     "status-stale",
                     f"heartbeat is ~{hours}h old (> {max_age_hours}h) — the "
                     "manager treats a stale status as a DARK Project; "
-                    "overwrite control/status.md this session.",
+                    f"overwrite {rel} this session.",
                 ),
             ],
         )
     return [], []
+
+
+def check_status_current(
+    target: Path,
+    *,
+    now: datetime | None = None,
+    max_age_hours: int = DEFAULT_MAX_AGE_HOURS,
+    status_files: Sequence[str] | None = None,
+) -> tuple[list[Finding], list[Finding]]:
+    """Return ``(gate_findings, advisory_findings)`` for ``target``'s heartbeat(s).
+
+    Gate findings ride the strict finding loop (exit-affecting under
+    ``--strict``); advisory findings are surfaced + telemetry-recorded but
+    must never touch the exit code (see module docstring). Both lists are
+    empty when the ``control/`` protocol is absent. ``status_files`` is the
+    host's configured heartbeat list (``Config.heartbeat_files``); each
+    listed file is validated independently so a multi-Project repo gates
+    every lane's heartbeat — unset/empty falls back to
+    ``["control/status.md"]``.
+    """
+    relpaths = heartbeat_relpaths(status_files)
+    if not _control_present(target, relpaths):
+        return [], []
+    current = now or datetime.now(timezone.utc)
+    gate: list[Finding] = []
+    advisory: list[Finding] = []
+    for rel in relpaths:
+        one_gate, one_advisory = _check_one_status(
+            target,
+            rel,
+            now=current,
+            max_age_hours=max_age_hours,
+        )
+        gate += one_gate
+        advisory += one_advisory
+    return gate, advisory

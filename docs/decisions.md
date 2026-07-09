@@ -198,3 +198,30 @@
   access.
 - provenance: inbox ORDER 003 (manager research 2026-07-09, rider to
   ORDER 002/D-0007); KF-2; shipped in PR #41 with the v1.3.0 cut.
+
+## [D-0010] Heartbeat paths are config, not constants — a shared repo gates one status file per lane
+
+- status: decided
+- date: 2026-07-09
+- verdict: The status checker's validated path set is
+  `substrate.config.json` → `heartbeat_files` (default
+  `["control/status.md"]`; empty/unset falls back to the default so a
+  misconfiguration can never silently disable the gate). Every listed file
+  is validated independently — per-lane gate findings and staleness
+  advisories, each naming its own file — and every consumer (cmd_check
+  incl. the `--status-only` fast lane, cmd_adopt's engagement checklist,
+  the Stop-hook overwrite reminder) reads the configured list. The Stop
+  hook clears on ANY fresh lane: it cannot know which lane a session
+  belongs to, so it must not nag another lane's duty. The multi-Project
+  pattern itself (one `control/status-<lane>.md` per lane, single
+  manager-owned `inbox.md`, lanes declared in `heartbeat_files`) is part
+  of the planted `control/README.md` contract.
+- why: superbot-games is a real SHARED repo running per-lane heartbeats
+  (`control/status-mining.md` + `control/status-exploration.md`), and the
+  v1.3.0 checker hardcoded `control/status.md` — misfiring on the first
+  multi-Project adopter. One-writer-per-file scales by splitting the
+  heartbeat per lane, never by sharing one file across writers (the
+  protocol's own conflict-free rule, D-0007).
+- provenance: inbox ORDER 004 (manager relay of the superbot-games
+  finding, 2026-07-09; rider to ORDER 003/D-0009); shipped in PR #46 with
+  the v1.4.0 cut.

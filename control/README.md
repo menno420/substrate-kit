@@ -15,6 +15,23 @@
 writer of its own `status.md`. Two writers never touch the same file, so there are no merge
 conflicts. Everything is append-only / overwrite-own — forward-only git.
 
+## Multi-Project repos — per-lane heartbeats (optional extension)
+A SHARED repo can host several Projects ("lanes") — the live example is superbot-games with a
+mining lane and an exploration lane. The one-writer rule scales by **splitting the heartbeat,
+never by sharing it**:
+- **One status file per lane** — `control/status-<lane>.md` (e.g. `control/status-mining.md` +
+  `control/status-exploration.md`); each lane is the sole writer of its own file and overwrites
+  it as its session's deliberate LAST step.
+- **`control/inbox.md` stays single** — the manager remains its one writer; a lane-specific
+  order names its lane in `do:`.
+- **Declare every lane heartbeat to the kit** — `substrate.config.json` →
+  `"heartbeat_files": ["control/status-mining.md", "control/status-exploration.md"]` (default
+  when unset: `["control/status.md"]`); the status checker gates each listed file independently,
+  and the Stop hook's overwrite reminder clears when any lane's heartbeat is fresh. An empty
+  list falls back to the default — misconfiguration never silently disables the gate.
+(This repo is single-lane; the extension is documented here because this file is the local copy
+of the planted contract. Shipped v1.4.0, inbox ORDER 004.)
+
 ## Per-session ritual (every session, and every routine wake)
 - **FIRST:** git pull (a stale clone reads stale orders); read `control/inbox.md`; execute any
   order whose status is `new`, in priority order (P0 before P1). An order's `do:` is a pointer to

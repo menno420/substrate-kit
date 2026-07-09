@@ -663,7 +663,12 @@ def cmd_check(
     # heartbeat-less status.md) ride the strict loop like every checker;
     # wall-clock staleness is advisory-only and handled below — a required CI
     # check must never red on time alone (see check_status_current's docstring).
-    status_gate, status_advisories = check_status_current(target)
+    # The validated path set is the host's configured heartbeat list (ORDER
+    # 004: multi-Project repos gate one status file per lane).
+    status_gate, status_advisories = check_status_current(
+        target,
+        status_files=config.heartbeat_files,
+    )
     if status_only:
         # --status-only: the fast lane's scoped gate (see docstring). Only
         # the heartbeat checker runs; everything downstream (allowlist,
@@ -1179,7 +1184,10 @@ def cmd_adopt(
     # KL-8 rider: the control-protocol gate findings (the just-planted seed
     # status.md has no heartbeat yet) join the same checklist — "write your
     # first real heartbeat" is part of engaging, same shape as the first card.
-    status_gate, _ = check_status_current(target)
+    status_gate, _ = check_status_current(
+        target,
+        status_files=config.heartbeat_files,
+    )
     engage = check_engagement(target, config) + status_gate
     if engage:
         _emit(

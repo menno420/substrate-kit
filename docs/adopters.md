@@ -23,8 +23,9 @@
 | menno420/superbot-next | v1.2.0 | yes | 2026-07-09 | Rollout PR superbot-next#69 (ENGAGED on v1.2.0); fleet review 2026-07-09 verdict DEGRADED→covered — required-check + workflow half remain (friction #38). |
 | menno420/websites | v1.2.0 | yes | 2026-07-09 | Rollout PR websites#31 (ENGAGED on v1.2.0); fleet review verdict OK-recovered; ⚑ owner still confirms the required check in Settings → Rules. |
 | menno420/superbot | v1.0.0 (pin-only) | no | 2026-07-09 | Deliberate stance: `substrate.config.json` pin + vendored dist only (superbot#1879/#1882); fleet review verdict OK-pin-only; the v1.2.0+ upgrade is an owner decision (⚑ carried in control/status.md). |
+| menno420/superbot-games | — (not yet relayed) | — | 2026-07-09 | **The two-lane adopter** (SHARED multi-Project repo, manager relay via inbox ORDER 004): per-lane heartbeats `control/status-mining.md` + `control/status-exploration.md` per its `control/README.md` multi-Project extension. The kit's configurable `heartbeat_files` (v1.4.0) exists for exactly this shape — its config should list both lane files. `kit_version`/`engaged` pending the first relayed per-lane `kit:` line. |
 | trading-strategy (planned) | — | — | — | Not yet created/adopted; PL-ruled third in the adoption order, "on a matured kit" (docs/program/rulings.md). Row activates at its adopt. |
-| game repos (coming) | — | — | — | Named by the manager (ORDER 003) as coming adopters; rows added when the repos exist and adopt. |
+| game repos (coming) | — | — | — | Named by the manager (ORDER 003) as coming adopters; rows added when the repos exist and adopt. superbot-games (above) is the first to materialize. |
 
 ## Row protocol
 
