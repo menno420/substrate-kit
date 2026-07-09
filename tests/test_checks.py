@@ -256,6 +256,11 @@ def test_rendered_templates_are_badge_and_link_clean(tmp_path):
         rendered = render(text, context)
         assert find_placeholders(rendered) == set(), f"{name} left placeholders"
         out_name = name[:-5] if name.endswith(".tmpl") else name
+        if out_name in ("control-inbox.md", "control-status.md"):
+            # The two protocol skeletons are message-bus files, not docs:
+            # their format is fixed by the control/ contract (KL-8) and they
+            # are planted outside docs_root, so the badge rule never applies.
+            continue
         _write(docs / out_name, rendered)
     assert check_badges(docs, _TOKENS) == []
     assert check_links(docs) == []

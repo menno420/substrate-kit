@@ -135,3 +135,20 @@ def test_no_aliased_intra_package_imports_in_engine():
                 if ")" in line:
                     in_import = False
     assert not offenders, f"aliased intra-package imports break the dist: {offenders}"
+
+
+def test_module_order_covers_every_engine_module():
+    """Friction→guard (KL-8): a new engine module missing from MODULE_ORDER
+    builds a dist whose cmd_check crashes with NameError at runtime — the
+    byte-pin can't catch it (the committed dist equals the equally-incomplete
+    fresh build). Caught live when check_status_current.py shipped in src/
+    but not in the dist. This pins completeness: every non-__init__ module
+    under src/engine/ (templates aside) must be concatenated."""
+    from build_bootstrap import ENGINE_ROOT, MODULE_ORDER
+
+    on_disk = {
+        str(p.relative_to(ENGINE_ROOT))
+        for p in ENGINE_ROOT.rglob("*.py")
+        if p.name != "__init__.py" and "templates" not in p.parts
+    }
+    assert on_disk == set(MODULE_ORDER)

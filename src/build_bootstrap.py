@@ -43,6 +43,9 @@ MODULE_ORDER = (
     "checks/check_namespace.py",
     "checks/check_seam_authority.py",
     "checks/check_orientation_budget.py",
+    # Before hooks/stop_check.py (which references its STATUS_RELPATH) and
+    # cli.py: only needs check_docs.Finding, defined above.
+    "checks/check_status_current.py",
     "ledger.py",
     "loop/kpis.py",
     "loop/reflections.py",

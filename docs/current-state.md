@@ -142,16 +142,37 @@
   (KL-2/3/4/5/7 + guards), no consumer-contract break in the body.
   Consumers now upgrade via `bootstrap.py.new upgrade` against the v1.1.0
   Release assets.
+- **KL-8 (the coordination-protocol kit band) is DONE** (inbox ORDER 002;
+  canonical spec superbot
+  `docs/planning/fleet-coordination-protocol-2026-07-09.md` §2; D-0007;
+  PR #31): `adopt` plants the `control/` bus (generalized README contract
+  + seeded inbox/status skeletons — 3 new templates, skip-if-exists);
+  `engine/checks/check_status_current.py` ships in the dist — missing /
+  heartbeat-less `status.md` gates strict RED (on the adopt checklist
+  too), staleness >72h warns advisory-only, the Stop hook nags when
+  status wasn't overwritten this session; control-only diffs ride an
+  in-job CI fast lane (kit `ci.yml` + planted `substrate-gate.yml`,
+  session gate included — never `paths-ignore`: a required context that
+  never reports jams heartbeat auto-merge); cold-adopt smoke walks the
+  extended arc (RED on seed status → GREEN after first heartbeat); the
+  dist-completeness guard test (a MODULE_ORDER omission NameError'd the
+  dist while the byte-pin stayed green — caught + pinned this band).
+  Suite 658 → 683. **v1.2.0 cut follows** (the ORDER 002 release leg),
+  then the ORDER 002 status overwrite as the deliberate LAST act.
 
 ## In flight
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- PR #29 — **v1.1.0 release cut** (version bump + CHANGELOG roll + this
-  ledger), followed post-merge by the `release.yml` dispatch that tags
-  `v1.1.0` and publishes the Release. KL-7's companion PL-register note
-  still rides its own `do-not-automerge` PR #26 (left open for the owner).
-  *(#28 — B1 record — MERGED 2026-07-09 and moved out of this list.)*
+- PR #31 — **band KL-8 (this PR)**: the coordination-protocol kit band per
+  ORDER 002; followed by the v1.2.0 release-cut PR + `release.yml`
+  dispatch, then the ORDER 002 `control/status.md` overwrite (a
+  control-only PR exercising the new fast lane live). KL-7's companion
+  PL-register note still rides its own `do-not-automerge` PR #26 (left
+  open for the owner). PR #30 (first status heartbeat, control + ledger
+  notes) may land in parallel — status.md is overwrite-own, newest wins.
+  *(#29 — v1.1.0 release cut — MERGED 2026-07-09 and moved out of this
+  list; the Release is live.)*
 
 ## Field notes — incident ledger (2026-07-09 run)
 
@@ -318,6 +339,16 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ## Recently shipped (newest first)
 
+- **#31 — band KL-8: the coordination-protocol kit band** (ORDER 002,
+  spec §2; D-0007): 3 new `control-*` templates in `ADOPT_PLAN`
+  (README contract + inbox/status skeletons);
+  `checks/check_status_current.py` in the dist (static heartbeat states
+  gate strict RED, staleness advisory-only, Stop-hook session nag); the
+  in-job CI control fast lane in `ci.yml` + the planted
+  `substrate-gate.yml` (never `paths-ignore` — required contexts must
+  always report); cold-adopt smoke extended (seed-status RED leg); the
+  MODULE_ORDER dist-completeness guard (friction→guard, caught live);
+  suite 658 → 683; dist regenerated + byte-pinned.
 - **#29 — v1.1.0 release cut**: `KIT_VERSION`/pyproject/dist-header →
   1.1.0 (byte-pinned); CHANGELOG `[Unreleased]` → `## [1.1.0] -
   2026-07-09` with the KF-5 benchmark-outcome statement (B1

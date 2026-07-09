@@ -511,3 +511,63 @@ def test_sessions_readme_carries_the_guard_recipe_convention(tmp_path):
     # Friction->guard entries name their code anchors, not just the symptom.
     assert "Guard recipes" in text
     assert "function + file" in text
+
+
+# ---------------------------------------------------------------------------
+# The control/ coordination scaffold + CI control fast lane (band KL-8)
+# ---------------------------------------------------------------------------
+
+
+def test_adopt_plants_the_control_bus(tmp_path):
+    root, _, lines = _adopt_into(tmp_path)
+    for rel in ("control/README.md", "control/inbox.md", "control/status.md"):
+        assert (root / rel).is_file(), rel
+        assert f"planted: {rel}" in lines
+    readme = (root / "control" / "README.md").read_text(encoding="utf-8")
+    # The contract's load-bearing lines travel: one writer per file, the two
+    # formats, and both 2026-07-09 CI lessons (fast lane over paths-ignore;
+    # API-authored PRs may carry zero check runs).
+    assert "One writer per file" in readme
+    assert "status.md" in readme and "inbox.md" in readme
+    assert "paths-ignore" in readme
+    assert "API-authored PRs may not trigger CI" in readme
+    # project_name derived at adopt: the local copy names its own repo.
+    assert "repo" in readme
+
+
+def test_control_status_seed_has_no_fake_heartbeat(tmp_path):
+    from engine.checks.check_status_current import parse_heartbeat
+
+    root, _, _ = _adopt_into(tmp_path)
+    seed = (root / "control" / "status.md").read_text(encoding="utf-8")
+    # Honest seed: no parseable heartbeat until the Project writes a real
+    # one — check gates strict RED on this state (status-no-heartbeat).
+    assert parse_heartbeat(seed) is None
+    assert "SOLE writer" in seed
+    inbox = (root / "control" / "inbox.md").read_text(encoding="utf-8")
+    assert "ONE writer: the manager" in inbox
+
+
+def test_control_files_are_never_clobbered_on_readopt(tmp_path):
+    root, config, _ = _adopt_into(tmp_path)
+    status = root / "control" / "status.md"
+    status.write_text("# mine\nupdated: 2026-07-09T12:00Z\n", encoding="utf-8")
+    backend = JsonStateBackend(root / config.state_dir / "state.json")
+    lines = adopt(root, config, backend, kit_root=tmp_path / "kit")
+    assert status.read_text(encoding="utf-8") == "# mine\nupdated: 2026-07-09T12:00Z\n"
+    assert "kept: control/status.md" in lines
+
+
+def test_live_ci_workflow_carries_the_control_fast_lane():
+    text = live_ci_workflow()
+    # The lane detects a control/**-only diff and short-circuits IN-JOB —
+    # the required context always reports (paths-ignore would leave it
+    # pending and jam heartbeat auto-merge, the 2026-07-09 lesson).
+    assert "id: lane" in text
+    assert "grep -v '^control/'" in text
+    assert 'control_only=$control_only" >> "$GITHUB_OUTPUT"' in text
+    # Every heavy step is conditioned on the lane verdict.
+    assert text.count("if: steps.lane.outputs.control_only != 'true'") == 2
+    # And no live paths-ignore key anywhere — the short-circuit IS the skip
+    # (the word appears only in the warning comment).
+    assert "paths-ignore:" not in text

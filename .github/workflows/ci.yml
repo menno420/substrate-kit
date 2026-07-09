@@ -23,16 +23,49 @@ jobs:
           # Full history: the session gate restores card mtimes from commit
           # times so `check` deterministically picks the PR's own card.
           fetch-depth: 0
+
+      - name: Control fast lane detect (KL-8 — control/**-only diff)
+        # Heartbeat/inbox commits are coordination, not code: a control-only
+        # diff skips every heavy step below and the job reports GREEN fast.
+        # Deliberately an IN-JOB short-circuit, never a `paths-ignore` — this
+        # context is REQUIRED, and a required check that never reports stays
+        # "pending" forever — auto-merge would jam on every heartbeat PR
+        # (the fleet-protocol lesson, 2026-07-09). Empty/unreadable diffs
+        # fail safe onto the full suite.
+        id: lane
+        run: |
+          if [ -n "${{ github.base_ref }}" ]; then
+            range="origin/${{ github.base_ref }}...HEAD"
+          else
+            range="${{ github.event.before }}..${{ github.sha }}"
+          fi
+          files="$(git diff --name-only "$range" 2>/dev/null || true)"
+          control_only=false
+          if [ -n "$files" ] && [ -z "$(printf '%s\n' "$files" | grep -v '^control/')" ]; then
+            control_only=true
+          fi
+          echo "control_only=$control_only" >> "$GITHUB_OUTPUT"
+          echo "control-only diff: $control_only"
+      - name: Control fast lane (green by design)
+        if: steps.lane.outputs.control_only == 'true'
+        run: |
+          echo "control/**-only diff — heavy suite skipped; this required"
+          echo "context still reports green so heartbeat PRs auto-merge."
+
       - uses: actions/setup-python@v5
+        if: steps.lane.outputs.control_only != 'true'
         with:
           python-version: "3.10"
       - name: Install dev tools
+        if: steps.lane.outputs.control_only != 'true'
         run: python3 -m pip install pytest ruff
 
       - name: Kit test suite (§3.2 item 1)
+        if: steps.lane.outputs.control_only != 'true'
         run: python3 -m pytest tests/ -q
 
       - name: Dist byte-equality pin (§3.2 item 2)
+        if: steps.lane.outputs.control_only != 'true'
         # The committed dist/bootstrap.py must equal a fresh build — nobody
         # edits src/ and forgets `python3 src/build_bootstrap.py`.
         run: |
@@ -40,15 +73,20 @@ jobs:
           git diff --exit-code dist/bootstrap.py
 
       - name: Engine lint bans (§3.2 item 3 — no print/assert/subprocess)
+        if: steps.lane.outputs.control_only != 'true'
         # Config lives in pyproject.toml [tool.ruff*]: T20 + S101 + TID251.
         run: python3 -m ruff check src/engine/
 
       - name: Idea index (§5.4 — B4 frontmatter + backlog consistency)
+        if: steps.lane.outputs.control_only != 'true'
         # docs/ideas/ entries carry the idea-outcome frontmatter; the README
         # backlog indexes every file. A convention ships with its checker.
         run: python3 scripts/check_idea_index.py
 
       - name: Program law (§8.3 — PL register grammar + planted pointers + owner-gate label)
+        if: steps.lane.outputs.control_only != 'true'
+        # (Safe to skip on the control lane: control-only means NOTHING
+        # outside control/** changed, so no law surface can be smuggled.)
         # docs/program/rulings.md is the canonical PL-register; pointer
         # sections in the planted templates cite PL-IDs, never copy bodies.
         # --label-gate (audit 2026-07-09): a PR diff touching an owner-gated
@@ -68,6 +106,7 @@ jobs:
           python3 scripts/check_program_law.py --label-gate
 
       - name: Bench integrity (§5.0 — pin-path label gate + append-only results)
+        if: steps.lane.outputs.control_only != 'true'
         # Layer 1 of the bench pin (D-24): rubric/tasks/seeds changes must
         # ride a `do-not-automerge` PR; bench/results/ history is immutable
         # (index.json append-only). Labels are read from the event payload —
@@ -78,9 +117,11 @@ jobs:
         run: python3 scripts/check_bench_integrity.py
 
       - name: Cold-adoption smoke (§3.2 item 4 — the KL-7 RED→ENGAGED→GREEN arc)
+        if: steps.lane.outputs.control_only != 'true'
         # A bare adopt must be BORN RED (the engagement gate: unrendered
         # banners/slots, no CI, idle session loop — the fleet-review §4
-        # stranding), and walking the printed checklist must turn it GREEN.
+        # stranding + the KL-8 seed status heartbeat), and walking the
+        # printed checklist must turn it GREEN.
         # Then the --wire-enforcement exit path (born-self-verifying clause).
         run: |
           scratch="$(mktemp -d)"
@@ -105,10 +146,19 @@ jobs:
             # …(2) enforcement: install the staged gate workflow…
             mkdir -p .github/workflows
             cp .substrate/ci/substrate-gate.yml .github/workflows/
-            # …(3) session loop: the first real (complete) session card.
+            # …(3) session loop: the first real (complete) session card…
             printf '%s\n' '# first session' '' '> **Status:** `complete`' '' \
               '💡 first idea' '⟲ previous-session review: n/a (first session)' \
               '📊 Model: smoke · low · docs-only' > .sessions/2026-01-01-first.md
+            # …(4) control loop (KL-8): the seed status.md has no heartbeat
+            # and holds strict RED until the first real overwrite.
+            if python3 bootstrap.py check --strict; then
+              echo "expected RED while control/status.md is still the seed"; exit 1
+            fi
+            printf '%s\n' '# smoke · status' "updated: $(date -u +%FT%TZ)" \
+              'phase: cold-adopt smoke' 'health: green' 'last-shipped: none' \
+              'blockers: none' 'orders: acked= done=' '⚑ needs-owner: none' \
+              'notes: first heartbeat (smoke)' > control/status.md
             python3 bootstrap.py check --strict
             python3 bootstrap.py check --strict --require-session-log \
               --session-log .sessions/2026-01-01-first.md
@@ -128,6 +178,9 @@ jobs:
           )
 
       - name: Session gate (§3.2 item 5 — dogfood, the born-red discipline)
+        if: steps.lane.outputs.control_only != 'true'
+        # (Control lane: a heartbeat PR touches no .sessions/ card and needs
+        # none — coordination writes are exempt from the card ritual.)
         # PR-diff-aware card selection: gate on the session card this PR/push
         # actually touches, passed via `check --session-log` — this replaced
         # the git-mtime-restore shim (a CI checkout flattens every mtime, so

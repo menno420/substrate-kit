@@ -111,3 +111,34 @@
   don't exhort") applied to onboarding itself.
 - provenance: owner directive routing the fleet-review §4 finding into the
   kit (superbot `docs/eap/fleet-review-2026-07-09.md`); band KL-7, PR #25.
+
+## [D-0007] The control protocol ships in the kit: static states gate, time only warns
+
+- status: decided
+- date: 2026-07-09
+- verdict: The fleet coordination protocol (git-as-message-bus) is a kit
+  capability (band KL-8, inbox ORDER 002): `adopt` plants
+  `control/README.md` + seeded `inbox.md`/`status.md` (skip-if-exists,
+  hash-recorded); `check_status_current` is ENGINE-side so it ships in the
+  dist to every adopter — a missing or heartbeat-less `status.md` gates
+  `check --strict` RED (static, deterministic — the born-red graduation,
+  printed on the adopt checklist), while wall-clock staleness (>72h) is
+  advisory-only + Stop-hook-nagged, never exit-affecting: a REQUIRED CI
+  check must not red on time alone. Coordination writes ride an IN-JOB CI
+  fast lane (control-only diff short-circuits green, session gate
+  included), never `paths-ignore` — a required context that never reports
+  stays pending and jams heartbeat auto-merge. The manager's canonical
+  inbox write is a direct Contents-API commit to the default branch;
+  API-authored PRs may carry zero check runs (the #27 lesson), documented
+  in the planted contract.
+- why: The spec (superbot
+  `docs/planning/fleet-coordination-protocol-2026-07-09.md` §2) names the
+  checker and a `paths-ignore`; both needed one resolution each against
+  lived 2026-07-09 evidence — "warns → graduates to the born-red gate"
+  split by determinism (static protocol states vs wall-clock), and
+  `paths-ignore` replaced by the in-job short-circuit after the
+  heartbeat-lane jam lesson (a never-reporting required context blocks
+  auto-merge forever).
+- provenance: inbox ORDER 002; spec §2 (owner-locked decisions §0);
+  lessons from kit PR #27 (zero check runs) and the 2026-07-09 heartbeat
+  lane; shipped in band KL-8.

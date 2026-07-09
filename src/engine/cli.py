@@ -37,6 +37,7 @@ from engine.checks.allowlist import apply_allowlist, load_allowlist
 from engine.checks.check_docs import Finding, run_doc_checks
 from engine.checks.check_engagement import check_engagement
 from engine.checks.check_namespace import check_namespace
+from engine.checks.check_status_current import check_status_current
 from engine.checks.check_orientation_budget import check_orientation_budget
 from engine.checks.check_seam_authority import check_seam_authority
 from engine.checks.check_session_log import check_log, latest_session_log
@@ -652,7 +653,14 @@ def cmd_check(
         config.badge_tokens,
         config.readpath_docs,
     )
-    doc_findings = list(doc_findings) + _extra_check_findings(target, config)
+    # The control-protocol heartbeat (KL-8): static gate findings (missing /
+    # heartbeat-less status.md) ride the strict loop like every checker;
+    # wall-clock staleness is advisory-only and handled below — a required CI
+    # check must never red on time alone (see check_status_current's docstring).
+    status_gate, status_advisories = check_status_current(target)
+    doc_findings = (
+        list(doc_findings) + _extra_check_findings(target, config) + status_gate
+    )
     entries, allow_findings = load_allowlist(target, config.state_dir)
     doc_findings, suppressed = apply_allowlist(doc_findings, entries)
     doc_findings += allow_findings
@@ -683,6 +691,25 @@ def cmd_check(
             surface="check",
             posture=posture,
             findings=doc_findings,
+        )
+    if status_advisories:
+        # Warn-only by contract: surfaced + telemetry-recorded, never counted
+        # toward the exit code (a stale heartbeat must not red a required CI
+        # check on wall-clock time alone — the Stop hook and this warning are
+        # the nag; the manager's dark-Project read is the consequence).
+        _emit(
+            f"check: {len(status_advisories)} control-status advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in status_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=status_advisories,
         )
 
     if session_log is not None:
@@ -1121,7 +1148,11 @@ def cmd_adopt(
         _emit(f"adopt: {line}")
     # KL-7 — the adopter is told, in the adopt output itself, exactly what the
     # born-red engagement gate needs: the gate's findings ARE the checklist.
-    engage = check_engagement(target, config)
+    # KL-8 rider: the control-protocol gate findings (the just-planted seed
+    # status.md has no heartbeat yet) join the same checklist — "write your
+    # first real heartbeat" is part of engaging, same shape as the first card.
+    status_gate, _ = check_status_current(target)
+    engage = check_engagement(target, config) + status_gate
     if engage:
         _emit(
             f"adopt: NOT ENGAGED — `check --strict` holds RED until these "

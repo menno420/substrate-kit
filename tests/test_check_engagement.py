@@ -201,6 +201,19 @@ def test_cold_adopt_is_born_red_then_green_once_engaged(tmp_path, capsys):
     # …(3) session loop — the first real session card.
     card = _write_complete_card(root, config)
 
+    # Still RED: the KL-8 control loop hasn't engaged — the planted
+    # control/status.md is the heartbeat-less adopt seed.
+    capsys.readouterr()
+    assert cmd_check(root, strict=True) == 1
+    assert "status-no-heartbeat" in capsys.readouterr().out
+    # …(4) control loop — the first real heartbeat overwrites the seed.
+    (root / "control" / "status.md").write_text(
+        "# repo · status\nupdated: 2026-07-09T12:00Z\nphase: engaged\n"
+        "health: green\nlast-shipped: none\nblockers: none\n"
+        "orders: acked= done=\n⚑ needs-owner: none\nnotes: first heartbeat\n",
+        encoding="utf-8",
+    )
+
     # GREEN: engaged — and the gate-mode CI invocation agrees.
     capsys.readouterr()
     assert cmd_check(root, strict=True) == 0
@@ -254,3 +267,6 @@ def test_cmd_adopt_prints_the_engagement_checklist(tmp_path, capsys):
     assert "[enforcement-unwired]" in out
     assert "[session-loop-idle]" in out
     assert "[unrendered-banner]" in out
+    # KL-8 rider: the just-planted seed status.md joins the checklist —
+    # writing the first real heartbeat is part of engaging.
+    assert "[status-no-heartbeat]" in out
