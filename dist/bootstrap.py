@@ -1412,9 +1412,11 @@ host tunes the ritual without touching engine code.
 
 Unlike the host's version this port does **not** shell out to ``git`` to pick the
 "current" log — ``subprocess`` is banned in engine code and is host-CI sugar
-anyway. The current log is the newest ``*.md`` by mtime under ``sessions_dir``
-(the CLI also accepts an explicit ``--file``). Pure stdlib; returns the missing
-markers rather than printing.
+anyway. The current log is the newest ``*.md`` by mtime under ``sessions_dir``;
+CI workflows should prefer ``check --session-log <file>`` with the card the
+PR's diff touches, because a fresh checkout flattens every mtime to checkout
+time and silently degrades the newest-by-mtime guess. Pure stdlib; returns the
+missing markers rather than printing.
 """
 
 
@@ -2509,21 +2511,34 @@ def _ref_newest_logs(sessions_dir: Path, last_n: int) -> list[Path]:
 
 
 def _ref_clean_line(line: str) -> str:
-    """Strip bullets, blockquote marks, and the emoji markers from a mined line."""
-    text = line.strip().lstrip("-*> ").strip()
+    """Strip list/blockquote prefixes and the emoji markers from a mined line."""
+    text = _REF_LEAD_PREFIX_RE.sub("", line.strip())
     for mark in (_REF_IDEA_MARK, _REF_FLAG_MARK):
         text = text.replace(mark, "")
     return text.strip().lstrip(":").strip()
 
 
+# List/blockquote prefixes a marker-led line may open with: bullets ("- ", "* ",
+# "+ "), blockquotes ("> "), and ordered-list numbers ("1. ", "12) "), possibly
+# nested. Stripped before the marker-lead test below.
+_REF_LEAD_PREFIX_RE = re.compile(r"^(?:\s*(?:[-*+>]\s|\d{1,3}[.)]\s))*\s*")
+
+
 def _ref_marker_tags(line: str) -> list[str]:
-    """Return the candidate tags for a line's emoji markers (may be empty)."""
-    tags: list[str] = []
-    if _REF_IDEA_MARK in line:
-        tags.append("idea")
-    if _REF_FLAG_MARK in line:
-        tags.append("flag")
-    return tags
+    """Return the tags for a line *led* by an emoji marker (may be empty).
+
+    Only lines whose content starts at the marker — after list/blockquote
+    prefixes and emphasis characters — are lesson candidates. A mid-prose
+    marker mention ("see 💡 below for the durable fix", "its friction-index 💡
+    was left floating") is a cross-reference, not a lesson; harvesting those
+    produced junk fragments in the kit-lab band (observed 2026-07-09).
+    """
+    text = _REF_LEAD_PREFIX_RE.sub("", line).lstrip("*_ ")
+    if text.startswith(_REF_IDEA_MARK):
+        return ["idea"]
+    if text.startswith(_REF_FLAG_MARK):
+        return ["flag"]
+    return []
 
 
 def _ref_path_tokens(line: str) -> list[str]:
@@ -2569,14 +2584,16 @@ def mine_reflections(sessions_dir: Path, *, last_n: int = 5) -> list[dict]:
     Deterministic and read-only — never writes state; the caller decides what
     to promote into the buffer. Three extraction passes:
 
-      1. 💡 idea lines → ``{"lesson", "evidence", "tags": ["idea"]}``.
-      2. ⚑ flag lines → the same shape, tagged ``flag``.
+      1. 💡-led idea lines → ``{"lesson", "evidence", "tags": ["idea"]}``.
+      2. ⚑-led flag lines → the same shape, tagged ``flag``.
       3. Any file path cited in >= 2 different logs → one
          ``Recurring attention on <path>`` candidate.
 
-    Lines containing ``[DEPRECATED]`` are skipped entirely; ``#``-prefixed
-    heading lines never become lesson candidates (passes 1–2) but their path
-    tokens still feed pass 3.
+    Passes 1–2 require the marker to *lead* the line (after list/blockquote
+    prefixes) — a mid-prose marker mention is a cross-reference, never a
+    lesson. Lines containing ``[DEPRECATED]`` are skipped entirely;
+    ``#``-prefixed heading lines never become lesson candidates (passes 1–2)
+    but their path tokens still feed pass 3.
     """
     candidates: list[dict] = []
     sightings: dict[str, dict[str, str]] = {}
@@ -2806,7 +2823,8 @@ MODEL_USAGE_RELPATH = "telemetry/model-usage.jsonl"
 # The run-report needle. \N escape keeps the engine source ASCII-safe.
 MODEL_LINE_NEEDLE = "\N{BAR CHART} Model:"  # 📊 Model:
 
-# The 8 Q-0248 / PL-004 task classes, verbatim (docs/program/rulings.md).
+# The 9 PL-004 task classes, verbatim (docs/program/rulings.md): the 8
+# founding Q-0248 classes + `feature build` (the PL-010 amendment).
 TASK_CLASSES = (
     "docs-only",
     "mechanical refactor",
@@ -2816,6 +2834,7 @@ TASK_CLASSES = (
     "review/verify",
     "research",
     "idea/planning",
+    "feature build",
 )
 
 _DATE_PREFIX_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
@@ -2969,9 +2988,9 @@ def harvest_model_usage(root: Path, session_log: Path | None) -> list[str]:
         if parsed["task_class"] not in TASK_CLASSES:
             known = " | ".join(TASK_CLASSES)
             lines.append(
-                f"task_class {parsed['task_class']!r} is not one of the 8 "
-                f"Q-0248 classes ({known}) — recorded verbatim; fix the line "
-                "or the taxonomy.",
+                f"task_class {parsed['task_class']!r} is not one of the "
+                f"{len(TASK_CLASSES)} PL-004 classes ({known}) — recorded "
+                "verbatim; fix the line or the taxonomy.",
             )
         session = session_log.stem
         path = root / MODEL_USAGE_RELPATH
@@ -7496,7 +7515,13 @@ def _adopt_sessions_readme(markers: list[dict[str, str]]) -> str:
         "drafted section appended. A draft is a starting point, not a "
         "close-out: verify the evidence, resolve every `[[fill:]]` slot, "
         "then flip the Status badge — unresolved slots (and the `drafted` "
-        "status) keep the card counting incomplete.\n"
+        "status) keep the card counting incomplete.\n\n"
+        "**Guard recipes:** when a card records friction-to-guard material "
+        "for a *later* session (a deferred fix, a flagged footgun), carry a "
+        "one-line **guard recipe** naming the code anchors — function + file "
+        "+ the test target — not just the symptom. A symptom-only entry "
+        "costs the next session a re-derivation grep pass; a recipe lets it "
+        "land the guard in minutes.\n"
     )
 
 
@@ -7535,7 +7560,7 @@ def ci_snippet() -> str:
 LIVE_CI_RELPATH = ".github/workflows/substrate-gate.yml"
 
 
-def live_ci_workflow(interpreter: str = "python3") -> str:
+def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".sessions") -> str:
     """Return the LIVE (uncommented) CI gate workflow — the locked door.
 
     Unlike :func:`ci_snippet` (a commented example the host installs by hand),
@@ -7545,11 +7570,18 @@ def live_ci_workflow(interpreter: str = "python3") -> str:
     so the merge is **held red** until the session's journal is written and the
     whole hygiene suite passes. This is the forcing function that makes the
     memory ritual non-optional: a nag can be ignored, a failing required check
-    cannot. `fetch-depth: 0` gives the checkout full history (the gate itself is
-    git-free, but hosts commonly extend this workflow with diff-aware steps).
+    cannot. `fetch-depth: 0` gives the checkout the history the diff needs.
     A docs-only or bot PR that shouldn't need a session card is handled by the
     host adding a `paths-ignore:` or a label carve-out — kept strict by default
     on purpose (the discipline is the point).
+
+    The gate step is **PR-diff-aware**: a fresh CI checkout flattens every file
+    mtime to checkout time, so the engine's newest-by-mtime card guess is
+    arbitrary in CI (the kit's own CI once carried a git-mtime-restore shim for
+    exactly this). The workflow instead derives the card from what the PR/push
+    diff touches under ``sessions_dir`` and passes it via
+    ``check --session-log``; when the diff names no card the argument is
+    simply omitted and the engine's mtime fallback applies (fail-open).
     """
     return (
         "# substrate-kit enforcement gate (LIVE — installed by "
@@ -7573,7 +7605,22 @@ def live_ci_workflow(interpreter: str = "python3") -> str:
         "        with:\n"
         '          python-version: "3.x"\n'
         "      - name: substrate gate (docs + session-log required)\n"
-        f"        run: {interpreter} bootstrap.py check --strict --require-session-log\n"
+        "        # Gate on the session card THIS PR/push touches (CI flattens\n"
+        "        # mtimes, so the engine's newest-by-mtime guess is unreliable\n"
+        "        # here). No card in the diff -> no --session-log argument ->\n"
+        "        # the engine's mtime fallback (fail-open).\n"
+        "        run: |\n"
+        '          if [ -n "${{ github.base_ref }}" ]; then\n'
+        '            range="origin/${{ github.base_ref }}...HEAD"\n'
+        "          else\n"
+        '            range="${{ github.event.before }}..${{ github.sha }}"\n'
+        "          fi\n"
+        '          card="$(git diff --name-only --diff-filter=d "$range" -- '
+        f"'{sessions_dir}/*.md' ':!{sessions_dir}/README.md' 2>/dev/null "
+        '| tail -1)"\n'
+        '          echo "session gate card: ${card:-<none - mtime fallback>}"\n'
+        f"          {interpreter} bootstrap.py check --strict --require-session-log"
+        ' ${card:+--session-log "$card"}\n'
     )
 
 
@@ -7715,7 +7762,10 @@ def adopt(
         _adopt_plant(
             root / LIVE_CI_RELPATH,
             LIVE_CI_RELPATH,
-            live_ci_workflow(config.interpreter_for_checks or "python3"),
+            live_ci_workflow(
+                config.interpreter_for_checks or "python3",
+                sessions_dir=config.sessions_dir,
+            ),
             report,
         )
 
@@ -8721,6 +8771,7 @@ def cmd_check(
     strict: bool,
     *,
     require_session_log: bool = False,
+    session_log: Path | None = None,
 ) -> int:
     """Run every hygiene checker against ``target``.
 
@@ -8735,6 +8786,16 @@ def cmd_check(
     makes the memory ritual non-optional, not merely advised). Uses config
     defaults if ``target`` has no ``substrate.config.json`` yet, so a project
     can lint before onboarding.
+
+    ``session_log`` (CLI ``--session-log``) names the card to gate on
+    *explicitly* — the diff-aware selection a CI workflow derives from which
+    ``<sessions_dir>/*.md`` file the PR adds/changes. Without it the gate
+    falls back to newest-by-mtime, which a fresh CI checkout silently degrades
+    (every mtime flattens to checkout time), the trap that used to require a
+    git-mtime-restore shim before this step. A named file that does not exist
+    is treated exactly like an absent log (advisory by default, a hard failure
+    under ``require_session_log``) — an explicit selection never silently
+    falls back to a different card.
 
     Two KL-3 mechanisms ride the finding loop (plan §5.3):
 
@@ -8790,19 +8851,27 @@ def cmd_check(
             findings=doc_findings,
         )
 
-    log = latest_session_log(target / config.sessions_dir)
+    if session_log is not None:
+        explicit = session_log if session_log.is_absolute() else target / session_log
+        log = explicit if explicit.is_file() else None
+    else:
+        log = latest_session_log(target / config.sessions_dir)
     log_missing: list[str] = check_log(log, config.session_markers) if log else []
     # In gate mode an absent log is itself a failing condition, so it must feed
     # the exit code exactly like an incomplete one.
     log_absent_fails = log is None and require_session_log
     if log is None:
+        if session_log is not None:
+            absent = f"--session-log {session_log} does not exist"
+        else:
+            absent = f"no session log under {config.sessions_dir}/"
         if require_session_log:
             _emit(
-                f"check: MERGE HELD — no session log under {config.sessions_dir}/ "
+                f"check: MERGE HELD — {absent} "
                 "(--require-session-log): write one before merging.",
             )
         else:
-            _emit("check: no session log found yet (advisory — not a failure).")
+            _emit(f"check: {absent} (advisory — not a failure).")
     else:
         rel = log.relative_to(target) if log.is_relative_to(target) else log
         if log_missing:
@@ -8813,11 +8882,14 @@ def cmd_check(
         # The session gate is a guard too (the kit's flagship one) — its
         # fires feed B3 like any checker's. Never allowlistable, though.
         if log_absent_fails:
+            if session_log is not None:
+                absent = f"--session-log {session_log} does not exist"
+            else:
+                absent = f"no session log under {config.sessions_dir}/"
             gate_finding = Finding(
                 "",
                 "session-log",
-                f"no session log under {config.sessions_dir}/ "
-                "(--require-session-log)",
+                f"{absent} (--require-session-log)",
             )
         else:
             log_rel = str(log.relative_to(target)) if log.is_relative_to(target) else str(log)
@@ -9746,6 +9818,16 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="fail (not just advise) when the session log is missing — the CI gate mode",
     )
+    check.add_argument(
+        "--session-log",
+        type=Path,
+        default=None,
+        help=(
+            "gate on this session card explicitly (e.g. the card the PR's diff "
+            "touches) instead of newest-by-mtime; a missing file counts as an "
+            "absent log, never a silent fallback"
+        ),
+    )
     return parser
 
 
@@ -9781,6 +9863,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.target,
                 args.strict,
                 require_session_log=args.require_session_log,
+                session_log=args.session_log,
             )
         if args.command == "answer":
             return cmd_answer(args.target, args.slot, " ".join(args.value))
@@ -9873,7 +9956,7 @@ _TEMPLATES = {
     'current-state.md.tmpl': '# ${project_name} — Current State\n\n> **Status:** `living-ledger`\n>\n> Generated by substrate-kit. **Living status ledger.** Source code and merged\n> work always win over this file. Read it second (right after the working\n> agreement) and keep it current as the project moves.\n\n## Stability baseline\n\n(Describe the accepted-stable baseline once established — what is known-good and\nshould not be re-audited without a reported regression.)\n\n## In flight\n\n(Verify against live source control — this section is a dated snapshot.)\n\n## Recently shipped (newest first)\n\n(Merged work only, newest first.)\n\n## Review rhythm\n\n${review_ritual}\n',
     'decisions.md.tmpl': '# ${project_name} — decisions\n\n> **Status:** `living-ledger`\n>\n> Generated by substrate-kit. Append-only decision ledger — entries are\n> superseded, never deleted. Rule docs cite entries as bare [D-NNNN] ids;\n> this file holds the provenance so rules never narrate it inline.\n\n<!-- Grammar: ## [D-NNNN] <title> / - status: decided|superseded|retired / - date: YYYY-MM-DD / - supersedes: D-NNNN (opt) / - superseded-by: D-NNNN (opt) / - verdict: <one line> / - why: <2-3 lines> / - provenance: <ref> -->\n\n## [D-0001] Adopt the substrate-kit workflow\n\n- status: decided\n- date:\n- verdict: ${project_name} runs on the substrate-kit agent workflow.\n- why: A repo-resident working agreement, decision ledger, and session\n  discipline let agents work correctly with little steering; adopting the\n  kit starts ${project_name} governed instead of accreting rules ad hoc.\n- provenance: substrate-kit adoption interview\n',
     'helper-policy.md.tmpl': '# ${project_name} — helper policy\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. When to create / move / promote a helper —\n> read this **before** adding a utility function anywhere. **NOT SOURCE OF\n> TRUTH** for code — source files always win.\n\n## Rules\n\n1. **One source of truth.** A behavior lives in exactly one function. Never\n   copy a helper into a second module "for convenience" — import it, or move\n   it (rule 2).\n2. **Shared helpers live below both consumers.** A helper needed by two\n   layers goes in the shared layer *below* both — never in either consumer\n   layer, and never duplicated into each.\n3. **Exact-name guard.** Before defining a new function, grep for\n   `def <exact_name>` in the target module and its siblings (plus the 1–2\n   nearest concept synonyms). A later same-name `def` silently shadows the\n   earlier one — no import fails, no warning fires.\n4. **Promote on second use.** The moment a private helper is wanted by a\n   second module, promote it to the shared layer — don\'t copy it.\n\n## Where helpers go in ${project_name}\n\n(Hand-filled: the concrete shared-layer path(s) for this repo, lowest layer\nfirst, with one line on what belongs in each.)\n',
-    'ideas-README.md.tmpl': '# ${project_name} — idea backlog & lifecycle\n\n> **Status:** `ideas`\n>\n> Generated by substrate-kit. Capture ideas here so they live in the repo, not in\n> chat. Nothing here is approved until it graduates. A **conveyor, not a graveyard**:\n> every idea ends implemented, on a roadmap, in discussion, or explicitly rejected.\n\n## Lifecycle\n\n```\n(1) INTAKE   capture the idea (raw -> captured)\n(2) MAP      name the owning area, rough size, rough risk\n(3) ROUTE    -> quick-win | structured plan | discuss-first (question router)\n(4) GROOM    pull one routable idea forward each session\n(5) OUTCOME  implemented | on a roadmap | in discussion | rejected\n```\n\n## Backlog\n\n(Captured ideas, each with a state and a next destination — none left at `raw`.)\n',
+    'ideas-README.md.tmpl': '# ${project_name} — idea backlog & lifecycle\n\n> **Status:** `ideas`\n>\n> Generated by substrate-kit. Capture ideas here so they live in the repo, not in\n> chat. Nothing here is approved until it graduates. A **conveyor, not a graveyard**:\n> every idea ends implemented, on a roadmap, in discussion, or explicitly rejected.\n\n## Lifecycle\n\n```\n(1) INTAKE   capture the idea (raw -> captured)\n(2) MAP      name the owning area, rough size, rough risk\n(3) ROUTE    -> quick-win | structured plan | discuss-first (question router)\n(4) GROOM    pull one routable idea forward each session\n(5) OUTCOME  implemented | on a roadmap | in discussion | rejected\n```\n\n## Frontmatter — the idea-outcome record\n\nEvery idea file in this directory (README excepted) opens with a flat\nYAML-subset frontmatter block — the machine-readable outcome record\n("ideas that ship and survive"), so a sweep can score the backlog without\nparsing prose:\n\n```\n---\nstate: captured | routed | promoted | historical\norigin: lab | owner | consumer:<owner>/<repo>\nshipped_pr: null | <PR number in shipped_repo>\nshipped_repo: null | <owner>/<repo>\nmerged_date: null | YYYY-MM-DD\noutcome: open | shipped | survived | reverted | rejected\n---\n```\n\nConventions: `shipped`/`survived`/`reverted` require all three ship fields;\n`open`/`rejected` keep them null; `survived` means the merge is ≥ 30 days old\nwith no revert; name files `<slug>-YYYY-MM-DD.md` (the generation-date cohort\nkey) and link every file from this README. The prose keeps the story, the\nfrontmatter keeps the score.\n\n## Backlog\n\n(Captured ideas, each with a state and a next destination — none left at `raw`.)\n',
     'owner-profile.md.tmpl': "# ${project_name} — owner working profile\n\n> **Status:** `owner-guidance`\n>\n> Generated by substrate-kit. Captures the owner's **working style** so\n> agents collaborate well — never personal data. The person is not shipped\n> with the kit.\n\n## How the owner works\n\n${owner_profile}\n\n## Review ritual\n\n${review_ritual}\n\n## Privacy note\n\nThis doc records working style only: communication preferences, review\ncadence, decision boundaries, autonomy expectations. No contact details, no\npersonal history, nothing that identifies the person beyond their role on\n${project_name}. When in doubt, leave it out.\n",
     'ownership.md.tmpl': "# ${project_name} — ownership\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. Which area / service / pipeline owns each\n> table, event, and write path. **NOT SOURCE OF TRUTH** for code — source\n> files always win.\n\n> **Steady state:** this doc's table is **generated** from store / manifest\n> specs where those exist — a projection, not hand-prose. This skeleton is\n> the interim hand-maintained form until that projection lands.\n\n## Ownership model\n\n${ownership_model}\n\n## Ownership table\n\n| Area | Owner (module / service) | Writes it owns | Notes |\n|---|---|---|---|\n| (one row per owned area) | | | |\n\n## New areas\n\n${new_area_ownership}\n",
     'question-router.md.tmpl': '# ${project_name} — maintainer question router\n\n> **Status:** `owner-guidance`\n>\n> Generated by substrate-kit. Append-only `## Q-NNNN` blocks capture owner-intent\n> decisions and open questions. The interview writes here; confirmed answers route\n> into the durable docs. **Append only** (next free Q-number) — never rewrite history.\n> Any session may append a block, not only the interview — including an unattended\n> run that hits a genuinely useful, non-derivable question with no live owner to ask.\n\n## Block format\n\n```\n## Q-0001\n- **Area / Type / Priority / Status:** ...\n- **Question:** ...\n- **Why agents need this:** ...\n- **Options:** ...\n- **Safe default:** ...\n- **Maintainer answer:** (verbatim)\n- **Routing result:** (which doc / slot the answer landed in)\n```\n\n## Open questions\n\n(Unanswered Q-blocks live here until the maintainer decides; a blocking one gates\ngraduation.)\n',

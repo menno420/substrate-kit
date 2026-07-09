@@ -65,6 +65,36 @@ workflow refuses to publish a version that has no section in this file.
   PL-004 feed. Everything fail-open: drafting can never crash a hook or
   session-close.
 
+- **The B4 ideas-frontmatter convention + `check_idea_index.py`** (band
+  KL-6, plan §5.4 — MINOR, new checker; convention and checker ship in the
+  same PR): every `docs/ideas/` entry opens with a flat YAML-subset
+  frontmatter block `{state, origin, shipped_pr, shipped_repo, merged_date,
+  outcome}` — the machine-readable "ideas that ship and survive" record the
+  B4 sweep scores. `scripts/check_idea_index.py` (stdlib, kit-quality gate)
+  enforces the grammar, the outcome-consistency rules (ship outcomes require
+  the ship fields; `survived` requires the 30-day D-15 window), the
+  `-YYYY-MM-DD.md` cohort-key filename, and README-backlog index consistency
+  (every file linked, every link resolving). Existing entries migrated; the
+  planted `ideas-README` template documents the convention for consumers
+  (dist regenerated + byte-pinned). `telemetry/*.jsonl` gains a
+  `merge=union` gitattribute so parallel sessions' append-only rows never
+  conflict.
+
+- **Explicit + diff-aware session-gate card selection** (groomed-ideas-1 —
+  MINOR, new CLI surface): `check --session-log <file>` gates on the named
+  card instead of the newest-by-mtime guess, which a fresh CI checkout
+  silently degrades (every mtime flattens to checkout time); a missing named
+  file counts as an absent log, never a silent fallback. The kit's own
+  `ci.yml` and the planted `substrate-gate.yml` (`adopt --wire-enforcement`)
+  now derive the card from what the PR/push diff touches and pass it
+  explicitly — the git-mtime-restore CI shim is deleted kit-side and never
+  travels to consumers. No argument → mtime selection unchanged (fail-open,
+  backward-compatible). Companion conventions in the same PR: the reflection
+  miner only harvests 💡/⚑ lines *led* by the marker (mid-prose
+  cross-references were mined as junk lessons), and session cards carry
+  **guard recipes** (function + file + test anchors) for deferred
+  friction→guard entries (both `.sessions/README`s).
+
 - **The `friction` verb + outbox** (band KL-4, plan §9.1 — MINOR, new CLI
   capability): `friction export` collects the install's ⚑ friction records
   (reflection buffer + a full session-log scan, deduplicated — D-14), wraps
@@ -82,22 +112,6 @@ workflow refuses to publish a version that has no section in this file.
   D-11, the scope fence, the `Run type: routine · lab` token, kill
   switches) + the exact 👤 P4 arming steps. Git is the prompt's source of
   truth; console copies are re-pasted on change.
-
-### Fixed
-
-- **`upgrade` from-version truth** (superbot-next#46): the vendored dist's
-  header now outranks a disagreeing `config.kit_version` pin when naming
-  `from_version` — a pin recorded BEFORE the first real upgrade (the D2
-  order) misreported the report/`last-upgrade.json` (pin said 1.0.0, the
-  archive honestly said `bootstrap-unknown.py`) and a rollback would have
-  restored the wrong pin. The hand-copied-new-dist case (header equals the
-  running `KIT_VERSION`) still trusts the pin; rollback now restores the
-  unrecorded sentinel `""` (never the literal `"unknown"`).
-- **`upgrade` input self-cleanup** (superbot-next#46): a completed upgrade
-  now removes the consumed `bootstrap.py.new` + the `release.json` next to
-  it instead of stranding them at the repo root; `--keep-inputs` opts out;
-  cleanup is fail-open and only ever touches the files the flow itself
-  consumed.
 
 - **Telemetry substrate** (band KL-3, plan §5.2/§5.3 — MINOR, new
   capability): guard-fire JSONL writers at the two local choke points
@@ -135,6 +149,29 @@ workflow refuses to publish a version that has no section in this file.
 - **Templates** (MINOR — new planted content): `CONSTITUTION.md.tmpl` and
   `collaboration-model.md.tmpl` gain a "Program law" pointer section citing
   the register by PL-ID (consumers cite, never copy).
+- **The 9th task class `feature build`** (program-law amendment PL-010 —
+  MINOR): `TASK_CLASSES` gains `feature build` for new-capability building,
+  ending the nearest-neighbor mislabeling of B2 allocation rows (friction
+  issue #15 report 3; KL-2/KL-3/KL-4 all had to shoehorn feature work).
+  `docs/program/rulings.md` [PL-010] amends PL-004's taxonomy; the
+  allocation ladder gains an **observe-first** row (no seeded tier —
+  PL-005: B2 data seeds it); existing dataset rows are never rewritten.
+
+### Fixed
+
+- **`upgrade` from-version truth** (superbot-next#46): the vendored dist's
+  header now outranks a disagreeing `config.kit_version` pin when naming
+  `from_version` — a pin recorded BEFORE the first real upgrade (the D2
+  order) misreported the report/`last-upgrade.json` (pin said 1.0.0, the
+  archive honestly said `bootstrap-unknown.py`) and a rollback would have
+  restored the wrong pin. The hand-copied-new-dist case (header equals the
+  running `KIT_VERSION`) still trusts the pin; rollback now restores the
+  unrecorded sentinel `""` (never the literal `"unknown"`).
+- **`upgrade` input self-cleanup** (superbot-next#46): a completed upgrade
+  now removes the consumed `bootstrap.py.new` + the `release.json` next to
+  it instead of stranding them at the repo root; `--keep-inputs` opts out;
+  cleanup is fail-open and only ever touches the files the flow itself
+  consumed.
 
 ## [1.0.0] - 2026-07-09
 

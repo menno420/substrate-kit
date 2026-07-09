@@ -1,3 +1,12 @@
+---
+state: historical
+origin: owner
+shipped_pr: null
+shipped_repo: null
+merged_date: null
+outcome: open
+---
+
 # Multi-repo program capture: kit-lab + trading (2026-07-07) — pointer stub
 
 > **Status:** `historical`

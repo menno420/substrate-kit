@@ -38,7 +38,8 @@ MODEL_USAGE_RELPATH = "telemetry/model-usage.jsonl"
 # The run-report needle. \N escape keeps the engine source ASCII-safe.
 MODEL_LINE_NEEDLE = "\N{BAR CHART} Model:"  # 📊 Model:
 
-# The 8 Q-0248 / PL-004 task classes, verbatim (docs/program/rulings.md).
+# The 9 PL-004 task classes, verbatim (docs/program/rulings.md): the 8
+# founding Q-0248 classes + `feature build` (the PL-010 amendment).
 TASK_CLASSES = (
     "docs-only",
     "mechanical refactor",
@@ -48,6 +49,7 @@ TASK_CLASSES = (
     "review/verify",
     "research",
     "idea/planning",
+    "feature build",
 )
 
 _DATE_PREFIX_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
@@ -201,9 +203,9 @@ def harvest_model_usage(root: Path, session_log: Path | None) -> list[str]:
         if parsed["task_class"] not in TASK_CLASSES:
             known = " | ".join(TASK_CLASSES)
             lines.append(
-                f"task_class {parsed['task_class']!r} is not one of the 8 "
-                f"Q-0248 classes ({known}) — recorded verbatim; fix the line "
-                "or the taxonomy.",
+                f"task_class {parsed['task_class']!r} is not one of the "
+                f"{len(TASK_CLASSES)} PL-004 classes ({known}) — recorded "
+                "verbatim; fix the line or the taxonomy.",
             )
         session = session_log.stem
         path = root / MODEL_USAGE_RELPATH

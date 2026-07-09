@@ -269,6 +269,36 @@ def test_mine_skips_heading_lines(tmp_path):
     assert recurring[0]["evidence"] == "2026-07-08-a.md:L3, 2026-07-09-b.md:L3"
 
 
+def test_mine_skips_mid_prose_marker_fragments(tmp_path):
+    # Groomed-ideas-1: the kit-lab band's real cards mention 💡/⚑ mid-prose as
+    # cross-references ("see 💡 below for the durable fix"), and the miner
+    # harvested those fragments as junk lessons. Passes 1-2 now require the
+    # marker to LEAD the line (after list/blockquote/number prefixes).
+    sessions = tmp_path / ".sessions"
+    sessions.mkdir()
+    log = sessions / "2026-07-09-a.md"
+    log.write_text(
+        "# A\n\n"
+        "selection is mtime-based; see 💡 below for the durable fix\n"
+        "its friction-index 💡 (append-only) was left floating\n"
+        "a card under a ⚑ Self-initiated line explains itself\n"
+        "1. ⚑ Decide-and-flag: anchor policy chosen\n"
+        "- 💡 Session idea: explicit card selector\n"
+        "> ⚑ quoted flag still counts\n",
+        encoding="utf-8",
+    )
+    candidates = mine_reflections(sessions)
+    lessons = {c["lesson"] for c in candidates}
+    # Mid-prose mentions never become candidates…
+    assert not any("durable fix" in lesson for lesson in lessons)
+    assert not any("left floating" in lesson for lesson in lessons)
+    assert not any("explains itself" in lesson for lesson in lessons)
+    # …while marker-LED lines (numbered, bulleted, blockquoted) do.
+    assert "Decide-and-flag: anchor policy chosen" in lessons
+    assert "Session idea: explicit card selector" in lessons
+    assert "quoted flag still counts" in lessons
+
+
 def test_mine_absent_dir_and_never_writes(tmp_path):
     assert mine_reflections(tmp_path / "nope") == []
     sessions = _fixture_sessions(tmp_path)

@@ -10,7 +10,7 @@
 
 ## The ladder (seeded defaults — B2 data revises them)
 
-| Task class (Q-0248, verbatim) | Default tier | Notes |
+| Task class (PL-004, verbatim; Q-0248 founding 8 + PL-010) | Default tier | Notes |
 |---|---|---|
 | kernel/architecture design | Opus/Fable-class, effort xhigh–max | frozen-grammar / kernel contact always lands here |
 | idea/planning | top tier | plan quality compounds; cheap plans are expensive |
@@ -20,6 +20,7 @@
 | mechanical refactor | Sonnet-class workhorse, conditional on an objective gate | same condition |
 | test writing | Sonnet-class | |
 | docs-only | Haiku/Sonnet-class ⚑ | the cheap-tier experiment class — B2's first paired A/B candidate |
+| feature build | *(observe-first — no seeded tier; PL-005)* | added by PL-010 (2026-07-09); B2 data seeds the default — until then sessions pick per PL-001 judgment and the rows accrue |
 
 ## Escalation / de-escalation (mechanical — KF-8 seeds, data-revisable)
 
@@ -41,3 +42,4 @@ allocation rubric, band KL-5), cost as tiebreaker.
 | Date | Row changed | Cited rows | By |
 |---|---|---|---|
 | 2026-07-09 | (seed — no revisions yet) | — | band KL-3 |
+| 2026-07-09 | `feature build` row added, observe-first (no tier seeded) | — (taxonomy amendment PL-010, not a data revision) | PL-010 ruling PR #22 |

@@ -151,21 +151,34 @@ def _ref_newest_logs(sessions_dir: Path, last_n: int) -> list[Path]:
 
 
 def _ref_clean_line(line: str) -> str:
-    """Strip bullets, blockquote marks, and the emoji markers from a mined line."""
-    text = line.strip().lstrip("-*> ").strip()
+    """Strip list/blockquote prefixes and the emoji markers from a mined line."""
+    text = _REF_LEAD_PREFIX_RE.sub("", line.strip())
     for mark in (_REF_IDEA_MARK, _REF_FLAG_MARK):
         text = text.replace(mark, "")
     return text.strip().lstrip(":").strip()
 
 
+# List/blockquote prefixes a marker-led line may open with: bullets ("- ", "* ",
+# "+ "), blockquotes ("> "), and ordered-list numbers ("1. ", "12) "), possibly
+# nested. Stripped before the marker-lead test below.
+_REF_LEAD_PREFIX_RE = re.compile(r"^(?:\s*(?:[-*+>]\s|\d{1,3}[.)]\s))*\s*")
+
+
 def _ref_marker_tags(line: str) -> list[str]:
-    """Return the candidate tags for a line's emoji markers (may be empty)."""
-    tags: list[str] = []
-    if _REF_IDEA_MARK in line:
-        tags.append("idea")
-    if _REF_FLAG_MARK in line:
-        tags.append("flag")
-    return tags
+    """Return the tags for a line *led* by an emoji marker (may be empty).
+
+    Only lines whose content starts at the marker — after list/blockquote
+    prefixes and emphasis characters — are lesson candidates. A mid-prose
+    marker mention ("see 💡 below for the durable fix", "its friction-index 💡
+    was left floating") is a cross-reference, not a lesson; harvesting those
+    produced junk fragments in the kit-lab band (observed 2026-07-09).
+    """
+    text = _REF_LEAD_PREFIX_RE.sub("", line).lstrip("*_ ")
+    if text.startswith(_REF_IDEA_MARK):
+        return ["idea"]
+    if text.startswith(_REF_FLAG_MARK):
+        return ["flag"]
+    return []
 
 
 def _ref_path_tokens(line: str) -> list[str]:
@@ -211,14 +224,16 @@ def mine_reflections(sessions_dir: Path, *, last_n: int = 5) -> list[dict]:
     Deterministic and read-only — never writes state; the caller decides what
     to promote into the buffer. Three extraction passes:
 
-      1. 💡 idea lines → ``{"lesson", "evidence", "tags": ["idea"]}``.
-      2. ⚑ flag lines → the same shape, tagged ``flag``.
+      1. 💡-led idea lines → ``{"lesson", "evidence", "tags": ["idea"]}``.
+      2. ⚑-led flag lines → the same shape, tagged ``flag``.
       3. Any file path cited in >= 2 different logs → one
          ``Recurring attention on <path>`` candidate.
 
-    Lines containing ``[DEPRECATED]`` are skipped entirely; ``#``-prefixed
-    heading lines never become lesson candidates (passes 1–2) but their path
-    tokens still feed pass 3.
+    Passes 1–2 require the marker to *lead* the line (after list/blockquote
+    prefixes) — a mid-prose marker mention is a cross-reference, never a
+    lesson. Lines containing ``[DEPRECATED]`` are skipped entirely;
+    ``#``-prefixed heading lines never become lesson candidates (passes 1–2)
+    but their path tokens still feed pass 3.
     """
     candidates: list[dict] = []
     sightings: dict[str, dict[str, str]] = {}

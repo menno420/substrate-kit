@@ -16,12 +16,94 @@
 (5) OUTCOME  implemented | on a roadmap | in discussion | rejected
 ```
 
+## Frontmatter — the B4 outcome record (founding plan §5.4)
+
+Every idea file in this directory (README excepted) opens with a flat
+YAML-subset frontmatter block — the machine-readable half of B4
+("ideas that ship and survive"), validated by `scripts/check_idea_index.py`
+in the kit-quality gate:
+
+```
+---
+state: captured | routed | promoted | historical
+origin: lab | owner | consumer:<owner>/<repo>
+shipped_pr: null | <PR number in shipped_repo>
+shipped_repo: null | <owner>/<repo>
+merged_date: null | YYYY-MM-DD
+outcome: open | shipped | survived | reverted | rejected
+---
+```
+
+Rules the checker enforces: `shipped`/`survived`/`reverted` require all three
+ship fields; `open`/`rejected` require them null; `survived` requires
+`merged_date` ≥ 30 days old (the D-15 survive window); the filename ends
+`-YYYY-MM-DD.md` (the cohort key — B4 evaluates ideas by generation-month
+cohort); every file is linked from this README and every backlog link
+resolves. An idea **ships** when its frontmatter links a merged PR; it
+**survives** when no revert exists 30 days later (the sweep's revert-scan
+updates `outcome` — `worked_around` judgments are never the loop's own call,
+D-23). Keep the frontmatter current when an idea moves; the prose keeps the
+story, the frontmatter keeps the score.
+
 ## Backlog
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- [CHANGELOG Unreleased-section structure checker](changelog-unreleased-structure-checker-2026-07-09.md)
+  — state: captured; origin: lab (run close-out 2026-07-09 — the docs-drift
+  audit found the same mid-section `### Fixed` insertion made twice
+  independently, PR #14 on main + PR #17's pending patch); next: a
+  groomed-ideas increment ships checker + test + CI step (guard recipe in
+  the file); sequenced AFTER #17 merges.
+- [Pinned feed contract — doctrine for cross-repo committed-artifact seams](pinned-feed-contract-doctrine-2026-07-09.md)
+  — state: captured; origin: consumer:menno420/superbot (pattern proven
+  end-to-end in superbot PR #1884 + websites PR #11 — the first consumer-side
+  pass caught a live shape defect); next: a groomed-ideas increment ships the
+  doctrine note (template rider / recipe), scaffolding only if instances repeat.
+- [Taxonomy-surface sync checker (TASK_CLASSES ⇄ ladder ⇄ telemetry README)](taxonomy-surface-sync-checker-2026-07-09.md)
+  — state: captured; origin: lab (PL-010 session — three surfaces updated by
+  hand with nothing enforcing agreement; guard recipe in the file); next: a
+  groomed-ideas increment ships checker + test + CI step.
+- [Label-added disarm guard — the enabler race's residual half](label-added-disarm-guard-2026-07-09.md)
+  — state: captured; origin: lab (enabler-race-hotfix session — the deployed
+  fresh re-read is point-in-time; a label applied *after* arming still does
+  nothing; guard recipe in the file: `on: pull_request: [labeled]` →
+  `gh pr merge --disable-auto`); next: a groomed-ideas increment ships the
+  workflow + a live post-arm labelling verification.
+## Shipped (survive window open)
+
+(Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
+after the 30-day window, `reverted` otherwise.)
+
 - [A "feature build" task class for the Q-0248/PL-004 taxonomy](feature-build-task-class-2026-07-09.md)
-  — state: captured · routed **discuss-first** (PL-004 amendment); origin:
-  superbot friction issue #15 report 3 + the KL-3 session idea; next: a
-  dedicated ruling PR (its own PR — a program-law change is never bundled
-  into a band PR).
+  — **shipped** kit PR #22 (2026-07-09), the PL-010 ruling; origin:
+  superbot friction issue #15 report 3 + the KL-3 session idea. ⚑ #22
+  merged *mechanically* (enabler label-race incident — comment on #22);
+  PL-010 is live, owner ratify-or-veto pending (`docs/current-state.md`
+  owner gate 2).
+
+- [PR-diff-aware session-gate card selection](session-gate-diff-aware-selection-2026-07-09.md)
+  — **shipped** kit PR #19 (2026-07-09): `check --session-log <file>` + the
+  diff-derived card in kit CI and the planted `substrate-gate.yml`; the
+  mtime-restore shim class deleted. Window closes 2026-08-08.
+- [Reflection miner: line-start markers only](reflection-miner-line-start-markers-2026-07-09.md)
+  — **shipped** kit PR #19 (2026-07-09): mid-prose 💡/⚑ fragments no longer
+  mine as junk lessons. Window closes 2026-08-08.
+- [Guard recipes in session cards](session-card-guard-recipes-2026-07-09.md)
+  — **shipped** kit PR #19 (2026-07-09): friction→guard entries carry
+  function + file + test anchors; convention in both `.sessions/README`s.
+  Window closes 2026-08-08.
+
+## Historical / pointer stubs
+
+(Link-resolution stubs for travelled docs — canonical copies live in the
+origin repo; frontmatter still tracks their B4 outcome.)
+
+- [Multi-repo program capture: kit-lab + trading](multi-repo-program-kit-lab-trading-2026-07-07.md)
+  — pointer stub (canonical: superbot); outcome `open` — the capture spans
+  the kit-lab (largely built, bands KL-0…KL-6) **and** the unbuilt trading
+  repo, so it is not a single shippable unit.
+- [Substrate-kit auto-drafted handoff](substrate-kit-auto-drafted-handoff-2026-07-07.md)
+  — pointer stub (canonical: superbot); **shipped** as kit PR #16
+  (2026-07-09) — the survive window closes 2026-08-08; the sweep flips it
+  `survived` if no revert exists then.

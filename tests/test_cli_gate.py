@@ -77,3 +77,78 @@ def test_incomplete_log_fails_the_gate_too(tmp_path):
     stub = root / config.sessions_dir / "2026-07-07-stub.md"
     stub.write_text("# stub\n\n> **Status:** `complete`\n", encoding="utf-8")
     assert cmd_check(root, strict=True, require_session_log=True) == 1
+
+
+# ---------------------------------------------------------------------------
+# Explicit card selection — `check --session-log` (groomed-ideas-1)
+# ---------------------------------------------------------------------------
+
+
+def test_explicit_session_log_overrides_the_mtime_guess(tmp_path):
+    import os
+    import time
+
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    _write_complete_log(root, config)
+    # A newer-by-mtime foreign card is incomplete (the CI-checkout trap:
+    # mtime order is arbitrary there) — the default selection gates on it…
+    other = root / config.sessions_dir / "2026-07-08-other.md"
+    other.write_text("# other\n\n> **Status:** `in-progress`\n", encoding="utf-8")
+    future = time.time() + 120
+    os.utime(other, (future, future))
+    assert cmd_check(root, strict=True, require_session_log=True) == 1
+    # …but the diff-derived explicit selection names THIS session's card.
+    rc = cmd_check(
+        root,
+        strict=True,
+        require_session_log=True,
+        session_log=Path(config.sessions_dir) / "2026-07-07-demo.md",
+    )
+    assert rc == 0
+
+
+def test_explicit_session_log_missing_never_silently_falls_back(tmp_path, capsys):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    # A complete card exists, but the explicitly named one does not: the gate
+    # holds rather than quietly gating on a different card.
+    _write_complete_log(root, config)
+    rc = cmd_check(
+        root,
+        strict=True,
+        require_session_log=True,
+        session_log=Path(config.sessions_dir) / "no-such-card.md",
+    )
+    assert rc == 1
+    out = capsys.readouterr().out
+    assert "MERGE HELD" in out
+    assert "no-such-card.md" in out
+
+
+def test_explicit_session_log_missing_is_advisory_without_the_gate(tmp_path, capsys):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    rc = cmd_check(
+        root,
+        strict=True,
+        session_log=Path(config.sessions_dir) / "no-such-card.md",
+    )
+    assert rc == 0
+    assert "advisory" in capsys.readouterr().out
+
+
+def test_explicit_session_log_accepts_an_incomplete_named_card(tmp_path):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    # The named card is born-red: the gate reports IT, complete siblings or not.
+    _write_complete_log(root, config)
+    red = root / config.sessions_dir / "2026-07-09-red.md"
+    red.write_text("# red\n\n> **Status:** `in-progress`\n", encoding="utf-8")
+    rc = cmd_check(
+        root,
+        strict=True,
+        require_session_log=True,
+        session_log=Path(config.sessions_dir) / "2026-07-09-red.md",
+    )
+    assert rc == 1
