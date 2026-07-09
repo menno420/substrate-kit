@@ -138,6 +138,11 @@
 
 (Verify against live source control — this section is a dated snapshot.)
 
+- **Fleet coordination protocol ADOPTED (2026-07-09)**: the `control/` bus is
+  live on main (#27, landed + first status heartbeat written by the ritual
+  session, PR #30) — every session now reads `control/inbox.md` FIRST and
+  overwrites `control/status.md` LAST per `control/README.md`; ORDER 002
+  (the kit band) is acked and queued as its own next session.
 - PR #28 — **B1 record**: run `2026-07-09-run01`'s row appended to the
   cold-start index + the raw run dir committed + the three harness
   follow-up ideas. KL-7's companion PL-register note still rides its own
