@@ -42,16 +42,23 @@ jobs:
       !contains(github.event.pull_request.labels.*.name, 'do-not-automerge')
     runs-on: ubuntu-latest
     steps:
-      - name: Check main actually requires status checks (KL-0 guard)
+      - name: Check main actually requires status CONTEXTS (KL-0/KL-1 guard)
         id: rules
         env:
           GH_TOKEN: ${{ secrets.ROUTINE_PAT || secrets.GITHUB_TOKEN }}
         run: |
-          required="$(gh api "repos/$GITHUB_REPOSITORY/rules/branches/main" \
-            --jq '[.[] | select(.type == "required_status_checks")] | length')"
-          echo "required=$required" >> "$GITHUB_OUTPUT"
-          if [ "$required" = "0" ]; then
-            echo "::warning::main has no required status checks — arming auto-merge would merge instantly (the KL-0 PR #4 footgun). Refusing to arm; land the P10 ruleset first."
+          # Count required check CONTEXTS, not rules: PR #7 (KL-1) merged
+          # instantly because a required_status_checks RULE existed on main
+          # while its context list was effectively empty — the rule-count
+          # guard passed and auto-merge fired with nothing to wait for.
+          contexts="$(gh api "repos/$GITHUB_REPOSITORY/rules/branches/main" \
+            --jq '[.[] | select(.type == "required_status_checks")
+                   | .parameters.required_status_checks // [] | .[].context]')"
+          count="$(printf '%s' "$contexts" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))')"
+          echo "required contexts ($count): $contexts"
+          echo "required=$count" >> "$GITHUB_OUTPUT"
+          if [ "$count" = "0" ]; then
+            echo "::warning::main requires no status-check CONTEXTS — arming auto-merge would merge instantly (the KL-0 PR #4 / KL-1 PR #7 footgun). Refusing to arm; make 'kit-quality' a required check first (P10)."
           fi
       - name: Enable native auto-merge (squash)
         if: steps.rules.outputs.required != '0'

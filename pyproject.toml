@@ -13,7 +13,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "substrate-kit"
-version = "0.1.0"
+# Kept equal to KIT_VERSION in src/engine/lib/config.py (a test pins them).
+version = "1.0.0"
 description = "A portable, self-improving agent-memory substrate: staged onboarding interview, mode-paced workflow rollout, triggers/reflections/maintenance loop, context-economy engine, and doc/namespace/seam/budget checkers — stdlib-only."
 readme = "README.md"
 requires-python = ">=3.10"

@@ -11,10 +11,6 @@ _KIT = Path(__file__).resolve().parents[1]
 _DIST = _KIT / "dist" / "bootstrap.py"
 
 
-def _manifest_keys(content: str) -> list[str]:
-    return re.findall(r"^\s*'(engine/[^']+)':", content, re.MULTILINE)
-
-
 def test_build_is_deterministic():
     assert build_bootstrap.build() == build_bootstrap.build()
 
@@ -25,10 +21,27 @@ def test_committed_bootstrap_is_current():
     assert _DIST.read_text(encoding="utf-8") == build_bootstrap.build()
 
 
-def test_no_self_embedding_recursion():
-    keys = _manifest_keys(build_bootstrap.build())
-    assert keys  # the manifest is non-empty
-    assert all(k.startswith("engine/") for k in keys)  # never embeds dist/
+def test_engine_manifest_dropped_from_dist():
+    # §3.4 (KL-1): _ENGINE_MANIFEST was dead weight — `init --unpack` never
+    # shipped — and doubled every consumer's vendored file. It must not
+    # reappear without that feature.
+    assert "_ENGINE_MANIFEST" not in build_bootstrap.build()
+
+
+def test_header_carries_the_kit_version_stamp():
+    # §4.1: the dist self-identifies on its FIRST line (`upgrade` parses it
+    # back out of an archived copy to name the backup file).
+    content = build_bootstrap.build()
+    version = build_bootstrap.kit_version()
+    first_line = content.splitlines()[0]
+    assert f"bootstrap v{version} " in first_line
+
+
+def test_pyproject_version_matches_kit_version():
+    pyproject = (_KIT / "pyproject.toml").read_text(encoding="utf-8")
+    match = re.search(r'^version = "([^"]+)"$', pyproject, re.MULTILINE)
+    assert match is not None
+    assert match.group(1) == build_bootstrap.kit_version()
 
 
 def test_generated_file_compiles():

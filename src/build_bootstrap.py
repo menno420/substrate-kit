@@ -5,8 +5,11 @@ This is the manifest->artifact step (the same shape as the host repo's
 reference**: it carries a Q-0105 "delete if unreliable" header, so this builder
 owns its own discipline and a recursion test). It reads the engine modules in
 dependency order, strips their intra-package imports, concatenates the bodies
-into one stdlib-only file, and appends an embedded manifest of the same sources
-so a future ``init --unpack`` can write editable copies.
+into one stdlib-only file, and stamps ``KIT_VERSION`` into the header line so
+every vendored copy self-identifies (founding plan §4.1). The old
+``_ENGINE_MANIFEST`` source embedding was dropped at v1.0.0 (§3.4): the
+``init --unpack`` it served never shipped, and it doubled every consumer's
+vendored file for nothing.
 
 Regenerate with::
 
@@ -15,6 +18,7 @@ Regenerate with::
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -62,24 +66,14 @@ MODULE_ORDER = (
     "adopt.py",
     "cli.py",
 )
-PACKAGE_FILES = (
-    "__init__.py",
-    "lib/__init__.py",
-    "interview/__init__.py",
-    "checks/__init__.py",
-    "loop/__init__.py",
-    "economy/__init__.py",
-    "stances/__init__.py",
-    "skills/__init__.py",
-    "agents/__init__.py",
-    "hooks/__init__.py",
-)
-
 # Intra-package imports are dropped: in the concatenated file the referenced
 # names already live in the same module namespace.
 _INTRA_PKG_PREFIXES = ("from engine", "import engine", "from .")
 
-_HEADER = '''"""substrate-kit bootstrap — GENERATED, DO NOT EDIT.
+# The version is stamped into the first header line (``bootstrap vX.Y.Z``) so
+# a vendored single file self-identifies; ``upgrade`` parses it back out of an
+# archived dist to name the backup.
+_HEADER_TEMPLATE = '''"""substrate-kit bootstrap v{version} — GENERATED, DO NOT EDIT.
 
 Single-file, stdlib-only. Regenerate from source with:
     python3 substrate-kit/src/build_bootstrap.py
@@ -90,6 +84,20 @@ Source of truth: substrate-kit/src/engine/. Edits here are overwritten.
 def _read(rel: str) -> str:
     """Return the text of an engine-relative source file."""
     return (ENGINE_ROOT / rel).read_text(encoding="utf-8")
+
+
+def kit_version() -> str:
+    """Return ``KIT_VERSION`` parsed from ``lib/config.py`` (the one home).
+
+    Parsed textually rather than imported so the builder needs no sys.path
+    setup and stays a plain script.
+    """
+    source = _read("lib/config.py")
+    match = re.search(r'^KIT_VERSION = "([^"]+)"$', source, re.MULTILINE)
+    if match is None:
+        msg = "KIT_VERSION not found in src/engine/lib/config.py"
+        raise ValueError(msg)
+    return match.group(1)
 
 
 def _triple_quote_toggles(line: str, active: str | None) -> str | None:
@@ -152,14 +160,9 @@ def build() -> str:
     future: list[str] = []
     imports: list[str] = []
     body: list[str] = []
-    manifest: dict[str, str] = {}
-
-    for rel in PACKAGE_FILES:
-        manifest[f"engine/{rel}"] = _read(rel)
 
     for rel in MODULE_ORDER:
         source = _read(rel)
-        manifest[f"engine/{rel}"] = source
         mod_future, mod_imports, mod_body = _split_imports(source)
         for line in mod_future:
             if line not in future:
@@ -170,16 +173,11 @@ def build() -> str:
         body.append(f"\n# --- engine/{rel} ---")
         body.extend(mod_body)
 
-    lines: list[str] = [_HEADER, ""]
+    lines: list[str] = [_HEADER_TEMPLATE.format(version=kit_version()), ""]
     lines.extend(future)
     lines.append("")
     lines.extend(sorted(imports))
     lines.extend(body)
-    lines.append("")
-    lines.append("_ENGINE_MANIFEST = {")
-    for path, text in manifest.items():
-        lines.append(f"    {path!r}: {text!r},")
-    lines.append("}")
     lines.append("")
     lines.append("_TEMPLATES = {")
     for tpath in sorted(TEMPLATES_ROOT.glob("*")):

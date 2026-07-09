@@ -1,0 +1,51 @@
+# release — publish a GitHub Release from a `v*` tag (founding plan §4.1).
+#
+# Trigger: push an annotated tag `vX.Y.Z` on a main-history commit. Steps:
+# refuse unless KIT_VERSION / dist header / CHANGELOG section all name the
+# tag's version (src/build_release_json.py::verify — "enforce, don't
+# exhort") → rebuild the dist fresh and byte-compare to the committed file →
+# compute sha256 → publish the Release with the three assets: bootstrap.py,
+# bootstrap.py.sha256, release.json. Notes body = the CHANGELOG section.
+#
+# Published releases are NEVER deleted (§6.4): a bad release is superseded by
+# a fixed one whose release.json can carry a yank note.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Refuse-to-release guards (version stamp + CHANGELOG section)
+        run: python3 src/build_release_json.py --version "${GITHUB_REF_NAME#v}" --verify-only
+
+      - name: Fresh-dist byte-equality (the pin, re-proven at the tag)
+        run: |
+          python3 src/build_bootstrap.py
+          git diff --exit-code dist/bootstrap.py
+
+      - name: Build the release assets (sha256 + release.json + notes)
+        run: python3 src/build_release_json.py --version "${GITHUB_REF_NAME#v}" --out release-assets
+
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.ROUTINE_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "release-assets/bootstrap.py" \
+            "release-assets/bootstrap.py.sha256" \
+            "release-assets/release.json" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "substrate-kit $GITHUB_REF_NAME" \
+            --notes-file "release-assets/notes.md"
