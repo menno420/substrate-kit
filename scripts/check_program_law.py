@@ -23,15 +23,30 @@ What it enforces (exit 1 on any finding, 0 clean):
    planted copies) contains a ruling *body* — any 8-word run from a PL
    verdict found inside a pointer section is a copy, which is drift by
    construction (README.md § citation rule).
+4. **Owner-gate label gate** (opt-in via ``--label-gate``; PR context only) —
+   a diff that touches an owner-gated law surface (the PL register +
+   the canonical program law docs, ``OWNER_GATED_PATHS``) must carry the
+   ``do-not-automerge`` label, so *forgetting the label* can no longer
+   auto-merge a law change (the kit#22 incident's enforcement half, audit
+   2026-07-09; mirrors check_bench_integrity's §5.0 pin-path gate). Labels
+   come from ``$PR_LABELS`` (comma-separated — CI injects a FRESH API read,
+   not the stale event payload: the #22 lesson); the gate skips with a note
+   when ``$GITHUB_EVENT_NAME`` is not ``pull_request`` (a push to main was
+   already gated as a PR). The label is advisory for merging; THIS required
+   check going red is the enforcement — see
+   docs/operations/auto-merge-guards.md.
 
-Repo-level tooling, not engine code: lives in scripts/, uses print, never
-ships in dist/bootstrap.py.
+Repo-level tooling, not engine code: lives in scripts/, uses print (and
+subprocess, for the label gate's git diff only), never ships in
+dist/bootstrap.py.
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import NamedTuple
@@ -57,6 +72,18 @@ _POINTER_HEADING_RE = re.compile(r"^#{2,4} .*program law", re.IGNORECASE)
 
 # A verdict n-gram this long found inside a pointer section = a copied body.
 NGRAM_WORDS = 8
+
+# ── owner-gate label gate (rule 4) ───────────────────────────────────────────
+# The law surfaces an agent must never change on an auto-merging PR: the
+# ruling register itself + the two canonical program-law docs. README.md is
+# deliberately NOT gated (index/convention prose, not law text). The bench
+# pin paths (bench/rubric|tasks|seeds) are check_bench_integrity's gate.
+OWNER_GATED_PATHS = (
+    "docs/program/rulings.md",
+    "docs/program/collaboration-model.md",
+    "docs/program/agent-decision-authority.md",
+)
+REQUIRED_LABEL = "do-not-automerge"
 
 
 class Finding(NamedTuple):
@@ -260,6 +287,71 @@ def check_pointers(root: Path, blocks: list[Block]) -> list[Finding]:
     return findings
 
 
+def check_label_gate(changed: list[str], labels: list[str], event: str) -> list[Finding]:
+    """Rule 4 — owner-gated law-surface changes must ride a labeled PR.
+
+    Pure core (unit-testable): ``changed`` is the PR's changed paths,
+    ``labels`` the PR's labels, ``event`` the CI event name.
+    """
+    gated = [p for p in changed if p in OWNER_GATED_PATHS]
+    if not gated:
+        return []
+    if event != "pull_request":
+        print(
+            f"label-gate: {len(gated)} owner-gated law change(s) outside a PR "
+            f"context (event={event or 'none'}) — gate not applicable here "
+            "(a push to main was already gated as a PR).",
+        )
+        return []
+    if REQUIRED_LABEL in labels:
+        print(
+            f"label-gate: {len(gated)} owner-gated law change(s) under the "
+            f"`{REQUIRED_LABEL}` label — riding review, as the law requires.",
+        )
+        return []
+    return [
+        Finding(
+            path,
+            "label-gate",
+            f"owner-gated law surface changed but the PR lacks the "
+            f"`{REQUIRED_LABEL}` label — label the PR (then re-run CI); law "
+            "changes sit for owner review, never auto-merge (the kit#22 lesson)",
+        )
+        for path in gated
+    ]
+
+
+def _changed_paths(root: Path, base: str) -> list[str]:
+    """Changed paths of the merge-base diff vs ``base`` (label gate only)."""
+
+    def _git(args: list[str]) -> str:
+        result = subprocess.run(
+            ["git", *args], cwd=root, capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            raise SystemExit(f"git {' '.join(args)} failed: {result.stderr.strip()}")
+        return result.stdout
+
+    merge_base = _git(["merge-base", base, "HEAD"]).strip()
+    out = _git(["diff", "--name-only", "--no-renames", merge_base, "HEAD"])
+    return [line.strip() for line in out.splitlines() if line.strip()]
+
+
+def run_label_gate(root: Path, base: str) -> list[Finding]:
+    """CLI half of rule 4: env + git-derived inputs around the pure core."""
+    event = os.environ.get("GITHUB_EVENT_NAME", "")
+    if event != "pull_request":
+        # Skip BEFORE any git call so local / push-to-main runs never need
+        # an origin/main ref to exist.
+        print(
+            f"label-gate: not a pull_request context (event={event or 'none'}) "
+            "— gate skipped (a push to main was already gated as a PR).",
+        )
+        return []
+    labels = [part.strip() for part in os.environ.get("PR_LABELS", "").split(",") if part.strip()]
+    return check_label_gate(_changed_paths(root, base), labels, event)
+
+
 def run_checks(root: Path) -> list[Finding]:
     blocks, findings = parse_register(root / REGISTER_RELPATH)
     findings += check_blocks(blocks)
@@ -275,8 +367,22 @@ def main(argv: list[str] | None = None) -> int:
         default=Path(__file__).resolve().parents[1],
         help="repo root (default: this script's repo)",
     )
+    parser.add_argument(
+        "--label-gate",
+        action="store_true",
+        help="also run rule 4: owner-gated law paths in the PR diff require "
+        "the do-not-automerge label (PR context only; reads $PR_LABELS + "
+        "$GITHUB_EVENT_NAME; CI-only, harmless no-op elsewhere)",
+    )
+    parser.add_argument(
+        "--base",
+        default="origin/main",
+        help="label gate's diff base (merge-base vs HEAD; default origin/main)",
+    )
     args = parser.parse_args(argv)
     findings = run_checks(args.root)
+    if args.label_gate:
+        findings += run_label_gate(args.root, args.base)
     if findings:
         print(f"check_program_law: {len(findings)} finding(s)")
         for f in findings:

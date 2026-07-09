@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -192,6 +194,89 @@ def test_local_planted_docs_are_scanned_when_present(tmp_path: Path) -> None:
     )
     findings = cpl.run_checks(tmp_path)
     assert any(f.kind == "body-copy" and f.path == "CONSTITUTION.md" for f in findings)
+
+
+# ── owner-gate label gate (rule 4, audit 2026-07-09) ─────────────────────────
+
+
+def test_label_gate_ignores_ungated_paths() -> None:
+    changed = ["docs/current-state.md", "src/engine/loop/telemetry.py", "docs/program/README.md"]
+    assert cpl.check_label_gate(changed, [], "pull_request") == []
+
+
+def test_label_gate_fails_unlabeled_law_change() -> None:
+    findings = cpl.check_label_gate(["docs/program/rulings.md"], ["friction"], "pull_request")
+    assert len(findings) == 1
+    assert findings[0].kind == "label-gate"
+    assert "do-not-automerge" in findings[0].message
+
+
+def test_label_gate_covers_every_owner_gated_surface() -> None:
+    findings = cpl.check_label_gate(list(cpl.OWNER_GATED_PATHS), [], "pull_request")
+    assert [f.path for f in findings] == list(cpl.OWNER_GATED_PATHS)
+
+
+def test_label_gate_passes_with_the_label(capsys) -> None:
+    changed = ["docs/program/rulings.md", "docs/other.md"]
+    assert cpl.check_label_gate(changed, ["do-not-automerge"], "pull_request") == []
+    assert "riding review" in capsys.readouterr().out
+
+
+def test_label_gate_skips_outside_pr_context(capsys) -> None:
+    assert cpl.check_label_gate(["docs/program/rulings.md"], [], "push") == []
+    assert "not applicable" in capsys.readouterr().out
+
+
+def _git_fixture_repo(root: Path) -> None:
+    """A tiny real repo: main with a clean register, a branch changing it."""
+
+    def git(*args: str) -> None:
+        subprocess.run(
+            ["git", *args], cwd=root, check=True, capture_output=True,
+            env={**os.environ,
+                 "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+                 "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"},
+        )
+
+    _seed(root, _GOOD_BLOCK)
+    git("init", "-b", "main")
+    git("add", "-A")
+    git("commit", "-m", "base")
+    git("checkout", "-b", "feature")
+    (root / "docs" / "program" / "rulings.md").write_text(
+        _GOOD_BLOCK + "\n" + _block(2).replace("Q-0002", "Q-0240"), encoding="utf-8"
+    )
+    git("commit", "-am", "amend the register")
+
+
+def test_run_label_gate_end_to_end(tmp_path: Path, monkeypatch) -> None:
+    _git_fixture_repo(tmp_path)
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "pull_request")
+
+    monkeypatch.setenv("PR_LABELS", "")
+    findings = cpl.run_label_gate(tmp_path, "main")
+    assert [f.kind for f in findings] == ["label-gate"]
+    assert findings[0].path == "docs/program/rulings.md"
+
+    monkeypatch.setenv("PR_LABELS", "friction, do-not-automerge")
+    assert cpl.run_label_gate(tmp_path, "main") == []
+
+
+def test_run_label_gate_skips_without_pr_event(tmp_path: Path, monkeypatch, capsys) -> None:
+    # No git repo needed — the event check must come BEFORE any git call.
+    monkeypatch.delenv("GITHUB_EVENT_NAME", raising=False)
+    assert cpl.run_label_gate(tmp_path, "origin/main") == []
+    assert "gate skipped" in capsys.readouterr().out
+
+
+def test_main_label_gate_flag(tmp_path: Path, monkeypatch, capsys) -> None:
+    _git_fixture_repo(tmp_path)
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "pull_request")
+    monkeypatch.setenv("PR_LABELS", "")
+    assert cpl.main(["--root", str(tmp_path), "--label-gate", "--base", "main"]) == 1
+    assert "label-gate" in capsys.readouterr().out
+    monkeypatch.setenv("PR_LABELS", "do-not-automerge")
+    assert cpl.main(["--root", str(tmp_path), "--label-gate", "--base", "main"]) == 0
 
 
 # ── CLI ──────────────────────────────────────────────────────────────────────
