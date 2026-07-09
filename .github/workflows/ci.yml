@@ -67,6 +67,16 @@ jobs:
           fi
           python3 scripts/check_program_law.py --label-gate
 
+      - name: Bench integrity (§5.0 — pin-path label gate + append-only results)
+        # Layer 1 of the bench pin (D-24): rubric/tasks/seeds changes must
+        # ride a `do-not-automerge` PR; bench/results/ history is immutable
+        # (index.json append-only). Labels are read from the event payload —
+        # after labeling an unlabeled red PR, push (or re-run) so a fresh
+        # payload carries the label.
+        env:
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: python3 scripts/check_bench_integrity.py
+
       - name: Cold-adoption smoke (§3.2 item 4)
         # adopt into a scratch repo + check --strict green, then the
         # --wire-enforcement exit path (the born-self-verifying clause).

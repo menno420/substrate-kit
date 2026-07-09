@@ -94,19 +94,28 @@
   (unresolved `[[fill:]]` slots + the `drafted` status token hold the
   born-red gate, reported distinctly; a drafted `📊 Model:` stand-in never
   harvests into PL-004). All fail-open; suite 557 → 587. The **second half
-  (the `bench/` tree) follows as a `do-not-automerge` PR** per §5.0 — the
-  first rubric version is owner-blessed; it stays OPEN awaiting that
-  blessing, and **B1's first firing waits for it**.
+  (the `bench/` tree) is BUILT on PR #17, a `do-not-automerge` PR** per
+  §5.0 — the first rubric version was **owner-blessed 2026-07-09**; the
+  owner merges #17 himself, unblocking **B1's first firing**. What #17 carries:
+  both rubrics, tasks T1–T5, `seeds/make_seed.py`, `score_m1.py`,
+  `run_ab.py`, append-only results indexes (incl. the `friction` family —
+  triage-time rows), `check_bench_integrity.py` in kit-quality (pin-path
+  label gate + append-aware results immutability), and the enabler's
+  fresh-label race guard. Suite 587 → 609.
 
 ## In flight
 
 (Verify against live source control — this section is a dated snapshot.)
 
 - PR #17 — **KL-5 (2/2): the `bench/` tree**, `do-not-automerge` per §5.0:
-  stays **open awaiting owner blessing** of the first rubric version
-  (⚑ — see Next action; #16, its first half, merged).
-- PR #24 — **audit follow-ups** (this session): label-guard holes closed,
-  honest incident count, day report, branch hygiene.
+  CI-green; the first rubric version is **owner-blessed 2026-07-09** ("you
+  can merge 17") — branch updated against main, and the **owner performs the
+  merge himself** (#16, its first half, merged). Field note: the
+  auto-merge-enabler ARMED this PR at open (its label check raced the MCP
+  label call) — disarmed by hand same-minute; the fresh-label re-read guard
+  shipped in #23.
+- PR #24 — **audit follow-ups**: label-guard holes closed, honest incident
+  count, day report, branch hygiene.
 
 ## Field notes — incident ledger (2026-07-09 run)
 
