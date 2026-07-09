@@ -162,8 +162,8 @@ discovered when KL-8 ran the dist, guard-tested since, PR #31); (2)
 review's adversarial fixture, §2.1 caveat / issue #36 report 1 — still open);
 (3) **the control fast lane riding green past a heartbeat-deleting diff**
 (the lane skipped the one checker that validates the files a control-only PR
-changes; demonstrated before/after in fleet review §2.2, fixed as D-0008 /
-PR #35); (4) **superbot-next#44 merging 65 s after open on an in-progress
+changes; demonstrated before/after in fleet review §2.2, fixed by the
+fast-lane status gate, PR #35 — decision ledgered in `docs/decisions.md`); (4) **superbot-next#44 merging 65 s after open on an in-progress
 card** — the consumer's old vendored dist predates the in-progress-badge
 gate, so its required check never went red (day report §3.2). The common
 shape: a green that measures the wrong thing. PL-006 ("a false green is the
@@ -243,7 +243,8 @@ fixed it between runs).
 
 **D1 — every stop for owner input.** (1) **Bless the first bench rubric**
 (#17, ~5¾ h open) — genuinely owner-only: founding plan §5.0 makes the first
-rubric version an owner-taste gate, and D-0005 records the blessing. (2)
+rubric version an owner-taste gate, and the blessing is ledgered in
+`docs/decisions.md`. (2)
 **PL ratifications** (#22 ratify-or-veto after the mechanical merge; #26
 PL-011 still open) — owner-only by the program's own law (owner merge =
 ratification). (3) **The F-5 wording decision** — owner-only because the
@@ -308,7 +309,8 @@ every session an unambiguous starting read, and the never-edit-inbox rule
 was never violated (verifiable: every inbox commit is the manager's Contents
 API write — PRs #27/#34/#43/#45). Costs: (1) **the status overwrite is a
 full PR round-trip per session** — mitigated but not removed by the control
-fast lane (D-0008; overwrite PRs #33/#42/#48 merged in 23–37 s); (2) the
+fast lane (the ledgered status-gate decision; overwrite PRs #33/#42/#48
+merged in 23–37 s); (2) the
 inbox's append-only/one-writer rule is **convention-only** — PR #34 merged
 19 s after open with zero validation (issue #36 report 2); the ritual's
 integrity currently rests on nobody misbehaving. Skipped: never skipped
@@ -427,7 +429,8 @@ gates.** `adopt` **plants-and-banners but nothing in its output ever forced
 the last mile**: pre-KL-7, a successful `adopt` printed success while
 render, enforcement wiring, and the first session were separate opt-in
 steps — "adopt succeeded" *reads as done*, and both fresh adopters stopped
-exactly there (fleet review §1.3/§1.4; the founding evidence for D-0006).
+exactly there (fleet review §1.3/§1.4; the founding evidence for the
+born-red adoption decision in `docs/decisions.md`).
 The double-adoption shape is the same UX gap one level up: nothing in adopt
 detects "this repo already hosts a Project" and routes the second lane to a
 lane-add flow instead of a second full adopt. Kit-side fixes beyond the

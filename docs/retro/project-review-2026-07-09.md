@@ -69,7 +69,7 @@ our instructions/setup · (b) platform limit/bug · (c) the work itself**.
 | KL-3 telemetry (`…kl3-telemetry.md`) | #13 | fable-5 · high · kernel/architecture design | Clean; Model-line convention starts here. |
 | KL-4 lab loop + friction (`…kl4-lab-loop.md`) | #14 | fable-5 · high · kernel/architecture design | Clean (issue #15 filed + triaged same day). |
 | KL-5 auto-draft (`…kl5-auto-draft.md`) | #16 | fable-5 · high · kernel/architecture design | Clean. |
-| KL-5 bench tree (`…kl5-bench-tree.md`) | #17 | fable-5 · high · kernel/architecture design | `do-not-automerge` by design; owner-blessed + owner-merged after ~5¾ h (D-0005). |
+| KL-5 bench tree (`…kl5-bench-tree.md`) | #17 | fable-5 · high · kernel/architecture design | `do-not-automerge` by design; owner-blessed + owner-merged after ~5¾ h (ledgered in `docs/decisions.md`). |
 | KL-6 unblocked (`…kl6-unblocked.md`) | #18 | fable-5 · high · kernel/architecture design | Clean. |
 | Groomed ideas 1 (`…groomed-ideas-1.md`) | #19 | fable-5 · high · kernel/architecture design | Clean. |
 | Pinned-feed idea (`…pinned-feed-contract-idea.md`) | #20 | fable-5 · high · idea/planning | Clean. |
@@ -83,7 +83,7 @@ our instructions/setup · (b) platform limit/bug · (c) the work itself**.
 | KL-8 control band (`…kl8-control-protocol-band.md`) | #31 | fable-5 · high · feature build | Clean; caught the silent MODULE_ORDER dist NameError live and pinned it. |
 | v1.2.0 release (`…v1.2.0-release.md`) | #32 | fable-5 · high · **release** (off-taxonomy class) | Clean. |
 | ORDER 002 status overwrite (no card — control-only fast-lane ride) | #33 | cannot be determined | Clean (23-s lane merge, by design). |
-| Fleet adoption review (`…fleet-adoption-review.md`) | #35 | fable-5 · high · review/verify | Clean; filed #36–#39; shipped D-0008. |
+| Fleet adoption review (`…fleet-adoption-review.md`) | #35 | fable-5 · high · review/verify | Clean; filed #36–#39; shipped the fast-lane status gate. |
 | Run-2 harness prep (`…run2-harness-prep.md`) | #40 | fable-5 · high · runtime bugfix | Clean. |
 | ORDER 003 (`…order003.md`) | #41 (+overwrite #42, no card) | fable-5 · high · feature build | Clean → v1.3.0. |
 | B1 run-2 record (`…b1-run2-record.md`) | #44 | fable-5 · high · docs-only | Clean; FAIL verdict recorded verbatim. |
@@ -231,6 +231,6 @@ run-2 deviation.
    closes the "ENGAGED with a dead door" hole.
 4. **Inbox-grammar validator** (issue #36 report 2): control-lane checker —
    `control/inbox.md` diffs must be pure-append vs merge-base + ORDER-block
-   grammar; composes with the D-0008 status gate on the same fast lane.
+   grammar; composes with the scoped status gate on the same fast lane.
    (The ORDER-005 double-execution recorded in §(b) is fresh evidence for
    also adding an order-claim convention while in there.)
