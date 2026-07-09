@@ -49,6 +49,11 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- [Pinned feed contract — doctrine for cross-repo committed-artifact seams](pinned-feed-contract-doctrine-2026-07-09.md)
+  — state: captured; origin: consumer:menno420/superbot (pattern proven
+  end-to-end in superbot PR #1884 + websites PR #11 — the first consumer-side
+  pass caught a live shape defect); next: a groomed-ideas increment ships the
+  doctrine note (template rider / recipe), scaffolding only if instances repeat.
 - [A "feature build" task class for the Q-0248/PL-004 taxonomy](feature-build-task-class-2026-07-09.md)
   — state: routed **discuss-first** (PL-004 amendment); origin:
   superbot friction issue #15 report 3 + the KL-3 session idea; next: a
