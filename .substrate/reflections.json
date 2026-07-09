@@ -1,48 +1,8 @@
 [
   {
-    "id": "R-0126",
-    "lesson": "Decide-and-flag: the B4 rows are written `shipped` with",
-    "evidence": "2026-07-09-groomed-ideas-1.md:L47",
-    "tags": [
-      "flag"
-    ],
-    "status": "provisional",
-    "date": "2026-07-09"
-  },
-  {
-    "id": "R-0127",
-    "lesson": "Decide-and-flag: guard recipes ship as **convention only** \u2014 a checker",
-    "evidence": "2026-07-09-groomed-ideas-1.md:L51",
-    "tags": [
-      "flag"
-    ],
-    "status": "provisional",
-    "date": "2026-07-09"
-  },
-  {
-    "id": "R-0128",
-    "lesson": "Decide-and-flag: diff-awareness lives **workflow-side** (shell `git",
-    "evidence": "2026-07-09-groomed-ideas-1.md:L54",
-    "tags": [
-      "flag"
-    ],
-    "status": "provisional",
-    "date": "2026-07-09"
-  },
-  {
-    "id": "R-0129",
-    "lesson": "Precision-over-recall in the miner: `##  Session idea` *headings*",
-    "evidence": "2026-07-09-groomed-ideas-1.md:L60",
-    "tags": [
-      "flag"
-    ],
-    "status": "provisional",
-    "date": "2026-07-09"
-  },
-  {
-    "id": "R-0130",
-    "lesson": "Recurring attention on docs/ideas/feature-build-task-class-2026-07-09.md",
-    "evidence": "2026-07-09-kl4-lab-loop.md:L32, 2026-07-09-kl6-unblocked.md:L69",
+    "id": "R-0153",
+    "lesson": "Recurring attention on docs/current-state.md",
+    "evidence": "2026-07-09-fleet-adoption-review.md:L34, 2026-07-09-kl8-control-protocol-band.md:L113, 2026-07-09-run-closeout.md:L50, 2026-07-09-v1.1.0-release.md:L13",
     "tags": [
       "recurring-path"
     ],
@@ -50,51 +10,41 @@
     "date": "2026-07-09"
   },
   {
-    "id": "R-0132",
-    "lesson": "1.  **Live incident, fixed in-band (Q-0194 friction \u2192 guard):** the",
-    "evidence": "2026-07-09-kl5-bench-tree.md:L67",
+    "id": "R-0154",
+    "lesson": "Recurring attention on scripts/check_idea_index.py",
+    "evidence": "2026-07-09-fleet-adoption-review.md:L114, 2026-07-09-run-closeout.md:L138",
     "tags": [
-      "flag"
+      "recurring-path"
     ],
     "status": "provisional",
     "date": "2026-07-09"
   },
   {
-    "id": "R-0133",
-    "lesson": "2.  Decide-and-flag: the M1 transcript contract is a defined event-JSONL",
-    "evidence": "2026-07-09-kl5-bench-tree.md:L75",
+    "id": "R-0155",
+    "lesson": "Recurring attention on src/build_bootstrap.py",
+    "evidence": "2026-07-09-run-closeout.md:L129, 2026-07-09-v1.1.0-release.md:L26",
     "tags": [
-      "flag"
+      "recurring-path"
     ],
     "status": "provisional",
     "date": "2026-07-09"
   },
   {
-    "id": "R-0134",
-    "lesson": "3.  Decide-and-flag: a fifth results family `friction` beyond the plan's",
-    "evidence": "2026-07-09-kl5-bench-tree.md:L79",
+    "id": "R-0156",
+    "lesson": "Recurring attention on src/build_release_json.py",
+    "evidence": "2026-07-09-v1.1.0-release.md:L98, 2026-07-09-v1.2.0-release.md:L91",
     "tags": [
-      "flag"
+      "recurring-path"
     ],
     "status": "provisional",
     "date": "2026-07-09"
   },
   {
-    "id": "R-0135",
-    "lesson": "4.  Decide-and-flag: this card flips `complete` so kit-quality is GREEN on",
-    "evidence": "2026-07-09-kl5-bench-tree.md:L81",
+    "id": "R-0157",
+    "lesson": "Recurring attention on src/engine/lib/config.py",
+    "evidence": "2026-07-09-v1.1.0-release.md:L8, 2026-07-09-v1.2.0-release.md:L8",
     "tags": [
-      "flag"
-    ],
-    "status": "provisional",
-    "date": "2026-07-09"
-  },
-  {
-    "id": "R-0136",
-    "lesson": "5.  Self-initiated: the enabler workflow edit (flag 1) was not in the band",
-    "evidence": "2026-07-09-kl5-bench-tree.md:L86",
-    "tags": [
-      "flag"
+      "recurring-path"
     ],
     "status": "provisional",
     "date": "2026-07-09"

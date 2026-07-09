@@ -1,6 +1,6 @@
 # Session 2026-07-09 — fleet adoption review (owner-directed) + control-lane status gate
 
-> **Status:** `in-progress`
+> **Status:** `complete` *(PR #35 — auto-merge armed at open via MCP, per convention)*
 
 **Scope (about to do):** the owner-directed fleet adoption review, consolidated
 from five completed read-only assessments (kit / superbot / superbot-next /
