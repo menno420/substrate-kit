@@ -190,24 +190,29 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
    `do-not-automerge`, CI-green, card complete): review `bench/rubric/*` on
    the PR and merge it — or contest on the thread. **Unblocks the B1
    baseline firing** (and the kit-lab console lane's first real data).
-2. **👤 P4 — arm the kit-lab loop**: Console → Schedules → paste the prompt
+2. **👤 Review + merge PR #22 — the PL-010 `feature build` task-class
+   ruling** (PL-004 amendment; `do-not-automerge`, CI-green, card
+   complete; decision brief in the PR body): the merge is the
+   ratification. **Unblocks correctly-labelled B2 rows** — until then
+   feature-work sessions keep filing nearest-neighbor classes.
+3. **👤 P4 — arm the kit-lab loop**: Console → Schedules → paste the prompt
    from `docs/operations/lab-loop.md` § Arming verbatim (cron `0 6 * * *`
    UTC · fresh session per fire · Sonnet-class). **Unblocks D3** (≥3
    scheduled fires each shipping a real run report). Full steps in the P4
    section above.
-3. **👤 P10 — required-check swap**: in the `main` ruleset replace the two
+4. **👤 P10 — required-check swap**: in the `main` ruleset replace the two
    legacy contexts with the single `kit-quality`. **Unblocks deleting the
-   two `legacy-alias-*` jobs** from `ci.yml` (agent queue item 5). Detail
+   two `legacy-alias-*` jobs** from `ci.yml` (agent queue item 4). Detail
    in the P10 section above.
-4. **👤 P5 — create Railway project `kit-lab`** (portal-only; region
+5. **👤 P5 — create Railway project `kit-lab`** (portal-only; region
    `europe-west4` · no spend caps per PL-005 · HQ `#railway-alerts` rule).
    **Unblocks the P6 console move** (agent-built). Full steps in the P5
    section above.
-5. **👤 P11 — flip the repo public** (KF-10; rode v1.0.0) **or veto → 👤
+6. **👤 P11 — flip the repo public** (KF-10; rode v1.0.0) **or veto → 👤
    P13** (read-only consumer-scope PAT, KF-11). Either one **unblocks the
    cross-repo reads**: kit data in the merged console AND the loop's
    B2/B3/B4 sweeps.
-6. **👤 P8 — confirm the MIT license** (applied as the flagged ⚑ default at
+7. **👤 P8 — confirm the MIT license** (applied as the flagged ⚑ default at
    KL-1): one word confirms, or name the replacement.
 
 ### Agent queue — in order, as the gates open
@@ -222,16 +227,13 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
    **KF-5 makes benchmarks mandatory-to-run for a MINOR**; release via the
    `release.yml` `workflow_dispatch` path (tag pushes 403 — see Review
    rhythm).
-3. **The `feature build` task-class ruling** (PL-004 amendment,
-   `docs/ideas/feature-build-task-class-2026-07-09.md`): its own
-   discuss-first PR — a program-law change is never bundled into a band PR.
-4. **Remaining KL-6 blocked pieces, as gates open**: kit-lab console lane
+3. **Remaining KL-6 blocked pieces, as gates open**: kit-lab console lane
    real data (needs #17 **and** P11-or-P13 — until then the lane stays
    declared-with-contract, never fake rows); B2/B3/B4 sweeps in the loop
    (need P13; the B4 write-model is live since PR #18); P6 console move
    (needs P5 — lab-side steps in the P5 section above).
-5. **Delete the two `legacy-alias-*` jobs from `ci.yml` (post-P10).**
-6. **superbot-next `📊 Model:` needle**: nothing to build — `upgrade` adds
+4. **Delete the two `legacy-alias-*` jobs from `ci.yml` (post-P10).**
+5. **superbot-next `📊 Model:` needle**: nothing to build — `upgrade` adds
    the marker on that repo's next kit upgrade; verify it on that upgrade's
    session card.
 

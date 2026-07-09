@@ -214,3 +214,37 @@
 - why: "Complete freedom" without the shape is how a self-improving loop
   grades its own homework; the scope line keeps the lab's never-wait inside
   surfaces where every action is reversible or enumerated.
+
+## [PL-010] The 9th task class: `feature build` — amends PL-004's taxonomy
+
+- status: decided
+- date: 2026-07-09
+- provenance: consumer friction — superbot's hand-authored report (friction
+  issue [#15](https://github.com/menno420/substrate-kit/issues/15) report 3,
+  filed per plan §9.1) + the kit's own KL-3 session idea
+  (`.sessions/2026-07-09-kl3-telemetry.md`), triaged verified-real at the
+  KL-4 disposition and routed **discuss-first** via
+  `docs/ideas/feature-build-task-class-2026-07-09.md`; owner ratification =
+  the owner-reviewed merge of this ruling's own dedicated
+  `do-not-automerge` PR (kit PR #22) — a program-law change ships as its
+  own PR, never bundled into a band PR (§8.3).
+- verdict: PL-004's layer-2 taxonomy gains a ninth class, **`feature
+  build`** (exact string, verbatim in `TASK_CLASSES`): a session whose
+  dominant work is **building a net-new capability** — a new engine
+  feature, verb, checker, template, subsystem, or consumer-facing surface —
+  as opposed to designing contracts (`kernel/architecture design`),
+  reshaping existing code (`mechanical refactor`), or repairing behavior
+  (`runtime bugfix`). Mixed sessions file their dominant-cost class.
+  Existing dataset rows are **never rewritten** — `telemetry/
+  model-usage.jsonl` keys class strings per-date, so the class exists from
+  this ruling's merge date forward. Its allocation-ladder row starts
+  **observe-first with no seeded tier** (PL-005: telemetry before defaults
+  — B2 data seeds it), unlike the eight founding classes whose defaults
+  were seeded at KL-3.
+- why: The taxonomy's most common real session shape had no home — KL-2
+  filed an off-taxonomy compound the harvest warns on, and KL-3 and KL-4
+  both filed as nearest-neighbor `kernel/architecture design` — so every
+  band was quietly mislabeling B2 allocation rows; cheap to fix at row 7,
+  expensive at row 1000.
+- scope: Amends (extends) PL-004; does not supersede it — every other part
+  of the PL-004 discipline stands unchanged.

@@ -55,7 +55,10 @@ def test_real_repo_is_clean() -> None:
 def test_real_register_has_the_founding_census() -> None:
     blocks, findings = cpl.parse_register(REPO_ROOT / cpl.REGISTER_RELPATH)
     assert findings == []
-    assert [b.number for b in blocks] == list(range(1, 10))  # PL-001..PL-009
+    # PL-001..PL-009 founding census + appended amendments (PL-010 …),
+    # sequential with no gaps (the register is append-only).
+    assert len(blocks) >= 10  # PL-010: the feature-build taxonomy amendment
+    assert [b.number for b in blocks] == list(range(1, len(blocks) + 1))
     provenance = " ".join(b.fields["provenance"] for b in blocks)
     for origin in ("Q-0240", "Q-0241", "Q-0247", "Q-0248", "Q-0249", "Q-0120", "Q-0132", "Q-0105"):
         assert origin in provenance

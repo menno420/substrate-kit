@@ -122,6 +122,13 @@ workflow refuses to publish a version that has no section in this file.
 - **Templates** (MINOR — new planted content): `CONSTITUTION.md.tmpl` and
   `collaboration-model.md.tmpl` gain a "Program law" pointer section citing
   the register by PL-ID (consumers cite, never copy).
+- **The 9th task class `feature build`** (program-law amendment PL-010 —
+  MINOR): `TASK_CLASSES` gains `feature build` for new-capability building,
+  ending the nearest-neighbor mislabeling of B2 allocation rows (friction
+  issue #15 report 3; KL-2/KL-3/KL-4 all had to shoehorn feature work).
+  `docs/program/rulings.md` [PL-010] amends PL-004's taxonomy; the
+  allocation ladder gains an **observe-first** row (no seeded tier —
+  PL-005: B2 data seeds it); existing dataset rows are never rewritten.
 
 ### Fixed
 

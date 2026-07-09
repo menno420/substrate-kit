@@ -37,7 +37,8 @@ def _fires(root: Path) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
-def test_task_classes_are_the_eight_q0248_classes_verbatim():
+def test_task_classes_are_the_nine_pl004_classes_verbatim():
+    # The 8 founding Q-0248 classes + `feature build` (PL-010 amendment).
     assert TASK_CLASSES == (
         "docs-only",
         "mechanical refactor",
@@ -47,6 +48,7 @@ def test_task_classes_are_the_eight_q0248_classes_verbatim():
         "review/verify",
         "research",
         "idea/planning",
+        "feature build",
     )
 
 
@@ -240,7 +242,7 @@ def test_harvest_warns_on_off_taxonomy_class_but_records(tmp_path):
         model_line="📊 Model: fable-5 · high · vibes\n",
     )
     lines = harvest_model_usage(tmp_path, log)
-    assert any("not one of the 8" in line for line in lines)
+    assert any("not one of the 9" in line for line in lines)
     (record,) = _read_jsonl(tmp_path / MODEL_USAGE_RELPATH)
     assert record["task_class"] == "vibes"
 
