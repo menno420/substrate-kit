@@ -64,6 +64,12 @@ story, the frontmatter keeps the score.
   — state: captured; origin: lab (PL-010 session — three surfaces updated by
   hand with nothing enforcing agreement; guard recipe in the file); next: a
   groomed-ideas increment ships checker + test + CI step.
+- [Label-added disarm guard — the enabler race's residual half](label-added-disarm-guard-2026-07-09.md)
+  — state: captured; origin: lab (enabler-race-hotfix session — the deployed
+  fresh re-read is point-in-time; a label applied *after* arming still does
+  nothing; guard recipe in the file: `on: pull_request: [labeled]` →
+  `gh pr merge --disable-auto`); next: a groomed-ideas increment ships the
+  workflow + a live post-arm labelling verification.
 ## Shipped (survive window open)
 
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
