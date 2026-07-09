@@ -40,6 +40,12 @@ def _adopt_scratch(root: Path, kit_root: Path) -> Config:
         )
     adopt(root, config, backend, kit_root=kit_root, wire_enforcement=True)
     backend.set("session_count", 1)
+    # KL-8: the control loop is engaged too — a real heartbeat replaces the
+    # adopt seed (whose status-no-heartbeat finding would red these checks).
+    (root / "control" / "status.md").write_text(
+        "# scratch · status\nupdated: 2026-07-09T12:00Z\nphase: fixture\n",
+        encoding="utf-8",
+    )
     return config
 
 

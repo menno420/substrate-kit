@@ -130,3 +130,60 @@ def test_broken_backend_fails_open(tmp_path):
     # State-based checks degrade to empty state; the run never raises.
     assert isinstance(lines, list)
     assert any("reflections unmined" in line for line in lines)
+
+
+# ---------------------------------------------------------------------------
+# The control-status heartbeat advisory (band KL-8)
+# ---------------------------------------------------------------------------
+
+
+def _write_status(root, mtime=None):
+    control = root / "control"
+    control.mkdir(parents=True, exist_ok=True)
+    status = control / "status.md"
+    status.write_text("# x · status\nupdated: 2026-07-09T12:00Z\n", encoding="utf-8")
+    if mtime is not None:
+        import os
+
+        os.utime(status, (mtime, mtime))
+    return status
+
+
+def test_status_not_overwritten_this_session_advises(tmp_path):
+    config, backend = _init(
+        tmp_path,
+        reflection_buffer=_mined_today(),
+        session_anchor={"ts": "2026-07-09T12:00:00", "epoch": 2_000_000_000.0},
+    )
+    _write_log(tmp_path, config)
+    _write_status(tmp_path, mtime=1_000_000_000)  # older than the anchor
+    lines = evaluate_stop(tmp_path, config, backend)
+    assert len(lines) == 1
+    assert "control/status.md not overwritten this session" in lines[0]
+
+
+def test_status_touched_after_anchor_is_clean(tmp_path):
+    config, backend = _init(
+        tmp_path,
+        reflection_buffer=_mined_today(),
+        session_anchor={"ts": "2026-07-09T12:00:00", "epoch": 1_000_000_000.0},
+    )
+    _write_log(tmp_path, config)
+    _write_status(tmp_path, mtime=2_000_000_000)  # newer than the anchor
+    assert evaluate_stop(tmp_path, config, backend) == []
+
+
+def test_status_advisory_skips_without_anchor_or_protocol(tmp_path):
+    # No anchor -> no basis for the claim -> no advisory (fail-open)…
+    config, backend = _init(tmp_path, reflection_buffer=_mined_today())
+    _write_log(tmp_path, config)
+    _write_status(tmp_path, mtime=1_000_000_000)
+    assert evaluate_stop(tmp_path, config, backend) == []
+    # …and no control/status.md -> nothing either, even with an anchor.
+    config2, backend2 = _init(
+        tmp_path / "bare",
+        reflection_buffer=_mined_today(),
+        session_anchor={"epoch": 1_000_000_000.0},
+    )
+    _write_log(tmp_path / "bare", config2)
+    assert evaluate_stop(tmp_path / "bare", config2, backend2) == []

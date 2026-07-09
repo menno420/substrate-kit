@@ -15,6 +15,52 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **The `control/` fleet-coordination scaffold** (band KL-8, inbox ORDER
+  002; canonical spec: superbot
+  `docs/planning/fleet-coordination-protocol-2026-07-09.md` §2 — MINOR,
+  new templates): `adopt` now plants the git-as-message-bus protocol in
+  every host — a generalized `control/README.md` contract (roles, the
+  one-writer-per-file rule, both file formats, and the two 2026-07-09 CI
+  lessons: prefer an in-job fast lane over `paths-ignore`, and
+  API-authored PRs may carry zero check runs — the manager's canonical
+  inbox write is a direct Contents-API commit to the default branch) plus
+  seeded-skeleton `control/inbox.md` (manager-written orders) and
+  `control/status.md` (the project-written heartbeat — honestly
+  heartbeat-less until the first real overwrite). Skip-if-exists,
+  hash-recorded, `${project_name}`-rendered like every plant.
+- **`check_status_current` — the status-freshness checker** (engine-side,
+  ships in the dist — MINOR, new checker): a missing or heartbeat-less
+  `control/status.md` rides the strict finding loop RED
+  (`status-missing` / `status-no-heartbeat` — the spec's "graduates to
+  the born-red post-adopt gate", printed on the adopt checklist alongside
+  the KL-7 engagement findings); wall-clock staleness (`status-stale`,
+  > 72h) is **advisory-only** — surfaced and telemetry-recorded but never
+  exit-affecting, so a required CI check can never red on time alone.
+  The Stop hook gains a fifth advisory: `control/status.md` not
+  overwritten this session (file mtime vs the KL-5 session anchor).
+  Input-gated: a host without `control/` sees nothing.
+- **The CI control fast lane**: a control-only diff (`control/**` and
+  nothing else — a heartbeat, an inbox append) short-circuits the heavy
+  suite GREEN **in-job** in both the kit's own `ci.yml` and the planted
+  `substrate-gate.yml` — deliberately never `paths-ignore`, because a
+  REQUIRED context that never reports stays pending forever and jams
+  heartbeat auto-merge; the session gate is among the skipped steps
+  (coordination writes need no session card). Pinned by
+  `tests/test_ci_control_lane.py`; the cold-adopt smoke now walks the
+  extended arc (RED on the seed status → GREEN after the first real
+  heartbeat).
+
+### Fixed
+
+- **Dist-completeness guard**: an engine module missing from
+  `build_bootstrap.MODULE_ORDER` builds a dist whose `cmd_check` crashes
+  with a `NameError` at runtime while the byte-pin stays green (the fresh
+  build is equally incomplete) — hit live when `check_status_current.py`
+  first shipped. `test_module_order_covers_every_engine_module` now pins
+  `MODULE_ORDER` == the on-disk `src/engine/` module set.
+
 ## [1.1.0] - 2026-07-09
 
 New-capability release (MINOR): everything the kit-lab run built since

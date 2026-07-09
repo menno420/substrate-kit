@@ -49,6 +49,11 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- [`bootstrap heartbeat` — a mechanical status.md writer](heartbeat-verb-2026-07-09.md)
+  — state: captured; origin: lab (band KL-8 — the moment the heartbeat
+  became enforced, its hand-formatted timestamp became the weakest link;
+  guard recipe in the file); next: a groomed-ideas increment ships the verb
+  (ordinary lane — additive CLI verb, MINOR).
 - [CHANGELOG Unreleased-section structure checker](changelog-unreleased-structure-checker-2026-07-09.md)
   — state: captured; origin: lab (run close-out 2026-07-09 — the docs-drift
   audit found the same mid-section `### Fixed` insertion made twice
