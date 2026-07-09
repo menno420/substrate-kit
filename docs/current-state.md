@@ -95,27 +95,42 @@
   born-red gate, reported distinctly; a drafted `📊 Model:` stand-in never
   harvests into PL-004). All fail-open; suite 557 → 587. The **second half
   (the `bench/` tree) is BUILT on PR #17, a `do-not-automerge` PR** per
-  §5.0 — the first rubric version was **owner-blessed 2026-07-09**; the
-  owner merges #17 himself, unblocking **B1's first firing**. What #17 carries:
+  §5.0 — the first rubric version was **owner-blessed 2026-07-09** and the
+  owner **merged #17 himself the same day** (D-0005), unblocking **B1's
+  first firing**. What #17 carries:
   both rubrics, tasks T1–T5, `seeds/make_seed.py`, `score_m1.py`,
   `run_ab.py`, append-only results indexes (incl. the `friction` family —
   triage-time rows), `check_bench_integrity.py` in kit-quality (pin-path
   label gate + append-aware results immutability), and the enabler's
   fresh-label race guard. Suite 587 → 609.
 
+- **KL-7 (the adopt-engage gate) is DONE** (owner-directed P0 off the
+  independent fleet review, superbot `docs/eap/fleet-review-2026-07-09.md`
+  §4; D-0006; PR #25): both fresh adopters had stranded identically —
+  planted docs still bannered/`${...}`-slotted, `session_count` 0,
+  `.claude/` inert, websites without CI — because `adopt`
+  plants-and-banners while render/enforcement were separate opt-in steps.
+  Now `check` carries the **post-adopt ENGAGEMENT gate**
+  (`engine/checks/check_engagement.py`, strict-only exit impact,
+  adoption-evidence-gated, planted-docs scope): RED until no UNRENDERED
+  banner / leftover slot remains, a CI workflow runs `check --strict`, and
+  the session loop has engaged (`session_count ≥ 1` or a real card).
+  `adopt` stages the live `substrate-gate.yml` under `<state_dir>/ci/` and
+  prints the gate's findings as its closing checklist; the cold-adopt
+  smoke + tests pin the RED→ENGAGED→GREEN arc (suite 626 → 637). The
+  PL-register note (adoption-is-not-done-until-ENGAGED as program law)
+  rides its own `do-not-automerge` owner-review PR per §8.3.
+
 ## In flight
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- PR #17 — **KL-5 (2/2): the `bench/` tree**, `do-not-automerge` per §5.0:
-  CI-green; the first rubric version is **owner-blessed 2026-07-09** ("you
-  can merge 17") — branch updated against main, and the **owner performs the
-  merge himself** (#16, its first half, merged). Field note: the
-  auto-merge-enabler ARMED this PR at open (its label check raced the MCP
-  label call) — disarmed by hand same-minute; the fresh-label re-read guard
-  shipped in #23.
-- PR #24 — **audit follow-ups**: label-guard holes closed, honest incident
-  count, day report, branch hygiene.
+- PR #25 — **band KL-7: the post-adopt ENGAGEMENT gate** (the fleet-review
+  §4 fix, owner-directed P0): `check --strict` born-red in an adopted host
+  until rendered + enforcing + looping. Companion PL-register note rides
+  its own `do-not-automerge` PR (left open for the owner).
+  *(#17 — the `bench/` tree — was owner-blessed and MERGED 2026-07-09
+  (D-0005), and #24 merged: both moved out of this list.)*
 
 ## Field notes — incident ledger (2026-07-09 run)
 
@@ -281,6 +296,13 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ## Recently shipped (newest first)
 
+- **#25 — band KL-7: the post-adopt ENGAGEMENT gate** (fleet-review §4 /
+  owner-directed P0; D-0006): `check_engagement.py` (four finding kinds:
+  `unrendered-banner` · `unrendered-slot` · `enforcement-unwired` ·
+  `session-loop-idle`; strict-only, adoption-evidence-gated, planted-docs
+  scope); adopt stages `<state_dir>/ci/substrate-gate.yml` + prints the
+  engagement checklist; cold-adopt smoke rewritten to the
+  RED→ENGAGED→GREEN arc; suite 626 → 637; dist regenerated + byte-pinned.
 - **#24 — audit follow-ups** (verify-then-fix, Q-0120/PL-006): the
   label-added disarm workflow (`auto-merge-disarm.yml` — a
   `do-not-automerge` label at ANY time post-arm disarms native auto-merge;

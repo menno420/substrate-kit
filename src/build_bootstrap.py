@@ -68,6 +68,9 @@ MODULE_ORDER = (
     "derive.py",
     "contextpack.py",
     "adopt.py",
+    # After adopt.py on purpose: the engagement gate scans the ADOPT_PLAN
+    # destinations and keys off adopt's UNRENDERED banner marker.
+    "checks/check_engagement.py",
     "upgrade.py",
     "cli.py",
 )
