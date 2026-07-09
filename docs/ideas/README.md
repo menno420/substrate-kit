@@ -19,3 +19,9 @@
 ## Backlog
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
+
+- [A "feature build" task class for the Q-0248/PL-004 taxonomy](feature-build-task-class-2026-07-09.md)
+  — state: captured · routed **discuss-first** (PL-004 amendment); origin:
+  superbot friction issue #15 report 3 + the KL-3 session idea; next: a
+  dedicated ruling PR (its own PR — a program-law change is never bundled
+  into a band PR).

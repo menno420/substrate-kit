@@ -49,3 +49,22 @@
   writing the CI surface locally would fabricate data the Checks API already
   holds truthfully.
 - provenance: founding plan §5.3 + KF-9/D-10; shipped in band KL-3.
+
+## [D-0004] Friction transport: the engine writes the outbox, the agent files the issue
+
+- status: decided
+- date: 2026-07-09
+- verdict: `friction export` (stdlib-only, credential-free) collects the ⚑
+  records (reflection buffer + a FULL session-log scan, deduplicated by
+  lesson), writes the §9.1 envelope to `<state_dir>/friction-outbox/`, and
+  prints the issue-ready title + body; the session/agent files the
+  `friction`-labeled issue on the kit repo and deletes the drained file;
+  `session-close` advises on pending envelopes, best-effort and fail-open.
+  Every export lands in the outbox first — the file IS the retry buffer for
+  the network/credential-failure case, not a separate path.
+- why: The engine may hold no network deps or credentials (the kit's
+  stdlib-only covenant + Q-0249's rail), so the §9.1 "filed at session-close"
+  leg necessarily splits mechanical (envelope) from privileged (issue-create);
+  one unconditional outbox path beats two divergent ones.
+- provenance: founding plan §9.1 / KF-7 / D-14; shipped in band KL-4
+  (PR #14); first report + triage = issue #15 (D4).

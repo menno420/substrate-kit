@@ -31,6 +31,10 @@ then, in order:
    (staged ``.substrate/`` artifacts always regenerate; missing planted docs
    replant), migrates state (backup already banked), records the new
    ``kit_version``, and writes ``<state_dir>/upgrade-report.md``.
+6. **Cleans up its own inputs**: after the replace lands, the consumed
+   ``bootstrap.py.new`` and the ``release.json`` next to it are removed
+   (``--keep-inputs`` opts out) — the first field run (superbot-next#46)
+   left both stranded at the repo root.
 
 ``upgrade --rollback`` restores the banked state.json + the archived dist
 named by ``<state_dir>/backup/last-upgrade.json`` (staged artifacts regenerate
@@ -304,6 +308,7 @@ def run_upgrade(
     running: Path,
     apply_docs: bool = False,
     release_json: Path | None = None,
+    cleanup_inputs: bool = True,
 ) -> list[str]:
     """Execute the §4.3 upgrade flow; return the report lines.
 
@@ -324,14 +329,20 @@ def run_upgrade(
     # (2) Archive FIRST (§4.3): old dist + state.json, before any overwrite.
     vendored = find_vendored_bootstrap(root)
     old_text = vendored.read_text(encoding="utf-8") if vendored else None
-    # The recorded config version (stamped at the OLD adopt) outranks the
-    # vendored header: when the consumer already copied the new file over the
-    # old one by hand, the header would misreport the new version as "from".
-    old_version = (
-        config.kit_version
-        or (dist_version(old_text) if old_text else None)
-        or "unknown"
-    )
+    # From-version: the vendored header states what is actually installed and
+    # OUTRANKS the config pin when they disagree — a consumer may record its
+    # pin BEFORE the first real upgrade (the D2 order), leaving the pin
+    # aspirational while the file on disk is older or unstamped. The field
+    # case (superbot-next#46): pin said 1.0.0, the archive honestly said
+    # bootstrap-unknown.py, and a rollback would have restored the wrong pin.
+    # The one header that cannot name the true "from" is KIT_VERSION itself —
+    # the hand-copied-new-dist-over-old case — where the recorded pin wins
+    # (distinguishable exactly because the header equals KIT_VERSION).
+    header_version = dist_version(old_text) if old_text else None
+    if old_text is not None and header_version != KIT_VERSION:
+        old_version = header_version or "unknown"
+    else:
+        old_version = config.kit_version or header_version or "unknown"
     backup_dir = root / config.state_dir / BACKUP_DIRNAME
     archived = None
     if vendored is not None:
@@ -389,8 +400,10 @@ def run_upgrade(
         running.is_file()
         and dist_version(running.read_text(encoding="utf-8")) is not None
     )
+    replaced = False
     if vendored is not None and running_is_dist and running.resolve() != vendored.resolve():
         atomic_write_text(vendored, running.read_text(encoding="utf-8"))
+        replaced = True
         report.append(
             f"replaced: {vendored.relative_to(root)} "
             f"(v{old_version} -> v{KIT_VERSION}; old copy archived)",
@@ -429,6 +442,30 @@ def run_upgrade(
         upgrade_report_text(old_version, rows, applied),
     )
     report.append(f"report: {report_rel}")
+
+    # (9) Self-cleanup of the upgrade inputs: the consumer flow downloads
+    # ``bootstrap.py.new`` (+ its ``release.json``) next to the vendored file,
+    # and once the replace has landed both are strays the first field run
+    # (superbot-next#46) left behind. Only the files the flow itself consumed
+    # are touched — the running .new file that was just installed and the
+    # release.json sitting NEXT TO it (an explicit --release-json elsewhere is
+    # left alone). ``--keep-inputs`` opts out; a cleanup error never fails a
+    # completed upgrade (fail-open, like every non-essential step).
+    if cleanup_inputs and replaced:
+        for leftover in (running, candidate):
+            if leftover.parent != running.parent or not leftover.is_file():
+                continue
+            try:
+                leftover.unlink()
+                report.append(
+                    f"cleaned up: {leftover.name} "
+                    "(upgrade input; pass --keep-inputs to retain)",
+                )
+            except OSError:
+                report.append(
+                    f"note: could not remove {leftover.name} — "
+                    "delete it by hand.",
+                )
     return report
 
 
@@ -460,8 +497,13 @@ def run_rollback(root: Path, config: Config) -> list[str]:
                 f"restored: {vendored_rel} from {archived_rel} "
                 f"(back to v{meta.get('from_version')}).",
             )
-    if config.kit_version and config.kit_version != meta.get("from_version"):
-        config.kit_version = str(meta.get("from_version") or "")
+    recorded = str(meta.get("from_version") or "")
+    # "unknown" names an unstamped pre-release dist (the archive is
+    # bootstrap-unknown.py) — the honest config value for that state is the
+    # unrecorded sentinel "", never the literal string "unknown".
+    restored_pin = "" if recorded == "unknown" else recorded
+    if config.kit_version and config.kit_version != restored_pin:
+        config.kit_version = restored_pin
         save_config(root, config)
         report.append(f"restored: config kit_version -> {config.kit_version!r}.")
     report.append(
