@@ -15,6 +15,21 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **B1 run-2 recorded** (`2026-07-09-run02`, PR #44): second cold-start
+  row appended (append-only) + raw run dir committed at
+  `bench/results/cold-start/2026-07-09-run02/`. Judge claude-opus-4-8
+  (independent): **VERDICT FAIL** under the strict F-5 "none regressing"
+  clause — the first clean M1 measurement on the #40-fixed scorer
+  regressed (ON 1706/2272/531 vs OFF 556/1481/511) — while ON wins M2
+  (handoff actually used) + M3 (durable write-back) inside the 7k budget
+  with zero unrecoverable errors; advisory per KF-5, no trend claim
+  (family at 2 rows, KF-8 needs ≥3). Run-2 follow-up ideas filed
+  (rubric F-5 wording owner brief · make_seed yield-keyword bug ·
+  prepare engagement arc · render CLAUDE.md gap · T5 idea updated with
+  the last-card gate gap); fixes deliberately not in the recording PR.
+
 ## [1.3.0] - 2026-07-09
 
 New-capability release (MINOR): the substrate-coordinator visibility band

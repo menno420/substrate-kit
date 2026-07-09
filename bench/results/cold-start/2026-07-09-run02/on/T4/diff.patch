@@ -1,0 +1,325 @@
+diff --git a/.sessions/2026-07-09-category-budgets.md b/.sessions/2026-07-09-category-budgets.md
+new file mode 100644
+index 0000000..4558520
+--- /dev/null
++++ b/.sessions/2026-07-09-category-budgets.md
+@@ -0,0 +1,78 @@
++# 2026-07-09 — per-category budgets + report over-budget flagging
++
++> **Status:** `complete`
++
++## What happened
++
++Continued the `report` work with per-category budgets:
++
++- `cedarvisit/store.py` — budgets persist in a **separate `budgets.json`**
++  (`DEFAULT_BUDGETS_PATH`, `load_budgets` → `{}` when missing,
++  `save_budgets`), mirroring the records functions exactly. A second file
++  rather than a new `visits.json` shape so existing data files stay valid.
++- `cedarvisit/ops.py` — `set_budget(budgets, category, amount)` (floats the
++  amount, same as `add_record` does for duration) and
++  `over_budget(records, budgets)` returning `{category: budget}` for
++  categories whose summed duration **strictly exceeds** their budget —
++  exactly at budget is not over; budgets for unrecorded categories are
++  ignored. Kept `category_report`'s tested return shape untouched; the CLI
++  composes the two.
++- `cedarvisit/cli.py` — new `budget <category> <amount>` subcommand
++  (prints `budget set.`, matching the `recorded.` style; setting again
++  overwrites) and `report` now appends ` (over budget <amount>)` to a
++  category line when over. No-budgets report output is byte-identical to
++  before (existing report tests still pin it).
++- `tests/test_cedarvisit.py` — 8 new tests (ops: set/over/exact-boundary/
++  unbudgeted+unrecorded/empty; CLI: set+flag output, confirmation line,
++  overwrite un-flags). 19 passing via `python3 -m pytest tests/`. Also
++  drove the CLI live in a temp dir: log ×3 → budget ×2 → report shows the
++  flag on `food` only; `budgets.json` written; `budget food` (missing
++  amount) → usage error, exit 2.
++- `README.md` — describes `budget` and the report flag.
++
++Commits: `567ccf1` (implementation + tests), `6e1d7e0` (born-red card).
++
++## What the next session should know
++
++- Flag format is pinned by tests: `food: 2 records, 20.0 (over budget 15.0)`
++  — raw float repr, flag only on over-budget lines, overall line never
++  flagged. Budgets are keyed by **exact-match** category string, consistent
++  with `filter_by_category`'s actual (exact-match) behavior — if the
++  case-sensitivity drift below is ever resolved toward case-insensitive,
++  budget keys must move with it.
++- **Still-open follow-ups from the report session (unchanged, out of
++  scope):** argparse-level validation for `log duration` / `top --limit` —
++  and `budget amount` now joins that list (a negative or non-finite budget
++  is accepted and, being tiny, flags almost everything). Guard recipe: one
++  `nonnegative_float` / `positive_int` `type=` callable in `cli.main`
++  covering `duration`, `--limit`, and `amount`; test via
++  `pytest.raises(SystemExit)` on `cli.main([...])` in
++  `tests/test_cedarvisit.py`.
++- **Pre-existing drift still unresolved:** `ops.filter_by_category`
++  docstring + README say case-insensitive; code and
++  `test_filter_by_category_exact` are exact-match. Decide intent, then fix
++  docstring+README or code+test together (and budget keys, per above).
++- There is deliberately no `budget` list/show/remove; `budgets.json` is
++  human-editable and `report` is the read path. If listing is wanted, a
++  bare `budget` with no args (argparse `nargs="?"`) is the natural shape.
++
++💡 Session idea: a `report --month <YYYY-MM>` / date-scoped report. Records
++carry no timestamp today — adding an ISO `date` field in `add_record`
++(defaulting to today, old records treated as undated) would unlock
++time-scoped totals and make budgets act like real monthly budgets instead
++of all-time ones. Small, stdlib-only (`datetime.date.today().isoformat()`),
++and it's the difference between a toy total and a usable budget tool.
++
++⟲ Previous-session review: the report session's card was exactly what this
++session needed — the pinned output format and the "aggregation lives in
++ops" note answered the two design questions (line format, where the
++over-budget logic goes) without any re-derivation. One miss: its follow-up
++list named `log duration` and `top --limit` validation but didn't add the
++guard, and this session added a *third* unvalidated numeric input — the
++cost of deferring a named guard compounds. Workflow improvement: when a
++card flags a small named guard twice in a row, the next session should
++treat it as jump-the-queue work rather than re-deferring it (this card
++re-flags it with the full recipe so the next session can land it in
++minutes).
++
++📊 Model: claude-fable-5 (feature session; store + ops + cli + tests + docs).
+diff --git a/README.md b/README.md
+index 4b41bab..3655316 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,8 @@
+ 
+ A tiny visit-log CLI: `log` records with a category and
+ duration, then `list`, `total`, `filter <category>` (case-insensitive),
+-and `top` them, or `report` per-category counts and totals.
++and `top` them, or `report` per-category counts and totals. Set a
++per-category budget with `budget <category> <amount>`; `report` flags
++categories whose total exceeds their budget with `(over budget <amount>)`.
+ 
+ Run the tests with `python3 -m pytest tests/`.
+diff --git a/cedarvisit/cli.py b/cedarvisit/cli.py
+index 723f5c9..e9a91bb 100644
+--- a/cedarvisit/cli.py
++++ b/cedarvisit/cli.py
+@@ -1,6 +1,7 @@
+ """cedarvisit — a tiny visit-log CLI.
+ 
+-Commands: log (add a record) · list · total · filter <category> · top · report.
++Commands: log (add a record) · list · total · filter <category> · top ·
++report · budget <category> <amount>.
+ """
+ 
+ import argparse
+@@ -23,6 +24,9 @@ def main(argv=None):
+     top_p = sub.add_parser("top", help="highest-duration categories")
+     top_p.add_argument("--limit", type=int, default=3)
+     sub.add_parser("report", help="per-category counts and totals, plus overall")
++    budget_p = sub.add_parser("budget", help="set a per-category budget")
++    budget_p.add_argument("category")
++    budget_p.add_argument("amount", type=float)
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -45,9 +49,19 @@ def main(argv=None):
+         if not records:
+             print("no records.")
+         else:
++            budgets = store.load_budgets()
++            over = ops.over_budget(records, budgets)
+             for category, count, subtotal in ops.category_report(records):
+-                print(f"{category}: {count} records, {subtotal}")
++                line = f"{category}: {count} records, {subtotal}"
++                if category in over:
++                    line += f" (over budget {over[category]})"
++                print(line)
+             print(f"overall: {len(records)} records, {ops.total_duration(records)}")
++    elif args.command == "budget":
++        budgets = store.load_budgets()
++        ops.set_budget(budgets, args.category, args.amount)
++        store.save_budgets(budgets)
++        print("budget set.")
+     return 0
+ 
+ 
+diff --git a/cedarvisit/ops.py b/cedarvisit/ops.py
+index fd2cadc..0e2d0a7 100644
+--- a/cedarvisit/ops.py
++++ b/cedarvisit/ops.py
+@@ -40,6 +40,29 @@ def category_report(records):
+     )
+ 
+ 
++def set_budget(budgets, category, amount):
++    """Set the budget for a category (exact-match key) and return it."""
++    budgets[category] = float(amount)
++    return budgets[category]
++
++
++def over_budget(records, budgets):
++    """Return ``{category: budget}`` for categories whose summed duration
++    exceeds their budget.
++
++    A category exactly at its budget is not over. Budgets for categories
++    with no records are ignored.
++    """
++    totals = {}
++    for r in records:
++        totals[r["category"]] = totals.get(r["category"], 0.0) + r["duration"]
++    return {
++        category: budgets[category]
++        for category in totals
++        if category in budgets and totals[category] > budgets[category]
++    }
++
++
+ def top_categories(records, limit=3):
+     """Return the ``limit`` categories with the highest summed duration."""
+     totals = {}
+diff --git a/cedarvisit/store.py b/cedarvisit/store.py
+index 68539b0..03aab40 100644
+--- a/cedarvisit/store.py
++++ b/cedarvisit/store.py
+@@ -1,9 +1,10 @@
+-"""JSON-file persistence for cedarvisit — one list of visit records."""
++"""JSON-file persistence for cedarvisit — visit records and category budgets."""
+ 
+ import json
+ from pathlib import Path
+ 
+ DEFAULT_PATH = Path("visits.json")
++DEFAULT_BUDGETS_PATH = Path("budgets.json")
+ 
+ 
+ def load_records(path=DEFAULT_PATH):
+@@ -17,3 +18,16 @@ def load_records(path=DEFAULT_PATH):
+ def save_records(records, path=DEFAULT_PATH):
+     """Write the visit records back to disk."""
+     Path(path).write_text(json.dumps(records, indent=2), encoding="utf-8")
++
++
++def load_budgets(path=DEFAULT_BUDGETS_PATH):
++    """Return the stored category budgets (empty dict when no file)."""
++    path = Path(path)
++    if not path.exists():
++        return {}
++    return json.loads(path.read_text(encoding="utf-8"))
++
++
++def save_budgets(budgets, path=DEFAULT_BUDGETS_PATH):
++    """Write the category budgets back to disk."""
++    Path(path).write_text(json.dumps(budgets, indent=2), encoding="utf-8")
+diff --git a/control/status.md b/control/status.md
+index 34d2362..b4859d1 100644
+--- a/control/status.md
++++ b/control/status.md
+@@ -1,14 +1,15 @@
+ # cedarvisit · status
+-updated: 2026-07-09T13:00Z
+-phase: building — first product feature shipped
++updated: 2026-07-09T16:10Z
++phase: building — budgets shipped on top of report
+ health: green
+ kit: v1.3.0 · check: green · engaged: yes
+-last-shipped: report CLI command (per-category counts/totals + overall; f2ebcd5)
++last-shipped: per-category budgets (budget command + report over-budget flagging; 567ccf1)
+ blockers: none
+ orders: acked= done=
+ ⚑ needs-owner: none
+-notes: report command added with ops.category_report + 5 new tests (11
+-passing, python3 -m pytest tests/); empty data prints "no records.".
+-Follow-ups flagged in the session card: validate log duration / top --limit
+-at the argparse boundary; resolve filter_by_category case-sensitivity drift
+-(docstring/README say case-insensitive, code is exact-match).
++notes: budget <category> <amount> persists to budgets.json; report appends
++"(over budget <amount>)" when a category's total strictly exceeds its
++budget (8 new tests, 19 passing via python3 -m pytest tests/). Twice-flagged
++follow-up now includes budget amount: validate log duration / top --limit /
++budget amount at the argparse boundary (recipe in the session card).
++filter_by_category case-sensitivity drift still unresolved.
+diff --git a/docs/current-state.md b/docs/current-state.md
+index 0cac8c1..d0e727d 100644
+--- a/docs/current-state.md
++++ b/docs/current-state.md
+@@ -21,6 +21,11 @@ should not be re-audited without a reported regression.)
+ 
+ (Merged work only, newest first.)
+ 
++- 2026-07-09 — per-category budgets: `budget <category> <amount>` stores to
++  a new `budgets.json` (`store.load_budgets`/`save_budgets`); `report`
++  appends `(over budget <amount>)` to categories whose total strictly
++  exceeds their budget (`ops.set_budget`, `ops.over_budget`; tests
++  included; card `.sessions/2026-07-09-category-budgets.md`).
+ - 2026-07-09 — `report` CLI command: per-category `<category>: <count>
+   records, <total>` lines (highest total first, ties alphabetical) plus a
+   final `overall:` line; empty data prints `no records.`
+diff --git a/tests/test_cedarvisit.py b/tests/test_cedarvisit.py
+index 53e1d33..81222b8 100644
+--- a/tests/test_cedarvisit.py
++++ b/tests/test_cedarvisit.py
+@@ -57,6 +57,29 @@ def test_category_report_empty():
+     assert ops.category_report([]) == []
+ 
+ 
++def test_set_budget_stores_float():
++    budgets = {}
++    assert ops.set_budget(budgets, "food", 15) == 15.0
++    assert budgets == {"food": 15.0}
++
++
++def test_over_budget_flags_exceeding_category():
++    assert ops.over_budget(_sample(), {"food": 15.0}) == {"food": 15.0}
++
++
++def test_over_budget_exact_total_is_not_over():
++    assert ops.over_budget(_sample(), {"food": 20.0}) == {}
++
++
++def test_over_budget_ignores_unbudgeted_and_unrecorded():
++    budgets = {"travel": 100.0, "misc": 1.0}
++    assert ops.over_budget(_sample(), budgets) == {}
++
++
++def test_over_budget_empty_records():
++    assert ops.over_budget([], {"food": 1.0}) == {}
++
++
+ def test_cli_report_prints_rows_and_overall(tmp_path, monkeypatch, capsys):
+     monkeypatch.chdir(tmp_path)
+     cli.main(["log", "food", "12.5", "--note", "lunch"])
+@@ -75,3 +98,37 @@ def test_cli_report_empty_data(tmp_path, monkeypatch, capsys):
+     monkeypatch.chdir(tmp_path)
+     assert cli.main(["report"]) == 0
+     assert capsys.readouterr().out == "no records.\n"
++
++
++def test_cli_budget_sets_and_report_flags_over(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["log", "food", "12.5", "--note", "lunch"])
++    cli.main(["log", "travel", "30.0"])
++    cli.main(["log", "food", "7.5"])
++    assert cli.main(["budget", "food", "15.0"]) == 0
++    capsys.readouterr()
++    assert cli.main(["report"]) == 0
++    assert capsys.readouterr().out.splitlines() == [
++        "travel: 1 records, 30.0",
++        "food: 2 records, 20.0 (over budget 15.0)",
++        "overall: 3 records, 50.0",
++    ]
++
++
++def test_cli_budget_prints_confirmation(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    assert cli.main(["budget", "food", "15.0"]) == 0
++    assert capsys.readouterr().out == "budget set.\n"
++
++
++def test_cli_budget_overwrites_previous_value(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["log", "food", "20.0"])
++    cli.main(["budget", "food", "10.0"])
++    cli.main(["budget", "food", "25.0"])
++    capsys.readouterr()
++    assert cli.main(["report"]) == 0
++    assert capsys.readouterr().out.splitlines() == [
++        "food: 1 records, 20.0",
++        "overall: 1 records, 20.0",
++    ]

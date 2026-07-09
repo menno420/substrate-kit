@@ -1,0 +1,30 @@
+{
+  "run_id": "2026-07-09-run02",
+  "date": "2026-07-09",
+  "seed": 424243,
+  "tasks": ["T2", "T4", "T5"],
+  "wire_enforcement": true,
+  "kit": "/home/user/substrate-kit/dist/bootstrap.py",
+  "arms": {
+    "on": "/tmp/claude-0/-home-user/14e095ef-7f11-57e4-a461-6930e88ea3a1/scratchpad/b1-run02/2026-07-09-run02/on/repo",
+    "off": "/tmp/claude-0/-home-user/14e095ef-7f11-57e4-a461-6930e88ea3a1/scratchpad/b1-run02/2026-07-09-run02/off/repo"
+  },
+  "task_prompts": {
+    "T2": "/home/user/substrate-kit/bench/tasks/T2.md",
+    "T4": "/home/user/substrate-kit/bench/tasks/T4.md",
+    "T5": "/home/user/substrate-kit/bench/tasks/T5.md"
+  },
+  "rubric": "/home/user/substrate-kit/bench/rubric/cold-start-rubric.md",
+  "smoke": [
+    "CONSTITUTION.md: present",
+    "docs/current-state.md: present",
+    ".sessions: present",
+    "check --strict exit=0 (after runner-side engagement arc — see runner_notes)"
+  ],
+  "runner_notes": [
+    "Seed deviation: ordered seed 424242 generates the harvest/yield domain and `yield` is a Python keyword -> the seed project is a SyntaxError (make_seed.py bug, pinned tree, needs a do-not-automerge fix). Used the first keyword-safe seed above it: 424243 -> cedarvisit (visit/visits/duration, verb `log`). 424245 was also skipped-by-rule: it reproduces run-1's exact galereading surface.",
+    "Engagement deviation: kit v1.3.0's P0 engagement gate (post-run-1) holds a bare adopt born-red under check --strict, so run_ab.py prepare's smoke step fails by design. Per the harness's own instruction ('fix the arm before running any session'), the runner completed the documented RED->ENGAGED->GREEN arc on the ON arm: answered all 13 interview slots (truthful seed-project values), render --live, re-planted .claude/CLAUDE.md (render --live cannot fill it - second kit gap), first session card (adoption session, status complete), control/status.md heartbeat; committed as 4dc12b6. check --strict AND check --strict --require-session-log both exit 0.",
+    "manifest.json written by the runner because prepare aborts before writing it when smoke fails; fields mirror cmd_prepare's schema.",
+    "Run-1 comparability note: run-1's ON arm was UNRENDERED (banners present, old kit did not flag it); run-2's ON arm is fully engaged. ON-arm surface differs across runs by design of the new gate - judge/report must note this."
+  ]
+}
