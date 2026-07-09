@@ -425,17 +425,23 @@ pack; queue truth in [`docs/gen2/queue-state.md`](gen2/queue-state.md)).
 
 ### Agent queue — in order, as the gates open
 
-1. **Consumer upgrades to v1.4.0**: superbot-next + websites (currently
-   ENGAGED on v1.2.0) walk the adopter upgrade checklist in the v1.4.0
-   release notes (`bootstrap.py.new upgrade` → `check --strict` green →
-   engagement green → set the `kit:` status line); superbot's upgrade
-   stays owner-gated (deliberate v1.0.0 pin-only stance — ⚑ carried);
-   superbot-games (two-lane) should set `heartbeat_files` to its two lane
-   files when it adopts/upgrades. Registry rows update in
-   [`docs/adopters.md`](adopters.md) as evidence arrives. *(The
-   cut-v1.1.0/v1.2.0/v1.3.0/v1.4.0 items are DONE — PRs #29/#32/#41/#46 +
-   their dispatch runs; see the stability-baseline bullets.)*
-2. **B1 run-3 — AFTER the run-2 seed/harness follow-ups land** *(run-2
+1. **Upgrade-UX fixes from the v1.6.0 rollout field findings** *(the
+   consumer-upgrades item is DONE — superbot-next#96 + websites#45 merged
+   2026-07-09, both ENGAGED on v1.6.0; see Recently shipped + the registry.
+   superbot stays owner-gated pin-only ⚑; superbot-games two-lane
+   `heartbeat_files` note carries until it adopts)*: four B4 ideas filed
+   2026-07-09, all ordinary-lane with guard recipes in the files —
+   `--apply-docs` post-hoc apply against the banked archived dist
+   (`upgrade-apply-docs-single-shot-window-…`), hash-record on byte-match
+   so rollback+rerun stops losing provenance
+   (`upgrade-rollback-loses-doc-hash-records-…`), the idempotent-archive
+   `(already banked)` report line (third field report — priority bumped;
+   `upgrade-archive-report-line-gap-…`), and the release.json placement
+   line in the adopter checklist
+   (`upgrade-checklist-release-json-placement-…`).
+2. **B1 run-3 — AFTER the run-2 seed/harness follow-ups land** *(blocked
+   on 👤 owner: PR #49 merge (pin-path seed fix) + the rubric F-5 ruling;
+   run-2
    is DONE — fired on the fixed scorer and recorded, strict-F-5 FAIL
    advisory, PR #44; family at 2 rows, KF-8 needs ≥3 for any trend)*:
    land the make_seed `yield`-keyword fix + prepare-runs-seed-tests
@@ -458,6 +464,22 @@ pack; queue truth in [`docs/gen2/queue-state.md`](gen2/queue-state.md)).
 
 ## Recently shipped (newest first)
 
+- **#75 — fleet rollout v1.6.0 wrap-up (kit-side, docs-only)**: the
+  **v1.6.0 fleet rollout is COMPLETE — every active adopter is ENGAGED on
+  v1.6.0**. superbot-next#96 (merged 9761db4): v1.2.0→v1.6.0, upgrade
+  report 7 consumer-edited / 2 diverged / 1 missing→planted / 3
+  template-improved applied / 6 unchanged, `from_version` honest, inputs
+  self-cleaned, CAPABILITIES.md planted fully rendered + hash-recorded,
+  six-field heartbeat live, `check --strict` exit 0, 1124 tests green.
+  websites#45 (merged ab0995d): v1.2.0→v1.6.0, 13 kept / 5 diverged
+  hand-merged / 1 template-improved applied, CAPABILITIES.md replanted +
+  seeded with 4 repo-verified entries, six-field ⚑ rewrite, `check
+  --strict` exit 0, 125 tests green. Registry rows updated in
+  [`docs/adopters.md`](adopters.md); four upgrade-UX ideas filed (agent
+  queue item 1). **Manager relay item ⚑:** websites' inbox ORDER 005 is
+  genuinely unexecuted (`/queue` 404s live — websites#44 shipped only the
+  P0 ping-ack for their ORDER 006); it needs a scoped websites session,
+  relayed via the manager. superbot stays v1.0.0 pin-only (owner ⚑).
 - **#68 — ORDER 008: owner-action quality band**: OWNER-ACTION item
   format (WHAT / WHERE / HOW / WHY-IT-MATTERS / UNBLOCKS /
   VERIFIED-NEEDED — attempted-or-exact-wall; assumption-based asks
