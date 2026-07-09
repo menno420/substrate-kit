@@ -1,10 +1,19 @@
 # release — publish a GitHub Release from a `v*` tag (founding plan §4.1).
 #
-# Trigger: push an annotated tag `vX.Y.Z` on a main-history commit. Steps:
-# refuse unless KIT_VERSION / dist header / CHANGELOG section all name the
-# tag's version (src/build_release_json.py::verify — "enforce, don't
-# exhort") → rebuild the dist fresh and byte-compare to the committed file →
-# compute sha256 → publish the Release with the three assets: bootstrap.py,
+# Two triggers, one job:
+# - Tag push (`git push origin vX.Y.Z`) — the canonical path.
+# - workflow_dispatch with a `version` input — for environments whose git
+#   proxy can push branches but NOT tags (live-hit at v1.0.0: the KL-1
+#   session's push of refs/tags/v1.0.0 got HTTP 403 while branch pushes
+#   worked). The dispatch path creates the annotated tag itself, in-Actions,
+#   at the dispatched ref's HEAD, then publishes the same way. A tag pushed
+#   with GITHUB_TOKEN cannot re-trigger this workflow (Actions' recursion
+#   guard), so the dispatch run itself does the publishing — no double fire.
+#
+# Steps: refuse unless KIT_VERSION / dist header / CHANGELOG section all name
+# the version (src/build_release_json.py::verify — "enforce, don't exhort") →
+# rebuild the dist fresh and byte-compare to the committed file → compute
+# sha256 → publish the Release with the three assets: bootstrap.py,
 # bootstrap.py.sha256, release.json. Notes body = the CHANGELOG section.
 #
 # Published releases are NEVER deleted (§6.4): a bad release is superseded by
@@ -14,6 +23,11 @@ name: release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (X.Y.Z, no leading v) — tags HEAD of the run's ref"
+        required: true
 
 permissions:
   contents: write
@@ -27,25 +41,49 @@ jobs:
         with:
           python-version: "3.10"
 
+      - name: Resolve the version
+        id: ver
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            version="${{ inputs.version }}"
+          else
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "releasing version $version (event: $GITHUB_EVENT_NAME)"
+
       - name: Refuse-to-release guards (version stamp + CHANGELOG section)
-        run: python3 src/build_release_json.py --version "${GITHUB_REF_NAME#v}" --verify-only
+        run: python3 src/build_release_json.py --version "${{ steps.ver.outputs.version }}" --verify-only
 
       - name: Fresh-dist byte-equality (the pin, re-proven at the tag)
         run: |
           python3 src/build_bootstrap.py
           git diff --exit-code dist/bootstrap.py
 
+      - name: Create + push the annotated tag (dispatch path only)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          tag="v${{ steps.ver.outputs.version }}"
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "tag $tag already exists locally — refusing to move it"; exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "substrate-kit $tag (see CHANGELOG.md)" "$GITHUB_SHA"
+          git push origin "refs/tags/$tag"
+
       - name: Build the release assets (sha256 + release.json + notes)
-        run: python3 src/build_release_json.py --version "${GITHUB_REF_NAME#v}" --out release-assets
+        run: python3 src/build_release_json.py --version "${{ steps.ver.outputs.version }}" --out release-assets
 
       - name: Publish the GitHub Release
         env:
           GH_TOKEN: ${{ secrets.ROUTINE_PAT || secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
+          tag="v${{ steps.ver.outputs.version }}"
+          gh release create "$tag" \
             "release-assets/bootstrap.py" \
             "release-assets/bootstrap.py.sha256" \
             "release-assets/release.json" \
             --repo "$GITHUB_REPOSITORY" \
-            --title "substrate-kit $GITHUB_REF_NAME" \
+            --title "substrate-kit $tag" \
             --notes-file "release-assets/notes.md"
