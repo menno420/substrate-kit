@@ -1,0 +1,186 @@
+diff --git a/.sessions/2026-07-09-report-command.md b/.sessions/2026-07-09-report-command.md
+new file mode 100644
+index 0000000..5b9ecaa
+--- /dev/null
++++ b/.sessions/2026-07-09-report-command.md
+@@ -0,0 +1,48 @@
++# 2026-07-09 — `report` CLI command
++
++> **Status:** `complete`
++> **Model:** claude-fable-5
++
++## What shipped
++
++- `galereading/ops.py` — new `category_report(records)`: `(category, count,
++  subtotal)` rows, highest subtotal first, alphabetical tie-break (same key
++  shape as `top_categories`).
++- `galereading/cli.py` — new `report` subcommand: one
++  `<category>: <count> records, <total>` line per category plus a final
++  `overall: <count> records, <total>` line. Takes no arguments (argparse
++  rejects extras, exit code 2). Empty data prints only
++  `overall: 0 records, 0` — zero categories, zero category lines, format
++  stays machine-parseable.
++- `tests/test_galereading.py` — 6 new tests: ops ranking / tie-break / empty,
++  CLI output end-to-end via `main(argv)` with `monkeypatch.chdir(tmp_path)`,
++  CLI empty case, CLI extra-argument rejection.
++- `README.md` + `cli.py` module docstring updated with the new command.
++
++Verified: `python3 -m pytest tests/` (12 passed) and drove the real CLI in a
++scratch dir (empty, populated, and invalid-arg paths all behave as specified).
++
++## 💡 Session idea
++
++`store.load_records` trusts `readings.json` blindly — a hand-edited or
++corrupt file raises a raw `JSONDecodeError`/`KeyError` deep in a command.
++A small load-time validation (list of dicts with `category`/`value`) with a
++clear error message would harden every command at one seam.
++
++## ⟲ Previous-session review
++
++The previous session (substrate-kit adoption, fe25155) left the working
++agreement and `current-state.md` as unrendered `${...}` templates — this
++session had to infer conventions from source instead. Improvement: run
++`bootstrap render` (or at least fill `verify_command`) right at adoption so
++the next agent gets a real verify command instead of a placeholder.
++
++## Guard recipe / follow-ups (not done, deliberately out of scope)
++
++- **Bug:** `filter_by_category` (galereading/ops.py) does exact matching, but
++  both its docstring and README promise case-insensitive. Fix: compare
++  `r["category"].lower() == category.lower()`; test target: a
++  `test_filter_by_category_case_insensitive` in `tests/test_galereading.py`.
++- `top --limit` (galereading/cli.py) accepts negative ints; `ranked[:limit]`
++  then silently drops the tail. Guard: reject `limit < 0` at the parser
++  (`type=` validator) with a test.
+diff --git a/README.md b/README.md
+index 6132d27..53d1e8c 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,7 @@
+ 
+ A tiny reading-log CLI: `post` records with a category and
+ value, then `list`, `total`, `filter <category>` (case-insensitive),
+-and `top` them.
++`top`, and `report` them (`report` prints per-category counts and
++totals, highest total first, plus an overall line).
+ 
+ Run the tests with `python3 -m pytest tests/`.
+diff --git a/galereading/cli.py b/galereading/cli.py
+index afb58d1..4f501c3 100644
+--- a/galereading/cli.py
++++ b/galereading/cli.py
+@@ -1,6 +1,6 @@
+ """galereading — a tiny reading-log CLI.
+ 
+-Commands: post (add a record) · list · total · filter <category> · top.
++Commands: post (add a record) · list · total · filter <category> · top · report.
+ """
+ 
+ import argparse
+@@ -22,6 +22,7 @@ def main(argv=None):
+     filter_p.add_argument("category")
+     top_p = sub.add_parser("top", help="highest-value categories")
+     top_p.add_argument("--limit", type=int, default=3)
++    sub.add_parser("report", help="per-category counts and totals")
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -40,6 +41,10 @@ def main(argv=None):
+     elif args.command == "top":
+         for category, subtotal in ops.top_categories(records, args.limit):
+             print(f"{category}: {subtotal}")
++    elif args.command == "report":
++        for category, count, subtotal in ops.category_report(records):
++            print(f"{category}: {count} records, {subtotal}")
++        print(f"overall: {len(records)} records, {ops.total_value(records)}")
+     return 0
+ 
+ 
+diff --git a/galereading/ops.py b/galereading/ops.py
+index 89d99df..0fc994e 100644
+--- a/galereading/ops.py
++++ b/galereading/ops.py
+@@ -22,6 +22,20 @@ def filter_by_category(records, category):
+     return [r for r in records if r["category"] == category]
+ 
+ 
++def category_report(records):
++    """Return ``(category, count, subtotal)`` rows, highest subtotal first.
++
++    Ties on subtotal break alphabetically by category, matching
++    :func:`top_categories`.
++    """
++    stats = {}
++    for r in records:
++        count, subtotal = stats.get(r["category"], (0, 0.0))
++        stats[r["category"]] = (count + 1, subtotal + r["value"])
++    rows = [(category, count, subtotal) for category, (count, subtotal) in stats.items()]
++    return sorted(rows, key=lambda row: (-row[2], row[0]))
++
++
+ def top_categories(records, limit=3):
+     """Return the ``limit`` categories with the highest summed value."""
+     totals = {}
+diff --git a/tests/test_galereading.py b/tests/test_galereading.py
+index 553beec..62782cf 100644
+--- a/tests/test_galereading.py
++++ b/tests/test_galereading.py
+@@ -1,6 +1,8 @@
+ """Tests for galereading core operations."""
+ 
+-from galereading import ops
++import pytest
++
++from galereading import cli, ops
+ 
+ 
+ def _sample():
+@@ -37,3 +39,48 @@ def test_top_categories_ranked():
+ 
+ def test_top_categories_limit():
+     assert len(ops.top_categories(_sample(), limit=1)) == 1
++
++
++def test_category_report_rows_ranked():
++    assert ops.category_report(_sample()) == [
++        ("travel", 1, 30.0),
++        ("food", 2, 20.0),
++    ]
++
++
++def test_category_report_tie_breaks_alphabetically():
++    records = []
++    ops.add_record(records, "zoo", 5.0)
++    ops.add_record(records, "art", 5.0)
++    assert ops.category_report(records) == [("art", 1, 5.0), ("zoo", 1, 5.0)]
++
++
++def test_category_report_empty():
++    assert ops.category_report([]) == []
++
++
++def test_report_cli_output(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["post", "food", "12.5", "--note", "lunch"])
++    cli.main(["post", "travel", "30.0"])
++    cli.main(["post", "food", "7.5"])
++    capsys.readouterr()
++    assert cli.main(["report"]) == 0
++    assert capsys.readouterr().out == (
++        "travel: 1 records, 30.0\n"
++        "food: 2 records, 20.0\n"
++        "overall: 3 records, 50.0\n"
++    )
++
++
++def test_report_cli_empty_data(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    assert cli.main(["report"]) == 0
++    assert capsys.readouterr().out == "overall: 0 records, 0\n"
++
++
++def test_report_cli_rejects_extra_arguments(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit) as excinfo:
++        cli.main(["report", "food"])
++    assert excinfo.value.code == 2

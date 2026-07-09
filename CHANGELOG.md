@@ -162,6 +162,15 @@ workflow refuses to publish a version that has no section in this file.
   onboarded while being neither rendered nor enforcing. The cold-adoption
   smoke + tests pin the full RED→ENGAGED→GREEN arc.
 
+- **B1's first cold-start row recorded** (run `2026-07-09-run01` — the
+  KF-5 benchmark-ran condition for the next MINOR): judge claude-opus-4-8
+  (independent), **VERDICT: PASS** — ON wins M2 (resumed from a
+  genuinely-used handoff) + M3 (durable write-back); M1 unmeasurable this
+  run (all 3 pairs scorer-tainted); T5 guard probe n/a (headless arms never
+  engaged the hook layer). Row 1 of `bench/results/cold-start/index.json`
+  + the committed raw run dir (`bench/results/cold-start/2026-07-09-run01/`);
+  the three harness follow-ups filed under `docs/ideas/` for run-2 fixes.
+
 ### Fixed
 
 - **auto-merge-enabler label race** (found live on the bench-tree PR #17):
