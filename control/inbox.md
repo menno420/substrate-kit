@@ -25,3 +25,9 @@ priority: P2
 do: Rider to ORDER 003 (adopter visibility band), relayed from a real adopter finding: superbot-games is a SHARED repo with per-lane heartbeats (control/status-mining.md + control/status-exploration.md per its control/README.md multi-Project extension), but the kit's check_status_current hardcodes control/status.md — misfiring on multi-Project repos. Make the status-file path(s) configurable (e.g. substrate.config.json key listing heartbeat files, default control/status.md), and include the per-lane pattern in the control/README.md.tmpl. Ship with the ORDER 003 band or next release.
 why: multi-Project cohabitation is now a live pattern; the kit should support it first-class.
 done-when: configurable heartbeat paths released; adopters.md notes superbot-games as the two-lane adopter; status acks 004.
+
+## ORDER 005 · 2026-07-09T16:17Z · status: new
+priority: P1
+do: Self-review retro. Answer EVERY question in docs/retro/QUESTIONS.md, by ID, in a new file docs/retro/self-review-2026-07-09.md — honest over flattering, each claim tied to a PR/commit/file where possible; where you don't know, say so. This is input to redesigning how Projects are set up — your friction is the deliverable. Land it as a READY PR same session.
+why: the owner is designing gen-2 Projects from gen-1's lived experience.
+done-when: self-review merged; status acks the order.
