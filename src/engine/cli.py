@@ -599,6 +599,7 @@ def cmd_check(
     strict: bool,
     *,
     require_session_log: bool = False,
+    session_log: Path | None = None,
 ) -> int:
     """Run every hygiene checker against ``target``.
 
@@ -613,6 +614,16 @@ def cmd_check(
     makes the memory ritual non-optional, not merely advised). Uses config
     defaults if ``target`` has no ``substrate.config.json`` yet, so a project
     can lint before onboarding.
+
+    ``session_log`` (CLI ``--session-log``) names the card to gate on
+    *explicitly* — the diff-aware selection a CI workflow derives from which
+    ``<sessions_dir>/*.md`` file the PR adds/changes. Without it the gate
+    falls back to newest-by-mtime, which a fresh CI checkout silently degrades
+    (every mtime flattens to checkout time), the trap that used to require a
+    git-mtime-restore shim before this step. A named file that does not exist
+    is treated exactly like an absent log (advisory by default, a hard failure
+    under ``require_session_log``) — an explicit selection never silently
+    falls back to a different card.
 
     Two KL-3 mechanisms ride the finding loop (plan §5.3):
 
@@ -668,19 +679,27 @@ def cmd_check(
             findings=doc_findings,
         )
 
-    log = latest_session_log(target / config.sessions_dir)
+    if session_log is not None:
+        explicit = session_log if session_log.is_absolute() else target / session_log
+        log = explicit if explicit.is_file() else None
+    else:
+        log = latest_session_log(target / config.sessions_dir)
     log_missing: list[str] = check_log(log, config.session_markers) if log else []
     # In gate mode an absent log is itself a failing condition, so it must feed
     # the exit code exactly like an incomplete one.
     log_absent_fails = log is None and require_session_log
     if log is None:
+        if session_log is not None:
+            absent = f"--session-log {session_log} does not exist"
+        else:
+            absent = f"no session log under {config.sessions_dir}/"
         if require_session_log:
             _emit(
-                f"check: MERGE HELD — no session log under {config.sessions_dir}/ "
+                f"check: MERGE HELD — {absent} "
                 "(--require-session-log): write one before merging.",
             )
         else:
-            _emit("check: no session log found yet (advisory — not a failure).")
+            _emit(f"check: {absent} (advisory — not a failure).")
     else:
         rel = log.relative_to(target) if log.is_relative_to(target) else log
         if log_missing:
@@ -691,11 +710,14 @@ def cmd_check(
         # The session gate is a guard too (the kit's flagship one) — its
         # fires feed B3 like any checker's. Never allowlistable, though.
         if log_absent_fails:
+            if session_log is not None:
+                absent = f"--session-log {session_log} does not exist"
+            else:
+                absent = f"no session log under {config.sessions_dir}/"
             gate_finding = Finding(
                 "",
                 "session-log",
-                f"no session log under {config.sessions_dir}/ "
-                "(--require-session-log)",
+                f"{absent} (--require-session-log)",
             )
         else:
             log_rel = str(log.relative_to(target)) if log.is_relative_to(target) else str(log)
@@ -1624,6 +1646,16 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="fail (not just advise) when the session log is missing — the CI gate mode",
     )
+    check.add_argument(
+        "--session-log",
+        type=Path,
+        default=None,
+        help=(
+            "gate on this session card explicitly (e.g. the card the PR's diff "
+            "touches) instead of newest-by-mtime; a missing file counts as an "
+            "absent log, never a silent fallback"
+        ),
+    )
     return parser
 
 
@@ -1659,6 +1691,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.target,
                 args.strict,
                 require_session_log=args.require_session_log,
+                session_log=args.session_log,
             )
         if args.command == "answer":
             return cmd_answer(args.target, args.slot, " ".join(args.value))

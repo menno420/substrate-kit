@@ -205,6 +205,15 @@ the rubric).
 - ⛔ **P6 console move** — blocked on 👤 P5; exact steps in the owner-action
   section above.
 
+**Post-band groomed-ideas increment (PR #19) — DONE:** three recorded ideas
+shipped in one PR — `check --session-log <file>` + PR-diff-aware card
+selection in the kit's `ci.yml` and the planted `substrate-gate.yml` (the
+git-mtime-restore CI shim is deleted and no longer travels to consumers);
+the reflection miner only harvests marker-LED 💡/⚑ lines (mid-prose junk
+fixed); the guard-recipe convention in both `.sessions/README`s. Each idea
+carries a B4 `shipped` frontmatter row in `docs/ideas/` (the PR #18
+convention exercised for real).
+
 *(Done and no longer next: KL-4 — PR #14; KL-5 — PR #16 + the open bench PR,
 see Stability baseline; D3 waits only on 👤 P4 arming above; the `feature
 build` taxonomy ruling is a separate discuss-first PR —
@@ -212,6 +221,12 @@ build` taxonomy ruling is a separate discuss-first PR —
 
 ## Recently shipped (newest first)
 
+- **#19 — groomed-ideas-1**: diff-aware session-gate selection
+  (`check --session-log`; diff-derived card in kit CI + the planted
+  `substrate-gate.yml`; mtime shim deleted); reflection-miner line-start
+  markers (mid-prose 💡/⚑ fragments no longer junk lessons); guard-recipe
+  convention (function + file + test anchors in friction→guard card
+  entries); three B4 `shipped` idea rows; suite 611 → 618.
 - **#18 — KL-6 (unblocked half)**: the B4 ideas-frontmatter convention +
   `scripts/check_idea_index.py` in kit-quality (grammar · outcome
   consistency · 30-day survive window · cohort-key filenames · README index

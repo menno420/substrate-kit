@@ -266,7 +266,13 @@ def _adopt_sessions_readme(markers: list[dict[str, str]]) -> str:
         "drafted section appended. A draft is a starting point, not a "
         "close-out: verify the evidence, resolve every `[[fill:]]` slot, "
         "then flip the Status badge — unresolved slots (and the `drafted` "
-        "status) keep the card counting incomplete.\n"
+        "status) keep the card counting incomplete.\n\n"
+        "**Guard recipes:** when a card records friction-to-guard material "
+        "for a *later* session (a deferred fix, a flagged footgun), carry a "
+        "one-line **guard recipe** naming the code anchors — function + file "
+        "+ the test target — not just the symptom. A symptom-only entry "
+        "costs the next session a re-derivation grep pass; a recipe lets it "
+        "land the guard in minutes.\n"
     )
 
 
@@ -305,7 +311,7 @@ def ci_snippet() -> str:
 LIVE_CI_RELPATH = ".github/workflows/substrate-gate.yml"
 
 
-def live_ci_workflow(interpreter: str = "python3") -> str:
+def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".sessions") -> str:
     """Return the LIVE (uncommented) CI gate workflow — the locked door.
 
     Unlike :func:`ci_snippet` (a commented example the host installs by hand),
@@ -315,11 +321,18 @@ def live_ci_workflow(interpreter: str = "python3") -> str:
     so the merge is **held red** until the session's journal is written and the
     whole hygiene suite passes. This is the forcing function that makes the
     memory ritual non-optional: a nag can be ignored, a failing required check
-    cannot. `fetch-depth: 0` gives the checkout full history (the gate itself is
-    git-free, but hosts commonly extend this workflow with diff-aware steps).
+    cannot. `fetch-depth: 0` gives the checkout the history the diff needs.
     A docs-only or bot PR that shouldn't need a session card is handled by the
     host adding a `paths-ignore:` or a label carve-out — kept strict by default
     on purpose (the discipline is the point).
+
+    The gate step is **PR-diff-aware**: a fresh CI checkout flattens every file
+    mtime to checkout time, so the engine's newest-by-mtime card guess is
+    arbitrary in CI (the kit's own CI once carried a git-mtime-restore shim for
+    exactly this). The workflow instead derives the card from what the PR/push
+    diff touches under ``sessions_dir`` and passes it via
+    ``check --session-log``; when the diff names no card the argument is
+    simply omitted and the engine's mtime fallback applies (fail-open).
     """
     return (
         "# substrate-kit enforcement gate (LIVE — installed by "
@@ -343,7 +356,22 @@ def live_ci_workflow(interpreter: str = "python3") -> str:
         "        with:\n"
         '          python-version: "3.x"\n'
         "      - name: substrate gate (docs + session-log required)\n"
-        f"        run: {interpreter} bootstrap.py check --strict --require-session-log\n"
+        "        # Gate on the session card THIS PR/push touches (CI flattens\n"
+        "        # mtimes, so the engine's newest-by-mtime guess is unreliable\n"
+        "        # here). No card in the diff -> no --session-log argument ->\n"
+        "        # the engine's mtime fallback (fail-open).\n"
+        "        run: |\n"
+        '          if [ -n "${{ github.base_ref }}" ]; then\n'
+        '            range="origin/${{ github.base_ref }}...HEAD"\n'
+        "          else\n"
+        '            range="${{ github.event.before }}..${{ github.sha }}"\n'
+        "          fi\n"
+        '          card="$(git diff --name-only --diff-filter=d "$range" -- '
+        f"'{sessions_dir}/*.md' ':!{sessions_dir}/README.md' 2>/dev/null "
+        '| tail -1)"\n'
+        '          echo "session gate card: ${card:-<none - mtime fallback>}"\n'
+        f"          {interpreter} bootstrap.py check --strict --require-session-log"
+        ' ${card:+--session-log "$card"}\n'
     )
 
 
@@ -485,7 +513,10 @@ def adopt(
         _adopt_plant(
             root / LIVE_CI_RELPATH,
             LIVE_CI_RELPATH,
-            live_ci_workflow(config.interpreter_for_checks or "python3"),
+            live_ci_workflow(
+                config.interpreter_for_checks or "python3",
+                sessions_dir=config.sessions_dir,
+            ),
             report,
         )
 

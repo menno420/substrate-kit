@@ -53,6 +53,21 @@ workflow refuses to publish a version that has no section in this file.
   `merge=union` gitattribute so parallel sessions' append-only rows never
   conflict.
 
+- **Explicit + diff-aware session-gate card selection** (groomed-ideas-1 —
+  MINOR, new CLI surface): `check --session-log <file>` gates on the named
+  card instead of the newest-by-mtime guess, which a fresh CI checkout
+  silently degrades (every mtime flattens to checkout time); a missing named
+  file counts as an absent log, never a silent fallback. The kit's own
+  `ci.yml` and the planted `substrate-gate.yml` (`adopt --wire-enforcement`)
+  now derive the card from what the PR/push diff touches and pass it
+  explicitly — the git-mtime-restore CI shim is deleted kit-side and never
+  travels to consumers. No argument → mtime selection unchanged (fail-open,
+  backward-compatible). Companion conventions in the same PR: the reflection
+  miner only harvests 💡/⚑ lines *led* by the marker (mid-prose
+  cross-references were mined as junk lessons), and session cards carry
+  **guard recipes** (function + file + test anchors) for deferred
+  friction→guard entries (both `.sessions/README`s).
+
 - **The `friction` verb + outbox** (band KL-4, plan §9.1 — MINOR, new CLI
   capability): `friction export` collects the install's ⚑ friction records
   (reflection buffer + a full session-log scan, deduplicated — D-14), wraps

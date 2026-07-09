@@ -482,3 +482,32 @@ def test_dist_version_parses_the_header_stamp():
     header = '"""substrate-kit bootstrap v1.2.3 — GENERATED, DO NOT EDIT.\nrest'
     assert dist_version(header) == "1.2.3"
     assert dist_version('"""no stamp here"""') is None
+
+
+# ---------------------------------------------------------------------------
+# Diff-aware gate selection + guard-recipe convention (groomed-ideas-1)
+# ---------------------------------------------------------------------------
+
+
+def test_live_ci_workflow_selects_the_card_from_the_diff():
+    text = live_ci_workflow()
+    # The gate step derives the card from what the PR/push diff touches and
+    # passes it explicitly — a fresh checkout flattens mtimes, so the engine's
+    # newest-by-mtime guess is unreliable in CI (the mtime-restore-shim trap).
+    assert "--session-log" in text
+    assert "git diff --name-only" in text
+    assert "'.sessions/*.md'" in text
+    # No card in the diff -> the argument is omitted (the engine falls back).
+    assert '${card:+--session-log "$card"}' in text
+    # A custom sessions_dir threads through, README excluded from selection.
+    custom = live_ci_workflow(sessions_dir="journal")
+    assert "'journal/*.md'" in custom
+    assert ":!journal/README.md" in custom
+
+
+def test_sessions_readme_carries_the_guard_recipe_convention(tmp_path):
+    root, config, _ = _adopt_into(tmp_path)
+    text = (root / config.sessions_dir / "README.md").read_text(encoding="utf-8")
+    # Friction->guard entries name their code anchors, not just the symptom.
+    assert "Guard recipes" in text
+    assert "function + file" in text
