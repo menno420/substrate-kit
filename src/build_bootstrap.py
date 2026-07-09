@@ -64,6 +64,7 @@ MODULE_ORDER = (
     "derive.py",
     "contextpack.py",
     "adopt.py",
+    "upgrade.py",
     "cli.py",
 )
 # Intra-package imports are dropped: in the concatenated file the referenced
