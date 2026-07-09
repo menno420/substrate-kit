@@ -124,6 +124,24 @@ def test_capability_manifest_planted_with_discovery_rule(tmp_path):
     assert "docs/CAPABILITIES.md" in orientation
 
 
+def test_owner_action_format_planted_and_wired(tmp_path):
+    # ORDER 008: the planted control/README.md carries the OWNER-ACTION item
+    # format (six REQUIRED fields, attempted-or-exact-wall), and the
+    # constitution + collaboration model carry the routing doctrine.
+    root, _, _ = _adopt_into(tmp_path)
+    readme = (root / "control" / "README.md").read_text(encoding="utf-8")
+    assert "OWNER-ACTION" in readme
+    for field in ("WHAT:", "WHERE:", "HOW:", "WHY-IT-MATTERS:", "UNBLOCKS:", "VERIFIED-NEEDED:"):
+        assert field in readme
+    assert "assumption-based ask" in readme
+    constitution = (root / "CONSTITUTION.md").read_text(encoding="utf-8")
+    assert "OWNER-ACTION" in constitution
+    assert "VERIFIED-NEEDED" in constitution
+    collab = (root / "docs" / "collaboration-model.md").read_text(encoding="utf-8")
+    assert "Routing work to the owner" in collab
+    assert "VERIFIED-NEEDED" in collab
+
+
 def test_derived_slots_render_and_stay_provisional(tmp_path):
     root, config, lines = _adopt_into(tmp_path)
     backend = JsonStateBackend(root / config.state_dir / "state.json")

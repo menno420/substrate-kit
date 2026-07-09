@@ -115,6 +115,16 @@ def test_skill_document_wraps_body():
     assert "# question\n\nBODY TEXT\n" in doc
 
 
+def test_session_close_carries_owner_ask_hygiene():
+    # ORDER 008: the close procedure re-grades every ⚑ needs-owner ask
+    # against the OWNER-ACTION fields (attempted-or-exact-wall) so unclear
+    # or stale asks never survive a session close silently.
+    body = get_skill("session-close")["body"]
+    assert "OWNER-ACTION" in body
+    assert "VERIFIED-NEEDED" in body
+    assert "Withdraw stale asks" in body
+
+
 def test_session_close_carries_capability_nudge():
     # ORDER 006: the close procedure asks the capability-delta question and
     # points at the planted manifest, so discoveries get appended same

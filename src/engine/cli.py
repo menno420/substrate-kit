@@ -37,6 +37,7 @@ from engine.checks.allowlist import apply_allowlist, load_allowlist
 from engine.checks.check_docs import Finding, run_doc_checks
 from engine.checks.check_engagement import check_engagement
 from engine.checks.check_namespace import check_namespace
+from engine.checks.check_owner_actions import check_owner_actions
 from engine.checks.check_status_current import check_status_current
 from engine.checks.check_orientation_budget import check_orientation_budget
 from engine.checks.check_seam_authority import check_seam_authority
@@ -669,6 +670,14 @@ def cmd_check(
         target,
         status_files=config.heartbeat_files,
     )
+    # Owner-action quality (ORDER 008): advisory-only by contract, like the
+    # staleness warning — an unstructured ⚑ needs-owner ask nags on every run
+    # (both lanes: the asks live in the heartbeat files the fast lane already
+    # validates) but never reds a required check (see the checker docstring).
+    owner_ask_advisories = check_owner_actions(
+        target,
+        status_files=config.heartbeat_files,
+    )
     if status_only:
         # --status-only: the fast lane's scoped gate (see docstring). Only
         # the heartbeat checker runs; everything downstream (allowlist,
@@ -733,6 +742,24 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=status_advisories,
+        )
+    if owner_ask_advisories:
+        # Same warn-only contract as the staleness advisory above: surfaced +
+        # telemetry-recorded, never counted toward the exit code — the owner-
+        # action format migrates by nag, not by locked door (ORDER 008).
+        _emit(
+            f"check: {len(owner_ask_advisories)} owner-action advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in owner_ask_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=owner_ask_advisories,
         )
 
     log_missing: list[str] = []
