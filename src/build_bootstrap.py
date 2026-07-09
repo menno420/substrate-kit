@@ -46,6 +46,9 @@ MODULE_ORDER = (
     # Before hooks/stop_check.py (which references its heartbeat_relpaths) and
     # cli.py: only needs check_docs.Finding, defined above.
     "checks/check_status_current.py",
+    # After check_status_current.py: reuses its heartbeat_relpaths + path
+    # constants (ORDER 008 owner-action quality band).
+    "checks/check_owner_actions.py",
     "ledger.py",
     "loop/kpis.py",
     "loop/reflections.py",

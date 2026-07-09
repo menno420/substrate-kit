@@ -75,6 +75,32 @@ the latest `check --strict` verdict on this tree; `engaged:` = the post-adopt en
 (`yes` once no UNRENDERED banner/slot remains, live CI runs the gate, and the session loop
 has engaged).
 
+## ⚑ needs-owner — the OWNER-ACTION item format (quality contract)
+
+The owner is the scarcest resource in the program: every ask routed to the owner costs
+attention, and an unclear or unnecessary ask stalls your own lane on top of burning his.
+**Before routing ANYTHING to the owner, try it yourself or cite the exact wall** — an
+assumption-based ask ("agents probably can't do X") is banned; the bar is the capability
+ledger (`docs/CAPABILITIES.md`) plus one real attempt with the captured error.
+
+Every ⚑ needs-owner item carries ALL of these REQUIRED fields — inline on the item, or as a
+structured block the item links to:
+
+```markdown
+⚑ OWNER-ACTION
+WHAT: <one plain sentence, zero jargon — the thing the owner does>
+WHERE: <exact click path or URL>
+HOW: <paste-ready text/values where applicable, or "click only">
+WHY-IT-MATTERS: <one sentence, in product terms>
+UNBLOCKS: <what starts moving the moment it's done>
+VERIFIED-NEEDED: <the attempt you made + the exact error/wall proving only the owner can do
+this — never an assumption>
+```
+
+Hygiene: **expire or withdraw stale asks every session** (an answered or obsolete ask left in
+the list is drift), and **fewer, clearer asks beat complete lists**. `check` warns — advisory,
+never exit-affecting — when a non-`none` ⚑ needs-owner list lacks these fields.
+
 ## `inbox.md` order format (manager-written, append-only)
 
 ```markdown
