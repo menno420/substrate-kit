@@ -126,6 +126,27 @@
   (`score-m1-mutation-artifacts` · `t5-headless-guard-surface` ·
   `model-line-checker-false-red`, all `-2026-07-09.md`) for run-2 fixes;
   a trend claim still needs ≥3 paired runs (KF-8).
+- **B1's SECOND FIRING is RECORDED — VERDICT: FAIL (strict F-5, advisory
+  per KF-5)** (run `2026-07-09-run02`, judge claude-opus-4-8, independent;
+  row 2 of `bench/results/cold-start/index.json` + the committed run dir,
+  PR #44). First **clean** M1 measurement (the #40-fixed scorer, all six
+  values scripted): **M1 regressed** — OFF wins T2 (556 vs 1706) and T4
+  (1481 vs 2272), T5 near-tie (511 vs 531) — while **ON wins M2** (the T4
+  session resumed from a genuinely-used handoff card; OFF re-derived from
+  source) **and M3** (durable write-back, twice), every ON session far
+  inside the 7k budget (max 2,272), zero unrecoverable errors. The honest
+  shape, in the judge's words: continuity + write-back wins at a bounded,
+  in-budget orientation cost; a purposive reading (the 7k budget as M1's
+  yardstick) would PASS, but the pinned rubric text doesn't license it —
+  strict FAIL stands. **Family at 2 rows; a trend claim still needs ≥3
+  (KF-8).** Run-2 follow-ups filed in `docs/ideas/`: the rubric F-5
+  wording **owner decision brief** (`rubric-f5-none-regressing-wording` —
+  pin path, owner-gated), the make_seed `yield`-keyword bug (pin-path fix
+  → `do-not-automerge`; run-2's seed deviated 424242 → 424243 by rule),
+  the prepare-vs-engagement-gate arc + the `render --live` CLAUDE.md gap
+  (ordinary lane), and run-2 evidence added to `t5-headless-guard-surface`
+  (guard probe n/a again on the fully-ENGAGED arm + the new last-card
+  gate gap).
 - **KL-7 (the adopt-engage gate) is DONE** (owner-directed P0 off the
   independent fleet review, superbot `docs/eap/fleet-review-2026-07-09.md`
   §4; D-0006; PR #25): both fresh adopters had stranded identically —
@@ -367,13 +388,17 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
    arrives. *(The cut-v1.1.0/v1.2.0/v1.3.0 items are DONE — PRs
    #29/#32/#41 + their dispatch runs; see the stability-baseline
    bullets.)*
-2. **B1 run-2 on the fixed scorer** (the score_m1 + telemetry fixes
-   shipped in #40): fire the paired A/B run so M1 pairs are clean;
-   remaining harness follow-ups — the T5 headless guard-surface protocol
-   fix (⚑ `bench/tasks/` is a pin path → `do-not-automerge` owner
-   review) and the Model-line false-red `_adopt_sessions_readme` fix
-   (guard recipe in
-   `docs/ideas/model-line-checker-false-red-2026-07-09.md`).
+2. **B1 run-3 — AFTER the run-2 seed/harness follow-ups land** *(run-2
+   is DONE — fired on the fixed scorer and recorded, strict-F-5 FAIL
+   advisory, PR #44; family at 2 rows, KF-8 needs ≥3 for any trend)*:
+   land the make_seed `yield`-keyword fix + prepare-runs-seed-tests
+   smoke (⚑ pin path → `do-not-automerge`), the prepare engagement-arc
+   scripting + `render --live` CLAUDE.md gap (ordinary lane), the T5
+   guard-surface shape choice (pin path), and the Model-line false-red
+   `_adopt_sessions_readme` fix (guard recipes in the idea files); the
+   rubric F-5 wording ⚑ owner decision
+   (`rubric-f5-none-regressing-wording-2026-07-09.md`) should be ruled
+   before run-3 is judged so the verdict lands under the ruled reading.
 3. **Remaining KL-6 blocked pieces, as gates open**: kit-lab console lane
    real data (needs #17 **and** P11-or-P13 — until then the lane stays
    declared-with-contract, never fake rows); B2/B3/B4 sweeps in the loop
@@ -386,6 +411,18 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ## Recently shipped (newest first)
 
+- **#44 — B1 run-2 record (second cold-start row)**: run
+  `2026-07-09-run02`'s judged row appended via `run_ab.py record`
+  (append-only law) — **VERDICT: FAIL** under strict F-5 (first clean M1
+  measurement regressed: ON 1706/2272/531 vs OFF 556/1481/511) while ON
+  wins M2 + M3 inside the 7k budget, zero unrecoverable errors; advisory
+  per KF-5. Raw run dir committed at
+  `bench/results/cold-start/2026-07-09-run02/` (judge report, manifest,
+  s-row facts, 6× transcript/diff/m1.json — plan §5.0). Follow-up ideas
+  filed (rubric F-5 owner decision brief · make_seed yield-keyword bug ·
+  prepare engagement arc · render CLAUDE.md gap) + run-2 evidence added
+  to the T5 guard-surface idea; this ledger + CHANGELOG. ⚑ Recorder ≠
+  judge: the row is claude-opus-4-8's verbatim verdict.
 - **#41 — ORDER 003: adopter-visibility band + v1.3.0 cut**: the `kit:`
   heartbeat self-report line (planted status seed, rendered with the real
   `KIT_VERSION`; contract format block updated in template + local copy);
