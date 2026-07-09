@@ -43,6 +43,9 @@ MODULE_ORDER = (
     "checks/check_namespace.py",
     "checks/check_seam_authority.py",
     "checks/check_orientation_budget.py",
+    # Before hooks/stop_check.py (which references its heartbeat_relpaths) and
+    # cli.py: only needs check_docs.Finding, defined above.
+    "checks/check_status_current.py",
     "ledger.py",
     "loop/kpis.py",
     "loop/reflections.py",
@@ -68,6 +71,9 @@ MODULE_ORDER = (
     "derive.py",
     "contextpack.py",
     "adopt.py",
+    # After adopt.py on purpose: the engagement gate scans the ADOPT_PLAN
+    # destinations and keys off adopt's UNRENDERED banner marker.
+    "checks/check_engagement.py",
     "upgrade.py",
     "cli.py",
 )

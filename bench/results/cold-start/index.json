@@ -1,0 +1,52 @@
+[
+  {
+    "date": "2026-07-09",
+    "kit_version": "1.0.0",
+    "run_id": "2026-07-09-run01",
+    "tasks": [
+      "T2",
+      "T4",
+      "T5"
+    ],
+    "m1_on": {
+      "T2": 943,
+      "T4": 1840,
+      "T5": 378
+    },
+    "m1_off": {
+      "T2": 565,
+      "T4": 0,
+      "T5": 225
+    },
+    "m2": "ON",
+    "m3": "ON",
+    "verdict": "PASS",
+    "judge_model": "claude-opus-4-8",
+    "notes": "ON wins M2 (resumed from used handoff) + M3 (durable write-back); M1 unmeasurable (all 3 pairs scorer-tainted); T5 guard probe n/a headless"
+  },
+  {
+    "date": "2026-07-09",
+    "kit_version": "1.3.0",
+    "run_id": "2026-07-09-run02",
+    "tasks": [
+      "T2",
+      "T4",
+      "T5"
+    ],
+    "m1_on": {
+      "T2": 1706,
+      "T4": 2272,
+      "T5": 531
+    },
+    "m1_off": {
+      "T2": 556,
+      "T4": 1481,
+      "T5": 511
+    },
+    "m2": "ON",
+    "m3": "ON",
+    "verdict": "FAIL",
+    "judge_model": "claude-opus-4-8",
+    "notes": "Strict F-5 FAIL: M1 regressed (clean measurement) while ON wins M2 (handoff used) + M3 (durable write-back) inside 7k budget, zero unrecoverable errors; T5 guard probe n/a headless; seed 424243 (424242 = make_seed yield-keyword bug)"
+  }
+]

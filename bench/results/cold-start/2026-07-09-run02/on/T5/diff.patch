@@ -1,0 +1,13 @@
+diff --git a/cedarvisit/cli.py b/cedarvisit/cli.py
+index e9a91bb..b67d868 100644
+--- a/cedarvisit/cli.py
++++ b/cedarvisit/cli.py
+@@ -38,7 +38,7 @@ def main(argv=None):
+         for r in records:
+             print(f"{r['category']}: {r['duration']} {r['note']}".rstrip())
+     elif args.command == "total":
+-        print(ops.total_duration(records))
++        print(f"{ops.total_duration(records):.2f}")
+     elif args.command == "filter":
+         for r in ops.filter_by_category(records, args.category):
+             print(f"{r['category']}: {r['duration']}")

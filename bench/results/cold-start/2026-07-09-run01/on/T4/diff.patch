@@ -1,0 +1,271 @@
+diff --git a/.sessions/2026-07-09-category-budgets.md b/.sessions/2026-07-09-category-budgets.md
+new file mode 100644
+index 0000000..75548c1
+--- /dev/null
++++ b/.sessions/2026-07-09-category-budgets.md
+@@ -0,0 +1,76 @@
++# 2026-07-09 — per-category budgets in `report`
++
++> **Status:** `complete`
++> **Model:** claude-fable-5
++
++## What shipped
++
++- `galereading/store.py` — budgets persist in a **separate** `budgets.json`
++  (`DEFAULT_BUDGETS_PATH`, `load_budgets` → empty dict when no file,
++  `save_budgets`), mirroring the records seam and leaving existing
++  `readings.json` data untouched.
++- `galereading/ops.py` — `set_budget(budgets, category, amount)` (mirrors
++  `add_record`: mutates + returns the stored float) and
++  `is_over_budget(budgets, category, subtotal)` (True only when a budget
++  exists **and** subtotal strictly exceeds it — exactly-at-budget is not
++  over; no budget is never over).
++- `galereading/cli.py` — new `budget <category> <amount>` subcommand
++  (prints `budget set.`, argparse `type=float` rejects non-numeric with
++  exit 2); `report` now loads budgets and appends
++  ` (OVER budget <amount>)` to a category line only when over — the base
++  `<category>: <count> records, <total>` format and the `overall:` line
++  are unchanged, so prior consumers keep parsing.
++- `tests/test_galereading.py` — 7 new tests (19 total): set_budget
++  stores float, is_over_budget exceeded / exact-boundary / no-budget,
++  CLI budget persists to `budgets.json`, CLI rejects non-numeric amount,
++  CLI report flags the over-budget category and leaves the at-budget one
++  unflagged.
++- `README.md` + `cli.py` module docstring updated.
++
++Verified: `python3 -m pytest tests/` (19 passed) and drove the real CLI in a
++scratch dir — no-budgets report is byte-identical to before, over/at-budget
++flagging, `budgets.json` contents, and invalid-amount exit code all behave
++as specified.
++
++Design notes (decide-and-flag): budgets match categories **exactly**, same
++as every other category comparison in the codebase today (see the
++case-insensitivity bug below — fix both seams together when that lands).
++"Over" is strict `>`. No `budget` list/remove verbs yet — scope was set +
++flag; re-running `budget <cat> <amt>` overwrites, which covers editing.
++
++## 💡 Session idea
++
++`report` knows the budget but only says *that* you're over, not *by how
++much or what's left*. A one-line-per-category `remaining` readout (or
++`(OVER by 5.0)` / `(12.0 left of 15.0)` phrasing) would make the report
++actionable at a glance — the delta is already computed at that call site,
++it's just not printed.
++
++## ⟲ Previous-session review
++
++The report-command session (ed9ece9) was exemplary to build on: its session
++card's "same key shape as `top_categories`" note and its guard-recipe
++section made this session's conventions unambiguous — I extended `ops` /
++`cli` / tests exactly along its seams. One improvement it enables but
++didn't state: its card documented the *output format contract*
++("machine-parseable") only in prose; a comment at the `report` print site
++would keep a future editor from breaking the format without seeing the
++card. Workflow improvement: session cards that introduce an output format
++should name it as a contract in the code, not only in `.sessions/`.
++
++## Guard recipe / follow-ups (not done, deliberately out of scope)
++
++- Carried from previous card, now with one more seam: `filter_by_category`
++  (galereading/ops.py) exact-matches despite docstring/README promising
++  case-insensitive. When fixing, decide whether budget lookup
++  (`is_over_budget` / `set_budget` keys) should fold case the same way —
++  today `budget Food 15` silently never flags `food` spend. Test targets:
++  `test_filter_by_category_case_insensitive`,
++  `test_is_over_budget_case_[in]sensitive` in `tests/test_galereading.py`.
++- Still open from previous card: `top --limit` accepts negative ints;
++  reject `limit < 0` at the parser with a test. Same class now exists for
++  `budget`: a negative amount is accepted and flags every spend — decide
++  whether to reject `amount < 0` at the parser alongside it.
++- `store.load_budgets` inherits the `load_records` trust problem (previous
++  session's idea): corrupt `budgets.json` raises a raw `JSONDecodeError`.
++  One load-time validation seam would harden both.
+diff --git a/README.md b/README.md
+index 53d1e8c..d4f0469 100644
+--- a/README.md
++++ b/README.md
+@@ -3,6 +3,9 @@
+ A tiny reading-log CLI: `post` records with a category and
+ value, then `list`, `total`, `filter <category>` (case-insensitive),
+ `top`, and `report` them (`report` prints per-category counts and
+-totals, highest total first, plus an overall line).
++totals, highest total first, plus an overall line). Set a
++per-category budget with `budget <category> <amount>` (stored in
++`budgets.json`); `report` appends `(OVER budget <amount>)` to any
++category whose total strictly exceeds its budget.
+ 
+ Run the tests with `python3 -m pytest tests/`.
+diff --git a/galereading/cli.py b/galereading/cli.py
+index 4f501c3..f77b335 100644
+--- a/galereading/cli.py
++++ b/galereading/cli.py
+@@ -1,6 +1,8 @@
+ """galereading — a tiny reading-log CLI.
+ 
+-Commands: post (add a record) · list · total · filter <category> · top · report.
++Commands: post (add a record) · list · total · filter <category> · top ·
++budget <category> <amount> (set a per-category budget) · report
++(flags categories over budget).
+ """
+ 
+ import argparse
+@@ -22,6 +24,9 @@ def main(argv=None):
+     filter_p.add_argument("category")
+     top_p = sub.add_parser("top", help="highest-value categories")
+     top_p.add_argument("--limit", type=int, default=3)
++    budget_p = sub.add_parser("budget", help="set a per-category budget")
++    budget_p.add_argument("category")
++    budget_p.add_argument("amount", type=float)
+     sub.add_parser("report", help="per-category counts and totals")
+     args = parser.parse_args(argv)
+ 
+@@ -41,9 +46,18 @@ def main(argv=None):
+     elif args.command == "top":
+         for category, subtotal in ops.top_categories(records, args.limit):
+             print(f"{category}: {subtotal}")
++    elif args.command == "budget":
++        budgets = store.load_budgets()
++        ops.set_budget(budgets, args.category, args.amount)
++        store.save_budgets(budgets)
++        print("budget set.")
+     elif args.command == "report":
++        budgets = store.load_budgets()
+         for category, count, subtotal in ops.category_report(records):
+-            print(f"{category}: {count} records, {subtotal}")
++            line = f"{category}: {count} records, {subtotal}"
++            if ops.is_over_budget(budgets, category, subtotal):
++                line += f" (OVER budget {budgets[category]})"
++            print(line)
+         print(f"overall: {len(records)} records, {ops.total_value(records)}")
+     return 0
+ 
+diff --git a/galereading/ops.py b/galereading/ops.py
+index 0fc994e..8e0f977 100644
+--- a/galereading/ops.py
++++ b/galereading/ops.py
+@@ -36,6 +36,20 @@ def category_report(records):
+     return sorted(rows, key=lambda row: (-row[2], row[0]))
+ 
+ 
++def set_budget(budgets, category, amount):
++    """Set the budget for a category and return the stored amount."""
++    budgets[category] = float(amount)
++    return budgets[category]
++
++
++def is_over_budget(budgets, category, subtotal):
++    """Return True when a budget exists for ``category`` and ``subtotal`` exceeds it.
++
++    Exactly at budget is not over; a category with no budget is never over.
++    """
++    return category in budgets and subtotal > budgets[category]
++
++
+ def top_categories(records, limit=3):
+     """Return the ``limit`` categories with the highest summed value."""
+     totals = {}
+diff --git a/galereading/store.py b/galereading/store.py
+index 147ad59..acc75ce 100644
+--- a/galereading/store.py
++++ b/galereading/store.py
+@@ -1,9 +1,10 @@
+-"""JSON-file persistence for galereading — one list of reading records."""
++"""JSON-file persistence for galereading — reading records and budgets."""
+ 
+ import json
+ from pathlib import Path
+ 
+ DEFAULT_PATH = Path("readings.json")
++DEFAULT_BUDGETS_PATH = Path("budgets.json")
+ 
+ 
+ def load_records(path=DEFAULT_PATH):
+@@ -17,3 +18,16 @@ def load_records(path=DEFAULT_PATH):
+ def save_records(records, path=DEFAULT_PATH):
+     """Write the reading records back to disk."""
+     Path(path).write_text(json.dumps(records, indent=2), encoding="utf-8")
++
++
++def load_budgets(path=DEFAULT_BUDGETS_PATH):
++    """Return the stored per-category budgets (empty dict when no file)."""
++    path = Path(path)
++    if not path.exists():
++        return {}
++    return json.loads(path.read_text(encoding="utf-8"))
++
++
++def save_budgets(budgets, path=DEFAULT_BUDGETS_PATH):
++    """Write the per-category budgets back to disk."""
++    Path(path).write_text(json.dumps(budgets, indent=2), encoding="utf-8")
+diff --git a/tests/test_galereading.py b/tests/test_galereading.py
+index 62782cf..55e3026 100644
+--- a/tests/test_galereading.py
++++ b/tests/test_galereading.py
+@@ -2,7 +2,7 @@
+ 
+ import pytest
+ 
+-from galereading import cli, ops
++from galereading import cli, ops, store
+ 
+ 
+ def _sample():
+@@ -59,6 +59,24 @@ def test_category_report_empty():
+     assert ops.category_report([]) == []
+ 
+ 
++def test_set_budget_stores_float():
++    budgets = {}
++    assert ops.set_budget(budgets, "food", "15") == 15.0
++    assert budgets == {"food": 15.0}
++
++
++def test_is_over_budget_true_when_exceeded():
++    assert ops.is_over_budget({"food": 15.0}, "food", 20.0)
++
++
++def test_is_over_budget_false_at_exact_budget():
++    assert not ops.is_over_budget({"food": 20.0}, "food", 20.0)
++
++
++def test_is_over_budget_false_without_budget():
++    assert not ops.is_over_budget({}, "food", 20.0)
++
++
+ def test_report_cli_output(tmp_path, monkeypatch, capsys):
+     monkeypatch.chdir(tmp_path)
+     cli.main(["post", "food", "12.5", "--note", "lunch"])
+@@ -84,3 +102,33 @@ def test_report_cli_rejects_extra_arguments(tmp_path, monkeypatch, capsys):
+     with pytest.raises(SystemExit) as excinfo:
+         cli.main(["report", "food"])
+     assert excinfo.value.code == 2
++
++
++def test_budget_cli_persists(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    assert cli.main(["budget", "food", "15"]) == 0
++    assert capsys.readouterr().out == "budget set.\n"
++    assert store.load_budgets() == {"food": 15.0}
++
++
++def test_budget_cli_rejects_non_numeric_amount(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit) as excinfo:
++        cli.main(["budget", "food", "lots"])
++    assert excinfo.value.code == 2
++
++
++def test_report_cli_flags_over_budget(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["post", "food", "12.5", "--note", "lunch"])
++    cli.main(["post", "travel", "30.0"])
++    cli.main(["post", "food", "7.5"])
++    cli.main(["budget", "food", "15"])
++    cli.main(["budget", "travel", "30"])
++    capsys.readouterr()
++    assert cli.main(["report"]) == 0
++    assert capsys.readouterr().out == (
++        "travel: 1 records, 30.0\n"
++        "food: 2 records, 20.0 (OVER budget 15.0)\n"
++        "overall: 3 records, 50.0\n"
++    )

@@ -28,7 +28,7 @@ DEFAULT_STATE_DIR = ".substrate"
 # (`kit_version`) + state by `adopt`/`upgrade`. Bump together with
 # `pyproject.toml` `[project] version` (a test pins them equal) and a new
 # CHANGELOG.md section (the release workflow refuses to publish without one).
-KIT_VERSION = "1.0.0"
+KIT_VERSION = "1.4.0"
 
 
 def _new_project_id() -> str:
@@ -93,6 +93,20 @@ def _default_namespace() -> dict:
 def _default_review_seam() -> dict:
     """Return the review-seam knobs (provisioned, not wired — no live reviewer)."""
     return {"reviewer": None}
+
+
+def _default_heartbeat_files() -> list[str]:
+    """Return the control-heartbeat file(s) the status checker validates.
+
+    One entry — ``control/status.md`` — for the normal one-Project-per-repo
+    shape. A SHARED repo hosting several Projects lists one file per lane
+    (the superbot-games pattern, inbox ORDER 004: e.g.
+    ``control/status-mining.md`` + ``control/status-exploration.md``): the
+    one-writer-per-file rule is preserved *per lane*, and every listed
+    heartbeat must beat. An empty list falls back to the default at every
+    consumer (a misconfiguration must not silently disable the gate).
+    """
+    return ["control/status.md"]
 
 
 def _default_badge_tokens() -> list[str]:
@@ -163,6 +177,7 @@ class Config:
     namespace: dict = field(default_factory=_default_namespace)
     seams: list[dict] = field(default_factory=list)
     review_seam: dict = field(default_factory=_default_review_seam)
+    heartbeat_files: list[str] = field(default_factory=_default_heartbeat_files)
 
     def to_json(self) -> str:
         """Serialise the config to indented, key-sorted JSON."""

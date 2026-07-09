@@ -35,7 +35,9 @@ from engine.adopt import (
 from engine.agents.agents import AGENTS, agent_document, agent_relpath
 from engine.checks.allowlist import apply_allowlist, load_allowlist
 from engine.checks.check_docs import Finding, run_doc_checks
+from engine.checks.check_engagement import check_engagement
 from engine.checks.check_namespace import check_namespace
+from engine.checks.check_status_current import check_status_current
 from engine.checks.check_orientation_budget import check_orientation_budget
 from engine.checks.check_seam_authority import check_seam_authority
 from engine.checks.check_session_log import check_log, latest_session_log
@@ -591,6 +593,11 @@ def _extra_check_findings(target: Path, config: Config) -> list:
     docs_root = target / config.docs_root
     if any((docs_root / doc).exists() or (target / doc).exists() for doc in boot_docs):
         findings += check_orientation_budget(target, config)
+    # The post-adopt ENGAGEMENT gate (KL-7): red in an adopted host until the
+    # planted docs are rendered, a CI workflow runs the check, and the session
+    # loop has engaged. Self-gating on adoption evidence — a bare tree adds
+    # nothing here.
+    findings += check_engagement(target, config)
     return findings
 
 
@@ -600,8 +607,20 @@ def cmd_check(
     *,
     require_session_log: bool = False,
     session_log: Path | None = None,
+    status_only: bool = False,
 ) -> int:
     """Run every hygiene checker against ``target``.
+
+    ``status_only`` (CLI ``--status-only``) scopes the run to the control/
+    status heartbeat checker alone — the CI control fast lane's gate. A
+    control-only diff edits exactly the files ``check_status_current``
+    validates, so the lane must not skip that one checker (a
+    heartbeat-deleting control PR would merge green and pre-redden the NEXT
+    unrelated full-suite PR — the fleet-review 2026-07-09 finding), but it
+    must not pay the heavy suite either. Stdlib-only and session-log-free by
+    construction: heartbeat PRs carry no session card. The allowlist and
+    guard-fire telemetry apply exactly as in a full run, so a suppressed
+    status finding behaves identically on both lanes.
 
     Docs (badge/link/reachable), the decisions ledger + stamp discipline, the
     namespace/shadowing guard, the seam-authority fences, and the orientation
@@ -640,13 +659,31 @@ def cmd_check(
     """
     config = load_config(target)
     posture = "blocking" if strict else "advisory"
-    docs_root = target / config.docs_root
-    doc_findings = run_doc_checks(
-        docs_root,
-        config.badge_tokens,
-        config.readpath_docs,
+    # The control-protocol heartbeat (KL-8): static gate findings (missing /
+    # heartbeat-less status.md) ride the strict loop like every checker;
+    # wall-clock staleness is advisory-only and handled below — a required CI
+    # check must never red on time alone (see check_status_current's docstring).
+    # The validated path set is the host's configured heartbeat list (ORDER
+    # 004: multi-Project repos gate one status file per lane).
+    status_gate, status_advisories = check_status_current(
+        target,
+        status_files=config.heartbeat_files,
     )
-    doc_findings = list(doc_findings) + _extra_check_findings(target, config)
+    if status_only:
+        # --status-only: the fast lane's scoped gate (see docstring). Only
+        # the heartbeat checker runs; everything downstream (allowlist,
+        # guard fires, emit loop) is shared with the full run.
+        doc_findings = list(status_gate)
+    else:
+        docs_root = target / config.docs_root
+        doc_findings = list(
+            run_doc_checks(
+                docs_root,
+                config.badge_tokens,
+                config.readpath_docs,
+            )
+        )
+        doc_findings += _extra_check_findings(target, config) + status_gate
     entries, allow_findings = load_allowlist(target, config.state_dir)
     doc_findings, suppressed = apply_allowlist(doc_findings, entries)
     doc_findings += allow_findings
@@ -678,13 +715,42 @@ def cmd_check(
             posture=posture,
             findings=doc_findings,
         )
+    if status_advisories:
+        # Warn-only by contract: surfaced + telemetry-recorded, never counted
+        # toward the exit code (a stale heartbeat must not red a required CI
+        # check on wall-clock time alone — the Stop hook and this warning are
+        # the nag; the manager's dark-Project read is the consequence).
+        _emit(
+            f"check: {len(status_advisories)} control-status advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in status_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=status_advisories,
+        )
 
+    log_missing: list[str] = []
+    log_absent_fails = False
+    if status_only:
+        # The fast lane's scoped gate never touches the session-log seam: a
+        # control-only heartbeat PR carries no card by design (the lane's
+        # whole point), so gating on one here would deadlock every heartbeat.
+        if not doc_findings:
+            _emit("check: control-status check passed (--status-only).")
+            return 0
+        return 1 if strict else 0
     if session_log is not None:
         explicit = session_log if session_log.is_absolute() else target / session_log
         log = explicit if explicit.is_file() else None
     else:
         log = latest_session_log(target / config.sessions_dir)
-    log_missing: list[str] = check_log(log, config.session_markers) if log else []
+    log_missing = check_log(log, config.session_markers) if log else []
     # In gate mode an absent log is itself a failing condition, so it must feed
     # the exit code exactly like an incomplete one.
     log_absent_fails = log is None and require_session_log
@@ -1113,6 +1179,26 @@ def cmd_adopt(
     )
     for line in lines:
         _emit(f"adopt: {line}")
+    # KL-7 — the adopter is told, in the adopt output itself, exactly what the
+    # born-red engagement gate needs: the gate's findings ARE the checklist.
+    # KL-8 rider: the control-protocol gate findings (the just-planted seed
+    # status.md has no heartbeat yet) join the same checklist — "write your
+    # first real heartbeat" is part of engaging, same shape as the first card.
+    status_gate, _ = check_status_current(
+        target,
+        status_files=config.heartbeat_files,
+    )
+    engage = check_engagement(target, config) + status_gate
+    if engage:
+        _emit(
+            f"adopt: NOT ENGAGED — `check --strict` holds RED until these "
+            f"{len(engage)} item(s) are done:",
+        )
+        for finding in engage:
+            where = f"{finding.path}: " if finding.path else ""
+            _emit(f"adopt:   [{finding.kind}] {where}{finding.message}")
+    else:
+        _emit("adopt: ENGAGED — the post-adopt gate is green.")
     return 0
 
 
@@ -1656,6 +1742,16 @@ def build_parser() -> argparse.ArgumentParser:
             "absent log, never a silent fallback"
         ),
     )
+    check.add_argument(
+        "--status-only",
+        action="store_true",
+        help=(
+            "run ONLY the control/ status heartbeat checker — the CI control "
+            "fast lane's scoped gate: a control-only diff edits exactly the "
+            "files this checker validates, so the lane must still prove the "
+            "heartbeat parses (stdlib-only, session-log-free)"
+        ),
+    )
     return parser
 
 
@@ -1692,6 +1788,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.strict,
                 require_session_log=args.require_session_log,
                 session_log=args.session_log,
+                status_only=args.status_only,
             )
         if args.command == "answer":
             return cmd_answer(args.target, args.slot, " ".join(args.value))

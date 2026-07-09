@@ -58,6 +58,16 @@ ADOPT_PLAN: list[tuple[str, str]] = [
     ("question-router.md.tmpl", "docs/question-router.md"),
     ("ideas-README.md.tmpl", "docs/ideas/README.md"),
     ("session-journal.md.tmpl", ".session-journal.md"),
+    # The fleet coordination protocol (band KL-8, spec: superbot
+    # docs/planning/fleet-coordination-protocol-2026-07-09.md §2): committed
+    # git files are the only medium Projects share, so every adopted repo
+    # gets the control/ bus — the manager-written inbox, the project-written
+    # status heartbeat, and the local protocol contract. Root-level on
+    # purpose (a bus, not documentation): _adopt_dest's docs_root remap
+    # never applies.
+    ("control-README.md.tmpl", "control/README.md"),
+    ("control-inbox.md.tmpl", "control/inbox.md"),
+    ("control-status.md.tmpl", "control/status.md"),
 ]
 
 # State key holding {planted relpath: sha256 hex} for every doc the kit last
@@ -290,8 +300,14 @@ def ci_snippet() -> str:
         "#\n"
         "# `bootstrap.py check --strict` runs every kit checker in one pass:\n"
         "# docs hygiene (badges / links / reachability), session-log markers,\n"
-        "# namespace shadowing, seam authority, orientation budget, and the\n"
-        "# decision ledger.\n"
+        "# namespace shadowing, seam authority, orientation budget, the\n"
+        "# decision ledger, and the control/ status heartbeat.\n"
+        "#\n"
+        "# Coordination-only writes (control/** heartbeats) should skip heavy\n"
+        "# suites — but if a check is REQUIRED, use an in-job short-circuit\n"
+        "# (see the staged substrate-gate.yml's control lane), never\n"
+        "# `paths-ignore`: a required context that never reports stays\n"
+        "# pending and blocks auto-merge.\n"
         "#\n"
         "# name: substrate-quality\n"
         "# on:\n"
@@ -333,13 +349,31 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
     diff touches under ``sessions_dir`` and passes it via
     ``check --session-log``; when the diff names no card the argument is
     simply omitted and the engine's mtime fallback applies (fail-open).
+
+    **Control fast lane (KL-8):** a diff touching only ``control/**`` (a
+    status heartbeat, a manager inbox append) short-circuits the job GREEN
+    *in-job* — deliberately **not** a ``paths-ignore``, because when this
+    check is REQUIRED a workflow that never runs leaves the context pending
+    forever and auto-merge jams (the fleet-protocol heartbeat-lane lesson,
+    2026-07-09). The required context always reports; coordination writes
+    never pay the heavy suite and never need a session card. The lane is
+    **not checker-free though**: it still runs the scoped
+    ``check --strict --status-only`` heartbeat gate, because a control-only
+    diff edits exactly the files ``check_status_current`` validates — the
+    original lane skipped the one checker that could catch a broken/deleted
+    heartbeat, deferring the red onto the next unrelated PR (the fleet
+    adoption review finding, 2026-07-09). Stdlib-only on the system
+    ``python3``, so the lane stays fast.
     """
     return (
         "# substrate-kit enforcement gate (LIVE — installed by "
         "`bootstrap.py adopt --wire-enforcement`).\n"
         "# Holds the merge red until the session journal is written and every\n"
-        "# hygiene check passes. Edit `paths-ignore` / add a label carve-out if\n"
-        "# some PRs legitimately need no session card.\n"
+        "# hygiene check passes. Add a label carve-out if some PRs legitimately\n"
+        "# need no session card — but if this check is REQUIRED, prefer an\n"
+        "# in-job short-circuit (like the control lane below) over\n"
+        "# `paths-ignore`: a required context that never reports stays\n"
+        "# pending and blocks auto-merge forever.\n"
         "name: substrate-gate\n"
         "on:\n"
         "  pull_request:\n"
@@ -352,10 +386,43 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         "      - uses: actions/checkout@v4\n"
         "        with:\n"
         "          fetch-depth: 0\n"
+        "      - name: control fast lane (control/**-only diff short-circuits green)\n"
+        "        # Heartbeat/inbox commits are coordination, not code: they\n"
+        "        # skip the heavy gate but the job still REPORTS green so a\n"
+        "        # required context never jams auto-merge. Empty/unreadable\n"
+        "        # diffs fail safe onto the full suite.\n"
+        "        id: lane\n"
+        "        run: |\n"
+        '          if [ -n "${{ github.base_ref }}" ]; then\n'
+        '            range="origin/${{ github.base_ref }}...HEAD"\n'
+        "          else\n"
+        '            range="${{ github.event.before }}..${{ github.sha }}"\n'
+        "          fi\n"
+        '          files="$(git diff --name-only "$range" 2>/dev/null || true)"\n'
+        "          control_only=false\n"
+        '          if [ -n "$files" ] && [ -z "$(printf \'%s\\n\' "$files" '
+        "| grep -v '^control/')\" ]; then\n"
+        "            control_only=true\n"
+        "          fi\n"
+        '          echo "control_only=$control_only" >> "$GITHUB_OUTPUT"\n'
+        '          echo "control-only diff: $control_only"\n'
+        "      - name: control-status gate (fast lane — a control diff must "
+        "still prove its heartbeat)\n"
+        "        if: steps.lane.outputs.control_only == 'true'\n"
+        "        # The lane skips the heavy gate, but a control-only PR edits\n"
+        "        # exactly the files the status checker validates — without\n"
+        "        # this step a heartbeat-deleting control PR merges GREEN and\n"
+        "        # pre-reddens the NEXT unrelated PR (kit fleet review\n"
+        "        # 2026-07-09). Scoped + stdlib-only on the system python3\n"
+        "        # (no setup-python): the lane stays fast, and heartbeat PRs\n"
+        "        # still need no session card.\n"
+        "        run: python3 bootstrap.py check --strict --status-only\n"
         "      - uses: actions/setup-python@v5\n"
+        "        if: steps.lane.outputs.control_only != 'true'\n"
         "        with:\n"
         '          python-version: "3.x"\n'
         "      - name: substrate gate (docs + session-log required)\n"
+        "        if: steps.lane.outputs.control_only != 'true'\n"
         "        # Gate on the session card THIS PR/push touches (CI flattens\n"
         "        # mtimes, so the engine's newest-by-mtime guess is unreliable\n"
         "        # here). No card in the diff -> no --session-log argument ->\n"
@@ -480,12 +547,27 @@ def adopt(
         report,
     )
 
-    # (5) Stage the CI example.
+    # (5) Stage the CI example — and the LIVE gate workflow (KL-7): a default
+    # adopt still never installs CI, but the engagement gate's
+    # `enforcement-unwired` checklist line must be a one-copy fix, so the
+    # ready-to-install substrate-gate.yml is always staged next to the
+    # commented example. Kit stages, host installs — doctrine unchanged.
     ci_rel = f"{config.state_dir}/ci/quality.yml.example"
     _adopt_stage(
         state_base / "ci" / "quality.yml.example",
         ci_rel,
         ci_snippet(),
+        report,
+    )
+    gate_text = live_ci_workflow(
+        config.interpreter_for_checks or "python3",
+        sessions_dir=config.sessions_dir,
+    )
+    gate_rel = f"{config.state_dir}/ci/substrate-gate.yml"
+    _adopt_stage(
+        state_base / "ci" / "substrate-gate.yml",
+        gate_rel,
+        gate_text,
         report,
     )
 
@@ -513,10 +595,7 @@ def adopt(
         _adopt_plant(
             root / LIVE_CI_RELPATH,
             LIVE_CI_RELPATH,
-            live_ci_workflow(
-                config.interpreter_for_checks or "python3",
-                sessions_dir=config.sessions_dir,
-            ),
+            gate_text,
             report,
         )
 

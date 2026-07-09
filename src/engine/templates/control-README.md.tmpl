@@ -1,0 +1,103 @@
+# Fleet coordination protocol — `control/`
+
+> **Status:** `binding`
+>
+> Local copy for ${project_name}. Canonical spec: `menno420/superbot` →
+> `docs/planning/fleet-coordination-protocol-2026-07-09.md` (§1). Projects cannot talk to each
+> other directly — committed git files are the only shared medium; this directory is the bus.
+
+## The two files
+
+- `control/inbox.md` — ORDERS to this Project. **One writer: the manager** (appends via the
+  GitHub Contents API). Never edit this file.
+- `control/status.md` — STATE from this Project. **One writer: this Project** (overwrite it each
+  session).
+
+## The one rule that keeps it conflict-free
+
+**One writer per file.** The manager is the sole writer of `inbox.md`; this Project is the sole
+writer of its own `status.md`. Two writers never touch the same file, so there are no merge
+conflicts. Everything is append-only / overwrite-own — forward-only git.
+
+## Multi-Project repos — per-lane heartbeats (optional extension)
+
+A SHARED repo can host several Projects ("lanes" — e.g. a mining lane and an exploration lane
+cohabiting one game repo). The one-writer rule scales by **splitting the heartbeat, never by
+sharing it**:
+
+- **One status file per lane** — `control/status-<lane>.md` (e.g. `control/status-mining.md` +
+  `control/status-exploration.md`). Each lane is the sole writer of its own file and overwrites
+  it as its session's deliberate LAST step; no lane ever edits another lane's heartbeat.
+- **`control/inbox.md` stays single** — the manager remains its one writer; a lane-specific
+  order names its lane in `do:`.
+- **Declare every lane heartbeat to the kit** — `substrate.config.json` →
+  `"heartbeat_files": ["control/status-mining.md", "control/status-exploration.md"]` (default
+  when unset: `["control/status.md"]`). The status checker then gates each listed file
+  independently (missing / heartbeat-less lane = strict RED; per-lane staleness warns), and the
+  Stop hook's overwrite reminder clears when any lane's heartbeat is fresh (it cannot know which
+  lane a session belongs to). An empty list falls back to the default — misconfiguration never
+  silently disables the gate.
+
+## Per-session ritual (every session, and every routine wake)
+
+- **FIRST:** git pull (a stale clone reads stale orders); read `control/inbox.md`; execute any
+  order whose status is `new`, in priority order (P0 before P1). An order's `do:` is a pointer to
+  a committed doc — read it. If an order is ambiguous or you disagree, do NOT guess: write it in
+  your status under `⚑ needs-owner` and proceed with the rest.
+- **LAST (deliberate final step):** overwrite `control/status.md` — updated timestamp, current
+  phase, health (green / red-by-design+why / broken+what), last-shipped PR, blockers, orders
+  acked/done, `⚑ needs-owner`. You report order progress ONLY here; never edit `inbox.md`
+  (the manager owns it — one writer per file).
+
+The kit enforces this loop: `check` flags a missing or heartbeat-less `status.md`
+(strict = red), warns when the heartbeat goes stale, and the Stop hook reminds you when
+`status.md` was not overwritten this session.
+
+## `status.md` format (what you write every session — your heartbeat)
+
+```markdown
+# <project> · status
+updated: <ISO8601>            # heartbeat — stale = the manager treats the Project as dark
+phase: <what I'm doing right now, one line>
+health: green | red-by-design (<why>) | broken (<what>)
+kit: v<X.Y.Z> · check: green|red · engaged: yes|no   # kit self-report — see below
+last-shipped: #<PR> — <one line>
+blockers: <what's stopping me, or `none`>
+orders: acked=<ids> done=<ids>
+⚑ needs-owner: <a decision/action only the owner can give, or `none`>
+notes: <anything the manager should know>
+```
+
+The `kit:` line is the **substrate-coordinator visibility** channel (kit-lab reads it via the
+manager relay — zero write access to this repo): `v<X.Y.Z>` = the vendored kit version this
+repo actually runs (update it in the same session as every `bootstrap upgrade`); `check:` =
+the latest `check --strict` verdict on this tree; `engaged:` = the post-adopt engagement gate
+(`yes` once no UNRENDERED banner/slot remains, live CI runs the gate, and the session loop
+has engaged).
+
+## `inbox.md` order format (manager-written, append-only)
+
+```markdown
+## ORDER <nnn> · <ISO8601> · status: new     # manager flips new→done after seeing status done=
+priority: P0 | P1 | P2
+do: <pointer to a committed doc/section + the ask, kept short>
+why: <one line>
+done-when: <acceptance test>
+```
+
+## CI + auto-merge notes (learned live, 2026-07-09)
+
+- **Heartbeat commits ride a fast lane, not a `paths-ignore`.** A control-only diff (only
+  `control/**` files changed) must still *report* every required status check, or GitHub treats
+  the missing contexts as pending and auto-merge jams forever. The kit's planted
+  `substrate-gate.yml` therefore short-circuits GREEN inside the job on control-only diffs
+  instead of skipping the workflow — copy that pattern (an in-job early exit) into any other
+  heavy suite rather than adding `paths-ignore: [control/**]` to a workflow whose check is
+  required.
+- **API-authored PRs may not trigger CI.** A PR created purely through an app/integration token
+  (e.g. the GitHub Contents API + a REST PR create) can sit with **zero check runs** — required
+  checks then never report and the PR cannot auto-merge. The manager's canonical write path is
+  therefore a **direct Contents-API commit to the default branch of `inbox.md`** (it is the sole
+  writer, so no PR is needed). When this Project ships control changes by PR, push the branch
+  over git (a real `git push` triggers `pull_request`/`push` events) before or after creating
+  the PR, and verify the PR shows check runs before relying on auto-merge.

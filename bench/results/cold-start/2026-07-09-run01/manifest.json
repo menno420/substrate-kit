@@ -1,0 +1,28 @@
+{
+  "run_id": "2026-07-09-run01",
+  "date": "2026-07-09",
+  "seed": 709101,
+  "tasks": [
+    "T2",
+    "T4",
+    "T5"
+  ],
+  "wire_enforcement": true,
+  "kit": "/tmp/claude-0/-home-user/14e095ef-7f11-57e4-a461-6930e88ea3a1/scratchpad/sk-main/dist/bootstrap.py",
+  "arms": {
+    "on": "/tmp/claude-0/-home-user/14e095ef-7f11-57e4-a461-6930e88ea3a1/scratchpad/b1-run01/2026-07-09-run01/on/repo",
+    "off": "/tmp/claude-0/-home-user/14e095ef-7f11-57e4-a461-6930e88ea3a1/scratchpad/b1-run01/2026-07-09-run01/off/repo"
+  },
+  "task_prompts": {
+    "T2": "/tmp/claude-0/-home-user/14e095ef-7f11-57e4-a461-6930e88ea3a1/scratchpad/sk-main/bench/tasks/T2.md",
+    "T4": "/tmp/claude-0/-home-user/14e095ef-7f11-57e4-a461-6930e88ea3a1/scratchpad/sk-main/bench/tasks/T4.md",
+    "T5": "/tmp/claude-0/-home-user/14e095ef-7f11-57e4-a461-6930e88ea3a1/scratchpad/sk-main/bench/tasks/T5.md"
+  },
+  "rubric": "/tmp/claude-0/-home-user/14e095ef-7f11-57e4-a461-6930e88ea3a1/scratchpad/sk-main/bench/rubric/cold-start-rubric.md",
+  "smoke": [
+    "CONSTITUTION.md: present",
+    "docs/current-state.md: present",
+    ".sessions: present",
+    "check --strict exit=0"
+  ]
+}
