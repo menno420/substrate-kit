@@ -69,25 +69,38 @@ story, the frontmatter keeps the score.
   — state: captured; origin: lab (PL-010 session — three surfaces updated by
   hand with nothing enforcing agreement; guard recipe in the file); next: a
   groomed-ideas increment ships checker + test + CI step.
-- [score_m1: mutation-regex + failed-tool-event artifacts](score-m1-mutation-artifacts-2026-07-09.md)
-  — state: captured; origin: lab (B1 run 2026-07-09-run01 — these two scorer
-  bugs made M1 unmeasurable across all 3 pairs; guard recipe in the file;
-  `score_m1.py` is NOT a bench pin path → ordinary PR lane); next: a run-2
-  harness-fix increment ships regex exemption + error-result skip + tests.
 - [T5 protocol: headless arms never engage the hook layer](t5-headless-guard-surface-2026-07-09.md)
   — state: captured; origin: lab (B1 run 2026-07-09-run01 — the guard probe
   produced zero evidence, judge §5.5 item 2); next: discuss-first shape
   choice (hooks-active arms vs check-driven T5 redesign); ⚑ any
   `bench/tasks/T5.md` change is a PIN PATH → `do-not-automerge` owner review.
+- [Kit-version / readiness cell on the control-plane board](control-board-kit-readiness-cell-2026-07-09.md)
+  — state: captured; origin: consumer:menno420/websites (surfaced during the
+  websites v1.2.0 upgrade, websites#31); next: kit side rides ORDER 003 (the
+  `kit:` heartbeat line + docs/adopters.md); the board-cell rendering then
+  travels to menno420/websites as a parse+badge increment (guard recipe in
+  the file).
 - [ON-arm "missing: Model line" persistent red — needle vs card format](model-line-checker-false-red-2026-07-09.md)
   — state: captured; origin: lab (B1 run 2026-07-09-run01 — judge-flagged
-  PL-006 material: red contradicted the visible card); next: investigate
-  arm-authoring gap vs checker false-red class, then fix the losing side.
+  PL-006 material); **investigated 2026-07-09 (PR #40):** resolved to the
+  arm-authoring-gap side, traced to the planted `.sessions/README.md`
+  listing marker labels without their needle byte-forms
+  (`_adopt_sessions_readme()`); separate from the harvest-shadowing bug PR
+  #40 fixed; next: plant `label (needle)` pairs + a needle-naming checker
+  message (guard recipe in the file).
 
 ## Shipped (survive window open)
 
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
+
+- [score_m1: mutation-regex + failed-tool-event artifacts](score-m1-mutation-artifacts-2026-07-09.md)
+  — **shipped** kit PR #40 (2026-07-09, run-2 harness prep): read-only fd
+  redirects (`2>/dev/null`, `2>&1`) no longer match the mutation regex, and
+  a mutating tool_use whose paired tool_result is an error no longer counts
+  as the first mutation; regression tests reproduce all three run-1
+  artifact cases (run-1's recorded results untouched — append-only).
+  Window closes 2026-08-08.
 
 - [Label-added disarm guard — the enabler race's residual half](label-added-disarm-guard-2026-07-09.md)
   — **shipped** kit PR #24 (2026-07-09, audit follow-ups):

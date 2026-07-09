@@ -1,19 +1,25 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 40
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-09
+outcome: shipped
 ---
 
 # score_m1: mutation-regex + failed-tool-event artifacts (2026-07-09)
 
 > **Status:** `ideas`
 >
-> **State:** captured (B1 record session, run 2026-07-09-run01 — the run's
-> M1 verdict was "unmeasurable: all 3 pairs tainted" *because of these two
-> scorer bugs*, judge report §5.5 item 1).
+> **State:** shipped — kit PR #40 (2026-07-09, run-2 harness prep): the
+> fd-redirect exemption + the failed-tool-result skip, with regression
+> tests for all three run-1 artifact cases; the fixed scorer re-run
+> read-only over the run-1 transcripts resolves every pair to a genuine
+> Edit (ON-T2 line 19, OFF-T4 line 22, OFF-T5 line 9 — recorded results
+> untouched, append-only). Originally captured in the B1 record session
+> (run 2026-07-09-run01 — the run's M1 verdict was "unmeasurable: all 3
+> pairs tainted" *because of these two scorer bugs*, judge report §5.5
+> item 1).
 
 ## The two defects (evidence in the committed run dir)
 
