@@ -1,0 +1,22 @@
+[
+  {
+    "id": "R-0001",
+    "lesson": "##  Self-initiated (deviations from the letter, per decide-and-flag)",
+    "evidence": "2026-07-09-kl0-dogfood-seed.md:L25",
+    "tags": [
+      "flag"
+    ],
+    "status": "provisional",
+    "date": "2026-07-09"
+  },
+  {
+    "id": "R-0002",
+    "lesson": "##  Session idea",
+    "evidence": "2026-07-09-kl0-dogfood-seed.md:L49",
+    "tags": [
+      "idea"
+    ],
+    "status": "provisional",
+    "date": "2026-07-09"
+  }
+]
