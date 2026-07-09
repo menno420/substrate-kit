@@ -43,3 +43,9 @@ priority: P2
 do: Two items from the fleet retro synthesis. (1) Dispose of PR #50 — the duplicate ORDER-005 execution (a second session saw the order still `new` and re-did it; #51 already merged the same paths). Close it with a supersede comment or salvage any unique content first. (2) The root cause is yours to fix kit-side: orders have no claim/lease — ship an order-claiming convention in the control band (e.g. an executing session appends `claimed-by: <session> <ts>` to its own status orders line FIRST and re-reads the inbox+sibling statuses before executing; document in control/README.md.tmpl) so two readers can't both execute the same `new` order. This was a realized failure today (your #50/#51), not a theoretical one.
 why: double-executed orders waste whole sessions; the fix is one convention line every adopter inherits.
 done-when: #50 terminal; order-claim convention shipped in a release; status acks.
+
+## ORDER 008 · 2026-07-09T17:48:57Z · status: new
+priority: P0
+do: LATENCY PING — the moment you read this order, acknowledge BEFORE any other work: add one line to your control status file (or, if faster, a new file docs/retro/ping-ack.md): "PING-ACK ORDER 008 · discovered <UTC timestamp, seconds precision> · via <how you came to read this inbox: session-start ritual / routine wake / owner prompt / mid-session inbox check>". Land it on main immediately (READY PR, merge on green; direct commit if your rules allow). Then resume whatever you were doing.
+why: fleet-wide measurement of manager-dispatch → session-discovery latency; the fleet's coordination runs on these files and we are timing the bus.
+done-when: the ack line is on main; the manager computes the latency.
