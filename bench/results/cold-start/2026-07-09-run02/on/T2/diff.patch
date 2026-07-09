@@ -1,0 +1,265 @@
+diff --git a/.sessions/2026-07-09-report-command.md b/.sessions/2026-07-09-report-command.md
+new file mode 100644
+index 0000000..831d45f
+--- /dev/null
++++ b/.sessions/2026-07-09-report-command.md
+@@ -0,0 +1,56 @@
++# 2026-07-09 — add `report` command to the CLI
++
++> **Status:** `complete`
++
++## What happened
++
++Added a `report` subcommand (first product change since adoption):
++
++- `cedarvisit/ops.py` — new `category_report(records)` returning
++  `(category, count, subtotal)` rows, highest subtotal first, ties
++  alphabetical (same tie-break as `top_categories`). Aggregation lives in
++  ops so the CLI stays thin, per the layer note in the working agreement.
++- `cedarvisit/cli.py` — `report` prints one
++  `<category>: <count> records, <total>` line per category, then a final
++  `overall: <count> records, <total>` line; **empty data prints
++  `no records.`** instead of a zero-filled overall line. The command takes
++  no arguments, so argparse's rejection of stray args is its whole input
++  surface (verified live: `report extra` → usage error, exit 2).
++- `tests/test_cedarvisit.py` — 5 new tests (ops rows/tie-break/empty, CLI
++  output ordering + overall, CLI empty case). 11 passing via
++  `python3 -m pytest tests/`. Also drove the CLI live in a temp dir:
++  log ×3 → report matches the expected three lines.
++- `README.md` — command list mentions `report`.
++
++Commits: `f2ebcd5` (implementation + tests), `bf84a74` (born-red card).
++
++## What the next session should know
++
++- Output format is pinned by tests: raw float repr (`30.0`), literal
++  `records` even for count 1 — matches the spec text and the rest of the
++  CLI's unformatted-float style.
++- **Follow-up (not done, out of scope):** `log duration` accepts negative /
++  non-finite values and `top --limit` accepts negatives; `report` surfaced
++  no new input to validate, but those two existing surfaces should get
++  argparse-level validation. Guard recipe: add a checking `type=` callable
++  in `cli.main` for `duration` and `--limit`, test via
++  `cli.main([...]) → SystemExit` in `tests/test_cedarvisit.py`.
++- **Pre-existing drift spotted:** `ops.filter_by_category` docstring and
++  README say case-insensitive, but the code (and
++  `test_filter_by_category_exact`) are exact-match. Decide which is
++  intended, then fix docstring+README or the code+test together.
++
++💡 Session idea: validate CLI inputs at the argparse boundary (the follow-up
++above) — a `nonnegative_float` / `positive_int` `type=` callable is a
++5-line stdlib-only change that turns silent bad data into a usage error.
++
++⟲ Previous-session review: the adoption session left clean orientation docs
++and an accurate verify command, which made this session near-frictionless.
++One gap: it recorded "tests cover ops" as the convention, but CLI output is
++also promised behavior — this session added CLI-level tests
++(`monkeypatch.chdir` + `capsys`), and that pattern is now available for the
++other commands. Workflow improvement: `docs/current-state.md` "Recently
++shipped" was still all-placeholder; started filling it so the ledger is
++real from the first product PR.
++
++📊 Model: claude-fable-5 (feature session; ops + cli + tests + docs).
+diff --git a/README.md b/README.md
+index e15f23a..4b41bab 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,6 @@
+ 
+ A tiny visit-log CLI: `log` records with a category and
+ duration, then `list`, `total`, `filter <category>` (case-insensitive),
+-and `top` them.
++and `top` them, or `report` per-category counts and totals.
+ 
+ Run the tests with `python3 -m pytest tests/`.
+diff --git a/cedarvisit/__pycache__/__init__.cpython-311.pyc b/cedarvisit/__pycache__/__init__.cpython-311.pyc
+new file mode 100644
+index 0000000..cc34f4d
+Binary files /dev/null and b/cedarvisit/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/cedarvisit/__pycache__/cli.cpython-311.pyc b/cedarvisit/__pycache__/cli.cpython-311.pyc
+new file mode 100644
+index 0000000..d195811
+Binary files /dev/null and b/cedarvisit/__pycache__/cli.cpython-311.pyc differ
+diff --git a/cedarvisit/__pycache__/ops.cpython-311.pyc b/cedarvisit/__pycache__/ops.cpython-311.pyc
+new file mode 100644
+index 0000000..13837e8
+Binary files /dev/null and b/cedarvisit/__pycache__/ops.cpython-311.pyc differ
+diff --git a/cedarvisit/__pycache__/store.cpython-311.pyc b/cedarvisit/__pycache__/store.cpython-311.pyc
+new file mode 100644
+index 0000000..51bbf79
+Binary files /dev/null and b/cedarvisit/__pycache__/store.cpython-311.pyc differ
+diff --git a/cedarvisit/cli.py b/cedarvisit/cli.py
+index 18b0e28..723f5c9 100644
+--- a/cedarvisit/cli.py
++++ b/cedarvisit/cli.py
+@@ -1,6 +1,6 @@
+ """cedarvisit — a tiny visit-log CLI.
+ 
+-Commands: log (add a record) · list · total · filter <category> · top.
++Commands: log (add a record) · list · total · filter <category> · top · report.
+ """
+ 
+ import argparse
+@@ -22,6 +22,7 @@ def main(argv=None):
+     filter_p.add_argument("category")
+     top_p = sub.add_parser("top", help="highest-duration categories")
+     top_p.add_argument("--limit", type=int, default=3)
++    sub.add_parser("report", help="per-category counts and totals, plus overall")
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -40,6 +41,13 @@ def main(argv=None):
+     elif args.command == "top":
+         for category, subtotal in ops.top_categories(records, args.limit):
+             print(f"{category}: {subtotal}")
++    elif args.command == "report":
++        if not records:
++            print("no records.")
++        else:
++            for category, count, subtotal in ops.category_report(records):
++                print(f"{category}: {count} records, {subtotal}")
++            print(f"overall: {len(records)} records, {ops.total_duration(records)}")
+     return 0
+ 
+ 
+diff --git a/cedarvisit/ops.py b/cedarvisit/ops.py
+index a3dd0ac..fd2cadc 100644
+--- a/cedarvisit/ops.py
++++ b/cedarvisit/ops.py
+@@ -22,6 +22,24 @@ def filter_by_category(records, category):
+     return [r for r in records if r["category"] == category]
+ 
+ 
++def category_report(records):
++    """Return ``(category, count, subtotal)`` rows, highest subtotal first.
++
++    Ties break alphabetically by category, matching ``top_categories``.
++    Empty input returns an empty list.
++    """
++    counts = {}
++    totals = {}
++    for r in records:
++        category = r["category"]
++        counts[category] = counts.get(category, 0) + 1
++        totals[category] = totals.get(category, 0.0) + r["duration"]
++    return sorted(
++        ((category, counts[category], totals[category]) for category in totals),
++        key=lambda row: (-row[2], row[0]),
++    )
++
++
+ def top_categories(records, limit=3):
+     """Return the ``limit`` categories with the highest summed duration."""
+     totals = {}
+diff --git a/control/status.md b/control/status.md
+index a66edc4..34d2362 100644
+--- a/control/status.md
++++ b/control/status.md
+@@ -1,12 +1,14 @@
+ # cedarvisit · status
+-updated: 2026-07-09T12:00Z
+-phase: engaged — adoption session complete, no product work yet
++updated: 2026-07-09T13:00Z
++phase: building — first product feature shipped
+ health: green
+ kit: v1.3.0 · check: green · engaged: yes
+-last-shipped: none
++last-shipped: report CLI command (per-category counts/totals + overall; f2ebcd5)
+ blockers: none
+ orders: acked= done=
+ ⚑ needs-owner: none
+-notes: substrate-kit v1.3.0 adopted with --include-claude --wire-enforcement;
+-interview answered, docs rendered live (banners cleared), live CI gate wired,
+-first session card written. Verify: python3 -m pytest tests/ (6 passing).
++notes: report command added with ops.category_report + 5 new tests (11
++passing, python3 -m pytest tests/); empty data prints "no records.".
++Follow-ups flagged in the session card: validate log duration / top --limit
++at the argparse boundary; resolve filter_by_category case-sensitivity drift
++(docstring/README say case-insensitive, code is exact-match).
+diff --git a/docs/current-state.md b/docs/current-state.md
+index 42b2390..0cac8c1 100644
+--- a/docs/current-state.md
++++ b/docs/current-state.md
+@@ -15,10 +15,20 @@ should not be re-audited without a reported regression.)
+ 
+ (Verify against live source control — this section is a dated snapshot.)
+ 
++- Nothing known in flight as of 2026-07-09.
++
+ ## Recently shipped (newest first)
+ 
+ (Merged work only, newest first.)
+ 
++- 2026-07-09 — `report` CLI command: per-category `<category>: <count>
++  records, <total>` lines (highest total first, ties alphabetical) plus a
++  final `overall:` line; empty data prints `no records.`
++  (`ops.category_report`, tests included; card
++  `.sessions/2026-07-09-report-command.md`).
++- 2026-07-09 — substrate-kit v1.3.0 adopted (docs rendered, CI gate wired;
++  card `.sessions/2026-07-09-adopt-substrate-kit.md`).
++
+ ## Review rhythm
+ 
+ Run python3 -m pytest tests/ before every commit; read README.md and module docstrings for promised behavior before changing it.
+diff --git a/tests/__pycache__/__init__.cpython-311.pyc b/tests/__pycache__/__init__.cpython-311.pyc
+new file mode 100644
+index 0000000..23d67b5
+Binary files /dev/null and b/tests/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/tests/__pycache__/test_cedarvisit.cpython-311-pytest-9.1.1.pyc b/tests/__pycache__/test_cedarvisit.cpython-311-pytest-9.1.1.pyc
+new file mode 100644
+index 0000000..abb6736
+Binary files /dev/null and b/tests/__pycache__/test_cedarvisit.cpython-311-pytest-9.1.1.pyc differ
+diff --git a/tests/test_cedarvisit.py b/tests/test_cedarvisit.py
+index f3f1aeb..53e1d33 100644
+--- a/tests/test_cedarvisit.py
++++ b/tests/test_cedarvisit.py
+@@ -1,6 +1,6 @@
+ """Tests for cedarvisit core operations."""
+ 
+-from cedarvisit import ops
++from cedarvisit import cli, ops
+ 
+ 
+ def _sample():
+@@ -37,3 +37,41 @@ def test_top_categories_ranked():
+ 
+ def test_top_categories_limit():
+     assert len(ops.top_categories(_sample(), limit=1)) == 1
++
++
++def test_category_report_rows_sorted_by_total():
++    assert ops.category_report(_sample()) == [
++        ("travel", 1, 30.0),
++        ("food", 2, 20.0),
++    ]
++
++
++def test_category_report_tie_breaks_alphabetically():
++    records = []
++    ops.add_record(records, "b", 5.0)
++    ops.add_record(records, "a", 5.0)
++    assert ops.category_report(records) == [("a", 1, 5.0), ("b", 1, 5.0)]
++
++
++def test_category_report_empty():
++    assert ops.category_report([]) == []
++
++
++def test_cli_report_prints_rows_and_overall(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["log", "food", "12.5", "--note", "lunch"])
++    cli.main(["log", "travel", "30.0"])
++    cli.main(["log", "food", "7.5"])
++    capsys.readouterr()
++    assert cli.main(["report"]) == 0
++    assert capsys.readouterr().out.splitlines() == [
++        "travel: 1 records, 30.0",
++        "food: 2 records, 20.0",
++        "overall: 3 records, 50.0",
++    ]
++
++
++def test_cli_report_empty_data(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    assert cli.main(["report"]) == 0
++    assert capsys.readouterr().out == "no records.\n"
