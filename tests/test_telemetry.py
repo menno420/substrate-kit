@@ -186,6 +186,27 @@ def test_parse_model_line_absent_or_underfilled():
     assert parse_model_line("📊 Model: only-model · effort") is None
 
 
+def test_parse_model_line_prose_mention_does_not_shadow_valid_line():
+    # websites#31 regression: a later line that merely MENTIONS the marker in
+    # prose (no `·` payload) must not shadow the real telemetry line above it
+    # — last-needle selection returned None and the harvest advisory claimed
+    # "no line" while the marker scan passed.
+    text = (
+        "# card\n"
+        "- **📊 Model:** fable-5 · high · runtime bugfix\n"
+        "Later prose that mentions the 📊 Model: marker convention in passing.\n"
+    )
+    parsed = parse_model_line(text)
+    assert parsed is not None
+    assert parsed["model"] == "fable-5"
+    assert parsed["task_class"] == "runtime bugfix"
+    # Last-VALID still wins between two genuine reports (the original intent).
+    text += "📊 Model: sonnet · low · docs-only\n"
+    parsed = parse_model_line(text)
+    assert parsed is not None
+    assert parsed["model"] == "sonnet"
+
+
 # ---------------------------------------------------------------------------
 # harvest_model_usage
 # ---------------------------------------------------------------------------

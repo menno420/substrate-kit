@@ -3061,23 +3061,8 @@ def record_guard_fires(
         return 0
 
 
-def parse_model_line(text: str) -> dict | None:
-    """Parse the last ``📊 Model:`` line out of a session log's text.
-
-    Returns ``{"model", "effort", "task_class", "tokens_out"}`` or None when
-    the needle is absent or the line has fewer than three ``·`` segments.
-    Bold markers and the list dash are cosmetic and stripped; an optional 4th
-    integer segment fills ``tokens_out`` (KF-9 — null until a meter exists).
-    """
-    payload = None
-    for line in text.splitlines():
-        if MODEL_LINE_NEEDLE in line and DRAFT_FILL_TOKEN not in line:
-            # An auto-drafted stand-in (`[[fill: model]] · …`, KL-5) is not a
-            # report — harvesting it would feed placeholder junk into the
-            # PL-004 dataset. Skip it; the advisory keeps asking for the line.
-            payload = line.split(MODEL_LINE_NEEDLE, 1)[1]
-    if payload is None:
-        return None
+def _parse_model_payload(payload: str) -> dict | None:
+    """Parse one needle line's payload; None when it under-fills (<3 segments)."""
     parts = [p.strip(" *`") for p in payload.split("\N{MIDDLE DOT}")]
     parts = [p for p in parts if p]
     if len(parts) < 3:
@@ -3094,6 +3079,33 @@ def parse_model_line(text: str) -> dict | None:
         "task_class": parts[2],
         "tokens_out": tokens_out,
     }
+
+
+def parse_model_line(text: str) -> dict | None:
+    """Parse the last *validly-formed* ``📊 Model:`` line out of a log's text.
+
+    Returns ``{"model", "effort", "task_class", "tokens_out"}`` or None when
+    no needle-bearing line parses (needle absent, or every candidate has
+    fewer than three ``·`` segments). Last-VALID wins — a corrected report
+    later in the card still supersedes an earlier one (the original
+    last-occurrence intent), but a line that merely *mentions* the marker in
+    prose (no ``·`` payload) no longer shadows a real telemetry line above
+    it. That shadowing was found live in websites#31: last-needle selection
+    made a prose mention beat the genuine line → None → a misleading
+    "no line" advisory while the marker scan passed.
+    Bold markers and the list dash are cosmetic and stripped; an optional 4th
+    integer segment fills ``tokens_out`` (KF-9 — null until a meter exists).
+    """
+    parsed = None
+    for line in text.splitlines():
+        if MODEL_LINE_NEEDLE in line and DRAFT_FILL_TOKEN not in line:
+            # An auto-drafted stand-in (`[[fill: model]] · …`, KL-5) is not a
+            # report — harvesting it would feed placeholder junk into the
+            # PL-004 dataset. Skip it; the advisory keeps asking for the line.
+            candidate = _parse_model_payload(line.split(MODEL_LINE_NEEDLE, 1)[1])
+            if candidate is not None:
+                parsed = candidate
+    return parsed
 
 
 def _model_usage_sessions(path: Path) -> set[str]:
