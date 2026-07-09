@@ -28,6 +28,14 @@ workflow refuses to publish a version that has no section in this file.
   vantage), plus the lane heartbeat
   `control/status-superbot-coordinator.md` (not yet in `heartbeat_files`
   by design — kit-lab owns the config; decide-and-flag).
+- **Kit-lab-coordinator-lane retro companions** (ORDER 005, twin execution):
+  `docs/retro/self-review-2026-07-09-kitlab-coordinator.md` +
+  `docs/retro/project-review-2026-07-09-kitlab-coordinator.md` — the
+  parallel coordinator-spawned lane's independent answers + the
+  session-side agent audit (35-session fact ledger, model split, stall
+  census) cross-checked against the repo with discrepancies named (incl.
+  the telemetry harvest gap: 11 post-KL-3 cards' Model lines never
+  harvested). Docs-only.
 - **Gen-1 retro self-review + project review** (inbox ORDER 005):
   `docs/retro/self-review-2026-07-09.md` — every `docs/retro/QUESTIONS.md`
   question answered by ID with PR/commit/file evidence — and
