@@ -8,7 +8,8 @@ docs), ``skills`` / ``agents`` / ``hooks`` (list / ``--build`` the packs),
 checker), ``triggers``, ``reflect``, ``episodes``, ``metrics``, ``maintain``,
 ``review`` (the independent-review seam), ``economy`` (the context-economy
 engine), ``ledger`` (the [D-NNNN] decisions ledger), ``friction`` (export/list/show
-the §9.1 friction-report outbox), and ``--simulate N
+the §9.1 friction-report outbox), ``draft`` (auto-draft the session card's
+close-out from evidence — KL-5), and ``--simulate N
 [--mode m]`` (the CI / proving smoke that drives the staged interview and
 asserts per-mode behavior). Output goes through ``_emit`` (``sys.stdout.write``)
 rather than ``print`` to keep the engine lint-clean.
@@ -88,6 +89,10 @@ from engine.loop.friction import (
     list_outbox,
     load_envelope,
     write_outbox,
+)
+from engine.loop.handoff import (
+    ensure_draft,
+    record_session_anchor,
 )
 from engine.loop.kpis import kpi_footer, workflow_kpis
 from engine.loop.maintenance import compaction_due, maintenance_report, run_compaction
@@ -449,12 +454,19 @@ def _hook_pretooluse(target: Path) -> list[str]:
 
 
 def _hook_sessionstart(target: Path) -> list[str]:
-    """SessionStart: print the mode-aware orientation composition to stdout."""
+    """SessionStart: print the orientation composition + record the anchor.
+
+    The anchor (timestamp + git HEAD/branch, ``state["session_anchor"]``) is
+    the evidence baseline the KL-5 auto-draft diffs against at session close.
+    Recording is fail-open inside ``record_session_anchor`` — orientation
+    must never be blocked by evidence bookkeeping.
+    """
     config = load_config(target)
     backend = JsonStateBackend(_state_path(target, config))
     text = compose_orientation(target, config, backend)
     if text:
         sys.stdout.write(text)
+    record_session_anchor(target, config, backend)
     return []
 
 
@@ -486,10 +498,18 @@ def _hook_postedit(target: Path) -> list[str]:
 
 
 def _hook_stopcheck(target: Path) -> list[str]:
-    """Stop: print the session-close advisory lines to stderr."""
+    """Stop: auto-draft the session card, then print the advisories to stderr.
+
+    Drafting runs FIRST (KL-5 — the mechanized write-back the Phase-2.5 A/B
+    proved doesn't happen by discipline): a missing card gets a drafted
+    skeleton, an in-progress card missing its close-out gets the drafted
+    section appended, and the advisories that follow see the drafted state.
+    Both halves fail open; the hook always exits 0.
+    """
     config = load_config(target)
     backend = JsonStateBackend(_state_path(target, config))
-    lines = evaluate_stop(target, config, backend)
+    lines = ensure_draft(target, config, backend)
+    lines += evaluate_stop(target, config, backend)
     for line in lines:
         sys.stderr.write(line + "\n")
     return lines
@@ -1147,28 +1167,42 @@ def cmd_contextpack(target: Path, index: Path | None) -> int:
 
 
 def cmd_session_start(target: Path) -> int:
-    """Print this session's orientation injection (the SessionStart composition)."""
+    """Print this session's orientation injection (the SessionStart composition).
+
+    Also records the session-start evidence anchor (fail-open) — the same
+    baseline the SessionStart hook records, so a session driven by the CLI
+    instead of the hook still gets an evidence-backed auto-draft at close.
+    """
     loaded = _require_state(target, "session-start")
     if loaded is None:
         return 1
     config, backend = loaded
     _emit(compose_orientation(target, config, backend))
+    record_session_anchor(target, config, backend)
     return 0
 
 
 def cmd_session_close(target: Path) -> int:
-    """Run the session-close ritual: mine, index, advise, and report KPIs.
+    """Run the session-close ritual: draft, mine, index, advise, report KPIs.
 
-    Mines the session logs into the reflection buffer, rebuilds the episodic
-    index, harvests the ``📊 Model:`` line into the PL-004 model-usage feed
-    (``telemetry/model-usage.jsonl`` — one row per session, KL-3), prints the
-    stop-check advisories, and ends with the KPI footer — the engine analog
-    of the one-idea / previous-session-review enders.
+    First auto-drafts the session card's close-out from evidence (KL-5 —
+    ``ensure_draft``; fail-open), then mines the session logs into the
+    reflection buffer, rebuilds the episodic index, harvests the
+    ``📊 Model:`` line into the PL-004 model-usage feed
+    (``telemetry/model-usage.jsonl`` — one row per session, KL-3; a drafted
+    ``[[fill:]]`` stand-in line is never harvested), prints the stop-check
+    advisories, and ends with the KPI footer — the engine analog of the
+    one-idea / previous-session-review enders.
     """
     loaded = _require_state(target, "session-close")
     if loaded is None:
         return 1
-    config, _ = loaded
+    config, backend0 = loaded
+    # KL-5 mechanized write-back: draft the card/close-out from evidence
+    # BEFORE the ritual runs, so mining/advisories see the drafted state and
+    # a session that wrote nothing still leaves an evidence-backed draft.
+    for line in ensure_draft(target, config, backend0):
+        _emit(f"session-close: [draft] {line}")
     rc = cmd_reflect(target, add=None, evidence="", tags="", mine=True)
     if rc != 0:
         return rc
@@ -1196,6 +1230,27 @@ def cmd_session_close(target: Path) -> int:
         )
     kpis = workflow_kpis(backend.data, target / config.sessions_dir)
     _emit(kpi_footer(kpis))
+    return 0
+
+
+def cmd_draft(target: Path) -> int:
+    """Auto-draft the session card / close-out from evidence, on demand.
+
+    The same seam ``session-close`` and the Stop hook run (KL-5): a missing
+    card gets a drafted skeleton, an in-progress card missing its close-out
+    gets the drafted section appended, a drafted card reports its unresolved
+    ``[[fill:]]`` slots, and a completed card is never touched.
+    """
+    loaded = _require_state(target, "draft")
+    if loaded is None:
+        return 1
+    config, backend = loaded
+    lines = ensure_draft(target, config, backend)
+    if not lines:
+        _emit("draft: nothing to do (card complete, or close-out already present).")
+        return 0
+    for line in lines:
+        _emit(f"draft: {line}")
     return 0
 
 
@@ -1400,7 +1455,8 @@ def build_parser() -> argparse.ArgumentParser:
         ("triggers", "scan for fired triggers / mandatory questions"),
         ("metrics", "emit the router + workflow KPIs"),
         ("session-start", "print this session's orientation injection"),
-        ("session-close", "mine reflections, index the session, report KPIs"),
+        ("session-close", "draft the close-out, mine reflections, report KPIs"),
+        ("draft", "auto-draft the session card / close-out from evidence"),
     ):
         child = sub.add_parser(name, help=helptext)
         child.add_argument("--target", type=Path, default=Path.cwd())
@@ -1661,6 +1717,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_session_start(args.target)
         if args.command == "session-close":
             return cmd_session_close(args.target)
+        if args.command == "draft":
+            return cmd_draft(args.target)
         if args.command == "friction":
             return cmd_friction(
                 args.target,
