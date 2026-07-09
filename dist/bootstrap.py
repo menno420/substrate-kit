@@ -1261,13 +1261,38 @@ def latest_session_log(sessions_dir: Path) -> Path | None:
     return max(candidates, key=lambda p: p.stat().st_mtime)
 
 
+# Status-badge values that mean "this session is not finished yet". A card
+# carrying one is INCOMPLETE even when every marker needle is present — the
+# born-red discipline checks the status VALUE, not just the badge's presence.
+# (KL-1 lesson, kit repo PR #9: a reopened card kept its idea/review markers
+# from the previous PR, so a presence-only check read born-red as green and
+# auto-merge landed the PR without its close-out.)
+IN_PROGRESS_TOKENS = ("in-progress", "in progress", "wip", "hold")
+
+
+def status_in_progress(text: str) -> bool:
+    """True when the log's Status badge line carries an in-progress value."""
+    for line in text.splitlines():
+        if "**status:**" in line.lower():
+            lowered = line.lower()
+            return any(token in lowered for token in IN_PROGRESS_TOKENS)
+    return False
+
+
 def check_log(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
-    """Return the missing-marker labels for one log file (all if unreadable)."""
+    """Return what keeps one log file from counting complete (all if unreadable).
+
+    Two conditions feed the list: marker needles that are absent, and a
+    Status badge still carrying an in-progress value.
+    """
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
         return [m["label"] for m in markers]
-    return missing_markers(text, markers)
+    missing = missing_markers(text, markers)
+    if status_in_progress(text):
+        missing.append("a completed Status (badge still says in-progress)")
+    return missing
 
 # --- engine/checks/check_namespace.py ---
 """Portable namespace / shadowing guard (Lane B6, the Q-0200 class).

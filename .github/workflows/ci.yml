@@ -81,18 +81,36 @@ jobs:
   # ORIGINAL job names "Kit test suite" and "Cold-adoption smoke (adopt +
   # check --strict)". Those jobs were folded into kit-quality above, so the
   # legacy contexts would sit "expected" forever and block every merge. These
-  # aliases report the legacy contexts green iff kit-quality passed. Once the
+  # aliases report the legacy contexts as kit-quality's result. Once the
   # ruleset requires `kit-quality` instead (docs/current-state.md 👤 P10),
   # delete both jobs.
+  #
+  # `if: always()` + explicit result check, NOT a bare `needs:` — the KL-1
+  # PR #7 hole: when kit-quality FAILS, a bare-needs alias is SKIPPED, and
+  # GitHub treats a skipped check run as SATISFYING a required status check,
+  # so auto-merge merged a red PR. The aliases must conclude failure, never
+  # skipped, when kit-quality is not a success.
   legacy-alias-test:
     name: Kit test suite
     needs: kit-quality
+    if: always()
     runs-on: ubuntu-latest
     steps:
-      - run: echo "legacy required-context alias — real gate is kit-quality"
+      - run: |
+          if [ "${{ needs.kit-quality.result }}" != "success" ]; then
+            echo "kit-quality result: ${{ needs.kit-quality.result }} — failing the alias (a skipped alias would satisfy the required context)."
+            exit 1
+          fi
+          echo "legacy required-context alias — real gate is kit-quality"
   legacy-alias-smoke:
     name: Cold-adoption smoke (adopt + check --strict)
     needs: kit-quality
+    if: always()
     runs-on: ubuntu-latest
     steps:
-      - run: echo "legacy required-context alias — real gate is kit-quality"
+      - run: |
+          if [ "${{ needs.kit-quality.result }}" != "success" ]; then
+            echo "kit-quality result: ${{ needs.kit-quality.result }} — failing the alias (a skipped alias would satisfy the required context)."
+            exit 1
+          fi
+          echo "legacy required-context alias — real gate is kit-quality"

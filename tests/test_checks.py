@@ -18,6 +18,7 @@ from engine.checks.check_session_log import (
     check_log,
     latest_session_log,
     missing_markers,
+    status_in_progress,
 )
 from engine.interview.question_bank import QUESTIONS
 from engine.lib.config import Config
@@ -200,6 +201,37 @@ def test_latest_session_log_none_when_absent_or_empty(tmp_path):
 def test_check_log_unreadable_returns_all_labels(tmp_path):
     missing = check_log(tmp_path / "does-not-exist.md", _MARKERS)
     assert missing == [m["label"] for m in _MARKERS]
+
+
+def test_in_progress_status_keeps_the_card_incomplete(tmp_path):
+    # The KL-1 PR #9 lesson: a card can carry every marker needle (inherited
+    # from an earlier PR on a shared card) while its Status badge still says
+    # in-progress — presence-only checking read born-red as green and
+    # auto-merge landed the PR without its close-out. The status VALUE is
+    # part of completeness.
+    card = tmp_path / "2026-07-09-x.md"
+    _write(
+        card,
+        "# x\n\n> **Status:** `in-progress`\n\n💡 idea\n\n"
+        "previous-session review: ok\n",
+    )
+    missing = check_log(card, _MARKERS)
+    assert missing == ["a completed Status (badge still says in-progress)"]
+    # Flipping the badge (everything else unchanged) opens the door.
+    _write(
+        card,
+        "# x\n\n> **Status:** `complete`\n\n💡 idea\n\n"
+        "previous-session review: ok\n",
+    )
+    assert check_log(card, _MARKERS) == []
+
+
+def test_status_in_progress_token_variants():
+    assert status_in_progress("> **Status:** `WIP`\n")
+    assert status_in_progress("> **Status:** in progress\n")
+    assert status_in_progress("> **Status:** `hold` — waiting\n")
+    assert not status_in_progress("> **Status:** `complete`\n")
+    assert not status_in_progress("no badge at all\n")
 
 
 # ---------------------------------------------------------------------------

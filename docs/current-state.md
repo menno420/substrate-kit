@@ -11,54 +11,95 @@
 *(dated snapshot: 2026-07-09)*
 
 - The kit engine is finished + enforced: the full test suite at `tests/` is green
-  (extracted from superbot, where it ran at 440 tests in ~3.5 s); `src/engine/` is
-  stdlib-only, `dist/bootstrap.py` is generated and byte-pinned by the dist-equality
-  test. Do not re-audit without a reported regression.
+  (481 tests after KL-1); `src/engine/` is stdlib-only, `dist/bootstrap.py` is
+  generated and byte-pinned by the dist-equality test. Do not re-audit without a
+  reported regression.
 - **KL-0 is DONE** (founding plan §10 band zero): the repo exists, the kit is seeded,
-  tests moved here, CI runs (tests + cold-adoption smoke), and — this PR — the founding
-  plan travelled in (`docs/planning/kit-lab-founding-plan-2026-07-07.md`) and the repo
-  is **consumer #0**: seeded by its own `dist/bootstrap.py adopt` per plan §3.3
-  (one-time committed render; these docs are now ordinary committed files).
+  tests moved here, CI runs, the founding plan travelled in
+  (`docs/planning/kit-lab-founding-plan-2026-07-07.md`), and the repo is
+  **consumer #0** (seeded by its own `dist/bootstrap.py adopt` per plan §3.3).
+- **KL-1 (release discipline) is DONE kit-side → tag v1.0.0** (plan §4 + §10 KL-1
+  row; PRs #6/#8/#9): `KIT_VERSION` + `--version` + dist header stamp +
+  `Config.kit_version` declared field; adopt/`render --live` record planted-doc
+  sha256 hashes + kit_version into config/state; CHANGELOG.md (keep-a-changelog) +
+  LICENSE (MIT, ⚑ owner P8 default) + `release.yml` (v* tag → refuse-to-release
+  guards → Release with bootstrap.py + .sha256 + release.json); the **`upgrade`
+  verb** (archive-first, hash-based doc diff, `--apply-docs` covenant,
+  `--rollback`); `_ENGINE_MANIFEST` dropped; `reconciliation_prs` default → 30.
+  **D2's remaining half is consumer-side**: pin PRs recording `kit_version: 1.0.0`
+  into superbot (`substrate.config.json` next to its in-tree copy — §4.2 names it
+  a KL-1 companion deliverable) and superbot-next.
 
 ## In flight
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- Nothing beyond PR #6 (KL-1 first act, this session).
+- Nothing beyond PR #9 (KL-1 PR B, this session). Tag `v1.0.0` rides its merge
+  commit — verify the Release published (3 assets) on the releases page.
 
 ## Pending owner action — 👤 P10 (repo settings, §3.2 item 7)
 
-**Partially landed by the owner between KL-0 and KL-1** (discovered live in PR #6:
-the merge came back "2 of 2 required status checks are expected"): a rule on `main`
-now requires the two ORIGINAL CI job names, **"Kit test suite"** and
-**"Cold-adoption smoke (adopt + check --strict)"**. PR #6 folded those jobs into
-the single §3.2 check `kit-quality` and bridges the gap with two TEMPORARY alias
-jobs in `ci.yml` that report the legacy contexts green iff `kit-quality` passes.
+**Still not finished, and it bit twice more in KL-1.** Verified live (the
+strengthened enabler guard prints the required contexts): the `main` rule still
+requires the two LEGACY contexts `["Kit test suite","Cold-adoption smoke (adopt
++ check --strict)"]`, NOT `kit-quality`. Consequences this session:
 
-Remaining portal clicks (the agent session's direct GitHub API is proxy-blocked —
-403 on all tokens — and the MCP surface has no ruleset/settings tool):
+- **PR #7 merged 24 s after opening, red.** kit-quality failed exactly as
+  designed (session gate red on the born-red card — this suite runs in ~15 s),
+  but the legacy contexts are reported by the temporary alias jobs, and a bare
+  `needs: kit-quality` alias is **skipped** on failure — and **GitHub counts a
+  skipped check run as satisfying a required status check**. Fixed in ci.yml:
+  the aliases now run `if: always()` and fail hard when kit-quality is not a
+  success.
+- **PR #9 auto-merged before its close-out commit** (the enabler DOES fire on
+  MCP-created PRs when they are mergeable at open). The engine's session gate
+  now also treats a Status badge still saying `in-progress` as incomplete, so a
+  reopened card can't read green on inherited markers.
+
+Remaining portal clicks:
 
 1. In the `main` rule, **replace the two legacy required checks with the single
-   `kit-quality`** (source: GitHub Actions). Leave "Require branches to be up to
-   date" OFF (single-writer repo; ON forces a CI re-run per merge).
-2. **Settings → General → Pull Requests → enable "Allow auto-merge"** (if not
-   already on).
+   `kit-quality`** (source: GitHub Actions). Leave "Require branches to be up
+   to date" OFF.
+2. "Allow auto-merge" is confirmed ON (the enabler armed live).
 3. Say so (or just do it) — the next session then **deletes the two
    `legacy-alias-*` jobs** from `ci.yml`.
+4. **⚑ P11 rides v1.0.0** (plan KF-10): flip the repo public, or veto and the
+   read-only-PAT fallback applies.
 
-The `auto-merge-enabler` workflow arms only when main actually requires status
-checks (it asks the rules API first — the PR #4 instant-merge lesson), so it is
-live as soon as "Allow auto-merge" is on. Path-scoped required review on
-`bench/{rubric,tasks,seeds}` joins the ruleset when `bench/` exists (KL-5).
+Path-scoped required review on `bench/{rubric,tasks,seeds}` joins the ruleset
+when `bench/` exists (KL-5).
 
 ## Next action
 
-**KL-1 release train: `KIT_VERSION` + `--version` + CHANGELOG + `release.yml` +
-`upgrade` verb + LICENSE → tag v1.0.0; then consumer pin PRs** (plan §4 + §10
-KL-1 row).
+**KL-1's consumer half + KL-2**: (1) consumer pin PRs — record
+`kit_version: 1.0.0` in superbot (a `substrate.config.json` next to its in-tree
+copy; §4.2 companion deliverable) and in superbot-next; (2) then the **KL-2
+governance home** (`docs/program/` + PL-register + `check_program_law.py` +
+template pointer sections + `docs/house-style.md`; plan §8 + §10 KL-2 row).
 
 ## Recently shipped (newest first)
 
+- **KL-1 PR C — close-out + two gate-hole guards**: legacy-alias CI jobs
+  `if: always()` + hard-fail on non-success kit-quality (a skipped alias no
+  longer satisfies a required context — the #7 hole); engine session gate
+  treats an `in-progress` Status badge as incomplete (real born-red, kit-wide —
+  the #9 hole); the PR B close-out docs. **Tag v1.0.0 pushed on this merge
+  commit** → first GitHub Release via `release.yml`.
+- **#9 — KL-1 PR B: the `upgrade` verb** (§4.3): sha256+version self-verification
+  vs release.json; archive-first (old dist + state.json banked to
+  `.substrate/backup/` before any overwrite); hash-based planted-doc diff report
+  (`.substrate/upgrade-report.md`; classes unchanged / template-improved /
+  consumer-edited / diverged); `--apply-docs` only ever touches
+  consumer-untouched docs; `--rollback`. (Auto-merged before its close-out
+  commit — see 👤 P10 above; the close-out landed in PR C.)
+- **#8 — KL-1 PR A: release discipline**: `KIT_VERSION` + `Config.kit_version` +
+  `--version` + dist header stamp; planted-doc hash + kit_version recording at
+  adopt/`render --live`; adopt archives the running dist; CHANGELOG.md + LICENSE
+  (MIT ⚑) + `release.yml` + `src/build_release_json.py`; `reconciliation_prs`
+  20→30; `_ENGINE_MANIFEST` dropped; auto-merge-enabler guard counts contexts.
+- **#7 — session card only, merged by the instant-merge footgun** (see 👤 P10
+  above; the work it announced landed as #8/#9).
 - **#6 — KL-1 first act (CI delta vs §3.2)**: one required-check-shaped job
   `kit-quality` (pytest · dist byte-pin · engine lint bans via ruff
   T20/S101/TID251 · cold-adopt smoke incl. `--wire-enforcement` exit path ·
@@ -79,4 +120,4 @@ KL-1 row).
 
 ## Review rhythm
 
-Every session opens a born-red session card PR early and flips it complete as the last commit; PRs merge on green CI (kit-quality) via auto-merge once §3.2 item 7 makes the check required. Releases are semver GitHub Releases from v1.0.0 with bootstrap.py + sha256 + release.json assets (plan §4); consumers pull upgrades, the lab never writes to consumer repos (KF-2).
+Every session opens a born-red session card PR early and flips it complete as the last commit; PRs merge on green CI (kit-quality) via auto-merge once §3.2 item 7 makes the check required — **until P10 is confirmed, prefer merging by hand (MCP) after verifying CI green on the final head**: the #7 incident proved arming can mean merging instantly. Releases are semver GitHub Releases from v1.0.0 with bootstrap.py + sha256 + release.json assets (plan §4); a release = push an annotated `vX.Y.Z` tag on a main commit whose CHANGELOG.md carries that version's section (`release.yml` refuses otherwise); published releases are never deleted — supersede (§6.4). Consumers pull upgrades (`bootstrap.py.new upgrade`), the lab never writes to consumer repos (KF-2).
