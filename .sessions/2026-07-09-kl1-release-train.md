@@ -1,7 +1,8 @@
 # Session 2026-07-09 — KL-1 release train → v1.0.0
 
-> **Status:** `complete` *(the whole KL-1 train: PR A = #8/f4609ea, PR B = #9 —
-> tag `v1.0.0` pushed on #9's merge commit; Release verified on the releases page.)*
+> **Status:** `complete` *(the whole KL-1 train: PR A = #8/f4609ea, PR B = #9,
+> PR C = the close-out + two gate-hole guards this file rides in — tag `v1.0.0`
+> pushed on PR C's merge commit; Release verified on the releases page.)*
 
 **The train (founding plan §4 + §10 KL-1 row, one session, 2 PRs + tag):**
 
@@ -76,15 +77,29 @@ moment** (owner: flip the repo public, or veto → read-only-PAT fallback).
 
 1. ⚑ **LICENSE = MIT under "Menno van Hattum"** (owner item P8 — recorded default
    applied; veto = replace the file + note the change in CHANGELOG).
-2. ⚑ **PR #7 (this session's born-red card) merged INSTANTLY** — 24 s after open,
-   by github-actions[bot], with CI still running: the auto-merge-enabler's
-   refuse-to-arm guard passed because a `required_status_checks` **rule** exists
-   on main, but its required **contexts** are effectively vacuous, so armed
-   auto-merge had nothing to wait for (KL-0 PR #4 class, one level deeper). The
-   born-red card landed alone on main (main CI red until this PR merges —
-   self-healing). **Guard strengthened in this PR**: counts required
-   *contexts* (not rules), prints them, refuses at 0. 👤 P10 remains: make
-   `kit-quality` a required status check on main.
+2. ⚑ **PR #7 (this session's born-red card) merged INSTANTLY, red** — 24 s after
+   open, by github-actions[bot]. Root cause, fully reconstructed from job logs
+   (my first "vacuous contexts" hypothesis was WRONG — corrected per source-wins):
+   kit-quality on #7 **failed exactly as designed** (session gate red on the
+   born-red card, in 15 s — this suite is that fast), but the ruleset's two
+   required contexts are the LEGACY names, reported by the temporary alias jobs —
+   and a bare `needs: kit-quality` alias is **skipped** when kit-quality fails,
+   and **GitHub treats a skipped check run as SATISFYING a required status
+   check**. So both required contexts read satisfied on a red build and armed
+   auto-merge merged instantly. Two guards shipped: (PR A) the enabler counts +
+   prints required *contexts* (which is how the legacy-contexts truth surfaced);
+   (PR C) the alias jobs run `if: always()` and **fail hard** when kit-quality
+   is not a success — a skipped-alias can no longer green a required context.
+   👤 P10 remains: require `kit-quality` itself, then delete the aliases.
+2b. ⚑ **PR #9 auto-merged before its close-out commit** — the reopened shared
+   card kept its 💡/⟲ markers from PR A, and the kit's session gate checked
+   marker *presence* only, so born-red read as green; the enabler (which fires
+   on mergeable MCP-created PRs — verified live) armed, CI passed in ~40 s, and
+   the PR landed without the final card flip. **Guard shipped (PR C, engine):**
+   `check_session_log` now treats a Status badge still saying
+   `in-progress`/`wip`/`hold` as INCOMPLETE — the status *value* is part of
+   completeness, kit-wide, so every consumer inherits real born-red. The
+   orphaned close-out landed as PR C.
 3. ⚑ Self-initiated: refuse-to-release guards in `release.yml` go beyond the plan
    letter (KIT_VERSION/tag equality + dist header stamp, alongside the specified
    CHANGELOG-section refusal) — cheap enforcement of the three-way version sync.
@@ -100,9 +115,21 @@ moment** (owner: flip the repo public, or veto → read-only-PAT fallback).
    proved arming unsafe until P10 is confirmed; `current-state.md` ▶ Review
    rhythm now says so.
 
+## PR C — what shipped
+
+- `.github/workflows/ci.yml`: legacy-alias jobs `if: always()` + hard-fail on a
+  non-success kit-quality (closes the skipped-satisfies-required hole, flag 2).
+- `src/engine/checks/check_session_log.py`: `status_in_progress` +
+  `check_log` reports "a completed Status (badge still says in-progress)" —
+  born-red now checks the status VALUE (flag 2b); dist regenerated; tests
+  481 → 483.
+- The PR B close-out that #9's early merge orphaned (this card's completion +
+  `docs/current-state.md`), cherry-picked in.
+
 ## KPIs / verification
 
-- `python3.10 -m pytest tests/ -q` → **481 passed** (442 → 465 in PR A → 481 in PR B).
+- `python3.10 -m pytest tests/ -q` → **483 passed** (442 → 465 PR A → 481 PR B →
+  483 PR C).
 - `python3.10 -m ruff check src/engine/` → clean (both PRs).
 - `python3.10 src/build_bootstrap.py` → byte-equal to committed dist at each push.
 - `python3.10 dist/bootstrap.py --version` → `substrate-kit 1.0.0`.

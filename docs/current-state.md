@@ -39,24 +39,29 @@
 
 ## Pending owner action — 👤 P10 (repo settings, §3.2 item 7)
 
-**Still not finished, and it bit again in KL-1**: PR #7 (a born-red session card,
-nothing else) **merged 24 seconds after opening** — the `auto-merge-enabler`'s
-refuse-to-arm guard saw a `required_status_checks` *rule* on `main` and armed,
-but the rule's required *contexts* were effectively vacuous at that moment, so
-auto-merge had nothing to wait for (the KL-0 PR #4 footgun, one level deeper).
-The guard now counts required **contexts** (and prints them in its log), refusing
-at 0 (PR #8). Later the same session PRs #8/#9 were correctly `blocked` until CI
-passed, so the ruleset appears to have required checks again — but the exact
-required contexts remain unverifiable from a session (direct API proxy-blocked;
-no MCP ruleset tool).
+**Still not finished, and it bit twice more in KL-1.** Verified live (the
+strengthened enabler guard prints the required contexts): the `main` rule still
+requires the two LEGACY contexts `["Kit test suite","Cold-adoption smoke (adopt
++ check --strict)"]`, NOT `kit-quality`. Consequences this session:
+
+- **PR #7 merged 24 s after opening, red.** kit-quality failed exactly as
+  designed (session gate red on the born-red card — this suite runs in ~15 s),
+  but the legacy contexts are reported by the temporary alias jobs, and a bare
+  `needs: kit-quality` alias is **skipped** on failure — and **GitHub counts a
+  skipped check run as satisfying a required status check**. Fixed in ci.yml:
+  the aliases now run `if: always()` and fail hard when kit-quality is not a
+  success.
+- **PR #9 auto-merged before its close-out commit** (the enabler DOES fire on
+  MCP-created PRs when they are mergeable at open). The engine's session gate
+  now also treats a Status badge still saying `in-progress` as incomplete, so a
+  reopened card can't read green on inherited markers.
 
 Remaining portal clicks:
 
-1. In the `main` rule, make the single **`kit-quality`** the required status
-   check (source: GitHub Actions) — replacing the two legacy contexts ("Kit test
-   suite", "Cold-adoption smoke (adopt + check --strict)") if still present.
-   Leave "Require branches to be up to date" OFF.
-2. Confirm "Allow auto-merge" is ON (it evidently is — #7 armed).
+1. In the `main` rule, **replace the two legacy required checks with the single
+   `kit-quality`** (source: GitHub Actions). Leave "Require branches to be up
+   to date" OFF.
+2. "Allow auto-merge" is confirmed ON (the enabler armed live).
 3. Say so (or just do it) — the next session then **deletes the two
    `legacy-alias-*` jobs** from `ci.yml`.
 4. **⚑ P11 rides v1.0.0** (plan KF-10): flip the repo public, or veto and the
@@ -75,13 +80,19 @@ template pointer sections + `docs/house-style.md`; plan §8 + §10 KL-2 row).
 
 ## Recently shipped (newest first)
 
+- **KL-1 PR C — close-out + two gate-hole guards**: legacy-alias CI jobs
+  `if: always()` + hard-fail on non-success kit-quality (a skipped alias no
+  longer satisfies a required context — the #7 hole); engine session gate
+  treats an `in-progress` Status badge as incomplete (real born-red, kit-wide —
+  the #9 hole); the PR B close-out docs. **Tag v1.0.0 pushed on this merge
+  commit** → first GitHub Release via `release.yml`.
 - **#9 — KL-1 PR B: the `upgrade` verb** (§4.3): sha256+version self-verification
   vs release.json; archive-first (old dist + state.json banked to
   `.substrate/backup/` before any overwrite); hash-based planted-doc diff report
   (`.substrate/upgrade-report.md`; classes unchanged / template-improved /
   consumer-edited / diverged); `--apply-docs` only ever touches
-  consumer-untouched docs; `--rollback`; **tag v1.0.0 pushed on its merge
-  commit** → first GitHub Release via `release.yml`.
+  consumer-untouched docs; `--rollback`. (Auto-merged before its close-out
+  commit — see 👤 P10 above; the close-out landed in PR C.)
 - **#8 — KL-1 PR A: release discipline**: `KIT_VERSION` + `Config.kit_version` +
   `--version` + dist header stamp; planted-doc hash + kit_version recording at
   adopt/`render --live`; adopt archives the running dist; CHANGELOG.md + LICENSE
