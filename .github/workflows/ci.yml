@@ -1,3 +1,10 @@
+# kit-quality — the ONE required check (founding plan §3.2).
+#
+# Every §3.2 job runs as a step of a single job so the branch ruleset needs
+# exactly one required status check context: "kit-quality". Runs on the
+# Python floor 3.10 (§3.2 item 6; the 3.10–3.13 matrix is deferred
+# productization). Item 7 (the ruleset that makes this check REQUIRED +
+# "Allow auto-merge") is a repo-settings action — see docs/current-state.md.
 name: CI
 
 on:
@@ -7,31 +14,85 @@ on:
     branches: [main]
 
 jobs:
-  test:
-    name: Kit test suite
+  kit-quality:
+    name: kit-quality
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history: the session gate restores card mtimes from commit
+          # times so `check` deterministically picks the PR's own card.
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-      - name: Install pytest
-        run: python3 -m pip install pytest
-      - name: Run the kit's own test suite
+          python-version: "3.10"
+      - name: Install dev tools
+        run: python3 -m pip install pytest ruff
+
+      - name: Kit test suite (§3.2 item 1)
         run: python3 -m pytest tests/ -q
 
-  adoption-smoke:
-    name: Cold-adoption smoke (adopt + check --strict)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Adopt into a scratch repo and gate it
+      - name: Dist byte-equality pin (§3.2 item 2)
+        # The committed dist/bootstrap.py must equal a fresh build — nobody
+        # edits src/ and forgets `python3 src/build_bootstrap.py`.
+        run: |
+          python3 src/build_bootstrap.py
+          git diff --exit-code dist/bootstrap.py
+
+      - name: Engine lint bans (§3.2 item 3 — no print/assert/subprocess)
+        # Config lives in pyproject.toml [tool.ruff*]: T20 + S101 + TID251.
+        run: python3 -m ruff check src/engine/
+
+      - name: Cold-adoption smoke (§3.2 item 4)
+        # adopt into a scratch repo + check --strict green, then the
+        # --wire-enforcement exit path (the born-self-verifying clause).
         run: |
           scratch="$(mktemp -d)"
           cp dist/bootstrap.py "$scratch/"
-          cd "$scratch"
-          python3 bootstrap.py adopt
-          python3 bootstrap.py check --strict
+          (
+            cd "$scratch"
+            python3 bootstrap.py adopt
+            python3 bootstrap.py check --strict
+          )
+          scratch_we="$(mktemp -d)"
+          cp dist/bootstrap.py "$scratch_we/"
+          (
+            cd "$scratch_we"
+            python3 bootstrap.py adopt --wire-enforcement
+            test -f .github/workflows/substrate-gate.yml
+            test -f .claude/settings.json
+            python3 bootstrap.py check --strict
+          )
+
+      - name: Session gate (§3.2 item 5 — dogfood, the born-red discipline)
+        # `check` picks the current session card as newest-by-mtime; a CI
+        # checkout flattens every mtime to checkout time, so restore each
+        # card's last-commit time first. A PR that adds an `in-progress`
+        # card stays red until the card flips complete.
+        run: |
+          for f in .sessions/*.md; do
+            ts="$(git log -1 --format=%ct -- "$f")"
+            if [ -n "$ts" ]; then touch -d "@$ts" "$f"; fi
+          done
+          python3 dist/bootstrap.py check --strict --require-session-log
+
+  # ── TEMPORARY legacy-context aliases (delete after P10 lands) ─────────────
+  # Discovered live in PR #6: an owner-landed ruleset on main requires the
+  # ORIGINAL job names "Kit test suite" and "Cold-adoption smoke (adopt +
+  # check --strict)". Those jobs were folded into kit-quality above, so the
+  # legacy contexts would sit "expected" forever and block every merge. These
+  # aliases report the legacy contexts green iff kit-quality passed. Once the
+  # ruleset requires `kit-quality` instead (docs/current-state.md 👤 P10),
+  # delete both jobs.
+  legacy-alias-test:
+    name: Kit test suite
+    needs: kit-quality
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "legacy required-context alias — real gate is kit-quality"
+  legacy-alias-smoke:
+    name: Cold-adoption smoke (adopt + check --strict)
+    needs: kit-quality
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "legacy required-context alias — real gate is kit-quality"

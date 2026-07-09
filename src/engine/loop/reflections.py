@@ -190,7 +190,12 @@ def _ref_mine_log(log: Path) -> tuple[list[dict], dict[str, str]]:
         if "[DEPRECATED]" in line:
             continue
         evidence = f"{log.name}:L{lineno}"
-        tags = _ref_marker_tags(line)
+        # Heading lines ("## 💡 Session idea") are section *structure*, not
+        # lessons — mining them produced header-text reflections in the KL-0
+        # dogfood (friction guard, 2026-07-09). Path tokens in headings still
+        # count for the recurring-path pass.
+        is_heading = line.lstrip().startswith("#")
+        tags = [] if is_heading else _ref_marker_tags(line)
         if tags:
             candidates.append(
                 {"lesson": _ref_clean_line(line), "evidence": evidence, "tags": tags},
@@ -211,7 +216,9 @@ def mine_reflections(sessions_dir: Path, *, last_n: int = 5) -> list[dict]:
       3. Any file path cited in >= 2 different logs → one
          ``Recurring attention on <path>`` candidate.
 
-    Lines containing ``[DEPRECATED]`` are skipped entirely.
+    Lines containing ``[DEPRECATED]`` are skipped entirely; ``#``-prefixed
+    heading lines never become lesson candidates (passes 1–2) but their path
+    tokens still feed pass 3.
     """
     candidates: list[dict] = []
     sightings: dict[str, dict[str, str]] = {}

@@ -31,3 +31,24 @@ include = ["engine*"]
 
 [tool.setuptools.package-data]
 engine = ["templates/*.tmpl"]
+
+# ── Engine lint bans (founding plan §3.2 item 3) ────────────────────────────
+# Recreates the no-print / no-assert / no-subprocess-in-engine discipline that
+# superbot's ruff regime silently provided before extraction. Scope is the
+# engine only: CI runs `python3 -m ruff check src/engine/` (the kit-quality
+# check); tests/ and the dist artifact are excluded so a bare `ruff check`
+# over the repo agrees with CI (pytest asserts + subprocess smoke runs are
+# legitimate outside the engine).
+[tool.ruff]
+target-version = "py310"
+extend-exclude = ["tests", "dist"]
+
+[tool.ruff.lint]
+select = [
+    "T20",    # no print()/pprint() — engine output goes through cli._emit
+    "S101",   # no assert — stripped under -O; engine errors must be real errors
+    "TID251", # banned imports — subprocess (see below)
+]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"subprocess".msg = "subprocess is banned in engine code (§3.2): the engine is pure stdlib logic; shelling out is host-CI sugar."

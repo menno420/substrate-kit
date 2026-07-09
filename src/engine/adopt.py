@@ -121,6 +121,19 @@ def _vendor_bootstrap(root: Path, report: list[str]) -> str:
     is_bootstrap_entry = (
         entry is not None and entry.name == "bootstrap.py" and entry.is_file()
     )
+    # A target that already contains the *generating* dist/bootstrap.py — the
+    # kit repo itself, operating on itself as consumer #0 (§3.3) — must not
+    # gain a vendored root duplicate: it would silently drift from the
+    # CI-byte-pinned dist file (KL-0 friction guard, 2026-07-09). Hook
+    # commands point at the dist copy instead.
+    dist_copy = root / "dist" / "bootstrap.py"
+    if (
+        is_bootstrap_entry
+        and not at_root.exists()
+        and dist_copy.is_file()
+        and entry == dist_copy.resolve()
+    ):
+        return "dist/bootstrap.py"
     if not at_root.exists() and is_bootstrap_entry and entry != at_root:
         _adopt_plant(
             at_root,

@@ -168,6 +168,28 @@ def test_adopt_as_single_file_vendors_bootstrap(tmp_path, monkeypatch):
     assert str(fake_bootstrap) not in settings
 
 
+def test_adopt_skips_vendoring_when_target_ships_generating_dist(
+    tmp_path, monkeypatch
+):
+    # KL-0 friction guard (2026-07-09): adopting the kit repo itself
+    # (consumer #0, §3.3) via its own dist/bootstrap.py must not vendor a
+    # root duplicate that would silently drift from the CI-byte-pinned dist
+    # file. Hook commands point at the dist copy instead.
+    root = tmp_path / "repo"
+    dist = root / "dist" / "bootstrap.py"
+    dist.parent.mkdir(parents=True)
+    dist.write_text("# generating single-file bootstrap\n", encoding="utf-8")
+    monkeypatch.setattr("sys.argv", [str(dist), "adopt"])
+    _, config, lines = _adopt_into(tmp_path)
+    assert not (root / "bootstrap.py").exists()
+    assert "planted: bootstrap.py" not in lines
+    settings = (root / config.state_dir / "hooks" / "settings.template.json").read_text(
+        encoding="utf-8"
+    )
+    assert "dist/bootstrap.py hook" in settings
+    assert str(dist) not in settings
+
+
 def test_filled_slot_renders_into_planted_doc(tmp_path):
     root = tmp_path / "repo"
     config = Config()
