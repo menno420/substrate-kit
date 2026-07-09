@@ -12,11 +12,14 @@ Three subcommands, in run order:
 ``prepare``
     Build the arm directories for one run: generate the seed project ONCE
     (``seeds/make_seed.py --seed N``), copy it identically into ``on/repo``
-    and ``off/repo``, ``git init`` + one identical seed commit in each, adopt
-    the kit on the ON arm only (``--wire-enforcement`` when the task set
-    includes T5 or a merge-shaped task), then run the §5.1 **smoke step** —
-    walk the ON arm (planted docs exist, `check --strict` exits 0) before any
-    paired session runs (run 1's root cause was discoverable at setup).
+    and ``off/repo``, ``git init`` + one identical seed commit in each, run
+    the generated seed's OWN test suite in both arms (red aborts the prepare
+    — run 2's seed-424242 SyntaxError class dies here, at prepare time, with
+    a named error instead of surfacing mid-run), adopt the kit on the ON arm
+    only (``--wire-enforcement`` when the task set includes T5 or a
+    merge-shaped task), then run the §5.1 **smoke step** — walk the ON arm
+    (planted docs exist, `check --strict` exits 0) before any paired session
+    runs (run 1's root cause was discoverable at setup).
     Writes ``manifest.json`` + per-task prompt pointers.
 
 ``collect``
@@ -91,6 +94,31 @@ def _git_seed_commit(repo: Path) -> None:
     _run(["git", "commit", "-q", "-m", "seed"], repo)
 
 
+def _seed_suite_smoke(repo: Path, arm: str) -> str:
+    """Run the generated seed's OWN test suite in ``repo``; abort on red.
+
+    The 2026-07-09 run-2 lesson (idea make-seed-yield-keyword-bug): a
+    SyntaxError seed (seed 424242, ``yield`` measure token) reached the
+    runner because nothing between "seed generated" and "session started"
+    ever EXECUTED the seed project. This leg makes a broken seed die at
+    prepare time with a named error, never mid-run.
+    """
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "tests/", "-q"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        sys.stderr.write(result.stdout + result.stderr)
+        raise SystemExit(
+            f"SEED SUITE RED on the {arm} arm ({repo}) — the generated seed "
+            "project must be green before any session runs; fix the seed "
+            "(or make_seed.py) and re-prepare (§5.1; the seed-424242 lesson)."
+        )
+    return f"seed suite ({arm}): green"
+
+
 def cmd_prepare(args) -> int:
     run_dir = args.out / args.run_id
     if run_dir.exists():
@@ -115,10 +143,12 @@ def cmd_prepare(args) -> int:
         KIT_ROOT,
     )
     arms = {}
+    seed_smoke = []
     for arm in ("on", "off"):
         repo = run_dir / arm / "repo"
         shutil.copytree(seed_src, repo)
         _git_seed_commit(repo)
+        seed_smoke.append(_seed_suite_smoke(repo, arm))
         arms[arm] = str(repo)
 
     # 2. Adopt the kit on the ON arm only (guided mode is adopt's default —
@@ -134,7 +164,7 @@ def cmd_prepare(args) -> int:
     _run(["git", "commit", "-q", "-m", "adopt substrate-kit"], on_repo)
 
     # 3. The §5.1 smoke step: walk the ON arm before any paired session runs.
-    smoke = []
+    smoke = list(seed_smoke)
     for rel in ("CONSTITUTION.md", "docs/current-state.md", ".sessions"):
         smoke.append(f"{rel}: {'present' if (on_repo / rel).exists() else 'MISSING'}")
     check = subprocess.run(

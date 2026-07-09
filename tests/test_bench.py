@@ -74,6 +74,77 @@ def test_make_seed_tests_pass_and_bug_is_seeded(tmp_path):
     assert "lower" not in tests_text  # the gap is untested
 
 
+# The 2026-07-09 run-2 keyword class (idea make-seed-yield-keyword-bug):
+# seed 424242 drew the harvest domain whose measure token was `yield` — a
+# Python keyword — and the generated project was a SyntaxError.
+
+
+def test_make_seed_seed_424242_regression(tmp_path):
+    # The exact live-bug seed must generate a project whose every module
+    # compiles (it was a SyntaxError until the vocabulary fix).
+    make_seed.generate(tmp_path, seed=424242)
+    modules = list(tmp_path.rglob("*.py"))
+    assert modules
+    for module in modules:
+        compile(module.read_text(encoding="utf-8"), str(module), "exec")
+
+
+def test_make_seed_every_pool_token_is_identifier_safe():
+    # The whole vocabulary is screened — keywords, soft keywords, builtins.
+    for token in (*make_seed._ADJECTIVES, *make_seed._VERBS):
+        assert make_seed._identifier_safe(token), token
+    for domain in make_seed._DOMAINS:
+        for token in domain:
+            assert make_seed._identifier_safe(token), token
+
+
+def test_make_seed_seed_sweep_all_identifiers_keyword_safe(tmp_path):
+    # A seed sweep: every drawn surface token is identifier-safe, and the
+    # generated modules compile (the 424242 class, generalized).
+    for seed in range(0, 500, 7):
+        names = make_seed._names(seed)  # raises ValueError on any unsafe draw
+        for token in names.values():
+            assert make_seed._identifier_safe(token), (seed, token)
+    for seed in (0, 42, 424242, 424243, 499):
+        dest = tmp_path / f"sweep-{seed}"
+        make_seed.generate(dest, seed=seed)
+        for module in dest.rglob("*.py"):
+            compile(module.read_text(encoding="utf-8"), str(module), "exec")
+
+
+def test_make_seed_names_screen_rejects_keyword_tokens(monkeypatch):
+    # Defense in depth: a future pool edit that reintroduces a keyword dies
+    # at generation time with the token named, never as a SyntaxError seed.
+    monkeypatch.setattr(make_seed, "_DOMAINS", (("harvest", "harvests", "yield"),))
+    with pytest.raises(ValueError, match="yield"):
+        make_seed._names(424242)
+
+
+# ---------------------------------------------------------------------------
+# run_ab prepare — the seed-suite smoke leg (a broken seed dies at prepare)
+# ---------------------------------------------------------------------------
+
+
+def test_prepare_seed_suite_smoke_green_on_valid_seed(tmp_path):
+    make_seed.generate(tmp_path, seed=3)
+    line = run_ab._seed_suite_smoke(tmp_path, "on")
+    assert line == "seed suite (on): green"
+
+
+def test_prepare_seed_suite_smoke_aborts_on_red_seed(tmp_path):
+    # A seed whose own suite is red (here: a SyntaxError module, the exact
+    # run-2 shape) must abort the prepare with a named error.
+    make_seed.generate(tmp_path, seed=3)
+    names = make_seed._names(3)
+    ops = tmp_path / names["project"] / "ops.py"
+    ops.write_text(
+        ops.read_text(encoding="utf-8") + "\ndef broken(records, yield):\n    pass\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(SystemExit, match="SEED SUITE RED"):
+        run_ab._seed_suite_smoke(tmp_path, "off")
+
+
 # ---------------------------------------------------------------------------
 # score_m1 — words before the first mutating action
 # ---------------------------------------------------------------------------
