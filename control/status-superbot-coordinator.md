@@ -2,18 +2,17 @@
 
 > Lane heartbeat per the v1.4.0 multi-lane pattern (`control/README.md` §
 > per-lane heartbeats): this file's sole writer is the SuperBot-rebuild
-> COORDINATOR lane. It is deliberately **not yet in `heartbeat_files` by
-> design — kit-lab owns the config; decide-and-flag** (kit-lab may add
-> `control/status-superbot-coordinator.md` to `substrate.config.json` →
-> `heartbeat_files` when it splits its own heartbeat; until then the
-> checker's default single-file gate is unchanged).
+> COORDINATOR lane. It remains deliberately **not in `heartbeat_files` —
+> kit-lab owns the config; decide-and-flag** (unchanged from the wake-up
+> review).
 
-updated: 2026-07-09T17:45:00Z
-phase: wake-up review SHIPPED (suffixed project review + self-review, docs/retro/*-superbot-coordinator.md) — next: superbot-next testing ladder band 4 (XP/karma/community), then games/knowledge/AI; parity flips wait only on the kernel-drift ruling
-health: green
-kit: v1.4.0 · check: green · engaged: yes (adopter-side; this lane builds superbot-next, engaged on the kit)
-last-shipped: this PR — coordinator-lane wake-up review 2026-07-09 (project review with full agent audit + QUESTIONS.md A1–G3 answers, suffixed per lane rule) + this lane heartbeat
-blockers: none agent-side. Owner-gated: kernel-drift ruling (flag 13, blocks every parity flip); plugin repo creation (blocks ORDER 002 done)
-orders: acked=none-for-this-lane done=none-for-this-lane (ORDER 005 is kit-lab's; this lane filed its review SUFFIXED — the duplicate unsuffixed execution PR #51 merged before stand-down completed and is recorded in the audit; residual conflict on kit-lab's #50)
-⚑ needs-owner: 1) kernel-surface-drift ruling (flag 13 in superbot-next docs/status/testing-report-2026-07-09.md: "relax-compare" or "re-baseline" — unblocks EVERY parity flip); 2) create repo superbot-plugin-hello (github.com/new, owner menno420, Public, no README — unblocks ORDER 002); 3) replace the Claude Code environment setup script with the block from docs/environment-setup-script.md (unblocks: no more sessions killed at provisioning); 4) superbot-next Settings → Rules: add kit-quality as a required check + swap legacy alias contexts (closes the red-merge hole); 5) test-guild hygiene: remove old SuperBot from MineSnakeBotTest or change its prefix (clean single-bot evidence); 6) optional: invite a throwaway member + send its user ID (full kick/ban proof); 7) kit-lab's carried ratifications: merge-or-veto substrate-kit #26 and #22; decide the superbot v1.2.0+ upgrade (pin-only now 4 releases behind)
-notes: full detail in docs/retro/project-review-2026-07-09-superbot-coordinator.md (§e mirrors the ⚑ list click-by-click; §f is the zero-owner-input continuation: testing ladder continues, watchdog re-armed for unattended windows, coordinator relays rulings). This lane never writes control/status.md or substrate.config.json — one writer per file.
+status: wind-down complete — ready for archive + fresh session
+updated: 2026-07-09T19:58:00Z
+phase: gen-1 lane CLOSED. Succession pack shipped in docs/succession/ (next-boot guide, custom-instructions proposal, environment spec with re-verified setup script, gen-2 blueprint feedback) + wind-down retro addendum docs/retro/wind-down-review-2026-07-09-superbot-coordinator.md. The gen-2 coordinator boots from docs/succession/next-boot-2026-07-09-superbot-coordinator.md
+health: green (nothing in flight agent-side; band 5 paused at the owner's stop with superbot-next PR #95 open/READY, only the born-red report job red; bands 6–7 not started; parity flips gated on the kernel-drift ruling)
+kit: v1.6.0 · check: green (strict + session log) · engaged: yes (adopter-side)
+last-shipped: this PR — coordinator-lane wind-down succession pack (gen-1 → gen-2), suffixed per lane rule
+blockers: none agent-side — the lane is closed; everything remaining is an owner click (see ⚑)
+orders: the owner's wind-down guidance is EXECUTED (succession deliverables 1–5 shipped, heartbeat flipped as the deliberate last commit); no orders remain for this lane — successor lane claims its own
+⚑ needs-owner: 1) kernel-surface-drift ruling (flag 13 in superbot-next docs/status/testing-report-2026-07-09.md: "relax-compare" or "re-baseline" — unblocks EVERY parity flip); 2) create repo superbot-plugin-hello (github.com/new, owner menno420, Public, no README — unblocks ORDER 002 done); 3) paste the setup script from docs/environment-setup-script.md into the project Environment settings (re-verified exit-0 at wind-down — unblocks: no more sessions killed at provisioning); 4) superbot-next Settings → Rules: required-check swap — add kit-quality and drop the legacy alias contexts (closes the red-merge hole / the #35 "Expected"-freeze class); 5) remove the old SuperBot from MineSnakeBotTest or change its prefix (clean single-bot evidence); 6) optional: invite a throwaway/sacrificial member + send its user ID (full kick/ban effect proof); 7) kit-lab loose ends: PR #50 disposition + done=005 reconciliation (kit-lab's ORDER 007 convention carries it); 8) stale-branch cleanup in both repos (agents get 403 on remote branch delete — owner or a repo setting must sweep the merged claude/* branches)
+notes: whole-life record in docs/retro/wind-down-review-2026-07-09-superbot-coordinator.md (whole-life summary, exact-error friction ledger, first-person close), linking the merged review pair rather than repeating it. This lane never writes control/status.md, control/inbox.md, or substrate.config.json — one writer per file. Archive this heartbeat with the lane; the gen-2 lane opens its own suffixed file.

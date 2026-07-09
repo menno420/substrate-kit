@@ -15,6 +15,19 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **SuperBot-coordinator lane wind-down succession pack** (docs-only,
+  suffixed per the multi-lane rule): `docs/succession/` (new, with README
+  index) carrying the gen-2 next-boot guide (read order, queue state,
+  walking-skeleton check, known walls with exact error text), the Custom
+  Instructions rewrite proposal, the environment spec (setup script
+  re-verified exit-0 in no-repo and with-repo cases), and gen-2 blueprint
+  feedback; plus the wind-down retro addendum
+  `docs/retro/wind-down-review-2026-07-09-superbot-coordinator.md`
+  (whole-life summary, exact-error friction ledger, first-person close)
+  and the lane heartbeat flipped to wind-down-complete.
+
 ## [1.6.0] - 2026-07-09
 
 New-capability release (MINOR) covering two coordination-protocol bands
