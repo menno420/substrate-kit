@@ -133,16 +133,25 @@
   smoke + tests pin the RED→ENGAGED→GREEN arc (suite 626 → 637). The
   PL-register note (adoption-is-not-done-until-ENGAGED as program law)
   rides its own `do-not-automerge` owner-review PR per §8.3.
+- **v1.1.0 is CUT** (PR #29 + the `release.yml` `workflow_dispatch` run):
+  `KIT_VERSION` 1.0.0 → 1.1.0 (config + pyproject + dist header stamp,
+  byte-pinned), CHANGELOG `[Unreleased]` rolled into `## [1.1.0] -
+  2026-07-09` (KF-5 benchmark outcome stated in the section: B1
+  `2026-07-09-run01` VERDICT PASS, judge claude-opus-4-8; M1 unmeasurable
+  caveat travels with it). SemVer judgment MINOR — new capability only
+  (KL-2/3/4/5/7 + guards), no consumer-contract break in the body.
+  Consumers now upgrade via `bootstrap.py.new upgrade` against the v1.1.0
+  Release assets.
 
 ## In flight
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- PR #28 — **B1 record**: run `2026-07-09-run01`'s row appended to the
-  cold-start index + the raw run dir committed + the three harness
-  follow-up ideas. KL-7's companion PL-register note still rides its own
-  `do-not-automerge` PR #26 (left open for the owner).
-  *(#25 — band KL-7 — MERGED 2026-07-09 and moved out of this list.)*
+- PR #29 — **v1.1.0 release cut** (version bump + CHANGELOG roll + this
+  ledger), followed post-merge by the `release.yml` dispatch that tags
+  `v1.1.0` and publishes the Release. KL-7's companion PL-register note
+  still rides its own `do-not-automerge` PR #26 (left open for the owner).
+  *(#28 — B1 record — MERGED 2026-07-09 and moved out of this list.)*
 
 ## Field notes — incident ledger (2026-07-09 run)
 
@@ -286,13 +295,12 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ### Agent queue — in order, as the gates open
 
-1. **Cut v1.1.0 — NOW UNBLOCKED**: B1 fired and its row is recorded (the
-   baseline-firing queue item is DONE — run `2026-07-09-run01`, PASS, PR
-   #28; the stability-baseline B1 entry above has the caveats). **KF-5's
-   benchmark-ran-for-this-MINOR condition is satisfied**; release via the
-   `release.yml` `workflow_dispatch` path (tag pushes 403 — see Review
-   rhythm).
-2. **Run-2 harness fixes (post-release)**: the three B1 follow-ups in
+1. **Consumer upgrades to v1.1.0**: superbot + superbot-next pull the
+   released assets (`bootstrap.py.new upgrade`) — this is what delivers
+   the KL-7 engagement gate (and the `📊 Model:` needle) to the fleet;
+   verify each upgrade's session card. *(The cut-v1.1.0 item is DONE —
+   PR #29 + the dispatch run; see the stability-baseline bullet.)*
+2. **Run-2 harness fixes**: the three B1 follow-ups in
    `docs/ideas/` — `score_m1` artifact fixes (ordinary lane), the T5
    headless guard-surface protocol fix (⚑ `bench/tasks/` is a pin path →
    `do-not-automerge` owner review), and the Model-line false-red
@@ -310,6 +318,14 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ## Recently shipped (newest first)
 
+- **#29 — v1.1.0 release cut**: `KIT_VERSION`/pyproject/dist-header →
+  1.1.0 (byte-pinned); CHANGELOG `[Unreleased]` → `## [1.1.0] -
+  2026-07-09` with the KF-5 benchmark-outcome statement (B1
+  `2026-07-09-run01` PASS; M1-unmeasurable caveat honest and attached) +
+  the release-metadata comment (`breaking=false state_migration=false
+  min_upgrade_from=1.0.0`); fresh empty `[Unreleased]` skeleton; this
+  ledger. The Release itself published by the post-merge `release.yml`
+  `workflow_dispatch` run (in-Actions tag `v1.1.0` + the three assets).
 - **#28 — B1 record (first cold-start row)**: run `2026-07-09-run01`'s
   judged row appended via `run_ab.py record` (append-only law verified by
   `check_bench_integrity.py` in CI); the raw run dir committed at
