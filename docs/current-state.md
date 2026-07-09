@@ -227,15 +227,21 @@
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- PR #41 — **ORDER 003 adopter-visibility band + v1.3.0 cut (this PR)**:
-  the `kit:` heartbeat line + `docs/adopters.md` registry + the
-  release-notes adopter checklist + the version roll to 1.3.0; post-merge
-  the session dispatches `release.yml` with `version=1.3.0`, then writes
-  the ORDER 003 status overwrite as its own control-only PR (the
-  deliberate LAST act). KL-7's companion PL-register note (PL-011) still
-  rides its own `do-not-automerge` PR #26 (left open for the owner).
-  *(#35 — fleet adoption review — and #40 — run-2 harness prep — both
-  MERGED 2026-07-09 and moved to Recently shipped.)*
+- PR #46 — **ORDER 004 configurable heartbeat paths + v1.4.0 cut (this
+  PR)**: `substrate.config.json` → `heartbeat_files` (default
+  `["control/status.md"]`) threaded through `check_status_current` /
+  both `cli.py` call sites / the Stop-hook reminder; per-lane
+  multi-Project pattern in the planted `control/README.md` contract;
+  superbot-games registered in `docs/adopters.md` as the two-lane
+  adopter; version roll to 1.4.0 (dist byte-pinned). Post-merge the
+  session dispatches `release.yml` with `version=1.4.0`, then writes the
+  ORDER 004 status overwrite (ack 004 + the newer ORDER 005) as its own
+  control-only PR (the deliberate LAST act). ORDER 005 (P1 self-review
+  retro, planted by #45) is ACKED and queued as its own session. KL-7's
+  companion PL-register note (PL-011) still rides its own
+  `do-not-automerge` PR #26 (left open for the owner). *(#41 — ORDER 003
+  + v1.3.0 — and #44 — B1 run-2 record — both MERGED 2026-07-09 and in
+  Recently shipped.)*
 
 ## Field notes — incident ledger (2026-07-09 run)
 
@@ -379,15 +385,16 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ### Agent queue — in order, as the gates open
 
-1. **Consumer upgrades to v1.3.0**: superbot-next + websites (currently
-   ENGAGED on v1.2.0) walk the adopter upgrade checklist in the v1.3.0
+1. **Consumer upgrades to v1.4.0**: superbot-next + websites (currently
+   ENGAGED on v1.2.0) walk the adopter upgrade checklist in the v1.4.0
    release notes (`bootstrap.py.new upgrade` → `check --strict` green →
    engagement green → set the `kit:` status line); superbot's upgrade
-   stays owner-gated (deliberate v1.0.0 pin-only stance — ⚑ carried).
-   Registry rows update in [`docs/adopters.md`](adopters.md) as evidence
-   arrives. *(The cut-v1.1.0/v1.2.0/v1.3.0 items are DONE — PRs
-   #29/#32/#41 + their dispatch runs; see the stability-baseline
-   bullets.)*
+   stays owner-gated (deliberate v1.0.0 pin-only stance — ⚑ carried);
+   superbot-games (two-lane) should set `heartbeat_files` to its two lane
+   files when it adopts/upgrades. Registry rows update in
+   [`docs/adopters.md`](adopters.md) as evidence arrives. *(The
+   cut-v1.1.0/v1.2.0/v1.3.0/v1.4.0 items are DONE — PRs #29/#32/#41/#46 +
+   their dispatch runs; see the stability-baseline bullets.)*
 2. **B1 run-3 — AFTER the run-2 seed/harness follow-ups land** *(run-2
    is DONE — fired on the fixed scorer and recorded, strict-F-5 FAIL
    advisory, PR #44; family at 2 rows, KF-8 needs ≥3 for any trend)*:
@@ -411,6 +418,19 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ## Recently shipped (newest first)
 
+- **#46 — ORDER 004: configurable heartbeat paths + v1.4.0 cut**: the
+  status checker's path set is now config
+  (`substrate.config.json` → `heartbeat_files`, default
+  `["control/status.md"]`; empty falls back — misconfiguration never
+  silently disables the gate), validated per-file with findings naming
+  their own lane; consumers (cmd_check incl. `--status-only`, cmd_adopt
+  checklist, Stop-hook reminder — clears on ANY fresh lane) all read the
+  config. Per-lane multi-Project pattern documented in
+  `control-README.md.tmpl` + the local copy; superbot-games registered as
+  the two-lane adopter in [`docs/adopters.md`](adopters.md); D-0010;
+  KIT_VERSION/pyproject → 1.4.0, CHANGELOG rolled, dist byte-pinned.
+  Suite 696 → 705. *(Inbox ORDER 004 — manager relay of the
+  superbot-games finding; ORDER 005 acked, queued as its own session.)*
 - **#44 — B1 run-2 record (second cold-start row)**: run
   `2026-07-09-run02`'s judged row appended via `run_ab.py record`
   (append-only law) — **VERDICT: FAIL** under strict F-5 (first clean M1

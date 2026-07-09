@@ -15,8 +15,54 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-07-09
+
+New-capability release (MINOR): **configurable heartbeat paths** for
+multi-Project repos (inbox ORDER 004, rider to v1.3.0's adopter-visibility
+band — relayed from a real adopter finding: superbot-games is a SHARED repo
+with per-lane heartbeats, and the status checker hardcoded
+`control/status.md`, misfiring on that shape). The validated heartbeat set
+is now `substrate.config.json` → `heartbeat_files` (default
+`["control/status.md"]`), the per-lane pattern is documented in the planted
+`control/README.md` contract, and superbot-games is registered as the
+two-lane adopter. No planted-doc, state schema, config schema, or CLI
+contract breaks (the config key is additive; unset configs behave exactly
+as before).
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+**Benchmark outcome (KF-5 — mandatory run for a MINOR):** B1 run-2
+(`2026-07-09-run02`, fired since v1.3.0 on the #40-fixed scorer) is the run
+of record — **VERDICT: FAIL** under the strict F-5 "none regressing" clause
+(judge claude-opus-4-8, independent; M1 regressed ON 1706/2272/531 vs OFF
+556/1481/511) while ON wins M2 + M3 inside the 7k budget with zero
+unrecoverable errors. Advisory-to-pass per KF-5's letter — a release that
+regresses the A/B says so in its own changelog (founding plan §4). No trend
+claim (family at 2 rows; KF-8 needs ≥3); the F-5 wording decision is
+⚑ owner-pending (`docs/ideas/rubric-f5-none-regressing-wording-2026-07-09.md`).
+
 ### Added
 
+- **Configurable heartbeat paths** (ORDER 004): new `substrate.config.json`
+  key `heartbeat_files` (list of repo-relative status files; default
+  `["control/status.md"]`; empty/unset falls back to the default so a
+  misconfiguration can never silently disable the gate).
+  `check_status_current` validates every listed file independently —
+  per-lane `status-missing` / `status-no-heartbeat` gate findings and
+  per-lane `status-stale` advisories, each naming its own file — and both
+  `cli.py` consumers (`cmd_check`, incl. the `--status-only` control fast
+  lane, and `cmd_adopt`'s engagement checklist) plus the Stop-hook
+  overwrite reminder read the configured list (the hook clears on ANY
+  fresh lane, since it cannot know which lane a session belongs to).
+- **Per-lane multi-Project pattern in the planted contract**
+  (`control-README.md.tmpl` + the kit's own `control/README.md`): one
+  status file per lane (`control/status-<lane>.md`), single manager-owned
+  `inbox.md`, lanes declared via `heartbeat_files` — the one-writer rule
+  scales by splitting the heartbeat, never by sharing it.
+- **`docs/adopters.md`: superbot-games registered as the two-lane adopter**
+  (per-lane heartbeats `control/status-mining.md` +
+  `control/status-exploration.md`; kit_version/engaged pending the first
+  relayed per-lane `kit:` line).
 - **B1 run-2 recorded** (`2026-07-09-run02`, PR #44): second cold-start
   row appended (append-only) + raw run dir committed at
   `bench/results/cold-start/2026-07-09-run02/`. Judge claude-opus-4-8
@@ -438,6 +484,7 @@ by real consumers, and now nameable, pinnable, verifiable, and upgradeable.
   `init --unpack` it served never shipped, and it doubled every consumer's
   vendored file for nothing.
 
+[1.4.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.4.0
 [1.3.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.3.0
 [1.2.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.2.0
 [1.1.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.1.0

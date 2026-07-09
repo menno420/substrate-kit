@@ -10,10 +10,14 @@ what the session ritual still owes —
 - the compaction cadence window has elapsed (``compaction_due``);
 - the reflection buffer has not been mined today
   (``reflection_buffer.last_mined`` vs today's ISO date);
-- ``control/status.md`` exists but was not overwritten this session (KL-8:
-  the coordination protocol's deliberate LAST step) — the file's mtime
-  predates the KL-5 session-start anchor's epoch. Skipped, fail-open, when
-  the protocol or the anchor is absent.
+- no configured control heartbeat (``config.heartbeat_files``, default
+  ``control/status.md``) was overwritten this session (KL-8: the
+  coordination protocol's deliberate LAST step) — every existing heartbeat
+  file's mtime predates the KL-5 session-start anchor's epoch. Skipped,
+  fail-open, when the protocol or the anchor is absent; in a multi-lane
+  repo (ORDER 004) ANY lane's fresh heartbeat clears the advisory (a
+  session cannot know which lane it belongs to, so it never nags a lane
+  that isn't its own).
 
 Returns ``[]`` when all clean. Advisory only, and it **fails open**: every
 check runs inside its own guard, so a bad state document or an unreadable log
@@ -27,7 +31,7 @@ from pathlib import Path
 from typing import Any
 
 from engine.checks.check_session_log import check_log, latest_session_log
-from engine.checks.check_status_current import STATUS_RELPATH
+from engine.checks.check_status_current import heartbeat_relpaths
 from engine.lib.config import Config
 from engine.loop.handoff import SESSION_ANCHOR_KEY
 from engine.loop.maintenance import compaction_due
@@ -94,26 +98,37 @@ def _stop_reflections(state: dict[str, Any]) -> list[str]:
     return [_STOP_UNMINED_MSG]
 
 
-def _stop_status(root: Path, state: dict[str, Any]) -> list[str]:
-    """Advise when ``control/status.md`` was not overwritten this session.
+def _stop_status(root: Path, state: dict[str, Any], config: Config) -> list[str]:
+    """Advise when no control heartbeat was overwritten this session.
 
     The coordination protocol's LAST step (KL-8) is overwriting the status
     heartbeat; a session that ends without it leaves the manager reading a
-    stale (eventually dark) Project. Evidence = the file's mtime vs the KL-5
+    stale (eventually dark) Project. Evidence = file mtime vs the KL-5
     session-start anchor's epoch — no anchor (or no protocol) means no basis
-    for the claim, so the advisory is skipped rather than guessed.
+    for the claim, so the advisory is skipped rather than guessed. The
+    checked set is ``config.heartbeat_files`` (ORDER 004 — one file per lane
+    in a shared multi-Project repo); a fresh mtime on ANY existing lane file
+    clears the advisory, because the hook cannot know which lane this
+    session belongs to and must not nag another lane's duty.
     """
-    status = root / STATUS_RELPATH
-    if not status.is_file():
+    statuses = [
+        root / rel
+        for rel in heartbeat_relpaths(config.heartbeat_files)
+        if (root / rel).is_file()
+    ]
+    if not statuses:
         return []
     anchor = state.get(SESSION_ANCHOR_KEY)
     epoch = anchor.get("epoch") if isinstance(anchor, dict) else None
     if not isinstance(epoch, (int, float)) or isinstance(epoch, bool):
         return []
-    if status.stat().st_mtime >= float(epoch):
+    if any(status.stat().st_mtime >= float(epoch) for status in statuses):
         return []
+    named = ", ".join(
+        status.relative_to(root).as_posix() for status in statuses
+    )
     return [
-        "control/status.md not overwritten this session — the protocol's "
+        f"{named} not overwritten this session — the protocol's "
         "deliberate LAST step (see control/README.md)",
     ]
 
@@ -133,7 +148,7 @@ def evaluate_stop(root: Path, config: Config, backend: Any) -> list[str]:
         lambda: _stop_questions(state),
         lambda: _stop_compaction(state, config),
         lambda: _stop_reflections(state),
-        lambda: _stop_status(root, state),
+        lambda: _stop_status(root, state, config),
     )
     advisories: list[str] = []
     for check in checks:

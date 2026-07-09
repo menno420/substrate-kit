@@ -20,6 +20,7 @@ pytest.importorskip("engine.checks.check_status_current")
 from engine.checks.check_status_current import (
     STATUS_RELPATH,
     check_status_current,
+    heartbeat_relpaths,
     parse_heartbeat,
 )
 from engine.cli import cmd_check
@@ -146,3 +147,67 @@ def test_cmd_check_strict_green_on_fresh_heartbeat(tmp_path):
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     _write(tmp_path, STATUS_RELPATH, _status(now_iso))
     assert cmd_check(tmp_path, strict=True) == 0
+# ---------------------------------------------------------------------------
+# Configurable heartbeat paths (ORDER 004 — multi-Project / per-lane repos)
+# ---------------------------------------------------------------------------
+
+LANES = ["control/status-mining.md", "control/status-exploration.md"]
+
+
+def test_heartbeat_relpaths_unset_or_empty_falls_back_to_default():
+    # A stray `"heartbeat_files": []` must never silently disable the gate.
+    assert heartbeat_relpaths(None) == [STATUS_RELPATH]
+    assert heartbeat_relpaths([]) == [STATUS_RELPATH]
+    assert heartbeat_relpaths(["", "  "]) == [STATUS_RELPATH]
+    assert heartbeat_relpaths(LANES) == LANES
+
+
+def test_multi_lane_missing_file_gates_per_lane(tmp_path):
+    # One lane wrote its heartbeat; the other lane's file doesn't exist yet —
+    # exactly one status-missing finding, naming the missing lane's path.
+    _write(tmp_path, LANES[0], _status("2026-07-09T10:00Z"))
+    gate, advisory = check_status_current(tmp_path, now=NOW, status_files=LANES)
+    assert [(f.kind, f.path) for f in gate] == [("status-missing", LANES[1])]
+    assert advisory == []
+
+
+def test_multi_lane_all_fresh_is_clean_and_default_file_not_required(tmp_path):
+    # Both lanes beat; the classic control/status.md is absent and NOT
+    # demanded — the configured list replaces the default, not adds to it.
+    for lane in LANES:
+        _write(tmp_path, lane, _status("2026-07-09T10:00Z"))
+    gate, advisory = check_status_current(tmp_path, now=NOW, status_files=LANES)
+    assert gate == [] and advisory == []
+
+
+def test_multi_lane_stale_advisory_names_its_lane(tmp_path):
+    _write(tmp_path, LANES[0], _status("2026-07-01T10:00Z"))  # stale
+    _write(tmp_path, LANES[1], _status("2026-07-09T10:00Z"))  # fresh
+    gate, advisory = check_status_current(tmp_path, now=NOW, status_files=LANES)
+    assert gate == []
+    assert [(f.kind, f.path) for f in advisory] == [("status-stale", LANES[0])]
+    assert LANES[0] in advisory[0].message
+
+
+def test_multi_lane_seed_lane_gates_red_with_its_own_path(tmp_path):
+    _write(tmp_path, LANES[0], _status("2026-07-09T10:00Z"))
+    _write(tmp_path, LANES[1], _status("(seeded at adopt)"))
+    gate, advisory = check_status_current(tmp_path, now=NOW, status_files=LANES)
+    assert [(f.kind, f.path) for f in gate] == [("status-no-heartbeat", LANES[1])]
+    assert advisory == []
+
+
+def test_cmd_check_reads_heartbeat_files_from_config(tmp_path, capsys):
+    # The host's substrate.config.json heartbeat_files list is what cmd_check
+    # gates on: a seed-prose lane reds strict even though control/status.md
+    # doesn't exist, and the finding names the lane file.
+    from engine.lib.config import Config, save_config
+
+    config = Config(heartbeat_files=list(LANES))
+    save_config(tmp_path, config)
+    _write(tmp_path, LANES[0], _status("2026-07-09T10:00Z"))
+    _write(tmp_path, LANES[1], _status("(seeded at adopt)"))
+    assert cmd_check(tmp_path, strict=True) == 1
+    out = capsys.readouterr().out
+    assert "status-no-heartbeat" in out
+    assert LANES[1] in out

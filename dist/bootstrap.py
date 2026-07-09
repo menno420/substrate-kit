@@ -1,4 +1,4 @@
-"""substrate-kit bootstrap v1.3.0 — GENERATED, DO NOT EDIT.
+"""substrate-kit bootstrap v1.4.0 — GENERATED, DO NOT EDIT.
 
 Single-file, stdlib-only. Regenerate from source with:
     python3 substrate-kit/src/build_bootstrap.py
@@ -12,6 +12,7 @@ from collections import deque
 from collections.abc import Collection, Sequence
 from collections.abc import Iterator
 from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from contextlib import AbstractContextManager, contextmanager
 from dataclasses import asdict, dataclass, field, fields
 from dataclasses import dataclass, field
@@ -82,7 +83,7 @@ DEFAULT_STATE_DIR = ".substrate"
 # (`kit_version`) + state by `adopt`/`upgrade`. Bump together with
 # `pyproject.toml` `[project] version` (a test pins them equal) and a new
 # CHANGELOG.md section (the release workflow refuses to publish without one).
-KIT_VERSION = "1.3.0"
+KIT_VERSION = "1.4.0"
 
 
 def _new_project_id() -> str:
@@ -147,6 +148,20 @@ def _default_namespace() -> dict:
 def _default_review_seam() -> dict:
     """Return the review-seam knobs (provisioned, not wired — no live reviewer)."""
     return {"reviewer": None}
+
+
+def _default_heartbeat_files() -> list[str]:
+    """Return the control-heartbeat file(s) the status checker validates.
+
+    One entry — ``control/status.md`` — for the normal one-Project-per-repo
+    shape. A SHARED repo hosting several Projects lists one file per lane
+    (the superbot-games pattern, inbox ORDER 004: e.g.
+    ``control/status-mining.md`` + ``control/status-exploration.md``): the
+    one-writer-per-file rule is preserved *per lane*, and every listed
+    heartbeat must beat. An empty list falls back to the default at every
+    consumer (a misconfiguration must not silently disable the gate).
+    """
+    return ["control/status.md"]
 
 
 def _default_badge_tokens() -> list[str]:
@@ -217,6 +232,7 @@ class Config:
     namespace: dict = field(default_factory=_default_namespace)
     seams: list[dict] = field(default_factory=list)
     review_seam: dict = field(default_factory=_default_review_seam)
+    heartbeat_files: list[str] = field(default_factory=_default_heartbeat_files)
 
     def to_json(self) -> str:
         """Serialise the config to indented, key-sorted JSON."""
@@ -1921,7 +1937,7 @@ def check_orientation_budget(root: Path, config: Config) -> list[Finding]:
     return findings
 
 # --- engine/checks/check_status_current.py ---
-"""Status-freshness checker — the ``control/`` heartbeat must exist and beat.
+"""Status-freshness checker — the ``control/`` heartbeat(s) must exist and beat.
 
 Why + provenance: the fleet coordination protocol (canonical spec: superbot
 ``docs/planning/fleet-coordination-protocol-2026-07-09.md``; kit band KL-8,
@@ -1930,28 +1946,39 @@ manager treats a stale status as a **dark** Project. The protocol's whole
 value collapses if a Project silently stops writing it, so the discipline is
 enforced, not exhorted (PL-007), exactly like the session-card gate.
 
+Multi-Project repos (inbox ORDER 004): a SHARED repo hosting several
+Projects keeps one heartbeat file *per lane* (the superbot-games pattern —
+``control/status-mining.md`` + ``control/status-exploration.md``), preserving
+one-writer-per-file per lane. The validated path set is therefore
+**configurable**: ``substrate.config.json`` → ``heartbeat_files`` (default
+``["control/status.md"]``); every listed heartbeat is checked independently
+and each finding names its own file. Callers pass the configured list via
+``status_files``; unset/empty falls back to the single-file default (a
+misconfiguration must not silently disable the gate).
+
 Two postures, deliberately split (the spec's "warns → graduates to the
 born-red post-adopt gate" wording, resolved so a *required CI check* never
 reds on wall-clock time alone):
 
 - **Gate findings** (ride the ordinary strict finding loop — RED under
   ``check --strict``): *static, deterministic* protocol states —
-  ``status-missing`` (the control bus exists but ``status.md`` doesn't) and
-  ``status-no-heartbeat`` (``status.md`` is still the adopt-time seed, or
-  carries no parseable ``updated:`` ISO-8601 line). These are the born-red
-  graduation: an adopted host stays red until its first real heartbeat, the
-  same shape as ``session-loop-idle``.
+  ``status-missing`` (the control bus exists but a configured heartbeat file
+  doesn't) and ``status-no-heartbeat`` (the file is still the adopt-time
+  seed, or carries no parseable ``updated:`` ISO-8601 line). These are the
+  born-red graduation: an adopted host stays red until its first real
+  heartbeat, the same shape as ``session-loop-idle``.
 - **Advisory findings** (warn-only — emitted + telemetry-recorded, **never**
   exit-affecting): ``status-stale`` — the heartbeat parses but is older than
   ``max_age_hours`` (default 72h). Time-based red in a required check would
   be a bomb: an untouched-for-a-week repo's next unrelated PR would arrive
   pre-reddened. The warning still surfaces in every ``check`` run and the
-  Stop hook separately nags when ``status.md`` wasn't overwritten this
+  Stop hook separately nags when no heartbeat file was overwritten this
   session (``hooks/stop_check.py``).
 
 Input-gated like every checker: engages only when the protocol is present
-(any ``control/{README,inbox,status}.md`` exists) — a host that never adopted
-the bus adds nothing here. Stdlib only; unreadable files fail open.
+(any ``control/{README,inbox}.md`` or configured heartbeat file exists) — a
+host that never adopted the bus adds nothing here. Stdlib only; unreadable
+files fail open.
 """
 
 
@@ -1996,37 +2023,40 @@ def parse_heartbeat(text: str) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
-def _control_present(target: Path) -> bool:
-    """True when the control bus exists (any of the three protocol files)."""
-    return any(
-        (target / rel).is_file()
-        for rel in (STATUS_RELPATH, INBOX_RELPATH, CONTROL_README_RELPATH)
-    )
+def heartbeat_relpaths(status_files: Sequence[str] | None) -> list[str]:
+    """Normalize the configured heartbeat list (unset/empty → the default).
 
-
-def check_status_current(
-    target: Path,
-    *,
-    now: datetime | None = None,
-    max_age_hours: int = DEFAULT_MAX_AGE_HOURS,
-) -> tuple[list[Finding], list[Finding]]:
-    """Return ``(gate_findings, advisory_findings)`` for ``target``'s heartbeat.
-
-    Gate findings ride the strict finding loop (exit-affecting under
-    ``--strict``); advisory findings are surfaced + telemetry-recorded but
-    must never touch the exit code (see module docstring). Both lists are
-    empty when the ``control/`` protocol is absent.
+    The fallback-on-empty is deliberate: a stray ``"heartbeat_files": []``
+    must degrade to the protocol's single-file default, never silently
+    disable the gate (same fail-safe instinct as the fast lane's
+    empty-diff-runs-the-full-suite rule).
     """
-    if not _control_present(target):
-        return [], []
-    status_path = target / STATUS_RELPATH
+    files = [str(rel) for rel in (status_files or []) if str(rel).strip()]
+    return files or [STATUS_RELPATH]
+
+
+def _control_present(target: Path, status_relpaths: Sequence[str]) -> bool:
+    """True when the control bus exists (any protocol/heartbeat file)."""
+    candidates = [INBOX_RELPATH, CONTROL_README_RELPATH, *status_relpaths]
+    return any((target / rel).is_file() for rel in candidates)
+
+
+def _check_one_status(
+    target: Path,
+    rel: str,
+    *,
+    now: datetime,
+    max_age_hours: int,
+) -> tuple[list[Finding], list[Finding]]:
+    """Return ``(gate, advisory)`` findings for one heartbeat file ``rel``."""
+    status_path = target / rel
     if not status_path.is_file():
         return (
             [
                 Finding(
-                    STATUS_RELPATH,
+                    rel,
                     "status-missing",
-                    "the control/ bus exists but status.md doesn't — the "
+                    f"the control/ bus exists but {rel} doesn't — the "
                     "manager reads this file as your heartbeat; write it "
                     "(format: control/README.md).",
                 ),
@@ -2042,7 +2072,7 @@ def check_status_current(
         return (
             [
                 Finding(
-                    STATUS_RELPATH,
+                    rel,
                     "status-no-heartbeat",
                     "no parseable `updated:` ISO-8601 heartbeat — still the "
                     "adopt seed? Overwrite the whole file with your real "
@@ -2051,23 +2081,58 @@ def check_status_current(
             ],
             [],
         )
-    current = now or datetime.now(timezone.utc)
-    age = current - heartbeat
+    age = now - heartbeat
     if age > timedelta(hours=max_age_hours):
         hours = int(age.total_seconds() // 3600)
         return (
             [],
             [
                 Finding(
-                    STATUS_RELPATH,
+                    rel,
                     "status-stale",
                     f"heartbeat is ~{hours}h old (> {max_age_hours}h) — the "
                     "manager treats a stale status as a DARK Project; "
-                    "overwrite control/status.md this session.",
+                    f"overwrite {rel} this session.",
                 ),
             ],
         )
     return [], []
+
+
+def check_status_current(
+    target: Path,
+    *,
+    now: datetime | None = None,
+    max_age_hours: int = DEFAULT_MAX_AGE_HOURS,
+    status_files: Sequence[str] | None = None,
+) -> tuple[list[Finding], list[Finding]]:
+    """Return ``(gate_findings, advisory_findings)`` for ``target``'s heartbeat(s).
+
+    Gate findings ride the strict finding loop (exit-affecting under
+    ``--strict``); advisory findings are surfaced + telemetry-recorded but
+    must never touch the exit code (see module docstring). Both lists are
+    empty when the ``control/`` protocol is absent. ``status_files`` is the
+    host's configured heartbeat list (``Config.heartbeat_files``); each
+    listed file is validated independently so a multi-Project repo gates
+    every lane's heartbeat — unset/empty falls back to
+    ``["control/status.md"]``.
+    """
+    relpaths = heartbeat_relpaths(status_files)
+    if not _control_present(target, relpaths):
+        return [], []
+    current = now or datetime.now(timezone.utc)
+    gate: list[Finding] = []
+    advisory: list[Finding] = []
+    for rel in relpaths:
+        one_gate, one_advisory = _check_one_status(
+            target,
+            rel,
+            now=current,
+            max_age_hours=max_age_hours,
+        )
+        gate += one_gate
+        advisory += one_advisory
+    return gate, advisory
 
 # --- engine/ledger.py ---
 """Decision ledger — the ``[D-NNNN]`` provenance-separated rulebook (Lane B6).
@@ -6811,10 +6876,14 @@ what the session ritual still owes —
 - the compaction cadence window has elapsed (``compaction_due``);
 - the reflection buffer has not been mined today
   (``reflection_buffer.last_mined`` vs today's ISO date);
-- ``control/status.md`` exists but was not overwritten this session (KL-8:
-  the coordination protocol's deliberate LAST step) — the file's mtime
-  predates the KL-5 session-start anchor's epoch. Skipped, fail-open, when
-  the protocol or the anchor is absent.
+- no configured control heartbeat (``config.heartbeat_files``, default
+  ``control/status.md``) was overwritten this session (KL-8: the
+  coordination protocol's deliberate LAST step) — every existing heartbeat
+  file's mtime predates the KL-5 session-start anchor's epoch. Skipped,
+  fail-open, when the protocol or the anchor is absent; in a multi-lane
+  repo (ORDER 004) ANY lane's fresh heartbeat clears the advisory (a
+  session cannot know which lane it belongs to, so it never nags a lane
+  that isn't its own).
 
 Returns ``[]`` when all clean. Advisory only, and it **fails open**: every
 check runs inside its own guard, so a bad state document or an unreadable log
@@ -6886,26 +6955,37 @@ def _stop_reflections(state: dict[str, Any]) -> list[str]:
     return [_STOP_UNMINED_MSG]
 
 
-def _stop_status(root: Path, state: dict[str, Any]) -> list[str]:
-    """Advise when ``control/status.md`` was not overwritten this session.
+def _stop_status(root: Path, state: dict[str, Any], config: Config) -> list[str]:
+    """Advise when no control heartbeat was overwritten this session.
 
     The coordination protocol's LAST step (KL-8) is overwriting the status
     heartbeat; a session that ends without it leaves the manager reading a
-    stale (eventually dark) Project. Evidence = the file's mtime vs the KL-5
+    stale (eventually dark) Project. Evidence = file mtime vs the KL-5
     session-start anchor's epoch — no anchor (or no protocol) means no basis
-    for the claim, so the advisory is skipped rather than guessed.
+    for the claim, so the advisory is skipped rather than guessed. The
+    checked set is ``config.heartbeat_files`` (ORDER 004 — one file per lane
+    in a shared multi-Project repo); a fresh mtime on ANY existing lane file
+    clears the advisory, because the hook cannot know which lane this
+    session belongs to and must not nag another lane's duty.
     """
-    status = root / STATUS_RELPATH
-    if not status.is_file():
+    statuses = [
+        root / rel
+        for rel in heartbeat_relpaths(config.heartbeat_files)
+        if (root / rel).is_file()
+    ]
+    if not statuses:
         return []
     anchor = state.get(SESSION_ANCHOR_KEY)
     epoch = anchor.get("epoch") if isinstance(anchor, dict) else None
     if not isinstance(epoch, (int, float)) or isinstance(epoch, bool):
         return []
-    if status.stat().st_mtime >= float(epoch):
+    if any(status.stat().st_mtime >= float(epoch) for status in statuses):
         return []
+    named = ", ".join(
+        status.relative_to(root).as_posix() for status in statuses
+    )
     return [
-        "control/status.md not overwritten this session — the protocol's "
+        f"{named} not overwritten this session — the protocol's "
         "deliberate LAST step (see control/README.md)",
     ]
 
@@ -6925,7 +7005,7 @@ def evaluate_stop(root: Path, config: Config, backend: Any) -> list[str]:
         lambda: _stop_questions(state),
         lambda: _stop_compaction(state, config),
         lambda: _stop_reflections(state),
-        lambda: _stop_status(root, state),
+        lambda: _stop_status(root, state, config),
     )
     advisories: list[str] = []
     for check in checks:
@@ -9304,7 +9384,12 @@ def cmd_check(
     # heartbeat-less status.md) ride the strict loop like every checker;
     # wall-clock staleness is advisory-only and handled below — a required CI
     # check must never red on time alone (see check_status_current's docstring).
-    status_gate, status_advisories = check_status_current(target)
+    # The validated path set is the host's configured heartbeat list (ORDER
+    # 004: multi-Project repos gate one status file per lane).
+    status_gate, status_advisories = check_status_current(
+        target,
+        status_files=config.heartbeat_files,
+    )
     if status_only:
         # --status-only: the fast lane's scoped gate (see docstring). Only
         # the heartbeat checker runs; everything downstream (allowlist,
@@ -9820,7 +9905,10 @@ def cmd_adopt(
     # KL-8 rider: the control-protocol gate findings (the just-planted seed
     # status.md has no heartbeat yet) join the same checklist — "write your
     # first real heartbeat" is part of engaging, same shape as the first card.
-    status_gate, _ = check_status_current(target)
+    status_gate, _ = check_status_current(
+        target,
+        status_files=config.heartbeat_files,
+    )
     engage = check_engagement(target, config) + status_gate
     if engage:
         _emit(
@@ -10511,7 +10599,7 @@ _TEMPLATES = {
     'ai-project-workflow.md.tmpl': "# ${project_name} — AI project workflow\n\n> **Status:** `reference`\n>\n> Generated by substrate-kit. The multi-agent pipeline: how ideas become work\n> and how sessions run. **NOT SOURCE OF TRUTH** — the binding contracts win.\n\n## Idea lifecycle\n\n```\ncaptured -> classified -> planned -> built -> verified\n```\n\nEvery idea ends implemented, planned, in discussion, or explicitly rejected —\nnever orphaned. Backlog + routing: `docs/ideas/README.md`.\n\n## Session workflow\n\n```\norient -> claim -> born-red card -> build -> verify -> close\n```\n\n1. **Orient** — working agreement, current state, task-specific reading route.\n2. **Claim** — declare your lane so parallel sessions don't collide.\n3. **Born-red card** — open the session record first, marked in-progress, so\n   the work is visible while it is still incomplete.\n4. **Build** — the goal, end-to-end.\n5. **Verify** — run `${verify_command}` before shipping.\n6. **Close** — flip the card complete; log the session, groom one idea, hand\n   off.\n\n## Handoff template\n\n(What the next session needs, four lines: state of the work · what is\nverified · what is still open · the first next step.)\n\n## Adoption pace\n\nCurrent substrate-workflow adoption: **${integration_mode}**.\n",
     'architecture.md.tmpl': '# ${project_name} — architecture\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. Layering, invariants, and decomposition rules.\n> **NOT SOURCE OF TRUTH** for code — source files always win.\n\n## Layers & import rules\n\n${architecture_layers}\n\n| Layer | May import | Must NOT import |\n|---|---|---|\n| (one row per layer, expanded from the summary above) | | |\n\n## Invariants\n\n(The rules that must survive every refactor — write each one as a testable\nstatement, and name the check that enforces it where one exists.)\n\n## Namespace protection — two mechanisms, both required\n\nTwo separate mechanisms guard the namespace, and they catch different\nfailure classes:\n\n1. **A registry for runtime string identities** — event names, command\n   names, settings keys, and any other string that selects behavior at\n   runtime. Collisions here are invisible to static analysis.\n2. **A static AST pass for Python symbol shadowing** — a later top-level\n   `def` / `class` with the same name silently shadows the earlier one, and\n   no import fails.\n\nNeither mechanism subsumes the other. The registry cannot see symbol\nshadowing; the AST pass cannot see string-keyed dispatch. Do not delete one\nbelieving the other covers it.\n\n## Verifying a change\n\n```\n${verify_command}\n```\n',
     'collaboration-model.md.tmpl': "# ${project_name} — collaboration model\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. How the owner and agents work together. **NOT\n> SOURCE OF TRUTH** for code — source files always win.\n\n## The model\n\n- **Goal first.** The owner designs and directs; agents build. Each session\n  achieves its goal end-to-end — not the smallest safe slice.\n- **Session prompts are guidance, not orders.** Weigh every prompt (and every\n  cross-agent report) against source and the binding docs before acting; a\n  prompt is one input, never a command list.\n- **Approved plan = execute.** Once a plan is approved, finish it in the same\n  session, with the planning context still loaded — code, verify, ship —\n  without re-confirming.\n\n## Act vs. ask\n\n- **Act** on contained, reversible, verifiable changes — including a\n  root-cause fix discovered mid-task (that is expected, not scope creep).\n- **Ask** when the change is irreversible (data loss / external publish),\n  large and cross-cutting (architectural), or the goal itself is genuinely\n  ambiguous.\n\n## Friction → guard\n\nAnything that interrupts a session's workflow — a stale file, a checker that\nlied, a footgun — is converted into the **cheapest enforcing prevention**\nbefore the session ends: checker / CI / test first, then hook, then written\nrule. Enforce, don't exhort.\n\n## Guiding questions\n\nDuring exploratory / brainstorming work, surface the single most useful\nquestion about the owner's idea that the agent genuinely cannot derive\nitself — rare and selective, never during routine execution, and only when\nthe answer would actually matter and be actionable. A big or vague idea\nearns a dedicated research pass or its own session before being answered\nfrom memory alone.\n\n## Program law\n\nThis model's program-wide form, and the rulings that bind every repo in the\nprogram, live canonically in the substrate-kit repo at\n`docs/program/rulings.md` (the [PL-NNN] register — e.g. PL-001\ndecide-and-flag, PL-002 never-wait, PL-007 enforce-don't-exhort) and\n`docs/program/collaboration-model.md`\n(https://github.com/menno420/substrate-kit/tree/main/docs/program).\n**Cite PL-IDs — never copy ruling bodies into this repo.**\n\n## Drift & staleness\n\n- When a doc and a source file disagree: ${drift_resolution}\n- Staleness review cadence: ${staleness_review}\n",
-    'control-README.md.tmpl': "# Fleet coordination protocol — `control/`\n\n> **Status:** `binding`\n>\n> Local copy for ${project_name}. Canonical spec: `menno420/superbot` →\n> `docs/planning/fleet-coordination-protocol-2026-07-09.md` (§1). Projects cannot talk to each\n> other directly — committed git files are the only shared medium; this directory is the bus.\n\n## The two files\n\n- `control/inbox.md` — ORDERS to this Project. **One writer: the manager** (appends via the\n  GitHub Contents API). Never edit this file.\n- `control/status.md` — STATE from this Project. **One writer: this Project** (overwrite it each\n  session).\n\n## The one rule that keeps it conflict-free\n\n**One writer per file.** The manager is the sole writer of `inbox.md`; this Project is the sole\nwriter of its own `status.md`. Two writers never touch the same file, so there are no merge\nconflicts. Everything is append-only / overwrite-own — forward-only git.\n\n## Per-session ritual (every session, and every routine wake)\n\n- **FIRST:** git pull (a stale clone reads stale orders); read `control/inbox.md`; execute any\n  order whose status is `new`, in priority order (P0 before P1). An order's `do:` is a pointer to\n  a committed doc — read it. If an order is ambiguous or you disagree, do NOT guess: write it in\n  your status under `⚑ needs-owner` and proceed with the rest.\n- **LAST (deliberate final step):** overwrite `control/status.md` — updated timestamp, current\n  phase, health (green / red-by-design+why / broken+what), last-shipped PR, blockers, orders\n  acked/done, `⚑ needs-owner`. You report order progress ONLY here; never edit `inbox.md`\n  (the manager owns it — one writer per file).\n\nThe kit enforces this loop: `check` flags a missing or heartbeat-less `status.md`\n(strict = red), warns when the heartbeat goes stale, and the Stop hook reminds you when\n`status.md` was not overwritten this session.\n\n## `status.md` format (what you write every session — your heartbeat)\n\n```markdown\n# <project> · status\nupdated: <ISO8601>            # heartbeat — stale = the manager treats the Project as dark\nphase: <what I'm doing right now, one line>\nhealth: green | red-by-design (<why>) | broken (<what>)\nkit: v<X.Y.Z> · check: green|red · engaged: yes|no   # kit self-report — see below\nlast-shipped: #<PR> — <one line>\nblockers: <what's stopping me, or `none`>\norders: acked=<ids> done=<ids>\n⚑ needs-owner: <a decision/action only the owner can give, or `none`>\nnotes: <anything the manager should know>\n```\n\nThe `kit:` line is the **substrate-coordinator visibility** channel (kit-lab reads it via the\nmanager relay — zero write access to this repo): `v<X.Y.Z>` = the vendored kit version this\nrepo actually runs (update it in the same session as every `bootstrap upgrade`); `check:` =\nthe latest `check --strict` verdict on this tree; `engaged:` = the post-adopt engagement gate\n(`yes` once no UNRENDERED banner/slot remains, live CI runs the gate, and the session loop\nhas engaged).\n\n## `inbox.md` order format (manager-written, append-only)\n\n```markdown\n## ORDER <nnn> · <ISO8601> · status: new     # manager flips new→done after seeing status done=\npriority: P0 | P1 | P2\ndo: <pointer to a committed doc/section + the ask, kept short>\nwhy: <one line>\ndone-when: <acceptance test>\n```\n\n## CI + auto-merge notes (learned live, 2026-07-09)\n\n- **Heartbeat commits ride a fast lane, not a `paths-ignore`.** A control-only diff (only\n  `control/**` files changed) must still *report* every required status check, or GitHub treats\n  the missing contexts as pending and auto-merge jams forever. The kit's planted\n  `substrate-gate.yml` therefore short-circuits GREEN inside the job on control-only diffs\n  instead of skipping the workflow — copy that pattern (an in-job early exit) into any other\n  heavy suite rather than adding `paths-ignore: [control/**]` to a workflow whose check is\n  required.\n- **API-authored PRs may not trigger CI.** A PR created purely through an app/integration token\n  (e.g. the GitHub Contents API + a REST PR create) can sit with **zero check runs** — required\n  checks then never report and the PR cannot auto-merge. The manager's canonical write path is\n  therefore a **direct Contents-API commit to the default branch of `inbox.md`** (it is the sole\n  writer, so no PR is needed). When this Project ships control changes by PR, push the branch\n  over git (a real `git push` triggers `pull_request`/`push` events) before or after creating\n  the PR, and verify the PR shows check runs before relying on auto-merge.\n",
+    'control-README.md.tmpl': '# Fleet coordination protocol — `control/`\n\n> **Status:** `binding`\n>\n> Local copy for ${project_name}. Canonical spec: `menno420/superbot` →\n> `docs/planning/fleet-coordination-protocol-2026-07-09.md` (§1). Projects cannot talk to each\n> other directly — committed git files are the only shared medium; this directory is the bus.\n\n## The two files\n\n- `control/inbox.md` — ORDERS to this Project. **One writer: the manager** (appends via the\n  GitHub Contents API). Never edit this file.\n- `control/status.md` — STATE from this Project. **One writer: this Project** (overwrite it each\n  session).\n\n## The one rule that keeps it conflict-free\n\n**One writer per file.** The manager is the sole writer of `inbox.md`; this Project is the sole\nwriter of its own `status.md`. Two writers never touch the same file, so there are no merge\nconflicts. Everything is append-only / overwrite-own — forward-only git.\n\n## Multi-Project repos — per-lane heartbeats (optional extension)\n\nA SHARED repo can host several Projects ("lanes" — e.g. a mining lane and an exploration lane\ncohabiting one game repo). The one-writer rule scales by **splitting the heartbeat, never by\nsharing it**:\n\n- **One status file per lane** — `control/status-<lane>.md` (e.g. `control/status-mining.md` +\n  `control/status-exploration.md`). Each lane is the sole writer of its own file and overwrites\n  it as its session\'s deliberate LAST step; no lane ever edits another lane\'s heartbeat.\n- **`control/inbox.md` stays single** — the manager remains its one writer; a lane-specific\n  order names its lane in `do:`.\n- **Declare every lane heartbeat to the kit** — `substrate.config.json` →\n  `"heartbeat_files": ["control/status-mining.md", "control/status-exploration.md"]` (default\n  when unset: `["control/status.md"]`). The status checker then gates each listed file\n  independently (missing / heartbeat-less lane = strict RED; per-lane staleness warns), and the\n  Stop hook\'s overwrite reminder clears when any lane\'s heartbeat is fresh (it cannot know which\n  lane a session belongs to). An empty list falls back to the default — misconfiguration never\n  silently disables the gate.\n\n## Per-session ritual (every session, and every routine wake)\n\n- **FIRST:** git pull (a stale clone reads stale orders); read `control/inbox.md`; execute any\n  order whose status is `new`, in priority order (P0 before P1). An order\'s `do:` is a pointer to\n  a committed doc — read it. If an order is ambiguous or you disagree, do NOT guess: write it in\n  your status under `⚑ needs-owner` and proceed with the rest.\n- **LAST (deliberate final step):** overwrite `control/status.md` — updated timestamp, current\n  phase, health (green / red-by-design+why / broken+what), last-shipped PR, blockers, orders\n  acked/done, `⚑ needs-owner`. You report order progress ONLY here; never edit `inbox.md`\n  (the manager owns it — one writer per file).\n\nThe kit enforces this loop: `check` flags a missing or heartbeat-less `status.md`\n(strict = red), warns when the heartbeat goes stale, and the Stop hook reminds you when\n`status.md` was not overwritten this session.\n\n## `status.md` format (what you write every session — your heartbeat)\n\n```markdown\n# <project> · status\nupdated: <ISO8601>            # heartbeat — stale = the manager treats the Project as dark\nphase: <what I\'m doing right now, one line>\nhealth: green | red-by-design (<why>) | broken (<what>)\nkit: v<X.Y.Z> · check: green|red · engaged: yes|no   # kit self-report — see below\nlast-shipped: #<PR> — <one line>\nblockers: <what\'s stopping me, or `none`>\norders: acked=<ids> done=<ids>\n⚑ needs-owner: <a decision/action only the owner can give, or `none`>\nnotes: <anything the manager should know>\n```\n\nThe `kit:` line is the **substrate-coordinator visibility** channel (kit-lab reads it via the\nmanager relay — zero write access to this repo): `v<X.Y.Z>` = the vendored kit version this\nrepo actually runs (update it in the same session as every `bootstrap upgrade`); `check:` =\nthe latest `check --strict` verdict on this tree; `engaged:` = the post-adopt engagement gate\n(`yes` once no UNRENDERED banner/slot remains, live CI runs the gate, and the session loop\nhas engaged).\n\n## `inbox.md` order format (manager-written, append-only)\n\n```markdown\n## ORDER <nnn> · <ISO8601> · status: new     # manager flips new→done after seeing status done=\npriority: P0 | P1 | P2\ndo: <pointer to a committed doc/section + the ask, kept short>\nwhy: <one line>\ndone-when: <acceptance test>\n```\n\n## CI + auto-merge notes (learned live, 2026-07-09)\n\n- **Heartbeat commits ride a fast lane, not a `paths-ignore`.** A control-only diff (only\n  `control/**` files changed) must still *report* every required status check, or GitHub treats\n  the missing contexts as pending and auto-merge jams forever. The kit\'s planted\n  `substrate-gate.yml` therefore short-circuits GREEN inside the job on control-only diffs\n  instead of skipping the workflow — copy that pattern (an in-job early exit) into any other\n  heavy suite rather than adding `paths-ignore: [control/**]` to a workflow whose check is\n  required.\n- **API-authored PRs may not trigger CI.** A PR created purely through an app/integration token\n  (e.g. the GitHub Contents API + a REST PR create) can sit with **zero check runs** — required\n  checks then never report and the PR cannot auto-merge. The manager\'s canonical write path is\n  therefore a **direct Contents-API commit to the default branch of `inbox.md`** (it is the sole\n  writer, so no PR is needed). When this Project ships control changes by PR, push the branch\n  over git (a real `git push` triggers `pull_request`/`push` events) before or after creating\n  the PR, and verify the PR shows check runs before relying on auto-merge.\n',
     'control-inbox.md.tmpl': '# ${project_name} · inbox\n\n> ORDERS to this Project. **ONE writer: the manager** — never edit this file. Report order\n> progress in `control/status.md` (`orders: acked=… done=…`). Protocol: `control/README.md`.\n\n*(no orders yet — the manager appends `## ORDER 001 · <ISO8601> · status: new` blocks here)*\n',
     'control-status.md.tmpl': '# ${project_name} · status\nupdated: (seeded at adopt — no real heartbeat yet: overwrite this whole file at your first session close)\nphase: adopted — first session not yet run\nhealth: green\nkit: v${kit_version} · check: red · engaged: no\nlast-shipped: none\nblockers: none\norders: acked= done=\n⚑ needs-owner: none\nnotes: seeded skeleton planted by substrate-kit adopt. This Project is the SOLE writer of this\nfile — overwrite it (never append) as the deliberate LAST step of every session, per\n`control/README.md`. `check` holds strict RED until the first real heartbeat replaces this seed.\nThe `kit:` line is your kit self-report (substrate-coordinator visibility): keep the version in\nsync with your vendored kit on every upgrade, `check:` = your last `check --strict` verdict,\n`engaged:` = the post-adopt engagement gate (yes once `check` reports ENGAGED/green live CI).\n',
     'current-state.md.tmpl': '# ${project_name} — Current State\n\n> **Status:** `living-ledger`\n>\n> Generated by substrate-kit. **Living status ledger.** Source code and merged\n> work always win over this file. Read it second (right after the working\n> agreement) and keep it current as the project moves.\n\n## Stability baseline\n\n(Describe the accepted-stable baseline once established — what is known-good and\nshould not be re-audited without a reported regression.)\n\n## In flight\n\n(Verify against live source control — this section is a dated snapshot.)\n\n## Recently shipped (newest first)\n\n(Merged work only, newest first.)\n\n## Review rhythm\n\n${review_ritual}\n',
