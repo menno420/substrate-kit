@@ -237,7 +237,7 @@ def main(argv=None) -> int:
     collect.set_defaults(func=cmd_collect)
 
     record = sub.add_parser("record", help="append one row to a results index (append-only)")
-    record.add_argument("--family", choices=("cold-start", "allocation", "guards", "ideas"), required=True)
+    record.add_argument("--family", choices=("cold-start", "allocation", "guards", "ideas", "friction"), required=True)
     record.add_argument("--row", required=True, help="the row as a JSON object string")
     record.set_defaults(func=cmd_record)
 

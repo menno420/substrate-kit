@@ -28,7 +28,7 @@ seeds/make_seed.py             # seed-corpus generator: fresh names, same shape,
 score_m1.py                    # scripted M1 (words before first mutating action)
 run_ab.py                      # prepare arms · collect artifacts · record rows
 results/<family>/index.json    # append-only row per run (families: cold-start,
-results/<family>/<date>-runNN/ #   allocation, guards, ideas) + committed artifacts
+results/<family>/<date>-runNN/ #   allocation, guards, ideas, friction) + committed artifacts
 ```
 
 ## Spec provenance (absolute URLs — the spec survives this plan's travel)
@@ -56,6 +56,12 @@ results/<family>/<date>-runNN/ #   allocation, guards, ideas) + committed artifa
    recorded in the row.
 5. `run_ab.py record --family cold-start --row '<json>'` appends the index
    row; commit the run dir (report.md, metrics.json, transcripts/) with it.
+
+**The friction family** (`results/friction/index.json`) is written at
+triage time, not by a run: one appended row per dispositioned `friction`
+issue — `{date, issue, repo, project_id, reports, dispositions, fixed_in}` —
+so B3's friction-rate sweep never re-scrapes issue comments (the KL-4
+session idea, landed here). Same append-only law.
 
 **Sequencing note:** B1's FIRST firing happens only after the auto-drafted
 handoff build (KL-5 first half — shipped) **and** after this tree's rubric is

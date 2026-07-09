@@ -83,18 +83,25 @@
   (unresolved `[[fill:]]` slots + the `drafted` status token hold the
   born-red gate, reported distinctly; a drafted `📊 Model:` stand-in never
   harvests into PL-004). All fail-open; suite 557 → 587. The **second half
-  (the `bench/` tree) follows as a `do-not-automerge` PR** per §5.0 — the
-  first rubric version is owner-blessed; it stays OPEN awaiting that
-  blessing, and **B1's first firing waits for it**.
+  (the `bench/` tree) is BUILT on PR #17, a `do-not-automerge` PR** per
+  §5.0 — the first rubric version is owner-blessed; #17 stays OPEN awaiting
+  that blessing, and **B1's first firing waits for it**. What #17 carries:
+  both rubrics, tasks T1–T5, `seeds/make_seed.py`, `score_m1.py`,
+  `run_ab.py`, append-only results indexes (incl. the `friction` family —
+  triage-time rows), `check_bench_integrity.py` in kit-quality (pin-path
+  label gate + append-aware results immutability), and the enabler's
+  fresh-label race guard. Suite 587 → 609.
 
 ## In flight
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- PR #16 — **KL-5 (1/2): auto-drafted handoff** (this session).
-- PR (KL-5 2/2) — **the `bench/` tree**, opened right after #16 with the
-  `do-not-automerge` label per §5.0: it stays **open awaiting owner
-  blessing** of the first rubric version (⚑ — see Next action).
+- **PR #17 — the `bench/` tree (KL-5 2/2)**, `do-not-automerge`-labeled per
+  §5.0: CI-green with its card complete, and it stays **open awaiting owner
+  blessing** of the first rubric version (⚑ — see Next action). Field note:
+  the auto-merge-enabler ARMED this PR at open (its label check races the
+  MCP label call) — disarmed by hand same-minute; the enabler now re-reads
+  labels fresh before arming (fixed in this PR).
 
 ## Pending owner action — 👤 P4 (arm the kit-lab loop) ⚑
 

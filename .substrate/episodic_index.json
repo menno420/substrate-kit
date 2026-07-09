@@ -126,5 +126,22 @@
       "\ud83d\udcca"
     ],
     "summary": "> **Status:** `complete` *(PR #16 \u2014 band KL-5 first half; the `bench/` tree follows as the intentionally-open `do-not-automerge` PR.)*"
+  },
+  {
+    "slug": "kl5-bench-tree",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "kl-5",
+      "2",
+      "bench",
+      "tree",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #17 \u2014 CI-green with this flip, and the PR then"
   }
 ]

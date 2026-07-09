@@ -1,40 +1,50 @@
 [
   {
-    "id": "R-0102",
-    "lesson": "Recurring attention on dist/bootstrap.py",
-    "evidence": "2026-07-09-kl1-release-train.md:L151, 2026-07-09-kl2-governance-home.md:L53, 2026-07-09-kl3-telemetry.md:L50, 2026-07-09-kl4-lab-loop.md:L46",
+    "id": "R-0132",
+    "lesson": "1.  **Live incident, fixed in-band (Q-0194 friction \u2192 guard):** the",
+    "evidence": "2026-07-09-kl5-bench-tree.md:L67",
     "tags": [
-      "recurring-path"
+      "flag"
     ],
     "status": "provisional",
     "date": "2026-07-09"
   },
   {
-    "id": "R-0103",
-    "lesson": "Recurring attention on docs/current-state.md",
-    "evidence": "2026-07-09-kl1-release-train.md:L69, 2026-07-09-kl4-lab-loop.md:L55",
+    "id": "R-0133",
+    "lesson": "2.  Decide-and-flag: the M1 transcript contract is a defined event-JSONL",
+    "evidence": "2026-07-09-kl5-bench-tree.md:L75",
     "tags": [
-      "recurring-path"
+      "flag"
     ],
     "status": "provisional",
     "date": "2026-07-09"
   },
   {
-    "id": "R-0104",
-    "lesson": "Recurring attention on sessions/README.md",
-    "evidence": "2026-07-09-kl3-telemetry.md:L39, 2026-07-09-kl4-lab-loop.md:L15, 2026-07-09-kl5-auto-draft.md:L33",
+    "id": "R-0134",
+    "lesson": "3.  Decide-and-flag: a fifth results family `friction` beyond the plan's",
+    "evidence": "2026-07-09-kl5-bench-tree.md:L79",
     "tags": [
-      "recurring-path"
+      "flag"
     ],
     "status": "provisional",
     "date": "2026-07-09"
   },
   {
-    "id": "R-0105",
-    "lesson": "Recurring attention on src/build_bootstrap.py",
-    "evidence": "2026-07-09-kl1-release-train.md:L36, 2026-07-09-kl2-governance-home.md:L39",
+    "id": "R-0135",
+    "lesson": "4.  Decide-and-flag: this card flips `complete` so kit-quality is GREEN on",
+    "evidence": "2026-07-09-kl5-bench-tree.md:L81",
     "tags": [
-      "recurring-path"
+      "flag"
+    ],
+    "status": "provisional",
+    "date": "2026-07-09"
+  },
+  {
+    "id": "R-0136",
+    "lesson": "5.  Self-initiated: the enabler workflow edit (flag 1) was not in the band",
+    "evidence": "2026-07-09-kl5-bench-tree.md:L86",
+    "tags": [
+      "flag"
     ],
     "status": "provisional",
     "date": "2026-07-09"
