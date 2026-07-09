@@ -15,6 +15,32 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **`check --status-only` — the fast lane's scoped gate** (MINOR, new CLI
+  capability): runs ONLY the `control/` status heartbeat checker
+  (`check_status_current`); the allowlist and guard-fire telemetry apply
+  exactly as in a full run, and the session-log seam is never touched
+  (heartbeat PRs carry no card by design, so the lane cannot deadlock).
+  Stdlib-only, so a CI lane can run it on the system `python3` without
+  `setup-python`.
+
+### Fixed
+
+- **The CI control fast lane is no longer checker-free** (fleet adoption
+  review 2026-07-09, finding 1 — med): the lane skipped
+  `check_status_current` on exactly the PRs that write control files, so
+  a heartbeat-deleting control-only PR rode the lane GREEN while
+  `check --strict` on the same tree exits 1 (`status-no-heartbeat`) —
+  deferring the red onto the NEXT unrelated full-suite PR, the same
+  "bomb" shape the checker's docstring rules out for time-staleness,
+  reintroduced for content-validity. Both the kit's own `ci.yml` and the
+  planted `substrate-gate.yml` now run `check --strict --status-only` as
+  a fast-lane step (only when `control_only == 'true'`). Reproduced
+  before/after on a v1.2.0 fixture; pinned by
+  `tests/test_ci_control_lane.py` + `tests/test_adopt.py`; scoping
+  behavior pinned by three `tests/test_cli_gate.py` cases.
+
 ## [1.2.0] - 2026-07-09
 
 New-capability release (MINOR): the fleet coordination protocol becomes a

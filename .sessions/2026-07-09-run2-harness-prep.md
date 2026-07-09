@@ -121,7 +121,13 @@ terminal-state rule exists to prevent.
 
 ## KPIs / verification (this worktree)
 
-- `python3 -m pytest tests/ -q` → **689 passed** (683 + 6 new).
+- `python3 -m pytest tests/ -q` → **689 passed** (683 + 6 new) pre-merge;
+  **694 passed** after merging main's parallel #35 (fleet adoption review)
+  into this branch — #35 landed mid-session touching `control/status.md`
+  (resolved as a synthesis heartbeat: this session's run-2 facts + #35's
+  fleet verdicts and expanded ⚑ needs-owner list, fresh timestamp) and
+  `dist/bootstrap.py` (resolved canonically: regenerated from the merged
+  src, byte-pin re-verified).
 - Dist byte-pin: `python3 src/build_bootstrap.py` → `git diff --exit-code
   dist/bootstrap.py` clean.
 - `python3 dist/bootstrap.py check --strict --require-session-log
