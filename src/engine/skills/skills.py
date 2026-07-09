@@ -23,10 +23,13 @@ Close ${project_name}'s current session correctly.
 
 1. Session log — write `.sessions/<date>-<slug>.md`: what changed, one new idea
    you genuinely believe in, and a one-line review of the previous session.
-2. Idea backlog — groom one idea forward (the ideas-README lifecycle).
-3. Verify — run the project's checks: `${verify_command}` and `bootstrap check`.
-4. Commit + push on the session branch; open the PR ready (not draft).
-5. Drive the PR to a terminal state — merge on green CI, or close with a reason.
+2. Capability delta — did you discover a new capability or hit a wall this
+   session? Append it to `docs/CAPABILITIES.md` (dated, with the exact
+   error or the proof it worked, plus any workaround).
+3. Idea backlog — groom one idea forward (the ideas-README lifecycle).
+4. Verify — run the project's checks: `${verify_command}` and `bootstrap check`.
+5. Commit + push on the session branch; open the PR ready (not draft).
+6. Drive the PR to a terminal state — merge on green CI, or close with a reason.
 
 Declared capabilities: edit (the log + docs), run (the checks + git)."""
 

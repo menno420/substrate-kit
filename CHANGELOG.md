@@ -15,7 +15,51 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-07-09
+
+New-capability release (MINOR): the **capability-manifest band** (inbox
+ORDER 006, owner directive 2026-07-09 — sessions repeatedly stall on
+imagined walls and forget provisioned capabilities, burning owner attention
+as hand reminders). Adopted repos now get a planted `docs/CAPABILITIES.md` —
+the verified ledger of what sessions can/cannot do plus THE DISCOVERY RULE
+(check file → check env → attempt once + capture the exact error → append
+same session) — wired into the orientation reading order and nudged at
+session close. No planted-doc, state schema, config schema, or CLI contract
+breaks (one additive ADOPT_PLAN entry; existing installs inherit the doc on
+`upgrade`, skip-if-exists as always).
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+**Benchmark outcome (KF-5 — mandatory statement for a MINOR):** no fresh
+firing this release — the band is templates + docs wiring and touches no
+scored surface; the standing run of record remains B1 run-2
+(`2026-07-09-run02`, VERDICT: FAIL under strict F-5, advisory-to-pass) as
+stated in v1.4.0. Run-3 is deliberately gated behind the #49 seed fix
+(owner-gated, one click) and the F-5 wording ruling.
+
 ### Added
+
+- **`CAPABILITIES.md.tmpl`** (ORDER 006): new content template planted at
+  `docs/CAPABILITIES.md` on adopt — seed content: the media→ffmpeg-frames→
+  read recipe, printenv-before-assuming-no-credentials, and the fleet's
+  verified walls (tag/release/branch-delete 403s with the
+  workflow_dispatch release workaround, env/routine/Project creation =
+  owner clicks, the self-merge classifier line incl. the
+  coordinator-vs-child asymmetry, the GraphQL quota), plus THE DISCOVERY
+  RULE and an append log.
+- **Orientation wiring** (ORDER 006): `CLAUDE.md.tmpl`,
+  `CONSTITUTION.md.tmpl` (a "Capabilities are discovered, never assumed"
+  working-agreement bullet), and `AGENT_ORIENTATION.md.tmpl` (start-of-
+  session list + planted-doc set) all route every session through
+  `docs/CAPABILITIES.md` at start.
+- **Session-close capability nudge** (ORDER 006): the `session-close`
+  skill's procedure gains step 2 — "did you discover a new capability or
+  hit a wall this session? append it."
+- **Self-hosted `docs/CAPABILITIES.md`** in this repo, seeded with the
+  fleet findings plus a same-day live one: cross-repo reads are
+  allowlisted per session (`menno420/fleet-manager` returned "not
+  configured for this session" — which is also why the master-copy sync is
+  documented as manager-relayed rather than performed directly).
 
 - **SuperBot-coordinator lane wake-up review** (suffixed per the owner's
   multi-lane rule; a different Project than kit-lab, filed here because the
@@ -512,6 +556,7 @@ by real consumers, and now nameable, pinnable, verifiable, and upgradeable.
   `init --unpack` it served never shipped, and it doubled every consumer's
   vendored file for nothing.
 
+[1.5.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.5.0
 [1.4.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.4.0
 [1.3.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.3.0
 [1.2.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.2.0

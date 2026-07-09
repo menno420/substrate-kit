@@ -56,6 +56,14 @@ ADOPT_PLAN: list[tuple[str, str]] = [
     ("AGENT_ORIENTATION.md.tmpl", "docs/AGENT_ORIENTATION.md"),
     ("current-state.md.tmpl", "docs/current-state.md"),
     ("question-router.md.tmpl", "docs/question-router.md"),
+    # Capability manifest (inbox ORDER 006): what sessions in this
+    # environment can and cannot do — verified findings + the discovery
+    # rule (check file → check env → attempt once + capture the exact
+    # error → append same session). Sessions read it at start (orientation
+    # wiring in CLAUDE.md/CONSTITUTION/AGENT_ORIENTATION templates) and
+    # append discoveries at close (session-close skill nudge), so one
+    # session's imagined-wall lesson never costs a second session.
+    ("CAPABILITIES.md.tmpl", "docs/CAPABILITIES.md"),
     ("ideas-README.md.tmpl", "docs/ideas/README.md"),
     ("session-journal.md.tmpl", ".session-journal.md"),
     # The fleet coordination protocol (band KL-8, spec: superbot
