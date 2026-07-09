@@ -15,6 +15,15 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Gen-1 retro self-review + project review** (inbox ORDER 005):
+  `docs/retro/self-review-2026-07-09.md` — every `docs/retro/QUESTIONS.md`
+  question answered by ID with PR/commit/file evidence — and
+  `docs/retro/project-review-2026-07-09.md` — true current state, the full
+  agent audit (every session, with stall/death causes classified), the
+  honest efficiency verdict, ⚑ owner actions, and the continuation plan.
+
 ## [1.4.0] - 2026-07-09
 
 New-capability release (MINOR): **configurable heartbeat paths** for
