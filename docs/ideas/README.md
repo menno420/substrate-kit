@@ -49,6 +49,32 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- [`--apply-docs` is a single-shot window — misleading "re-run" hint](upgrade-apply-docs-single-shot-window-2026-07-09.md)
+  — state: captured; origin: lab (v1.6.0 fleet rollout — observed on both
+  consumer upgrade runs, superbot-next#96 + websites#45: post-run, the
+  improved-docs classification can never recur, so the report's "re-run with
+  --apply-docs" hint is a no-op); next: a groomed-ideas increment ships
+  post-hoc apply against the banked archived dist (guard recipe in the
+  file); ordinary lane, engine fix → dist byte-pin.
+- [`upgrade --rollback` + re-run loses the adopt-pass doc-hash records](upgrade-rollback-loses-doc-hash-records-2026-07-09.md)
+  — state: captured; origin: lab (v1.6.0 fleet rollout — the rollback
+  recovery path restores pre-upgrade state.json, discarding
+  `planted_doc_hashes`, so kit-written docs re-classify consumer-diverged);
+  next: a groomed-ideas increment records the hash when a kept doc
+  byte-matches the new template render (guard recipe in the file); ordinary
+  lane, engine fix → dist byte-pin.
+- [Upgrade report shows only the NEW dist's `archived:` line](upgrade-archive-report-line-gap-2026-07-09.md)
+  — state: captured; origin: lab (**third field report** of the same
+  confusion — seen again on superbot-next#96 + websites#45; cosmetic but
+  priority-bumped on repetition); next: a groomed-ideas increment makes the
+  idempotent `archive_dist` path print `(already banked)` instead of
+  silence (guard recipe in the file); one-liner, engine fix → dist byte-pin.
+- [Upgrade checklist: place `release.json` next to `bootstrap.py.new`](upgrade-checklist-release-json-placement-2026-07-09.md)
+  — state: captured; origin: lab (v1.6.0 fleet rollout — the checklist never
+  mentions `release.json`, and without the adjacent file the sha256
+  self-verification silently skips); next: a groomed-ideas increment adds
+  the checklist line (+ optionally a "verification skipped" report note);
+  ordinary lane, `src/build_release_json.py` + release-notes test.
 - [Rubric F-5 wording: "none regressing" vs the 7k-budget yardstick](rubric-f5-none-regressing-wording-2026-07-09.md)
   — state: captured; origin: lab (B1 run `2026-07-09-run02` — the first
   clean M1 measurement made two readings of the pinned F-5 text produce
