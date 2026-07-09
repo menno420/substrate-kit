@@ -227,7 +227,20 @@
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- PR #63 — **ORDER 006 capability-manifest band + v1.5.0 cut (this PR)**:
+- PR #69 — **ORDER 007 order-claiming convention + v1.6.0 cut (this PR)**:
+  "Claiming an order" section in `control-README.md.tmpl` + local copy
+  (claim FIRST on your own status orders line, landed on main before
+  build; re-read inbox + sibling statuses post-merge; earliest-merged-
+  claim tiebreak; ~24h no-activity expiry); status-format `orders:` line
+  gains the `claimed-by:` annotation; #50 disposition verified already
+  terminal (merged 17:40Z as the lane-suffixed salvage) with an audit
+  comment; KIT_VERSION/pyproject → 1.6.0, CHANGELOG rolled (covers the
+  #68 ORDER 008 band too), dist byte-pinned, suite 721 → 722. Post-merge
+  the session dispatches `release.yml` `version=1.6.0`, then the ORDER
+  007+008 status overwrite (done gains 007,008) rides its own
+  control-only PR as the deliberate LAST act.
+- PR #63 — **ORDER 006 capability-manifest band + v1.5.0 cut (MERGED
+  2026-07-09, release verified — also in Recently shipped)**:
   new `CAPABILITIES.md.tmpl` planted at `docs/CAPABILITIES.md` (seed:
   ffmpeg-frames media recipe, printenv-before-assuming, the fleet's
   verified walls, THE DISCOVERY RULE + append log); orientation wiring in
@@ -441,6 +454,33 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ## Recently shipped (newest first)
 
+- **#68 — ORDER 008: owner-action quality band**: OWNER-ACTION item
+  format (WHAT / WHERE / HOW / WHY-IT-MATTERS / UNBLOCKS /
+  VERIFIED-NEEDED — attempted-or-exact-wall; assumption-based asks
+  banned) in `control-README.md.tmpl` + local copy; new advisory-only
+  `check_owner_actions.py` (never exit-affecting, both lanes) + guard-fire
+  telemetry; CONSTITUTION/collaboration doctrine; session-close "Owner
+  asks" step. Suite 707 → 721. Version bump deferred to the #69 v1.6.0
+  cut (one release for both retro bands).
+- **#67 — ORDER 007+008 claim (control-only, fast lane)**: status
+  overwrite claiming both orders for the coordinator lane BEFORE the
+  builds — the second live run of the claim-first ritual, and the live
+  preview of the `claimed-by:` convention #69 makes durable.
+- **#66 — ORDER 006 status overwrite (control-only, fast lane)**:
+  done=001-006,009; v1.5.0 verified live (tag + 3 assets, sha256 match).
+- **#65 — ORDER 009 PING-ACK (P0 latency ping, control-only, fast
+  lane)**: ack line on main at 18:12Z (discovered 18:07:30Z via
+  mid-session inbox check); also acked 008. *(#64 was the manager's
+  ORDER 009 inbox append; #61 the ORDER 008 append; #59 the ORDER 007
+  append — manager writes, listed for PR-number continuity.)*
+- **#63 — ORDER 006: capability-manifest band + v1.5.0 cut**:
+  `CAPABILITIES.md.tmpl` planted at `docs/CAPABILITIES.md` (THE DISCOVERY
+  RULE + verified fleet walls + append log), orientation wiring
+  (CLAUDE/CONSTITUTION/AGENT_ORIENTATION templates), session-close
+  capability-delta nudge, self-hosted manifest incl. the live per-session
+  repo-allowlist wall; KIT_VERSION/pyproject → 1.5.0, CHANGELOG rolled,
+  dist byte-pinned. Suite 705 → 707. Release v1.5.0 dispatched + verified
+  (3 assets, sha256 of bootstrap.py matches merged dist).
 - **#60 — ORDER 006 claim (control-only, fast lane)**: status overwrite
   claiming ORDER 006 for the kit-lab coordinator lane BEFORE the build —
   the manual stand-in for the order-claim convention ORDER 007 will make
