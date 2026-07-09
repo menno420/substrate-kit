@@ -49,6 +49,30 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- [Rubric F-5 wording: "none regressing" vs the 7k-budget yardstick](rubric-f5-none-regressing-wording-2026-07-09.md)
+  — state: captured; origin: lab (B1 run `2026-07-09-run02` — the first
+  clean M1 measurement made two readings of the pinned F-5 text produce
+  opposite verdicts on the same evidence; decision brief with both runs'
+  evidence in the file); next: **OWNER decision** — `bench/rubric/` is a
+  pin path, any wording change rides a `do-not-automerge` review PR.
+- [make_seed: keyword domain nouns generate SyntaxError seeds](make-seed-yield-keyword-bug-2026-07-09.md)
+  — state: captured; origin: lab (run-2 prepare — ordered seed 424242 hit
+  the harvest/`yield` domain, a Python-keyword identifier → SyntaxError
+  seed; runner deviated to 424243 by rule, manifest `runner_notes`);
+  next: fix + prepare-runs-the-seed-suite smoke (guard recipe in the
+  file); ⚑ `bench/seeds/` is a PIN PATH → the fix rides `do-not-automerge`.
+- [run_ab prepare vs the P0 engagement gate](run-ab-prepare-engagement-arc-2026-07-09.md)
+  — state: captured; origin: lab (run-2 prepare — the post-run-1 KL-7
+  gate holds a bare adopt born-red, so prepare's smoke fails by design
+  and the runner hand-engaged the ON arm + hand-wrote the manifest);
+  next: a groomed-ideas increment scripts the RED→ENGAGED→GREEN arc into
+  `cmd_prepare` (ordinary lane — `run_ab.py` is NOT pin-path).
+- [Engine gap: `render --live` cannot fill `.claude/CLAUDE.md`](render-live-claude-md-gap-2026-07-09.md)
+  — state: captured; origin: lab (run-2 prepare — `check_engagement`
+  flags the file's unrendered banner while the render verb skips it; the
+  KL-7 checklist can't be completed by its own commands); next: a
+  groomed-ideas increment makes `render --live` cover it (or documents
+  the exemption) + a zero-findings smoke leg; engine fix, dist byte-pin.
 - [`bootstrap heartbeat` — a mechanical status.md writer](heartbeat-verb-2026-07-09.md)
   — state: captured; origin: lab (band KL-8 — the moment the heartbeat
   became enforced, its hand-formatted timestamp became the weakest link;
@@ -71,8 +95,12 @@ story, the frontmatter keeps the score.
   groomed-ideas increment ships checker + test + CI step.
 - [T5 protocol: headless arms never engage the hook layer](t5-headless-guard-surface-2026-07-09.md)
   — state: captured; origin: lab (B1 run 2026-07-09-run01 — the guard probe
-  produced zero evidence, judge §5.5 item 2); next: discuss-first shape
-  choice (hooks-active arms vs check-driven T5 redesign); ⚑ any
+  produced zero evidence, judge §5.5 item 2; **run `2026-07-09-run02`
+  reconfirmed it unchanged on the fully-ENGAGED arm and added the
+  last-card gate gap** — a cardless T5 stays `check --strict` green
+  because the T4-era card satisfies the last-card rule; run-2 evidence
+  in the file); next: discuss-first shape choice (hooks-active arms vs
+  check-driven T5 redesign, either way needing a card-freshness notion); ⚑ any
   `bench/tasks/T5.md` change is a PIN PATH → `do-not-automerge` owner review.
 - [Kit-version / readiness cell on the control-plane board](control-board-kit-readiness-cell-2026-07-09.md)
   — state: captured; origin: consumer:menno420/websites (surfaced during the
