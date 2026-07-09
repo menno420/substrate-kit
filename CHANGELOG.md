@@ -15,6 +15,81 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-07-09
+
+New-capability release (MINOR) covering two coordination-protocol bands
+(inbox ORDERs 007 + 008, both from the 2026-07-09 fleet retro synthesis /
+owner directive; ORDER 008's band merged in PR #68, ORDER 007's in this
+cut's PR):
+
+- **Owner-action quality band (ORDER 008):** agents' ⚑ needs-owner asks
+  were too often unnecessary (assumed walls nobody hit) or unactionable by
+  a non-technical owner. Every ask now carries six REQUIRED OWNER-ACTION
+  fields — WHAT / WHERE / HOW / WHY-IT-MATTERS / UNBLOCKS /
+  VERIFIED-NEEDED (attempted, or the exact wall; assumption-based asks
+  banned) — with an advisory `check` warning and a session-close hygiene
+  step behind it.
+- **Order-claiming convention (ORDER 007):** the root-cause fix for the
+  realized #50/#51 twin-execution failure (two sessions both saw an order
+  still `new` and executed it twice). An executing session now claims
+  FIRST — `claimed-by:` on its own status orders line, landed on main
+  before any build work — re-reads inbox + sibling statuses after the
+  claim merges, and stale claims (~24h, no activity) expire so a dead
+  lane never deadlocks an order.
+
+No planted-doc, state schema, config schema, or CLI contract breaks (the
+new checker is advisory-only and can never red a gate; template changes
+are additive; existing installs inherit both bands on `upgrade`).
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+**Benchmark outcome (KF-5 — mandatory statement for a MINOR):** no fresh
+firing this release — both bands are templates + docs + an advisory-only
+checker and touch no scored surface; the standing run of record remains B1
+run-2 (`2026-07-09-run02`, VERDICT: FAIL under strict F-5,
+advisory-to-pass) as stated in v1.4.0/v1.5.0. Run-3 stays gated behind the
+#49 seed fix (owner-gated, one click) and the F-5 wording ruling.
+
+### Added
+
+- **Owner-action quality band** (ORDER 008, PR #68):
+  - `check_owner_actions.py` — advisory-only checker (never
+    exit-affecting, both CI lanes incl. `--status-only`): one
+    `owner-action-fields` finding per configured heartbeat file whose
+    `⚑ needs-owner` value is non-`none` while the file lacks any of the
+    six field labels; guard-fire telemetry recorded; multi-lane via
+    `heartbeat_files`; fail-open on unreadable files.
+  - `control-README.md.tmpl` § "⚑ needs-owner — the OWNER-ACTION item
+    format": the six REQUIRED fields, the
+    try-it-yourself-or-cite-the-exact-wall bar, stale-ask expiry,
+    fewer-clearer-asks doctrine (self-hosted `control/README.md` matches).
+  - Doctrine wiring: `CONSTITUTION.md.tmpl` autonomy rail "Owner
+    attention is the scarcest resource"; `collaboration-model.md.tmpl`
+    § "Routing work to the owner"; `session-close` skill step 3
+    "Owner asks" (steps renumbered).
+- **Order-claiming convention** (ORDER 007, this PR):
+  - `control-README.md.tmpl` § "Claiming an order — one executor per
+    order": claim FIRST on your own status orders line
+    (`claimed-by: <ids> <lane-or-session> <ISO8601>`, landed on main
+    before build), re-read inbox + sibling statuses post-merge (tiebreak:
+    earliest merged claim), ~24h no-activity claim expiry; the
+    per-session ritual bullet and the status-format `orders:` line now
+    reference the claim (self-hosted `control/README.md` matches).
+    One-writer-per-file is preserved — a lane only ever claims on its
+    own status file.
+
+### Changed
+
+- Suite 707 → 722 (owner-action checker suite + skill/adopt wiring +
+  claim-convention plant assertions).
+
+### Notes
+
+- ORDER 007's other half — disposing of duplicate-execution PR #50 — was
+  verified already terminal (merged 2026-07-09T17:40:03Z as the
+  lane-suffixed salvage, before the order was appended); a disposition
+  comment on #50 records the audit trail.
+
 ## [1.5.0] - 2026-07-09
 
 New-capability release (MINOR): the **capability-manifest band** (inbox
