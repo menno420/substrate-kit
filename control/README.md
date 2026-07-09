@@ -31,6 +31,7 @@ conflicts. Everything is append-only / overwrite-own — forward-only git.
 updated: <ISO8601>            # heartbeat — stale = the manager treats the Project as dark
 phase: <what I'm doing right now, one line>
 health: green | red-by-design (<why>) | broken (<what>)
+kit: v<X.Y.Z> · check: green|red · engaged: yes|no   # kit self-report (adopter-visibility band, ORDER 003)
 last-shipped: #<PR> — <one line>
 blockers: <what's stopping me, or `none`>
 orders: acked=<ids> done=<ids>

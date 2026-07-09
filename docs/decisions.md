@@ -168,3 +168,33 @@
 - provenance: owner-directed fleet adoption review 2026-07-09 (assessor
   finding, ship-now disposition); friction→guard (PL-007 enforce-don't-
   exhort); this PR.
+
+## [D-0009] Adopter visibility is heartbeat-self-report + a kit-lab registry — never new access
+
+- status: decided
+- date: 2026-07-09
+- verdict: The substrate coordinator sees the fleet through three passive
+  surfaces (inbox ORDER 003): (1) every adopter self-reports
+  `kit: v<X.Y.Z> · check: green|red · engaged: yes|no` in its own
+  `control/status.md` (seeded rendered-with-the-real-version at adopt via
+  the engine-computed `kit_version` context key — `ENGINE_CONTEXT_KEYS`,
+  injected in `build_context` so every render path fills it; documented in
+  the planted contract's format block); (2) kit-lab maintains
+  `docs/adopters.md` (repo · kit_version · engaged · last-seen), sole
+  writer kit-lab, updated only from relayed/readable evidence with
+  `last-seen` = the evidence date — staleness reads as *dark*, never as
+  wrong; (3) every release's notes carry the adopter upgrade checklist,
+  appended automatically by `src/build_release_json.py` (the asset
+  builder, so an author cannot forget it), whose final step — update your
+  `kit:` line — is the loop that feeds the registry. Existing adopters
+  (planted pre-v1.3.0, skip-if-exists means no re-render) gain the line
+  via that same checklist step.
+- why: The kit had the improvement engine but no adopter visibility
+  (manager research 2026-07-09) — kit-lab is the fleet's substrate
+  coordinator yet could not see who runs what version. KF-2 (the lab
+  never writes consumer repos) rules out any active probe; the
+  coordination protocol's one-writer-per-file heartbeats already carry
+  exactly the needed channel, so visibility rides them with zero new
+  access.
+- provenance: inbox ORDER 003 (manager research 2026-07-09, rider to
+  ORDER 002/D-0007); KF-2; shipped in PR #41 with the v1.3.0 cut.

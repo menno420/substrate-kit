@@ -548,6 +548,19 @@ def test_control_status_seed_has_no_fake_heartbeat(tmp_path):
     assert "ONE writer: the manager" in inbox
 
 
+def test_control_status_seed_carries_the_kit_self_report_line(tmp_path):
+    # ORDER 003 (adopter-visibility band): the seed self-reports the REAL
+    # planted kit version — no stranded ${kit_version} placeholder — with the
+    # honest born-red starting values, and the planted contract documents the
+    # line's format so every adopter knows to keep it current.
+    root, _, _ = _adopt_into(tmp_path)
+    seed = (root / "control" / "status.md").read_text(encoding="utf-8")
+    assert f"kit: v{KIT_VERSION} · check: red · engaged: no" in seed
+    assert "${kit_version}" not in seed
+    readme = (root / "control" / "README.md").read_text(encoding="utf-8")
+    assert "kit: v<X.Y.Z> · check: green|red · engaged: yes|no" in readme
+
+
 def test_control_files_are_never_clobbered_on_readopt(tmp_path):
     root, config, _ = _adopt_into(tmp_path)
     status = root / "control" / "status.md"
