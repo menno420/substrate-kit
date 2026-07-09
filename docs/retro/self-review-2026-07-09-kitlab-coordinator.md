@@ -1,4 +1,4 @@
-# Gen-1 self-review — substrate-kit (2026-07-09) · coordinator-lane companion
+# Gen-1 self-review — substrate-kit (2026-07-09) · kit-lab coordinator-lane companion
 
 > **Status:** `audit`
 >

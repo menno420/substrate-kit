@@ -1,4 +1,4 @@
-# Project review — substrate-kit gen-1 (2026-07-09) · coordinator-lane companion
+# Project review — substrate-kit gen-1 (2026-07-09) · kit-lab coordinator-lane companion
 
 > **Status:** `audit`
 >
@@ -155,7 +155,7 @@ cross-check, and it only covers sessions that ran `session-close` here.
 2. **PR #51 — live duplicate of ORDER 005** (branch
    `claude/laughing-franklin-ey1v37`, session `01S7eRG1Zz5irp4iuaAFWNA1`,
    opened 17:11:50Z, ~90s after this session's #50): a parallel session
-   started the same retro lane. Flagged on #51 in-flight; **#51 merged first (17:23Z)** and holds the canonical paths, so this lane's documents were repositioned as `-coordinator-lane` companions instead of racing the same paths;
+   started the same retro lane. Flagged on #51 in-flight; **#51 merged first (17:23Z)** and holds the canonical paths, so this lane's documents were repositioned as `-kitlab-coordinator` companions (suffixed per the owner's multi-lane rule, the #52 precedent) instead of racing the same paths;
    gen-1 friction evidence for the claim-before-commit rule (self-review
    F1.3).
 3. **Telemetry undercounts the run**: `telemetry/model-usage.jsonl` has
@@ -184,7 +184,7 @@ Every `docs/retro/QUESTIONS.md` question answered by ID, twice and
 independently: the canonical
 **[self-review-2026-07-09.md](self-review-2026-07-09.md)** (#51 lane) and
 this lane's
-**[self-review-2026-07-09-coordinator-lane.md](self-review-2026-07-09-coordinator-lane.md)** (A1–A4 work &
+**[self-review-2026-07-09-kitlab-coordinator.md](self-review-2026-07-09-kitlab-coordinator.md)** (A1–A4 work &
 correctness · B1–B4 errors & friction, including the full error table ·
 C1–C4 efficiency · D1–D5 autonomy · E1–E4 protocol & environment · F1–F4
 redesign payload · G1–G3 kit addendum).

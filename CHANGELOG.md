@@ -17,15 +17,25 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
-- **Coordinator-lane retro companions** (ORDER 005, twin execution):
-  `docs/retro/self-review-2026-07-09-coordinator-lane.md` +
-  `docs/retro/project-review-2026-07-09-coordinator-lane.md` — the
+- **SuperBot-coordinator lane wake-up review** (suffixed per the owner's
+  multi-lane rule; a different Project than kit-lab, filed here because the
+  gen-1 retro protocol lives in `docs/retro/`):
+  `docs/retro/project-review-2026-07-09-superbot-coordinator.md` (the
+  SuperBot-rebuild true state + full coordinator-fleet agent audit +
+  efficiency verdict + ⚑ owner actions + continuation) and
+  `docs/retro/self-review-2026-07-09-superbot-coordinator.md` (every
+  `docs/retro/QUESTIONS.md` ID answered from the coordinator lane's
+  vantage), plus the lane heartbeat
+  `control/status-superbot-coordinator.md` (not yet in `heartbeat_files`
+  by design — kit-lab owns the config; decide-and-flag).
+- **Kit-lab-coordinator-lane retro companions** (ORDER 005, twin execution):
+  `docs/retro/self-review-2026-07-09-kitlab-coordinator.md` +
+  `docs/retro/project-review-2026-07-09-kitlab-coordinator.md` — the
   parallel coordinator-spawned lane's independent answers + the
   session-side agent audit (35-session fact ledger, model split, stall
   census) cross-checked against the repo with discrepancies named (incl.
   the telemetry harvest gap: 11 post-KL-3 cards' Model lines never
   harvested). Docs-only.
-
 - **Gen-1 retro self-review + project review** (inbox ORDER 005):
   `docs/retro/self-review-2026-07-09.md` — every `docs/retro/QUESTIONS.md`
   question answered by ID with PR/commit/file evidence — and
