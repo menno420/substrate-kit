@@ -17,6 +17,27 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Auto-drafted session handoff** (band KL-5, plan §10 — MINOR, new
+  capability; the ruled prerequisite for B1's first firing): `session-close`
+  and the Stop hook now **draft** the session card's close-out from evidence
+  instead of exhorting the agent to write one (the twice-measured Phase-2.5
+  failure: discipline-dependent write-back does not happen). Evidence — all
+  pure stdlib, no subprocess: a **session-start anchor** (timestamp + git
+  HEAD/branch parsed from `.git`, worktree-aware) recorded by the
+  SessionStart hook / `session-start`; an mtime scan of files touched since
+  the anchor, classified code/tests/docs/sessions; HEAD movement; the
+  derived `verify_command` slot (carried as a run-and-record slot — the
+  engine never fakes results). A missing card gets a drafted skeleton
+  (`Status: drafted`); an in-progress card missing close-out markers gets
+  the drafted section (+ needle-carrying stand-ins for exactly the missing
+  markers) appended; completed cards are never touched. New on-demand
+  `draft` verb runs the same seam. The session-log checker gains the
+  **drafted-vs-completed distinction**: unresolved `[[fill:]]` slots and the
+  `drafted` status token hold the born-red gate with a distinct finding, and
+  a drafted `📊 Model:` stand-in line is never harvested into the
+  PL-004 feed. Everything fail-open: drafting can never crash a hook or
+  session-close.
+
 - **The `friction` verb + outbox** (band KL-4, plan §9.1 — MINOR, new CLI
   capability): `friction export` collects the install's ⚑ friction records
   (reflection buffer + a full session-log scan, deduplicated — D-14), wraps

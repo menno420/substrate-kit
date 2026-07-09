@@ -48,6 +48,7 @@ MODULE_ORDER = (
     "loop/reflections.py",
     "loop/friction.py",
     "loop/telemetry.py",
+    "loop/handoff.py",
     "loop/episodes.py",
     "loop/triggers.py",
     "loop/maintenance.py",

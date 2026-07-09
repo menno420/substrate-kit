@@ -15,6 +15,7 @@ markers rather than printing.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
@@ -49,8 +50,36 @@ def latest_session_log(sessions_dir: Path) -> Path | None:
 # born-red discipline checks the status VALUE, not just the badge's presence.
 # (KL-1 lesson, kit repo PR #9: a reopened card kept its idea/review markers
 # from the previous PR, so a presence-only check read born-red as green and
-# auto-merge landed the PR without its close-out.)
-IN_PROGRESS_TOKENS = ("in-progress", "in progress", "wip", "hold")
+# auto-merge landed the PR without its close-out.) ``drafted`` is the
+# auto-draft state (KL-5): an auto-drafted skeleton is real write-back but
+# not a finished session — drafted holds the gate exactly like born-red.
+IN_PROGRESS_TOKENS = ("in-progress", "in progress", "wip", "hold", "drafted")
+
+# The auto-draft judgment-slot opener (KL-5). Drafted text marks every field
+# only the session can fill with ``[[fill: <hint>]]``; a card still carrying
+# one is DRAFTED, not completed — a distinct, mechanically countable state
+# between "nothing written" (the twice-measured Phase-2.5 baseline) and a
+# genuine close-out. The needle-based markers may all be present in a draft
+# (the stand-ins carry them on purpose), so this token is what keeps an
+# unedited draft from counting complete.
+DRAFT_FILL_TOKEN = "[[fill:"
+
+# Inline code spans + fenced blocks are stripped before counting: a card
+# whose prose *mentions* the token (`[[fill:]]` in backticks — session cards
+# about the draft mechanism legitimately do) is not an unresolved slot; the
+# draft always writes real slots bare.
+_CODE_SPAN_RE = re.compile(r"`[^`\n]*`")
+_FENCE_RE = re.compile(r"^```.*?^```", re.MULTILINE | re.DOTALL)
+
+
+def unresolved_fill_count(text: str) -> int:
+    """Return how many auto-draft ``[[fill:]]`` slots remain in ``text``.
+
+    Counts only slots outside inline code spans and fenced code blocks —
+    prose that *talks about* the token doesn't hold the gate.
+    """
+    stripped = _CODE_SPAN_RE.sub("", _FENCE_RE.sub("", text))
+    return stripped.count(DRAFT_FILL_TOKEN)
 
 
 def status_in_progress(text: str) -> bool:
@@ -65,14 +94,22 @@ def status_in_progress(text: str) -> bool:
 def check_log(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
     """Return what keeps one log file from counting complete (all if unreadable).
 
-    Two conditions feed the list: marker needles that are absent, and a
-    Status badge still carrying an in-progress value.
+    Three conditions feed the list: marker needles that are absent, a Status
+    badge still carrying an in-progress value, and unresolved auto-draft
+    ``[[fill:]]`` slots (the drafted-vs-completed distinction, KL-5 — a
+    drafted card is named as drafted, never mistaken for a finished one).
     """
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
         return [m["label"] for m in markers]
     missing = missing_markers(text, markers)
+    fills = unresolved_fill_count(text)
+    if fills:
+        missing.append(
+            f"{fills} auto-draft [[fill:]] slot(s) unresolved "
+            "(the card is drafted, not completed)",
+        )
     if status_in_progress(text):
         missing.append("a completed Status (badge still says in-progress)")
     return missing

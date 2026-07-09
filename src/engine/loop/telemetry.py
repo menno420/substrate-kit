@@ -30,6 +30,8 @@ import re
 from datetime import date, datetime, timezone
 from pathlib import Path
 
+from engine.checks.check_session_log import DRAFT_FILL_TOKEN
+
 GUARD_FIRES_FILENAME = "guard-fires.jsonl"
 MODEL_USAGE_RELPATH = "telemetry/model-usage.jsonl"
 
@@ -132,7 +134,10 @@ def parse_model_line(text: str) -> dict | None:
     """
     payload = None
     for line in text.splitlines():
-        if MODEL_LINE_NEEDLE in line:
+        if MODEL_LINE_NEEDLE in line and DRAFT_FILL_TOKEN not in line:
+            # An auto-drafted stand-in (`[[fill: model]] · …`, KL-5) is not a
+            # report — harvesting it would feed placeholder junk into the
+            # PL-004 dataset. Skip it; the advisory keeps asking for the line.
             payload = line.split(MODEL_LINE_NEEDLE, 1)[1]
     if payload is None:
         return None

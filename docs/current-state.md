@@ -70,13 +70,31 @@
   removed on completion, `--keep-inputs` opts out). Suite 535 → 557.
   **D3 is PENDING owner arming (👤 P4)**: ≥3 consecutive scheduled fires
   each shipping a real run report — the loop cannot arm itself.
+- **KL-5 first half (auto-drafted handoff) is DONE** (plan §10 KL-5 row —
+  the ruled prerequisite for B1's first firing; PR #16):
+  `src/engine/loop/handoff.py` — the SessionStart hook/`session-start`
+  record a session-start **anchor** (timestamp + git HEAD/branch parsed
+  from `.git`, worktree-aware, no subprocess); `session-close` + the Stop
+  hook (+ the new on-demand `draft` verb) **auto-draft** the card's
+  close-out from evidence (mtime file scan classified
+  code/tests/docs/sessions, HEAD movement, the derived verify command as a
+  run-and-record slot); a missing card gets a drafted skeleton; the
+  session-log checker gains the **drafted-vs-completed** distinction
+  (unresolved `[[fill:]]` slots + the `drafted` status token hold the
+  born-red gate, reported distinctly; a drafted `📊 Model:` stand-in never
+  harvests into PL-004). All fail-open; suite 557 → 587. The **second half
+  (the `bench/` tree) follows as a `do-not-automerge` PR** per §5.0 — the
+  first rubric version is owner-blessed; it stays OPEN awaiting that
+  blessing, and **B1's first firing waits for it**.
 
 ## In flight
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- PR #14 — **KL-4 lab loop + friction** (this session). Friction issue #15
-  (superbot's first report) filed + triaged through it.
+- PR #16 — **KL-5 (1/2): auto-drafted handoff** (this session).
+- PR (KL-5 2/2) — **the `bench/` tree**, opened right after #16 with the
+  `do-not-automerge` label per §5.0: it stays **open awaiting owner
+  blessing** of the first rubric version (⚑ — see Next action).
 
 ## Pending owner action — 👤 P4 (arm the kit-lab loop) ⚑
 
@@ -131,23 +149,29 @@ when `bench/` exists (KL-5).
 
 ## Next action
 
-**Band KL-5 — the benchmark harness + the auto-drafted-handoff build** (plan
-§10 KL-5 row, §5.0/§5.1; depends on KL-3, done): (1) the
-**auto-drafted-handoff** build — session-close + stop-hook draft the card
-from git diff + verify state, drafted-vs-completed distinction in the
-checker (the ruled prerequisite for any new cold-start A/B); (2) the
-`bench/` tree — rubrics (**first version owner-blessed per §5.0**, authored
-on a `do-not-automerge` PR), T1–T5 task texts copied in from companion D §3
-+ the F-5 pass bar (absolute URLs in `bench/README.md`), seed generator,
-`score_m1.py`, `run_ab.py`, `check_bench_integrity.py` (label-gate +
-append-aware results rule); (3) the **B1 baseline firing** (T2→T4 per arm +
-T5) recorded to `bench/results/`. ~3 PRs. *(Done and no longer next: KL-4 —
-PR #14, see Stability baseline; D3 waits only on 👤 P4 arming above; the
-`feature build` taxonomy ruling is a separate discuss-first PR —
-`docs/ideas/feature-build-task-class-2026-07-09.md`.)*
+**⚑ Owner blessing of the first benchmark rubric (👤, plan §5.0), then the
+B1 baseline firing.** KL-5's two build halves are done: the auto-drafted
+handoff merged (PR #16) and the `bench/` tree rides an intentionally-OPEN
+`do-not-automerge` PR — the benchmark-integrity law says the loop never
+merges its own rubric/tasks/seeds change, and the FIRST rubric version is
+owner-blessed. Merge that PR (or contest it on the PR thread) — **B1's
+first baseline firing waits for it** (T2→T4 per arm + T5, the post-auto-
+draft shape; run per `bench/README.md`, never by the session that authored
+the rubric). After that: **band KL-6** (console feeds + move — exporter
+telemetry family, the kit-lab lane, B4 ideas-frontmatter convention +
+`check_idea_index.py`, the P6 console move). *(Done and no longer next:
+KL-4 — PR #14; KL-5 — PR #16 + the open bench PR, see Stability baseline;
+D3 waits only on 👤 P4 arming above; the `feature build` taxonomy ruling is
+a separate discuss-first PR — `docs/ideas/feature-build-task-class-2026-07-09.md`.)*
 
 ## Recently shipped (newest first)
 
+- **#16 — KL-5 (1/2) auto-drafted handoff**: `src/engine/loop/handoff.py`
+  (session-start anchor; evidence gathering — mtime scan + pure-file-parse
+  git HEAD; drafted skeleton / appended close-out; `draft` verb); the
+  checker's drafted-vs-completed distinction (`[[fill:]]` slots + `drafted`
+  status); PL-004 harvest guard on drafted stand-ins; planted + local
+  `.sessions/README.md` convention text. The ruled B1 prerequisite.
 - **#14 — KL-4 lab loop + friction**: `docs/operations/lab-loop.md` (the
   §6.2 prompt + P4 arming steps); `src/engine/loop/friction.py` + the
   `friction` CLI verb (envelope → `.substrate/friction-outbox/`; agent

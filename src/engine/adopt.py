@@ -259,7 +259,14 @@ def _adopt_sessions_readme(markers: list[dict[str, str]]) -> str:
         "parallel sessions, then flip it to `complete` as the deliberate LAST "
         "step once the close-out is written — a half-done session never reads "
         "as finished. Before it counts as complete, a log must carry these "
-        f"markers: {labels}.\n"
+        f"markers: {labels}.\n\n"
+        "If the card is missing at session end, the kit **auto-drafts** one "
+        "from evidence (files touched, git HEAD movement, the verify "
+        "command); an in-progress card missing its close-out gets the "
+        "drafted section appended. A draft is a starting point, not a "
+        "close-out: verify the evidence, resolve every `[[fill:]]` slot, "
+        "then flip the Status badge — unresolved slots (and the `drafted` "
+        "status) keep the card counting incomplete.\n"
     )
 
 
