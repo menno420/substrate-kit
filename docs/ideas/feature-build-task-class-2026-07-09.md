@@ -1,5 +1,5 @@
 ---
-state: routed
+state: promoted
 origin: consumer:menno420/superbot
 shipped_pr: null
 shipped_repo: null
@@ -11,7 +11,10 @@ outcome: open
 
 > **Status:** `ideas`
 >
-> **State:** captured → routed **discuss-first** (program-law change).
+> **State:** captured → routed **discuss-first** (program-law change) →
+> **promoted**: the dedicated ruling PR #22 (PL-010 in
+> `docs/program/rulings.md`, option 1 below) is open for owner review;
+> outcome stays `open` until it merges — the merge is the ratification.
 > **Origin:** consumer:menno420/superbot (friction issue
 > [#15](https://github.com/menno420/substrate-kit/issues/15), report 3) +
 > the kit's own KL-3 session idea (`.sessions/2026-07-09-kl3-telemetry.md`).

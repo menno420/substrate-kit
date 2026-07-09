@@ -26,9 +26,10 @@ Record shape (nulls are honest gaps, never fabricated — KF-9):
              "merged_pr": null, "reverted_within_window": null}}
 ```
 
-- `task_class` ∈ the 8 Q-0248/PL-004 classes verbatim: docs-only ·
-  mechanical refactor · test writing · runtime bugfix · kernel/architecture
-  design · review/verify · research · idea/planning.
+- `task_class` ∈ the 9 PL-004 classes verbatim (the 8 founding Q-0248
+  classes + the PL-010 amendment): docs-only · mechanical refactor ·
+  test writing · runtime bugfix · kernel/architecture design ·
+  review/verify · research · idea/planning · feature build.
 - `tokens_out` is null until a programmatic meter exists; estimates are
   labeled estimates (KF-9).
 - `outcome` fields are backfilled by the lab loop's telemetry sweep (CI
