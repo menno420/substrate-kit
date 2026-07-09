@@ -157,22 +157,33 @@
   extended arc (RED on seed status → GREEN after first heartbeat); the
   dist-completeness guard test (a MODULE_ORDER omission NameError'd the
   dist while the byte-pin stayed green — caught + pinned this band).
-  Suite 658 → 683. **v1.2.0 cut follows** (the ORDER 002 release leg),
-  then the ORDER 002 status overwrite as the deliberate LAST act.
+  Suite 658 → 683.
+- **v1.2.0 is CUT** (PR #32 + the post-merge `release.yml`
+  `workflow_dispatch` run): `KIT_VERSION` 1.1.0 → 1.2.0 (config +
+  pyproject + dist header stamp, byte-pinned), CHANGELOG `[Unreleased]`
+  rolled into `## [1.2.0] - 2026-07-09`. KF-5 statement cites the
+  **standing** B1 PASS row (`2026-07-09-run01`, same-day baseline) — ⚑
+  decide-and-flag: no fresh firing this MINOR (run-2 gated behind the
+  filed harness fixes; advisory-to-pass; no trend claim). SemVer MINOR —
+  new templates + checker + CI lane, no contract breaks. Consumers now
+  upgrade via `bootstrap.py.new upgrade` against the v1.2.0 Release
+  assets — this is what delivers `control/` to the fleet (ORDER 002's
+  done-when). The ORDER 002 status overwrite follows as the deliberate
+  LAST act (a control-only PR on the new fast lane).
 
 ## In flight
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- PR #31 — **band KL-8 (this PR)**: the coordination-protocol kit band per
-  ORDER 002; followed by the v1.2.0 release-cut PR + `release.yml`
-  dispatch, then the ORDER 002 `control/status.md` overwrite (a
-  control-only PR exercising the new fast lane live). KL-7's companion
-  PL-register note still rides its own `do-not-automerge` PR #26 (left
-  open for the owner). PR #30 (first status heartbeat, control + ledger
-  notes) may land in parallel — status.md is overwrite-own, newest wins.
-  *(#29 — v1.1.0 release cut — MERGED 2026-07-09 and moved out of this
-  list; the Release is live.)*
+- PR #32 — **v1.2.0 release cut (this PR)**: version bump + CHANGELOG
+  roll + this ledger; followed post-merge by the `release.yml` dispatch
+  that tags `v1.2.0` and publishes the Release, then the ORDER 002
+  `control/status.md` overwrite (a control-only PR exercising the new
+  fast lane live). KL-7's companion PL-register note still rides its own
+  `do-not-automerge` PR #26 (left open for the owner). PR #30 (first
+  status heartbeat, control + ledger notes) may land in parallel —
+  status.md is overwrite-own, newest wins.
+  *(#31 — band KL-8 — MERGED 2026-07-09 and moved out of this list.)*
 
 ## Field notes — incident ledger (2026-07-09 run)
 
@@ -316,11 +327,12 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ### Agent queue — in order, as the gates open
 
-1. **Consumer upgrades to v1.1.0**: superbot + superbot-next pull the
-   released assets (`bootstrap.py.new upgrade`) — this is what delivers
-   the KL-7 engagement gate (and the `📊 Model:` needle) to the fleet;
-   verify each upgrade's session card. *(The cut-v1.1.0 item is DONE —
-   PR #29 + the dispatch run; see the stability-baseline bullet.)*
+1. **Consumer upgrades to v1.2.0**: superbot + superbot-next (+ websites)
+   pull the released assets (`bootstrap.py.new upgrade`) — this is what
+   delivers the KL-7 engagement gate, the `📊 Model:` needle, AND the
+   KL-8 `control/` protocol scaffold to the fleet; verify each upgrade's
+   session card. *(The cut-v1.1.0 and cut-v1.2.0 items are DONE — PRs
+   #29/#32 + their dispatch runs; see the stability-baseline bullets.)*
 2. **Run-2 harness fixes**: the three B1 follow-ups in
    `docs/ideas/` — `score_m1` artifact fixes (ordinary lane), the T5
    headless guard-surface protocol fix (⚑ `bench/tasks/` is a pin path →
@@ -339,6 +351,13 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ## Recently shipped (newest first)
 
+- **#32 — v1.2.0 release cut**: `KIT_VERSION`/pyproject/dist-header →
+  1.2.0 (byte-pinned); CHANGELOG `[Unreleased]` → `## [1.2.0] -
+  2026-07-09` with the KF-5 statement (standing B1 PASS row cited —
+  no fresh firing, flagged) + release-metadata comment
+  (`breaking=false state_migration=false min_upgrade_from=1.0.0`);
+  fresh empty `[Unreleased]`; this ledger. Release published by the
+  post-merge `release.yml` dispatch.
 - **#31 — band KL-8: the coordination-protocol kit band** (ORDER 002,
   spec §2; D-0007): 3 new `control-*` templates in `ADOPT_PLAN`
   (README contract + inbox/status skeletons);

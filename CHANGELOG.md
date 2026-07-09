@@ -15,6 +15,29 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-09
+
+New-capability release (MINOR): the fleet coordination protocol becomes a
+kit capability — every adopted repo gets the `control/` git-as-message-bus
+(manager inbox + project status heartbeat + the planted contract), the
+heartbeat is enforced by a new dist-shipped checker, and coordination
+writes ride a CI fast lane that can never jam a required context. No
+planted-doc, state schema, config schema, or CLI contract breaks.
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+**Benchmark outcome (KF-5 — mandatory run for a MINOR):** the standing B1
+cold-start baseline `2026-07-09-run01` — **VERDICT: PASS** (judge
+claude-opus-4-8, independent; row 1 of
+`bench/results/cold-start/index.json`, recorded earlier the same day for
+the v1.1.0 cycle) — is the run of record for this release: no fresh firing
+was made because run-2 is deliberately gated behind the filed harness
+fixes (`docs/ideas/score-m1-mutation-artifacts-2026-07-09.md` et al. — a
+same-day re-fire would reproduce the known-tainted M1 pairs), KF-5 is
+advisory-to-pass and never release-blocking, and no trend claim is made
+(KF-8 requires ≥3 paired runs). Nothing in this release touches the
+benchmarked handoff surface.
+
 ### Added
 
 - **The `control/` fleet-coordination scaffold** (band KL-8, inbox ORDER
@@ -320,5 +343,6 @@ by real consumers, and now nameable, pinnable, verifiable, and upgradeable.
   `init --unpack` it served never shipped, and it doubled every consumer's
   vendored file for nothing.
 
+[1.2.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.2.0
 [1.1.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.1.0
 [1.0.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.0.0
