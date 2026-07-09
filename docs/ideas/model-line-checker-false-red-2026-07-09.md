@@ -31,6 +31,36 @@ a Model line. The mismatch is the **form**: the arm sessions wrote
   (`.../on/T4/transcript.jsonl` line 4); the T4 card in its Write call.
 - Judge report §5.5 item 3 (checker-false-red suspicion, PL-006).
 
+## Investigation disposition (2026-07-09, run-2 harness-prep session, PR #40)
+
+**Resolved to the arm-authoring-gap side — with the gap traced one level
+deeper, to the planted doc itself.** Verified against the committed run-1
+transcripts:
+
+- The ON-arm transcripts contain **zero** 📊 characters anywhere; both
+  cards wrote `> **Model:** claude-fable-5` (`on/T4/transcript.jsonl` —
+  grep the `Model:**` form).
+- The arm DID read its planted `.sessions/README.md`
+  (`on/T2/transcript.jsonl` line 40-41) — and that doc says only
+  "a log must carry these markers: Status badge, Session idea,
+  Previous-session review, **Model line**". Labels, no byte-forms: the
+  composer `_adopt_sessions_readme()` (`src/engine/adopt.py`) joins
+  `m["label"]` and never renders `m["needle"]`, so an arm session has no
+  way to learn the `📊 Model:` form from inside the arm. The agent wrote a
+  reasonable Model line; the needle scan (correctly, per its config)
+  called it missing.
+- **Separate from the harvest-shadowing bug** fixed in PR #40
+  (`parse_model_line` last-needle selection): that bug required the needle
+  to be PRESENT and a later prose mention to shadow it; here the needle
+  was never written at all. Two different defects on the same marker.
+
+**Remaining fix (stays open):** (c) plant the byte-form — render
+`label (needle)` pairs in `_adopt_sessions_readme()` (guard recipe:
+that function + a `test_adopt.py` assertion that the planted README
+contains each configured needle) — plus (a) the checker message naming the
+expected form on a miss ("missing `📊 Model:` marker") in the
+`missing_markers` reporting path. Both engine-side → dist regen.
+
 ## The question to decide (investigate, then fix one side)
 
 Is this an **arm-authoring gap** (the adopted repo's planted
