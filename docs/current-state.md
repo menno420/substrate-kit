@@ -282,6 +282,14 @@ Optional rider (👤 P12): a user-PAT (kit-repo Issues:RW) if you want a
 issues do not fire routines, so without it the triage SLA is the daily cron
 (≤24 h), which is the plan's stated default.
 
+## Pending owner action — web environment setup script ⚑
+
+A Claude Code on the web session died at provisioning: the environment's
+setup script assumed the repo clone as cwd and a `requirements.txt` (this
+repo has neither guarantee). The corrected, guarded script — owner-only
+paste into the environment settings dialog — lives verbatim in
+[`docs/environment-setup-script.md`](environment-setup-script.md).
+
 ## Pending owner action — 👤 P10 (repo settings, §3.2 item 7)
 
 **Still not finished, and it bit twice more in KL-1.** Verified live (the
