@@ -68,3 +68,27 @@
   one unconditional outbox path beats two divergent ones.
 - provenance: founding plan §9.1 / KF-7 / D-14; shipped in band KL-4
   (PR #14); first report + triage = issue #15 (D4).
+
+## [D-0005] Adoption is born-red: check gates the ENGAGED state, adopt stages the door
+
+- status: decided
+- date: 2026-07-09
+- verdict: `check` gains the post-adopt ENGAGEMENT gate
+  (`engine/checks/check_engagement.py`; strict-only exit-code impact): in a
+  host with adoption evidence (a recorded kit_version — an UNRENDERED banner
+  counts on its own), findings hold `check --strict` RED until every planted
+  doc is rendered (no UNRENDERED banner, no leftover `${...}` slot), a CI
+  workflow runs `check --strict`, and the session loop has engaged
+  (session_count ≥ 1, or a real session card). Scope = planted docs only,
+  never template sources — the kit's own `src/engine/templates/` can never
+  red its own gate. `adopt` stages the live `substrate-gate.yml` under
+  `<state_dir>/ci/` on every run (kit stages, host installs — unchanged) and
+  ends by printing the gate's findings as the engagement checklist. The
+  cold-adopt smoke + tests pin the RED→ENGAGED→GREEN arc permanently.
+- why: Both fresh adopters stranded identically (fleet review 2026-07-09 §4:
+  bannered docs, raw slots, session_count 0, no CI) — adopt
+  planted-and-bannered but nothing forced the last mile, so a default adopt
+  LOOKED onboarded while neither rendered nor enforcing. PL-007 ("enforce,
+  don't exhort") applied to onboarding itself.
+- provenance: owner directive routing the fleet-review §4 finding into the
+  kit (superbot `docs/eap/fleet-review-2026-07-09.md`); band KL-7, PR #25.

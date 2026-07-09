@@ -35,6 +35,7 @@ from engine.adopt import (
 from engine.agents.agents import AGENTS, agent_document, agent_relpath
 from engine.checks.allowlist import apply_allowlist, load_allowlist
 from engine.checks.check_docs import Finding, run_doc_checks
+from engine.checks.check_engagement import check_engagement
 from engine.checks.check_namespace import check_namespace
 from engine.checks.check_orientation_budget import check_orientation_budget
 from engine.checks.check_seam_authority import check_seam_authority
@@ -591,6 +592,11 @@ def _extra_check_findings(target: Path, config: Config) -> list:
     docs_root = target / config.docs_root
     if any((docs_root / doc).exists() or (target / doc).exists() for doc in boot_docs):
         findings += check_orientation_budget(target, config)
+    # The post-adopt ENGAGEMENT gate (KL-7): red in an adopted host until the
+    # planted docs are rendered, a CI workflow runs the check, and the session
+    # loop has engaged. Self-gating on adoption evidence — a bare tree adds
+    # nothing here.
+    findings += check_engagement(target, config)
     return findings
 
 
@@ -1113,6 +1119,19 @@ def cmd_adopt(
     )
     for line in lines:
         _emit(f"adopt: {line}")
+    # KL-7 — the adopter is told, in the adopt output itself, exactly what the
+    # born-red engagement gate needs: the gate's findings ARE the checklist.
+    engage = check_engagement(target, config)
+    if engage:
+        _emit(
+            f"adopt: NOT ENGAGED — `check --strict` holds RED until these "
+            f"{len(engage)} item(s) are done:",
+        )
+        for finding in engage:
+            where = f"{finding.path}: " if finding.path else ""
+            _emit(f"adopt:   [{finding.kind}] {where}{finding.message}")
+    else:
+        _emit("adopt: ENGAGED — the post-adopt gate is green.")
     return 0
 
 

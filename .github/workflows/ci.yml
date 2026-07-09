@@ -67,16 +67,41 @@ jobs:
           fi
           python3 scripts/check_program_law.py --label-gate
 
-      - name: Cold-adoption smoke (§3.2 item 4)
-        # adopt into a scratch repo + check --strict green, then the
-        # --wire-enforcement exit path (the born-self-verifying clause).
+      - name: Cold-adoption smoke (§3.2 item 4 — the KL-7 RED→ENGAGED→GREEN arc)
+        # A bare adopt must be BORN RED (the engagement gate: unrendered
+        # banners/slots, no CI, idle session loop — the fleet-review §4
+        # stranding), and walking the printed checklist must turn it GREEN.
+        # Then the --wire-enforcement exit path (born-self-verifying clause).
         run: |
           scratch="$(mktemp -d)"
           cp dist/bootstrap.py "$scratch/"
           (
             cd "$scratch"
-            python3 bootstrap.py adopt
+            python3 bootstrap.py adopt | tee adopt.out
+            grep -q "NOT ENGAGED" adopt.out
+            test -f .substrate/ci/substrate-gate.yml
+            if python3 bootstrap.py check --strict; then
+              echo "expected RED after a bare adopt (engagement gate)"; exit 1
+            fi
+            # Walk the checklist — (1) render: answer every slot, fill live…
+            for slot in integration_mode project_name primary_language \
+                architecture_layers verify_command ownership_model doc_roots \
+                owner_profile mutation_seam review_ritual drift_resolution \
+                staleness_review new_area_ownership; do
+              python3 bootstrap.py answer "$slot" \
+                "engaged smoke value for $slot long enough for every substance floor" >/dev/null
+            done
+            python3 bootstrap.py render --live
+            # …(2) enforcement: install the staged gate workflow…
+            mkdir -p .github/workflows
+            cp .substrate/ci/substrate-gate.yml .github/workflows/
+            # …(3) session loop: the first real (complete) session card.
+            printf '%s\n' '# first session' '' '> **Status:** `complete`' '' \
+              '💡 first idea' '⟲ previous-session review: n/a (first session)' \
+              '📊 Model: smoke · low · docs-only' > .sessions/2026-01-01-first.md
             python3 bootstrap.py check --strict
+            python3 bootstrap.py check --strict --require-session-log \
+              --session-log .sessions/2026-01-01-first.md
           )
           scratch_we="$(mktemp -d)"
           cp dist/bootstrap.py "$scratch_we/"
@@ -85,7 +110,11 @@ jobs:
             python3 bootstrap.py adopt --wire-enforcement
             test -f .github/workflows/substrate-gate.yml
             test -f .claude/settings.json
-            python3 bootstrap.py check --strict
+            # Enforcement is wired, but render + session loop are still
+            # pending — the gate must hold red here too.
+            if python3 bootstrap.py check --strict; then
+              echo "expected RED after adopt --wire-enforcement alone"; exit 1
+            fi
           )
 
       - name: Session gate (§3.2 item 5 — dogfood, the born-red discipline)
