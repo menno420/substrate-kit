@@ -126,3 +126,9 @@ run-B1 procedure; the PR body makes the blessing decision self-contained;
 nothing left chat-only.
 
 - **📊 Model:** fable-5 · high · kernel/architecture design
+
+**Post-blessing addendum (2026-07-09):** first rubric version owner-blessed
+("you can merge 17", then direct "merge 17" in-session); branch updated
+against main (#24) with mechanical conflict resolution (CHANGELOG regrouped,
+current-state reality), blessing provenance recorded as D-0005 in
+`docs/decisions.md` by the merge-prep session.
