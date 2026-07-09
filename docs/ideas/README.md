@@ -64,16 +64,23 @@ story, the frontmatter keeps the score.
   — state: captured; origin: lab (PL-010 session — three surfaces updated by
   hand with nothing enforcing agreement; guard recipe in the file); next: a
   groomed-ideas increment ships checker + test + CI step.
-- [A "feature build" task class for the Q-0248/PL-004 taxonomy](feature-build-task-class-2026-07-09.md)
-  — state: **promoted** (PL-004 amendment, ruling PL-010); origin:
-  superbot friction issue #15 report 3 + the KL-3 session idea; next: the
-  dedicated ruling **PR #22 is open for owner review** (`do-not-automerge`
-  — the merge is the ratification; outcome flips `shipped` then).
-
+- [Label-added disarm guard — the enabler race's residual half](label-added-disarm-guard-2026-07-09.md)
+  — state: captured; origin: lab (enabler-race-hotfix session — the deployed
+  fresh re-read is point-in-time; a label applied *after* arming still does
+  nothing; guard recipe in the file: `on: pull_request: [labeled]` →
+  `gh pr merge --disable-auto`); next: a groomed-ideas increment ships the
+  workflow + a live post-arm labelling verification.
 ## Shipped (survive window open)
 
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
+
+- [A "feature build" task class for the Q-0248/PL-004 taxonomy](feature-build-task-class-2026-07-09.md)
+  — **shipped** kit PR #22 (2026-07-09), the PL-010 ruling; origin:
+  superbot friction issue #15 report 3 + the KL-3 session idea. ⚑ #22
+  merged *mechanically* (enabler label-race incident — comment on #22);
+  PL-010 is live, owner ratify-or-veto pending (`docs/current-state.md`
+  owner gate 2).
 
 - [PR-diff-aware session-gate card selection](session-gate-diff-aware-selection-2026-07-09.md)
   — **shipped** kit PR #19 (2026-07-09): `check --session-log <file>` + the

@@ -1,10 +1,10 @@
 ---
 state: promoted
 origin: consumer:menno420/superbot
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 22
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-09
+outcome: shipped
 ---
 
 # A "feature build" task class for the Q-0248/PL-004 taxonomy (2026-07-09)
@@ -12,9 +12,12 @@ outcome: open
 > **Status:** `ideas`
 >
 > **State:** captured → routed **discuss-first** (program-law change) →
-> **promoted**: the dedicated ruling PR #22 (PL-010 in
-> `docs/program/rulings.md`, option 1 below) is open for owner review;
-> outcome stays `open` until it merges — the merge is the ratification.
+> promoted (ruling PR #22, PL-010 in `docs/program/rulings.md`, option 1
+> below) → **shipped**: #22 merged 2026-07-09 — ⚑ *mechanically, by the
+> enabler label-race, not by the intended owner review* (incident comment
+> on #22). PL-010 is live on main; owner reaction (ratify, or veto via a
+> revert PR) replaces the merge-as-ratification gate — see
+> `docs/current-state.md` owner gate 2.
 > **Origin:** consumer:menno420/superbot (friction issue
 > [#15](https://github.com/menno420/substrate-kit/issues/15), report 3) +
 > the kit's own KL-3 session idea (`.sessions/2026-07-09-kl3-telemetry.md`).

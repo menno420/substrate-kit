@@ -60,8 +60,32 @@ jobs:
           if [ "$count" = "0" ]; then
             echo "::warning::main requires no status-check CONTEXTS — arming auto-merge would merge instantly (the KL-0 PR #4 / KL-1 PR #7 footgun). Refusing to arm; make 'kit-quality' a required check first (P10)."
           fi
-      - name: Enable native auto-merge (squash)
+      - name: Re-check the do-not-automerge label FRESH (KL-5 race guard)
+        # The event payload snapshots labels at PR-creation time, and an
+        # MCP-created PR gets its label in a SECOND call right after create —
+        # so the job-level label condition passes while the label is still
+        # landing (this exact race armed auto-merge on PR #17, the
+        # owner-blessed bench-tree PR, defeating the §5.0 gate; disarmed by
+        # hand). Wait a grace beat, then re-read labels from the API and
+        # refuse to arm if the label is present NOW.
+        id: label
         if: steps.rules.outputs.required != '0'
+        env:
+          GH_TOKEN: ${{ secrets.ROUTINE_PAT || secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          sleep 15
+          labels="$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/labels" --jq '[.[].name] | join(",")')"
+          echo "labels on re-read: $labels"
+          case ",$labels," in
+            *,do-not-automerge,*)
+              echo "do-not-automerge present on re-read — refusing to arm."
+              echo "skip=1" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "skip=0" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - name: Enable native auto-merge (squash)
+        if: steps.rules.outputs.required != '0' && steps.label.outputs.skip == '0'
         env:
           # Prefer a PAT so the eventual merge attributes to a real user
           # (superbot's cadence-trigger lesson); GITHUB_TOKEN is the fallback.
