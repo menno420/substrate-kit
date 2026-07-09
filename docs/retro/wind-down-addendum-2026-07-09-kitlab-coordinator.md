@@ -1,5 +1,10 @@
 # Wind-down addendum — the kit-lab coordinator's lived account (2026-07-09)
 
+> **Status:** `historical` — gen-1 first-person record, coordinator's text
+> verbatim below this badge. Badged rather than index-linked because the
+> successor lane's PR #74 edits `docs/retro/README.md` in flight — index
+> this addendum there in one line after #74 merges.
+
 *First-person, from the session that ran the program from KL-0 to the v1.6.0 fleet rollout. The successor pack reconstructs this day from artifacts; this is what it felt like from inside.*
 
 ## How the day actually ran
