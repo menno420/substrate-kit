@@ -31,3 +31,9 @@ priority: P1
 do: Self-review retro. Answer EVERY question in docs/retro/QUESTIONS.md, by ID, in a new file docs/retro/self-review-2026-07-09.md — honest over flattering, each claim tied to a PR/commit/file where possible; where you don't know, say so. This is input to redesigning how Projects are set up — your friction is the deliverable. Land it as a READY PR same session.
 why: the owner is designing gen-2 Projects from gen-1's lived experience.
 done-when: self-review merged; status acks the order.
+
+## ORDER 006 · 2026-07-09T17:31Z · status: new
+priority: P1
+do: Owner-action quality band (owner directive, 2026-07-09): agents' ⚑ owner-action items are too often (a) unnecessary — based on assumed walls nobody actually hit, or (b) phrased so a non-technical owner can't act on them directly. Ship, kit-side: (1) an OWNER-ACTION item template with REQUIRED fields — WHAT (one plain sentence, zero jargon), WHERE (exact click path/URL), HOW (paste-ready text where applicable), WHY-IT-MATTERS (one sentence in product terms), UNBLOCKS (what starts moving when done), VERIFIED-NEEDED (the agent states it ATTEMPTED the action or names the exact wall/error that proves only the owner can do it — assumption-based asks are banned); (2) a session-close/check warning when a ⚑ item lacks these fields; (3) doctrine in the CONSTITUTION/collaboration templates: before routing anything to the owner, try it yourself or cite the wall; expire/withdraw stale asks; fewer, clearer asks beat complete lists.
+why: the owner is the scarcest resource in the program; every unclear or unnecessary ask burns his attention and stalls lanes.
+done-when: template + check shipped in a release; adopters inherit; status acks.
