@@ -101,6 +101,7 @@ from engine.skills.skills import (
     skill_relpath,
 )
 from engine.stances.stances import DEFAULT_STANCE, stance_briefing, stance_names
+from engine.upgrade import UpgradeRefused, run_rollback, run_upgrade
 
 
 def _emit(line: str = "") -> None:
@@ -965,6 +966,52 @@ def cmd_adopt(
     return 0
 
 
+def cmd_upgrade(
+    target: Path,
+    *,
+    apply_docs: bool,
+    rollback: bool,
+    release_json: Path | None,
+) -> int:
+    """Run the §4.3 upgrade flow (or ``--rollback``) against ``target``.
+
+    The consumer flow: download the new release's file as ``bootstrap.py.new``
+    (plus its ``release.json`` for sha256 verification) and run
+    ``python3 bootstrap.py.new upgrade``. Archives before it overwrites;
+    planted docs are only ever touched under ``--apply-docs`` and only when
+    the recorded hash proves the consumer never edited them.
+    """
+    loaded = _require_state(target, "upgrade")
+    if loaded is None:
+        return 1
+    config, backend = loaded
+    if rollback:
+        for line in run_rollback(target, config):
+            _emit(f"upgrade: {line}")
+        return 0
+    running = (
+        Path(sys.argv[0]).resolve()
+        if sys.argv and sys.argv[0]
+        else Path(__file__).resolve()
+    )
+    try:
+        lines = run_upgrade(
+            target,
+            config,
+            backend,
+            kit_root=_kit_root(),
+            running=running,
+            apply_docs=apply_docs,
+            release_json=release_json,
+        )
+    except UpgradeRefused as exc:
+        _emit(f"upgrade: REFUSED — {exc}")
+        return 2
+    for line in lines:
+        _emit(f"upgrade: {line}")
+    return 0
+
+
 def cmd_contextpack(target: Path, index: Path | None) -> int:
     """Generate agent context packs from the project index (or a manifest)."""
     assert_safe_target(target, _kit_root())
@@ -1165,6 +1212,28 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     adopt_p.add_argument("--target", type=Path, default=Path.cwd())
+    upgrade_p = sub.add_parser(
+        "upgrade",
+        help="upgrade the install to this bootstrap's version (archives first)",
+    )
+    upgrade_p.add_argument(
+        "--apply-docs",
+        action="store_true",
+        help="re-render template-improved docs the consumer never edited",
+    )
+    upgrade_p.add_argument(
+        "--rollback",
+        action="store_true",
+        help="restore the state + dist banked by the last upgrade",
+    )
+    upgrade_p.add_argument(
+        "--release-json",
+        type=Path,
+        default=None,
+        help="release.json to verify this file's sha256 against "
+        "(default: one next to the running file, when present)",
+    )
+    upgrade_p.add_argument("--target", type=Path, default=Path.cwd())
     contextpack = sub.add_parser(
         "contextpack",
         help="generate agent context packs from the index",
@@ -1346,6 +1415,13 @@ def main(argv: list[str] | None = None) -> int:
                 args.target,
                 args.include_claude,
                 wire_enforcement=args.wire_enforcement,
+            )
+        if args.command == "upgrade":
+            return cmd_upgrade(
+                args.target,
+                apply_docs=args.apply_docs,
+                rollback=args.rollback,
+                release_json=args.release_json,
             )
         if args.command == "contextpack":
             return cmd_contextpack(args.target, args.index)

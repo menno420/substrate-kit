@@ -1,7 +1,9 @@
 # Session 2026-07-09 — KL-1 release train → v1.0.0
 
-> **Status:** `complete` *(PR A of the train; PR B — the `upgrade` verb — reopens
-> this same card `in-progress` as its first commit, per the shared-card plan below)*
+> **Status:** `in-progress` *(PR B of the train underway: the `upgrade` verb per
+> §4.3 — archive-first, hash-based planted-doc diff report, `--apply-docs` on
+> untouched docs only, state backup + `--rollback`. PR A merged as #8/f4609ea.
+> Flips `complete` with the full session close-out, then tag `v1.0.0`.)*
 
 **The train (founding plan §4 + §10 KL-1 row, one session, 2 PRs + tag):**
 
