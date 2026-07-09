@@ -14,7 +14,16 @@ import re
 from pathlib import Path
 from typing import Any
 
+from engine.lib.config import KIT_VERSION
+
 _PLACEHOLDER_RE = re.compile(r"\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}")
+
+# Context keys the ENGINE computes and injects itself — never interview
+# slots. The template/bank coherence guard (tests/test_render.py) exempts
+# exactly this set, so a template may reference them without a bank question
+# existing. Grows deliberately: every addition must be injected by
+# build_context (or a caller) unconditionally, or templates strand unfilled.
+ENGINE_CONTEXT_KEYS = frozenset({"kit_version"})
 
 
 def find_placeholders(text: str) -> set[str]:
@@ -42,9 +51,24 @@ def render(text: str, context: dict[str, str]) -> str:
 
 
 def build_context(state: dict[str, Any]) -> dict[str, str]:
-    """Build the substitution context from a state document's filled slots."""
+    """Build the substitution context from a state document's filled slots.
+
+    ``kit_version`` is always present (never a slot): it is the running
+    engine's own :data:`KIT_VERSION`, injected here — the single point every
+    render path (adopt / upgrade / ``render --live``) flows through — so the
+    ``kit:`` self-report line in the planted ``control/status.md`` seed
+    (inbox ORDER 003, adopter-visibility band) renders with the real version
+    instead of stranding as an unfilled placeholder. A slot named
+    ``kit_version`` (none exists) would win over the constant by design.
+    (Top-level import on purpose: ``lib/config.py`` precedes ``render.py``
+    in the dist's MODULE_ORDER, so the intra-package import strips cleanly;
+    a function-body ``from engine...`` would survive into the single file
+    and fail at dist runtime.)
+    """
     values = state.get("slot_values", {})
-    return {slot: str(entry.get("value", "")) for slot, entry in values.items()}
+    context = {slot: str(entry.get("value", "")) for slot, entry in values.items()}
+    context.setdefault("kit_version", KIT_VERSION)
+    return context
 
 
 def load_templates() -> dict[str, str]:

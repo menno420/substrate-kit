@@ -41,12 +41,20 @@ The kit enforces this loop: `check` flags a missing or heartbeat-less `status.md
 updated: <ISO8601>            # heartbeat — stale = the manager treats the Project as dark
 phase: <what I'm doing right now, one line>
 health: green | red-by-design (<why>) | broken (<what>)
+kit: v<X.Y.Z> · check: green|red · engaged: yes|no   # kit self-report — see below
 last-shipped: #<PR> — <one line>
 blockers: <what's stopping me, or `none`>
 orders: acked=<ids> done=<ids>
 ⚑ needs-owner: <a decision/action only the owner can give, or `none`>
 notes: <anything the manager should know>
 ```
+
+The `kit:` line is the **substrate-coordinator visibility** channel (kit-lab reads it via the
+manager relay — zero write access to this repo): `v<X.Y.Z>` = the vendored kit version this
+repo actually runs (update it in the same session as every `bootstrap upgrade`); `check:` =
+the latest `check --strict` verdict on this tree; `engaged:` = the post-adopt engagement gate
+(`yes` once no UNRENDERED banner/slot remains, live CI runs the gate, and the session loop
+has engaged).
 
 ## `inbox.md` order format (manager-written, append-only)
 

@@ -167,6 +167,28 @@
   dist-completeness guard test (a MODULE_ORDER omission NameError'd the
   dist while the byte-pin stayed green — caught + pinned this band).
   Suite 658 → 683.
+- **ORDER 003 (substrate-coordinator visibility band) is DONE + v1.3.0 is
+  CUT** (inbox ORDER 003; PR #41 + the post-merge `release.yml`
+  `workflow_dispatch` run): (1) the `kit:` heartbeat self-report line
+  (`kit: v<X.Y.Z> · check: green|red · engaged: yes|no`) in the planted
+  `control/status.md` seed — rendered with the real `KIT_VERSION` via the
+  new engine-computed `kit_version` context key
+  (`render.ENGINE_CONTEXT_KEYS`, injected in `build_context` so every
+  render path fills it; top-level config import on purpose — MODULE_ORDER
+  strips it in the dist) — and documented in the planted
+  `control/README.md` format block (+ the kit's own local copy); (2)
+  [`docs/adopters.md`](adopters.md) — the fleet adopter registry
+  (repo · kit_version · engaged · last-seen; sole writer kit-lab; KF-2:
+  fed by relayed heartbeats, never by writing adopter repos), seeded from
+  the fleet-review facts; (3) the adopter upgrade checklist appended to
+  EVERY release's notes by `src/build_release_json.py` (enforce, don't
+  exhort). CHANGELOG `[Unreleased]` (incl. the previously-unrolled #35
+  fast-lane items + #40 fixes) → `## [1.3.0] - 2026-07-09`; `KIT_VERSION`
+  1.2.0 → 1.3.0 (config + pyproject + dist header, byte-pinned). KF-5
+  statement cites the standing B1 PASS row (run-2 deliberately fires
+  after this release, on the fixed scorer). Suite 694 → 696. Existing
+  adopters get the `kit:` line via the checklist's step 4 (skip-if-exists
+  means their planted status is never re-rendered).
 - **v1.2.0 is CUT** (PR #32 + the post-merge `release.yml`
   `workflow_dispatch` run): `KIT_VERSION` 1.1.0 → 1.2.0 (config +
   pyproject + dist header stamp, byte-pinned), CHANGELOG `[Unreleased]`
@@ -184,19 +206,15 @@
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- PR #35 — **fleet adoption review (this PR)**: the durable review report
-  + the fast-lane status gate (decision ledgered in `docs/decisions.md`) +
-  this ledger touch; friction issues
-  #36–#39 filed alongside. KL-7's companion PL-register note (PL-011)
-  still rides its own `do-not-automerge` PR #26 (left open for the
-  owner). Consumer-side, the live rollout session's superbot-next #69 and
-  websites #31 are mid-flight (reviewed by the report §4 — do not
-  duplicate); superbot #1894 (telemetry-append gate) shipped by a sibling
-  session. Inbox ORDER 003 (substrate-coordinator visibility band) is
-  acked-not-executed: its done-when requires a release cut, which this
-  session's mandate excludes — it is the next kit-band session's lane.
-  *(#32 — v1.2.0 release cut — MERGED + Release published 2026-07-09 and
-  moved out of this list; #30 closed-superseded by #33.)*
+- PR #41 — **ORDER 003 adopter-visibility band + v1.3.0 cut (this PR)**:
+  the `kit:` heartbeat line + `docs/adopters.md` registry + the
+  release-notes adopter checklist + the version roll to 1.3.0; post-merge
+  the session dispatches `release.yml` with `version=1.3.0`, then writes
+  the ORDER 003 status overwrite as its own control-only PR (the
+  deliberate LAST act). KL-7's companion PL-register note (PL-011) still
+  rides its own `do-not-automerge` PR #26 (left open for the owner).
+  *(#35 — fleet adoption review — and #40 — run-2 harness prep — both
+  MERGED 2026-07-09 and moved to Recently shipped.)*
 
 ## Field notes — incident ledger (2026-07-09 run)
 
@@ -340,18 +358,22 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ### Agent queue — in order, as the gates open
 
-1. **Consumer upgrades to v1.2.0**: superbot + superbot-next (+ websites)
-   pull the released assets (`bootstrap.py.new upgrade`) — this is what
-   delivers the KL-7 engagement gate, the `📊 Model:` needle, AND the
-   KL-8 `control/` protocol scaffold to the fleet; verify each upgrade's
-   session card. *(The cut-v1.1.0 and cut-v1.2.0 items are DONE — PRs
-   #29/#32 + their dispatch runs; see the stability-baseline bullets.)*
-2. **Run-2 harness fixes**: the three B1 follow-ups in
-   `docs/ideas/` — `score_m1` artifact fixes (ordinary lane), the T5
-   headless guard-surface protocol fix (⚑ `bench/tasks/` is a pin path →
-   `do-not-automerge` owner review), and the Model-line false-red
-   investigation (PL-006 material) — so run 2's M1 pairs are clean and T5
-   produces real guard evidence.
+1. **Consumer upgrades to v1.3.0**: superbot-next + websites (currently
+   ENGAGED on v1.2.0) walk the adopter upgrade checklist in the v1.3.0
+   release notes (`bootstrap.py.new upgrade` → `check --strict` green →
+   engagement green → set the `kit:` status line); superbot's upgrade
+   stays owner-gated (deliberate v1.0.0 pin-only stance — ⚑ carried).
+   Registry rows update in [`docs/adopters.md`](adopters.md) as evidence
+   arrives. *(The cut-v1.1.0/v1.2.0/v1.3.0 items are DONE — PRs
+   #29/#32/#41 + their dispatch runs; see the stability-baseline
+   bullets.)*
+2. **B1 run-2 on the fixed scorer** (the score_m1 + telemetry fixes
+   shipped in #40): fire the paired A/B run so M1 pairs are clean;
+   remaining harness follow-ups — the T5 headless guard-surface protocol
+   fix (⚑ `bench/tasks/` is a pin path → `do-not-automerge` owner
+   review) and the Model-line false-red `_adopt_sessions_readme` fix
+   (guard recipe in
+   `docs/ideas/model-line-checker-false-red-2026-07-09.md`).
 3. **Remaining KL-6 blocked pieces, as gates open**: kit-lab console lane
    real data (needs #17 **and** P11-or-P13 — until then the lane stays
    declared-with-contract, never fake rows); B2/B3/B4 sweeps in the loop
@@ -364,6 +386,20 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ## Recently shipped (newest first)
 
+- **#41 — ORDER 003: adopter-visibility band + v1.3.0 cut**: the `kit:`
+  heartbeat self-report line (planted status seed, rendered with the real
+  `KIT_VERSION`; contract format block updated in template + local copy);
+  [`docs/adopters.md`](adopters.md) fleet registry (sole writer kit-lab,
+  seeded from the fleet-review facts); the adopter upgrade checklist
+  auto-appended to every release's notes (`src/build_release_json.py`);
+  CHANGELOG rolled → `## [1.3.0]` (incl. #35/#40 unrolled items) +
+  version bump (byte-pinned dist); suite 694 → 696. Release published by
+  the post-merge `release.yml` dispatch.
+- **#40 — run-2 harness prep**: `score_m1` read-only-fd-redirect +
+  failed-tool-result artifact fixes (all three run-1 M1 taints reproduce
+  as regression tests; recorded results untouched, append-only);
+  `parse_model_line` last-valid-line fix (the websites#31 shadowing
+  find); B4 ledger hygiene; suite 689 (694 post-merge with #35).
 - **#35 — fleet adoption review (owner-directed) + control fast-lane
   status gate**: the durable review
   (`docs/reports/2026-07-09-fleet-adoption-review.md` — per-repo verdicts,

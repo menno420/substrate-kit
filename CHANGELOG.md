@@ -15,8 +15,52 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-09
+
+New-capability release (MINOR): the substrate-coordinator visibility band
+(inbox ORDER 003, rider to v1.2.0's coordination protocol) — every adopter
+self-reports its kit state in its own heartbeat, kit-lab keeps the fleet
+adopter registry, and every release's notes automatically carry the adopter
+upgrade checklist — plus the fleet-review fast-lane hardening and the run-2
+harness fixes shipped since v1.2.0. Zero new access anywhere (KF-2-clean:
+the kit never writes adopter repos; the manager relays orders). No
+planted-doc, state schema, config schema, or CLI contract breaks.
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+**Benchmark outcome (KF-5 — mandatory run for a MINOR):** the standing B1
+cold-start baseline `2026-07-09-run01` — **VERDICT: PASS** (judge
+claude-opus-4-8, independent; row 1 of
+`bench/results/cold-start/index.json`) — remains the run of record. No fresh
+firing this MINOR: run-2 is the next queued lane, deliberately sequenced
+*after* this release so it fires on the fixed scorer (both run-1 M1 scorer
+taints were fixed + regression-tested in #40); advisory-to-pass per KF-5's
+own letter; no trend claim (KF-8 needs ≥3 paired runs).
+
 ### Added
 
+- **The `kit:` heartbeat self-report line** (ORDER 003 item 1): the planted
+  `control/status.md` seed now carries
+  `kit: v<X.Y.Z> · check: green|red · engaged: yes|no`, rendered with the
+  REAL running kit version at adopt — `build_context` injects the
+  engine-computed `kit_version` key (`ENGINE_CONTEXT_KEYS`, exempt from the
+  template/bank coherence guard) on every render path — and the planted
+  `control/README.md` contract documents the line's format + update duty
+  (keep the version current in the same session as every upgrade). Every
+  adopter self-reports kit state in its heartbeat; the coordinator needs
+  zero new access.
+- **`docs/adopters.md` — the fleet adopter registry** (ORDER 003 item 2):
+  repo · kit_version · engaged · last-seen, sole writer kit-lab, seeded
+  from the 2026-07-09 fleet-review facts (superbot-next + websites ENGAGED
+  on v1.2.0, superbot deliberate v1.0.0 pin-only, trading-strategy + game
+  repos planned). Fed by relayed `kit:` heartbeats, never by writing
+  adopter repos (KF-2).
+- **Adopter upgrade checklist in every release's notes** (ORDER 003
+  item 3): `src/build_release_json.py` appends the version-stamped
+  checklist (run `upgrade` → `check --strict` green → engagement green →
+  update your `kit:` status line) to `notes.md` automatically — the
+  appender lives in the asset builder, so a release author cannot forget
+  it (enforce, don't exhort).
 - **`check --status-only` — the fast lane's scoped gate** (MINOR, new CLI
   capability): runs ONLY the `control/` status heartbeat checker
   (`check_status_current`); the allowlist and guard-fire telemetry apply
@@ -40,6 +84,16 @@ workflow refuses to publish a version that has no section in this file.
   before/after on a v1.2.0 fixture; pinned by
   `tests/test_ci_control_lane.py` + `tests/test_adopt.py`; scoping
   behavior pinned by three `tests/test_cli_gate.py` cases.
+- **`bench/score_m1.py` run-1 artifact fixes** (#40, run-2 harness prep):
+  read-only fd redirects (`2>/dev/null`, `2>&1`, …) no longer count as
+  mutations, and a mutating tool_use whose paired tool_result is an error
+  is cancelled (failed Edits don't stop the M1 count) — all three run-1
+  M1 taints reproduce as regression tests; recorded run-1 results
+  untouched (append-only law).
+- **`parse_model_line` last-valid-line fix** (#40, found live in
+  websites#31): a prose line that merely mentions the `📊 Model:` marker
+  can no longer shadow the genuine line into a false "no line" advisory —
+  the harvest keeps the last line that parses validly.
 
 ## [1.2.0] - 2026-07-09
 
@@ -369,6 +423,7 @@ by real consumers, and now nameable, pinnable, verifiable, and upgradeable.
   `init --unpack` it served never shipped, and it doubled every consumer's
   vendored file for nothing.
 
+[1.3.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.3.0
 [1.2.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.2.0
 [1.1.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.1.0
 [1.0.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.0.0

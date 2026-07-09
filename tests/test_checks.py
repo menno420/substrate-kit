@@ -22,7 +22,13 @@ from engine.checks.check_session_log import (
 )
 from engine.interview.question_bank import QUESTIONS
 from engine.lib.config import Config
-from engine.render import build_context, find_placeholders, load_templates, render
+from engine.render import (
+    ENGINE_CONTEXT_KEYS,
+    build_context,
+    find_placeholders,
+    load_templates,
+    render,
+)
 
 _TOKENS = Config().badge_tokens
 _READPATH = Config().readpath_docs
@@ -252,6 +258,8 @@ def test_rendered_templates_are_badge_and_link_clean(tmp_path):
     """
     docs = tmp_path / "docs"
     context = {q["slot"]: f"v-{q['slot']}" for q in QUESTIONS}
+    # Engine-computed keys (build_context injects them on every live path).
+    context.update({key: f"v-{key}" for key in ENGINE_CONTEXT_KEYS})
     for name, text in load_templates().items():
         rendered = render(text, context)
         assert find_placeholders(rendered) == set(), f"{name} left placeholders"
