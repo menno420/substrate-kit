@@ -6,6 +6,12 @@
 > work always win over this file. Read it second (right after the working
 > agreement) and keep it current as the project moves.
 
+> **📋 Owner day-report (2026-07-09 run):**
+> [`docs/reports/2026-07-09-kit-lab-run.md`](reports/2026-07-09-kit-lab-run.md)
+> — the whole run on one page: bands built, all 27 merged PRs + v1.0.0,
+> the independent audit's verdict, **both** incidents with their guards,
+> and the owner-gates checklist.
+
 ## Stability baseline
 
 *(dated snapshot: 2026-07-09)*
@@ -89,8 +95,8 @@
   born-red gate, reported distinctly; a drafted `📊 Model:` stand-in never
   harvests into PL-004). All fail-open; suite 557 → 587. The **second half
   (the `bench/` tree) is BUILT on PR #17, a `do-not-automerge` PR** per
-  §5.0 — the first rubric version is owner-blessed; #17 stays OPEN awaiting
-  that blessing, and **B1's first firing waits for it**. What #17 carries:
+  §5.0 — the first rubric version was **owner-blessed 2026-07-09**; the
+  owner merges #17 himself, unblocking **B1's first firing**. What #17 carries:
   both rubrics, tasks T1–T5, `seeds/make_seed.py`, `score_m1.py`,
   `run_ab.py`, append-only results indexes (incl. the `friction` family —
   triage-time rows), `check_bench_integrity.py` in kit-quality (pin-path
@@ -101,12 +107,36 @@
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- **PR #17 — the `bench/` tree (KL-5 2/2)**, `do-not-automerge`-labeled per
-  §5.0: CI-green with its card complete, and it stays **open awaiting owner
-  blessing** of the first rubric version (⚑ — see Next action). Field note:
-  the auto-merge-enabler ARMED this PR at open (its label check races the
-  MCP label call) — disarmed by hand same-minute; the enabler now re-reads
-  labels fresh before arming (fixed in this PR).
+- PR #17 — **KL-5 (2/2): the `bench/` tree**, `do-not-automerge` per §5.0:
+  CI-green; the first rubric version is **owner-blessed 2026-07-09** ("you
+  can merge 17") — branch updated against main, and the **owner performs the
+  merge himself** (#16, its first half, merged). Field note: the
+  auto-merge-enabler ARMED this PR at open (its label check raced the MCP
+  label call) — disarmed by hand same-minute; the fresh-label re-read guard
+  shipped in #23.
+- PR #24 — **audit follow-ups**: label-guard holes closed, honest incident
+  count, day report, branch hygiene.
+
+## Field notes — incident ledger (2026-07-09 run)
+
+The run's honest incident count is **TWO** (the run-closeout originally
+counted one; corrected at the audit follow-ups, PR #24 — full detail with
+timelines and guards in the
+[day report §3](reports/2026-07-09-kit-lab-run.md)):
+
+1. **kit#22 — PL-010 gate slip**: a `do-not-automerge`-labelled program-law
+   PR auto-merged mechanically via the enabler's stale-label race + a
+   ~12-min runner-queue lag. Guards since deployed: #23 (fresh-label re-read
+   before arming), #24 (labeled-event disarm workflow +
+   `check_program_law.py --label-gate` making unlabeled law changes a red
+   required check). Guard-stack map:
+   [`docs/operations/auto-merge-guards.md`](operations/auto-merge-guards.md).
+2. **superbot-next#44 — card-gate slip**: merged 65 s after opening with
+   only its born-red `in-progress` session card — the consumer's OLD
+   vendored dist's `check` predates the in-progress-badge gate, so nothing
+   held its required check red. Self-reported in superbot-next#46's card;
+   the guard is the v1.0.0 vendored-dist upgrade #46 itself shipped. Lesson:
+   a consumer is only as gated as its vendored dist version.
 
 ## Pending owner action — 👤 P4 (arm the kit-lab loop) ⚑
 
@@ -251,6 +281,24 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ## Recently shipped (newest first)
 
+- **#24 — audit follow-ups** (verify-then-fix, Q-0120/PL-006): the
+  label-added disarm workflow (`auto-merge-disarm.yml` — a
+  `do-not-automerge` label at ANY time post-arm disarms native auto-merge;
+  idea file → B4 `shipped`); `check_program_law.py --label-gate` in
+  kit-quality (owner-gated law surfaces red without the label — fresh API
+  label read, tested); the honest guard-stack map
+  (`docs/operations/auto-merge-guards.md`: labels advise, required checks
+  enforce; direct arming is not closable workflow-side); the TWO-incident
+  ledger above + journal entry; the owner day-report
+  (`docs/reports/2026-07-09-kit-lab-run.md`); merged-only `claude/*` branch
+  cleanup (⚑ deletion permission-blocked in-session — see the card);
+  verified #23 merged via auto-merge as designed.
+- **#23 — enabler fresh-label re-read hotfix**: PR #17's KL-5 race-guard
+  hunk deployed byte-identical to main (defeats the stale-payload label race
+  + queue lag that merged #22) + post-#22 prose reality (owner gate 2 →
+  ratify-or-veto; idea B4 → shipped). Verified merged **via auto-merge as
+  designed** (armed at open; merged 3–4 s after the required contexts went
+  green).
 - **#22 — PL-010: the 9th task class `feature build`** (PL-004 amendment):
   `docs/program/rulings.md` [PL-010] + `TASK_CLASSES` 9th entry +
   observe-first ladder row. ⚑ Merged **mechanically by the enabler

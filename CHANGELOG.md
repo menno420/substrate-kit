@@ -35,15 +35,6 @@ workflow refuses to publish a version that has no section in this file.
   edits/deletes never). B1's first firing follows the rubric's owner
   blessing — never run or graded by the session that authored it.
 
-### Fixed
-
-- **auto-merge-enabler label race** (found live on the bench-tree PR #17):
-  an MCP-created PR gets its `do-not-automerge` label in a second call
-  right after create, so the enabler's payload-snapshot label check could
-  arm auto-merge on a PR that must never auto-merge. The enabler now waits
-  a grace beat and re-reads the labels FRESH from the API just before
-  arming, refusing when the label is present.
-
 - **Auto-drafted session handoff** (band KL-5, plan §10 — MINOR, new
   capability; the ruled prerequisite for B1's first firing): `session-close`
   and the Stop hook now **draft** the session card's close-out from evidence
@@ -159,6 +150,12 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Fixed
 
+- **auto-merge-enabler label race** (found live on the bench-tree PR #17):
+  an MCP-created PR gets its `do-not-automerge` label in a second call
+  right after create, so the enabler's payload-snapshot label check could
+  arm auto-merge on a PR that must never auto-merge. The enabler now waits
+  a grace beat and re-reads the labels FRESH from the API just before
+  arming, refusing when the label is present.
 - **`upgrade` from-version truth** (superbot-next#46): the vendored dist's
   header now outranks a disagreeing `config.kit_version` pin when naming
   `from_version` — a pin recorded BEFORE the first real upgrade (the D2

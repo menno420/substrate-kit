@@ -1,0 +1,65 @@
+name: auto-merge-disarm
+
+# The label-added disarm guard — the enabler race's residual half
+# (docs/ideas/label-added-disarm-guard-2026-07-09.md, shipped by PR #24).
+#
+# The enabler's fresh-label re-read (hotfixed onto main by #23) defeats
+# `do-not-automerge` labels that land BEFORE its arm step executes — the
+# stale-payload race and runner-queue lag. But it is point-in-time: a label
+# applied AFTER auto-merge is armed (the owner labels a PR five minutes — or
+# a day — after open, wanting to hold it) did nothing. This workflow closes
+# that half: `on: pull_request: types: [labeled]` — the label ITSELF becomes
+# the disarm switch at any moment in the PR's life (enforce, don't verify —
+# PL-002). Idempotent: disarming an unarmed PR is a logged no-op. The
+# symmetric re-arm on [unlabeled] is deliberately absent — re-arming has
+# judgment in it; removing the label and re-arming by hand/MCP is the safer
+# default (idea file § The guard).
+#
+# HONESTY NOTE (audit 2026-07-09 item 1c): every workflow-side guard — the
+# enabler's open-time carve-out, its fresh re-read, this disarm — is
+# ADVISORY. Arming auto-merge is a GitHub platform feature: any human or
+# agent can re-arm directly (UI / API / MCP enable_pr_auto_merge) at any
+# time, and no workflow can prevent that. The ENFORCEMENT is the
+# required-check gate: `check_program_law.py --label-gate` (owner-gated law
+# surfaces red without the label) + bench-integrity's pin-path gate (#17) +
+# the born-red session gate keep the required CI context red, and an armed
+# PR cannot merge on red no matter who armed it. Full guard-stack map:
+# docs/operations/auto-merge-guards.md.
+#
+# Provenance + reliability (Q-0105/PL-008 pattern): added 2026-07-09 (audit
+# follow-ups, PR #24), live-verified once at ship time (post-arm label on
+# PR #24 → observed disarm). UNVERIFIED beyond that — watch the next few
+# labelled PRs; delete this if it proves unreliable over multiple sessions.
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: auto-merge-disarm-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  disarm:
+    if: >-
+      github.repository == 'menno420/substrate-kit' &&
+      github.event.label.name == 'do-not-automerge'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disarm native auto-merge (the label is the switch)
+        env:
+          GH_TOKEN: ${{ secrets.ROUTINE_PAT || secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          armed="$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" \
+            --json autoMergeRequest --jq '.autoMergeRequest != null')"
+          if [ "$armed" = "true" ]; then
+            gh pr merge --disable-auto "$PR" --repo "$GITHUB_REPOSITORY"
+            echo "do-not-automerge landed on PR #$PR with auto-merge ARMED — disarmed."
+          else
+            echo "do-not-automerge landed on PR #$PR — auto-merge not armed; nothing to disarm."
+          fi

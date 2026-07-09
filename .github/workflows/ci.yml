@@ -48,10 +48,24 @@ jobs:
         # backlog indexes every file. A convention ships with its checker.
         run: python3 scripts/check_idea_index.py
 
-      - name: Program law (§8.3 — PL register grammar + planted pointers)
+      - name: Program law (§8.3 — PL register grammar + planted pointers + owner-gate label)
         # docs/program/rulings.md is the canonical PL-register; pointer
         # sections in the planted templates cite PL-IDs, never copy bodies.
-        run: python3 scripts/check_program_law.py
+        # --label-gate (audit 2026-07-09): a PR diff touching an owner-gated
+        # law surface must carry `do-not-automerge` — forgetting the label
+        # can no longer auto-merge a law change (the #22 enforcement half;
+        # docs/operations/auto-merge-guards.md). Labels are re-read FRESH
+        # from the API at step execution time, never from the stale event
+        # payload (the #22 lesson) — so label-then-re-run goes green.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            PR_LABELS="$(gh api "repos/$GITHUB_REPOSITORY/issues/${{ github.event.pull_request.number }}/labels" --jq '[.[].name] | join(",")')"
+            export PR_LABELS
+            echo "fresh labels: ${PR_LABELS:-<none>}"
+          fi
+          python3 scripts/check_program_law.py --label-gate
 
       - name: Bench integrity (§5.0 — pin-path label gate + append-only results)
         # Layer 1 of the bench pin (D-24): rubric/tasks/seeds changes must

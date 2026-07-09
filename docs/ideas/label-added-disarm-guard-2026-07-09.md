@@ -1,10 +1,10 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 24
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-09
+outcome: shipped
 ---
 
 # Label-added disarm guard — the enabler race's residual half (2026-07-09)
@@ -12,7 +12,13 @@ outcome: open
 > **Status:** `ideas`
 >
 > **State:** captured (enabler-race-hotfix session, from the #22 incident's
-> residual gap analysis).
+> residual gap analysis) → **shipped** same day (audit follow-ups, kit
+> PR #24): `.github/workflows/auto-merge-disarm.yml` implements exactly the
+> guard below, live-verified once at ship time (post-arm label on PR #24
+> itself → disarm observed). Shipped alongside its enforcement complement —
+> `check_program_law.py --label-gate` (owner-gated law paths red without the
+> label) — and the honest guard-stack map,
+> `docs/operations/auto-merge-guards.md`.
 
 ## The gap the hotfix does NOT close
 
