@@ -16,12 +16,55 @@
 (5) OUTCOME  implemented | on a roadmap | in discussion | rejected
 ```
 
+## Frontmatter — the B4 outcome record (founding plan §5.4)
+
+Every idea file in this directory (README excepted) opens with a flat
+YAML-subset frontmatter block — the machine-readable half of B4
+("ideas that ship and survive"), validated by `scripts/check_idea_index.py`
+in the kit-quality gate:
+
+```
+---
+state: captured | routed | promoted | historical
+origin: lab | owner | consumer:<owner>/<repo>
+shipped_pr: null | <PR number in shipped_repo>
+shipped_repo: null | <owner>/<repo>
+merged_date: null | YYYY-MM-DD
+outcome: open | shipped | survived | reverted | rejected
+---
+```
+
+Rules the checker enforces: `shipped`/`survived`/`reverted` require all three
+ship fields; `open`/`rejected` require them null; `survived` requires
+`merged_date` ≥ 30 days old (the D-15 survive window); the filename ends
+`-YYYY-MM-DD.md` (the cohort key — B4 evaluates ideas by generation-month
+cohort); every file is linked from this README and every backlog link
+resolves. An idea **ships** when its frontmatter links a merged PR; it
+**survives** when no revert exists 30 days later (the sweep's revert-scan
+updates `outcome` — `worked_around` judgments are never the loop's own call,
+D-23). Keep the frontmatter current when an idea moves; the prose keeps the
+story, the frontmatter keeps the score.
+
 ## Backlog
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
 - [A "feature build" task class for the Q-0248/PL-004 taxonomy](feature-build-task-class-2026-07-09.md)
-  — state: captured · routed **discuss-first** (PL-004 amendment); origin:
+  — state: routed **discuss-first** (PL-004 amendment); origin:
   superbot friction issue #15 report 3 + the KL-3 session idea; next: a
   dedicated ruling PR (its own PR — a program-law change is never bundled
   into a band PR).
+
+## Historical / pointer stubs
+
+(Link-resolution stubs for travelled docs — canonical copies live in the
+origin repo; frontmatter still tracks their B4 outcome.)
+
+- [Multi-repo program capture: kit-lab + trading](multi-repo-program-kit-lab-trading-2026-07-07.md)
+  — pointer stub (canonical: superbot); outcome `open` — the capture spans
+  the kit-lab (largely built, bands KL-0…KL-6) **and** the unbuilt trading
+  repo, so it is not a single shippable unit.
+- [Substrate-kit auto-drafted handoff](substrate-kit-auto-drafted-handoff-2026-07-07.md)
+  — pointer stub (canonical: superbot); **shipped** as kit PR #16
+  (2026-07-09) — the survive window closes 2026-08-08; the sweep flips it
+  `survived` if no revert exists then.

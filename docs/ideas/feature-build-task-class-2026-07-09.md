@@ -1,3 +1,12 @@
+---
+state: routed
+origin: consumer:menno420/superbot
+shipped_pr: null
+shipped_repo: null
+merged_date: null
+outcome: open
+---
+
 # A "feature build" task class for the Q-0248/PL-004 taxonomy (2026-07-09)
 
 > **Status:** `ideas`

@@ -1,0 +1,7 @@
+# Append-only JSONL feeds: parallel sessions both append at EOF, which a
+# line-based merge always reports as a conflict even though both rows belong.
+# `merge=union` keeps both sides' lines — safe ONLY because these files are
+# append-only by contract (telemetry/README.md; founding plan §5.2) and each
+# row is one self-contained JSON line. Do NOT apply union to files where
+# ordering or exclusivity matters.
+telemetry/*.jsonl merge=union
