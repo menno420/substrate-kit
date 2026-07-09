@@ -1,5 +1,22 @@
 [
   {
+    "slug": "groomed-ideas-1",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "groomed-ideas-1",
+      "post-band",
+      "idea",
+      "increment",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #19 \u2014 three groomed ideas from recent session"
+  },
+  {
     "slug": "kl0-dogfood-seed",
     "date": "2026-07-09",
     "tags": [
@@ -126,5 +143,25 @@
       "\ud83d\udcca"
     ],
     "summary": "> **Status:** `complete` *(PR #16 \u2014 band KL-5 first half; the `bench/` tree follows as the intentionally-open `do-not-automerge` PR.)*"
+  },
+  {
+    "slug": "kl6-unblocked",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "kl-6",
+      "unblocked",
+      "half",
+      "b4",
+      "ideas-frontmatter",
+      "console-feed",
+      "groundwork",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #18 \u2014 the KL-6 pieces not blocked on PR #17's"
   }
 ]

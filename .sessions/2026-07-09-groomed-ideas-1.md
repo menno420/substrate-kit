@@ -1,6 +1,6 @@
 # Session 2026-07-09 — groomed-ideas-1: post-band idea increment
 
-> **Status:** `in-progress` *(PR #19 — three groomed ideas from recent session
+> **Status:** `complete` *(PR #19 — three groomed ideas from recent session
 > cards, shipped in one coherent PR; touches none of the open PR #17's files.)*
 
 **What happened (post-band groomed-ideas work, best value/size first):**

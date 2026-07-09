@@ -1,38 +1,48 @@
 [
   {
-    "id": "R-0102",
-    "lesson": "Recurring attention on dist/bootstrap.py",
-    "evidence": "2026-07-09-kl1-release-train.md:L151, 2026-07-09-kl2-governance-home.md:L53, 2026-07-09-kl3-telemetry.md:L50, 2026-07-09-kl4-lab-loop.md:L46",
+    "id": "R-0126",
+    "lesson": "Decide-and-flag: the B4 rows are written `shipped` with",
+    "evidence": "2026-07-09-groomed-ideas-1.md:L47",
     "tags": [
-      "recurring-path"
+      "flag"
     ],
     "status": "provisional",
     "date": "2026-07-09"
   },
   {
-    "id": "R-0103",
-    "lesson": "Recurring attention on docs/current-state.md",
-    "evidence": "2026-07-09-kl1-release-train.md:L69, 2026-07-09-kl4-lab-loop.md:L55",
+    "id": "R-0127",
+    "lesson": "Decide-and-flag: guard recipes ship as **convention only** \u2014 a checker",
+    "evidence": "2026-07-09-groomed-ideas-1.md:L51",
     "tags": [
-      "recurring-path"
+      "flag"
     ],
     "status": "provisional",
     "date": "2026-07-09"
   },
   {
-    "id": "R-0104",
-    "lesson": "Recurring attention on sessions/README.md",
-    "evidence": "2026-07-09-kl3-telemetry.md:L39, 2026-07-09-kl4-lab-loop.md:L15, 2026-07-09-kl5-auto-draft.md:L33",
+    "id": "R-0128",
+    "lesson": "Decide-and-flag: diff-awareness lives **workflow-side** (shell `git",
+    "evidence": "2026-07-09-groomed-ideas-1.md:L54",
     "tags": [
-      "recurring-path"
+      "flag"
     ],
     "status": "provisional",
     "date": "2026-07-09"
   },
   {
-    "id": "R-0105",
-    "lesson": "Recurring attention on src/build_bootstrap.py",
-    "evidence": "2026-07-09-kl1-release-train.md:L36, 2026-07-09-kl2-governance-home.md:L39",
+    "id": "R-0129",
+    "lesson": "Precision-over-recall in the miner: `##  Session idea` *headings*",
+    "evidence": "2026-07-09-groomed-ideas-1.md:L60",
+    "tags": [
+      "flag"
+    ],
+    "status": "provisional",
+    "date": "2026-07-09"
+  },
+  {
+    "id": "R-0130",
+    "lesson": "Recurring attention on docs/ideas/feature-build-task-class-2026-07-09.md",
+    "evidence": "2026-07-09-kl4-lab-loop.md:L32, 2026-07-09-kl6-unblocked.md:L69",
     "tags": [
       "recurring-path"
     ],
