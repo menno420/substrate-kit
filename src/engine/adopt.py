@@ -480,12 +480,27 @@ def adopt(
         report,
     )
 
-    # (5) Stage the CI example.
+    # (5) Stage the CI example — and the LIVE gate workflow (KL-7): a default
+    # adopt still never installs CI, but the engagement gate's
+    # `enforcement-unwired` checklist line must be a one-copy fix, so the
+    # ready-to-install substrate-gate.yml is always staged next to the
+    # commented example. Kit stages, host installs — doctrine unchanged.
     ci_rel = f"{config.state_dir}/ci/quality.yml.example"
     _adopt_stage(
         state_base / "ci" / "quality.yml.example",
         ci_rel,
         ci_snippet(),
+        report,
+    )
+    gate_text = live_ci_workflow(
+        config.interpreter_for_checks or "python3",
+        sessions_dir=config.sessions_dir,
+    )
+    gate_rel = f"{config.state_dir}/ci/substrate-gate.yml"
+    _adopt_stage(
+        state_base / "ci" / "substrate-gate.yml",
+        gate_rel,
+        gate_text,
         report,
     )
 
@@ -513,10 +528,7 @@ def adopt(
         _adopt_plant(
             root / LIVE_CI_RELPATH,
             LIVE_CI_RELPATH,
-            live_ci_workflow(
-                config.interpreter_for_checks or "python3",
-                sessions_dir=config.sessions_dir,
-            ),
+            gate_text,
             report,
         )
 

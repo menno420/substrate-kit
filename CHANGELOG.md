@@ -147,6 +147,20 @@ workflow refuses to publish a version that has no section in this file.
   `docs/program/rulings.md` [PL-010] amends PL-004's taxonomy; the
   allocation ladder gains an **observe-first** row (no seeded tier —
   PL-005: B2 data seeds it); existing dataset rows are never rewritten.
+- **The post-adopt ENGAGEMENT gate** (band KL-7, D-0006 — MINOR, new
+  checker; the fleet-review §4 fix): `check` now scans an adopted host and
+  holds `--strict` **RED** until the last mile is walked — no planted doc
+  under the UNRENDERED banner or carrying leftover `${...}` slots, a CI
+  workflow running `check --strict`, and an engaged session loop
+  (`session_count ≥ 1` or a real session card). Four finding kinds
+  (`unrendered-banner` · `unrendered-slot` · `enforcement-unwired` ·
+  `session-loop-idle`), planted-docs scope only (template sources are never
+  scanned), adoption-evidence-gated so a bare tree lints as before. `adopt`
+  now **stages the live `substrate-gate.yml`** under `<state_dir>/ci/` on
+  every run (kit stages, host installs) and ends by printing the gate's
+  findings as the engagement checklist — a default adopt can no longer LOOK
+  onboarded while being neither rendered nor enforcing. The cold-adoption
+  smoke + tests pin the full RED→ENGAGED→GREEN arc.
 
 ### Fixed
 

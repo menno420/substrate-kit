@@ -16,17 +16,30 @@ pytest.importorskip("engine.hooks.settings")
 
 from engine.adopt import adopt
 from engine.cli import cmd_check
+from engine.interview.interview import record_answer
+from engine.interview.question_bank import QUESTIONS
 from engine.lib.config import Config
 from engine.lib.state import JsonStateBackend, default_state
 
 
 def _adopt_scratch(root: Path, kit_root: Path) -> Config:
+    """Adopt a scratch repo already in the ENGAGED end state (KL-7 gate green:
+    every slot answered pre-adopt → fully rendered docs, enforcement wired,
+    session loop counted) — so these tests isolate the session-log gate."""
     config = Config()
     backend = JsonStateBackend(root / config.state_dir / "state.json")
     with backend.transaction():
         for key, value in default_state(config.project_id).items():
             backend.set(key, value)
-    adopt(root, config, backend, kit_root=kit_root)
+    for question in QUESTIONS:
+        record_answer(
+            backend,
+            question,
+            f"engaged fixture value for {question['slot']} — past every floor",
+            source="user",
+        )
+    adopt(root, config, backend, kit_root=kit_root, wire_enforcement=True)
+    backend.set("session_count", 1)
     return config
 
 
