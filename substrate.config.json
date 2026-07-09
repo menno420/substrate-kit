@@ -70,6 +70,10 @@
     {
       "label": "Previous-session review",
       "needle": "previous-session review"
+    },
+    {
+      "label": "Model line",
+      "needle": "\ud83d\udcca Model:"
     }
   ],
   "sessions_dir": ".sessions",

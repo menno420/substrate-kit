@@ -11,6 +11,7 @@ COMPLETE_LOG = (
     "> **Status:** `complete`\n"
     "💡 Session idea: one genuine idea.\n"
     "⟲ Previous-session review: looked fine.\n"
+    "- **📊 Model:** sonnet · medium · test writing\n"
 )
 
 

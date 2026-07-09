@@ -313,3 +313,41 @@ def test_rollback_without_marker_is_a_noop(tmp_path):
     root, config, _ = _adopted(tmp_path)
     lines = run_rollback(root, config)
     assert any("nothing to roll back" in line for line in lines)
+
+
+# ---------------------------------------------------------------------------
+# KL-3: the 📊 Model needle joins the gate at upgrade time
+# ---------------------------------------------------------------------------
+
+
+def test_upgrade_adds_model_line_needle_to_pre_kl3_install(tmp_path):
+    root, config, backend = _adopted(tmp_path)
+    _fake_old_dist(root, {"architecture.md.tmpl": "old ${project_name}"})
+    running = _fake_new_dist(tmp_path)
+    # Simulate a pre-KL-3 install: its saved markers lack the Model line.
+    config.session_markers = [
+        m for m in config.session_markers if m.get("label") != "Model line"
+    ]
+    lines = run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    assert any("Model line needle" in line for line in lines)
+    saved = load_config(root)
+    assert any(m.get("label") == "Model line" for m in saved.session_markers)
+    # Idempotent: a re-run neither duplicates the marker nor re-reports.
+    lines = run_upgrade(
+        root,
+        saved,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    assert not any("Model line needle" in line for line in lines)
+    markers = [
+        m for m in load_config(root).session_markers if m.get("label") == "Model line"
+    ]
+    assert len(markers) == 1

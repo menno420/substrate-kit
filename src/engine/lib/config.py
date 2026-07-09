@@ -116,11 +116,19 @@ def _default_readpath_docs() -> list[str]:
 
 
 def _default_session_markers() -> list[dict[str, str]]:
-    """Return the markers every session log must carry (label + substring)."""
+    """Return the markers every session log must carry (label + substring).
+
+    The Model line (``📊 Model: <model> · <effort> · <task-class>``) is the
+    PL-004 telemetry feed (KL-3): ``session-close`` harvests it into
+    ``telemetry/model-usage.jsonl``. New adopts require it from birth;
+    existing installs gain it at ``upgrade`` (a consumer's gate only tightens
+    when it upgrades — founding plan §5.2).
+    """
     return [
         {"label": "Status badge", "needle": "**Status:**"},
         {"label": "Session idea", "needle": "💡"},
         {"label": "Previous-session review", "needle": "previous-session review"},
+        {"label": "Model line", "needle": "\N{BAR CHART} Model:"},
     ]
 
 

@@ -16,6 +16,7 @@ from contextlib import AbstractContextManager, contextmanager
 from dataclasses import asdict, dataclass, field, fields
 from datetime import date
 from datetime import date as _led_date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 from typing import Any, NamedTuple
@@ -167,11 +168,19 @@ def _default_readpath_docs() -> list[str]:
 
 
 def _default_session_markers() -> list[dict[str, str]]:
-    """Return the markers every session log must carry (label + substring)."""
+    """Return the markers every session log must carry (label + substring).
+
+    The Model line (``📊 Model: <model> · <effort> · <task-class>``) is the
+    PL-004 telemetry feed (KL-3): ``session-close`` harvests it into
+    ``telemetry/model-usage.jsonl``. New adopts require it from birth;
+    existing installs gain it at ``upgrade`` (a consumer's gate only tightens
+    when it upgrades — founding plan §5.2).
+    """
     return [
         {"label": "Status badge", "needle": "**Status:**"},
         {"label": "Session idea", "needle": "💡"},
         {"label": "Previous-session review", "needle": "previous-session review"},
+        {"label": "Model line", "needle": "\N{BAR CHART} Model:"},
     ]
 
 
@@ -1216,6 +1225,180 @@ def run_doc_checks(
         + check_links(docs_root)
         + check_reachable(docs_root, readpath_docs)
     )
+
+# --- engine/checks/allowlist.py ---
+"""Reasons-required check allowlist (KL-3 — the §5.3 triage mechanism).
+
+Port of the host project's ``*_exceptions.yml`` discipline: a finding may be
+suppressed only by an allowlist entry that says **why**. The file lives at
+``<state_dir>/check-exceptions.yml`` (consumer-owned, committed), a YAML list
+of entries::
+
+    # one entry per accepted finding — reason is REQUIRED
+    # verdict: accepted_risk (default) or false_positive
+    - path: docs/legacy-import.md
+      kind: badge
+      reason: "generated import, migrates at KL-5 — badge lands with the move"
+      triaged: 2026-07-09
+      by: session-kl3
+      verdict: accepted_risk
+
+Schema: ``{path, kind, reason (REQUIRED), triaged, by, verdict?}``. An entry
+without a non-empty ``reason`` is **refused**: it suppresses nothing and is
+itself reported as a finding — the door, not a nag. Creating a (valid) entry
+IS the false_positive / accepted_risk verdict event for the guard-fire feed
+(founding plan §5.3): the suppressed fire is recorded with the entry's
+verdict + reason instead of a null awaiting triage.
+
+The parser is a deliberate stdlib-only YAML *subset* (the engine imports no
+third-party packages): comments, a flat list of flat string-valued mappings,
+optional single/double quotes. Anything it cannot read is reported as a
+finding rather than silently ignored — a malformed allowlist must never
+silently widen (entries lost = findings resurface: fail-closed for
+suppression, loud about why).
+"""
+
+
+
+
+EXCEPTIONS_FILENAME = "check-exceptions.yml"
+
+_ENTRY_KEYS = ("path", "kind", "reason", "triaged", "by", "verdict")
+_VERDICTS = ("accepted_risk", "false_positive")
+
+
+def _unquote(value: str) -> str:
+    """Strip one matching pair of surrounding quotes from ``value``."""
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
+        return value[1:-1]
+    return value
+
+
+def parse_allowlist(text: str, source: str) -> tuple[list[dict], list[Finding]]:
+    """Parse the YAML-subset allowlist ``text`` into (entries, findings).
+
+    Valid entries (with a non-empty ``reason``) go to ``entries``; refused or
+    unparseable material becomes ``Finding``s with ``kind="allowlist"``
+    (``path`` = ``source``, the allowlist file's own relpath).
+    """
+    entries: list[dict] = []
+    findings: list[Finding] = []
+    current: dict | None = None
+
+    def close(entry: dict | None) -> None:
+        if entry is None:
+            return
+        reason = str(entry.get("reason", "")).strip()
+        label = entry.get("path") or entry.get("kind") or "?"
+        if not reason:
+            findings.append(
+                Finding(
+                    source,
+                    "allowlist",
+                    f"entry for {label!r} has no reason — refused "
+                    "(reasons are required; the entry suppresses nothing)",
+                ),
+            )
+            return
+        verdict = entry.get("verdict", "accepted_risk")
+        if verdict not in _VERDICTS:
+            findings.append(
+                Finding(
+                    source,
+                    "allowlist",
+                    f"entry for {label!r} has unknown verdict {verdict!r} "
+                    f"(allowed: {', '.join(_VERDICTS)}) — refused",
+                ),
+            )
+            return
+        entry["verdict"] = verdict
+        entries.append(entry)
+
+    for number, raw in enumerate(text.splitlines(), start=1):
+        # Full-line comments only: a reason like "see PR #1770" keeps its #.
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        stripped = raw.strip()
+        if stripped.startswith("- "):
+            close(current)
+            current = {}
+            stripped = stripped[2:].strip()
+            if not stripped:
+                continue
+        if current is None or ":" not in stripped:
+            findings.append(
+                Finding(
+                    source,
+                    "allowlist",
+                    f"line {number} is not part of a `- key: value` entry — "
+                    "unparseable (the allowlist accepts a flat YAML list of "
+                    "flat mappings only)",
+                ),
+            )
+            continue
+        key, _, value = stripped.partition(":")
+        key = key.strip()
+        if key not in _ENTRY_KEYS:
+            findings.append(
+                Finding(
+                    source,
+                    "allowlist",
+                    f"line {number}: unknown key {key!r} "
+                    f"(known: {', '.join(_ENTRY_KEYS)})",
+                ),
+            )
+            continue
+        current[key] = _unquote(value.strip())
+    close(current)
+    return entries, findings
+
+
+def load_allowlist(root: Path, state_dir: str) -> tuple[list[dict], list[Finding]]:
+    """Load ``<state_dir>/check-exceptions.yml`` — ``([], [])`` when absent.
+
+    An unreadable file yields no entries and one finding (never a crash: the
+    checker must run on any tree).
+    """
+    path = root / state_dir / EXCEPTIONS_FILENAME
+    source = f"{state_dir}/{EXCEPTIONS_FILENAME}"
+    if not path.is_file():
+        return [], []
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return [], [Finding(source, "allowlist", "file unreadable — no suppression")]
+    return parse_allowlist(text, source)
+
+
+def apply_allowlist(
+    findings: list,
+    entries: list[dict],
+) -> tuple[list, list[tuple]]:
+    """Split ``findings`` into (kept, suppressed) by exact path+kind match.
+
+    ``suppressed`` pairs each dropped finding with the entry that covered it,
+    so the caller can record the guard fire with the entry's verdict+reason.
+    Matching is deliberately exact on ``path`` and ``kind`` — a broad glob
+    would let one entry silence a class of future findings its reason never
+    triaged.
+    """
+    kept: list = []
+    suppressed: list[tuple] = []
+    for finding in findings:
+        entry = next(
+            (
+                e
+                for e in entries
+                if e.get("path") == str(finding.path)
+                and e.get("kind") == str(finding.kind)
+            ),
+            None,
+        )
+        if entry is None:
+            kept.append(finding)
+        else:
+            suppressed.append((finding, entry))
+    return kept, suppressed
 
 # --- engine/checks/check_session_log.py ---
 """Generic session-log completeness checker (config-driven port).
@@ -2378,6 +2561,230 @@ def mine_reflections(sessions_dir: Path, *, last_n: int = 5) -> list[dict]:
             },
         )
     return candidates
+
+# --- engine/loop/telemetry.py ---
+"""Telemetry substrate — guard-fire records + the model-usage harvest (KL-3).
+
+Two feeds, both mechanized (the Phase-2.5 lesson: mechanize, don't exhort)
+and both **fail-open by contract** — telemetry must never crash a check, a
+hook, or session-close (founding plan §5.3/§5.2):
+
+- **Guard fires** (B3): one JSONL record per finding a guard surfaces,
+  appended to ``<state_dir>/guard-fires.jsonl`` by the two local choke points
+  (``cmd_check``'s finding loop, ``cmd_hook``'s dispatch). The ``ci`` surface
+  is **derived, not written** — a JSONL appended inside an Actions runner
+  dies with the job, so the lab sweep reads the GitHub Checks API instead,
+  and ``did_not_run`` rows are computed the same way (never written here).
+- **Model usage** (B2 / PL-004): sessions self-report one machine-parsed
+  run-report line — ``- **📊 Model:** <model> · <effort> · <task-class>`` —
+  and ``session-close`` harvests it into ``telemetry/model-usage.jsonl``.
+  ``tokens_out`` is null-tolerated (KF-9: no meter exists; an optional 4th
+  ``·`` segment fills it when one does). ``outcome`` ships as the PL-004
+  object with null fields — the lab loop's sweep backfills them (CI result,
+  merged PR, the 14-day revert window).
+
+Appends use a single ``write`` in append mode (atomic enough for one-line
+records on POSIX); full-file rewrites are never performed on either feed —
+JSONL because atomic appends beat rewriting a JSON array (plan D-10).
+"""
+
+
+
+GUARD_FIRES_FILENAME = "guard-fires.jsonl"
+MODEL_USAGE_RELPATH = "telemetry/model-usage.jsonl"
+
+# The run-report needle. \N escape keeps the engine source ASCII-safe.
+MODEL_LINE_NEEDLE = "\N{BAR CHART} Model:"  # 📊 Model:
+
+# The 8 Q-0248 / PL-004 task classes, verbatim (docs/program/rulings.md).
+TASK_CLASSES = (
+    "docs-only",
+    "mechanical refactor",
+    "test writing",
+    "runtime bugfix",
+    "kernel/architecture design",
+    "review/verify",
+    "research",
+    "idea/planning",
+)
+
+_DATE_PREFIX_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
+
+
+def guard_fires_path(root: Path, state_dir: str) -> Path:
+    """Return the guard-fire JSONL path for one install."""
+    return root / state_dir / GUARD_FIRES_FILENAME
+
+
+def _append_jsonl(path: Path, record: dict) -> None:
+    """Append one compact JSON line to ``path`` (parents created)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    line = json.dumps(record, ensure_ascii=False, sort_keys=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(line + "\n")
+
+
+def record_guard_fires(
+    root: Path,
+    state_dir: str,
+    *,
+    cmd: str,
+    surface: str,
+    posture: str,
+    findings: list,
+    verdict: str | None = None,
+    reason: str | None = None,
+) -> int:
+    """Append one §5.3 record per finding; return how many were written.
+
+    ``findings`` is any iterable of objects with ``path``/``kind``/``message``
+    attributes (the kit's uniform ``Finding`` tuple is already the payload).
+    ``guard`` is the finding's ``kind`` — per-kind granularity is exactly the
+    per-guard unit B3 computes fire/FP rates over. ``verdict``/``reason`` are
+    pre-filled only when an allowlist entry suppressed the finding (creating
+    the entry IS the false_positive/accepted_risk verdict event); ``judge``
+    and ``outcome`` always start null — a later, *different* party fills them
+    (the grading-separation rule).
+
+    Fail-open by contract: any failure (unwritable path, weird finding
+    object) writes nothing and raises nothing — telemetry never blocks an
+    agent-facing path. Writes only into an **existing** install
+    (``state_dir`` present): ``check`` runs on un-adopted trees and must stay
+    read-only there.
+    """
+    try:
+        if not (root / state_dir).is_dir():
+            return 0
+        path = guard_fires_path(root, state_dir)
+        ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        written = 0
+        for finding in findings:
+            record = {
+                "ts": ts,
+                "guard": str(finding.kind),
+                "cmd": cmd,
+                "surface": surface,
+                "posture": posture,
+                "finding": {
+                    "path": str(finding.path),
+                    "kind": str(finding.kind),
+                    "message": str(finding.message),
+                },
+                "verdict": verdict,
+                "reason": reason,
+                "judge": None,
+                "outcome": None,
+            }
+            _append_jsonl(path, record)
+            written += 1
+        return written
+    except Exception:  # noqa: BLE001 — telemetry fails open by contract
+        return 0
+
+
+def parse_model_line(text: str) -> dict | None:
+    """Parse the last ``📊 Model:`` line out of a session log's text.
+
+    Returns ``{"model", "effort", "task_class", "tokens_out"}`` or None when
+    the needle is absent or the line has fewer than three ``·`` segments.
+    Bold markers and the list dash are cosmetic and stripped; an optional 4th
+    integer segment fills ``tokens_out`` (KF-9 — null until a meter exists).
+    """
+    payload = None
+    for line in text.splitlines():
+        if MODEL_LINE_NEEDLE in line:
+            payload = line.split(MODEL_LINE_NEEDLE, 1)[1]
+    if payload is None:
+        return None
+    parts = [p.strip(" *`") for p in payload.split("\N{MIDDLE DOT}")]
+    parts = [p for p in parts if p]
+    if len(parts) < 3:
+        return None
+    tokens_out: int | None = None
+    if len(parts) >= 4:
+        try:
+            tokens_out = int(parts[3].replace(",", "").replace("_", ""))
+        except ValueError:
+            tokens_out = None
+    return {
+        "model": parts[0],
+        "effort": parts[1],
+        "task_class": parts[2],
+        "tokens_out": tokens_out,
+    }
+
+
+def _model_usage_sessions(path: Path) -> set[str]:
+    """Return the session slugs already recorded at ``path`` (dedupe key)."""
+    sessions: set[str] = set()
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            try:
+                record = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(record, dict) and record.get("session"):
+                sessions.add(str(record["session"]))
+    except OSError:
+        pass
+    return sessions
+
+
+def harvest_model_usage(root: Path, session_log: Path | None) -> list[str]:
+    """Harvest the 📊 line from ``session_log`` into the model-usage JSONL.
+
+    Returns human-readable result lines for the CLI to emit (advisories when
+    the line is missing or the task class is off-taxonomy). The record is the
+    PL-004 shape: ``{session, date, model, effort, task_class, tokens_out,
+    outcome}``, ``outcome`` an all-null object until the lab sweep backfills
+    it. One record per session slug — a re-run session-close never
+    double-appends. Fail-open: any unexpected failure reports itself as an
+    advisory rather than raising into session-close.
+    """
+    try:
+        if session_log is None:
+            return [f"no session log — no {MODEL_LINE_NEEDLE} line to harvest."]
+        parsed = parse_model_line(session_log.read_text(encoding="utf-8"))
+        if parsed is None:
+            return [
+                f"session log {session_log.name} has no "
+                f"`{MODEL_LINE_NEEDLE}` line — add "
+                "`- **\N{BAR CHART} Model:** <model> · <effort> · <task-class>` "
+                "so the PL-004 dataset gets this session's row.",
+            ]
+        lines: list[str] = []
+        if parsed["task_class"] not in TASK_CLASSES:
+            known = " | ".join(TASK_CLASSES)
+            lines.append(
+                f"task_class {parsed['task_class']!r} is not one of the 8 "
+                f"Q-0248 classes ({known}) — recorded verbatim; fix the line "
+                "or the taxonomy.",
+            )
+        session = session_log.stem
+        path = root / MODEL_USAGE_RELPATH
+        if session in _model_usage_sessions(path):
+            lines.append(f"model-usage: {session} already recorded (skipped).")
+            return lines
+        match = _DATE_PREFIX_RE.match(session)
+        record = {
+            "session": session,
+            "date": match.group(1) if match else date.today().isoformat(),
+            "model": parsed["model"],
+            "effort": parsed["effort"],
+            "task_class": parsed["task_class"],
+            "tokens_out": parsed["tokens_out"],
+            "outcome": {
+                "ci_green_first_push": None,
+                "checker_findings": None,
+                "merged_pr": None,
+                "reverted_within_window": None,
+            },
+        }
+        _append_jsonl(path, record)
+        lines.append(f"model-usage: recorded {session} -> {MODEL_USAGE_RELPATH}")
+        return lines
+    except Exception:  # noqa: BLE001 — telemetry fails open by contract
+        return ["model-usage: harvest failed (fail-open) — row not recorded."]
 
 # --- engine/loop/episodes.py ---
 """Episodic index — a tiny searchable memory over session logs (plan lane B2).
@@ -7021,6 +7428,24 @@ def run_upgrade(
     # regenerate, planted docs skip-if-exist, kit_version records new.
     report += adopt(root, config, backend, kit_root=kit_root)
 
+    # (6b) KL-3: the 📊 Model needle joins session_markers at upgrade time —
+    # a consumer's gate only tightens when it upgrades, never mid-version
+    # (founding plan §5.2); the report says so out loud.
+    if not any(
+        m.get("needle") == MODEL_LINE_NEEDLE for m in config.session_markers
+    ):
+        config.session_markers.append(
+            {"label": "Model line", "needle": MODEL_LINE_NEEDLE},
+        )
+        save_config(root, config)
+        report.append(
+            "session_markers: added the \N{BAR CHART} Model line needle "
+            "(KL-3 telemetry) — session logs must now carry "
+            "`- **\N{BAR CHART} Model:** <model> \N{MIDDLE DOT} <effort> "
+            "\N{MIDDLE DOT} <task-class>`; session-close harvests it into "
+            "telemetry/model-usage.jsonl.",
+        )
+
     # (7) State migration (backup already banked above).
     backend.migrate(STATE_SCHEMA_VERSION)
     report.append(f"state: schema at v{STATE_SCHEMA_VERSION} (backup banked).")
@@ -7407,33 +7832,34 @@ def cmd_hooks(target: Path, build: bool) -> int:
     return 0
 
 
-def _hook_pretooluse(target: Path) -> int:
+def _hook_pretooluse(target: Path) -> list[str]:
     """PreToolUse stance guard: warn on stderr for an out-of-stance tool."""
     tool_name = tool_from_payload(sys.stdin.read())
     if not tool_name:
-        return 0
+        return []
     config = load_config(target)
     backend = JsonStateBackend(_state_path(target, config))
     stance = backend.data.get("stance") if backend.data else None
     if not stance:
-        return 0
+        return []
     warning = evaluate_tool(stance, tool_name)
     if warning:
         sys.stderr.write(warning + "\n")
-    return 0
+        return [warning]
+    return []
 
 
-def _hook_sessionstart(target: Path) -> int:
+def _hook_sessionstart(target: Path) -> list[str]:
     """SessionStart: print the mode-aware orientation composition to stdout."""
     config = load_config(target)
     backend = JsonStateBackend(_state_path(target, config))
     text = compose_orientation(target, config, backend)
     if text:
         sys.stdout.write(text)
-    return 0
+    return []
 
 
-def _hook_postedit(target: Path) -> int:
+def _hook_postedit(target: Path) -> list[str]:
     """PostToolUse: warn on stderr for a generated-artifact / unbadged-doc edit.
 
     Handles Edit/Write (``tool_input.file_path``) and NotebookEdit
@@ -7446,26 +7872,28 @@ def _hook_postedit(target: Path) -> int:
     try:
         payload = json.loads(raw) if raw.strip() else {}
     except json.JSONDecodeError:
-        return 0
+        return []
     tool_input = payload.get("tool_input") if isinstance(payload, dict) else None
     if not isinstance(tool_input, dict):
-        return 0
+        return []
     file_path = tool_input.get("file_path") or tool_input.get("notebook_path")
     if not isinstance(file_path, str) or not file_path:
-        return 0
+        return []
     warning = evaluate_edit(target, load_config(target), file_path)
     if warning:
         sys.stderr.write(warning + "\n")
-    return 0
+        return [warning]
+    return []
 
 
-def _hook_stopcheck(target: Path) -> int:
+def _hook_stopcheck(target: Path) -> list[str]:
     """Stop: print the session-close advisory lines to stderr."""
     config = load_config(target)
     backend = JsonStateBackend(_state_path(target, config))
-    for line in evaluate_stop(target, config, backend):
+    lines = evaluate_stop(target, config, backend)
+    for line in lines:
         sys.stderr.write(line + "\n")
-    return 0
+    return lines
 
 
 _HOOK_EVENTS = {
@@ -7473,6 +7901,14 @@ _HOOK_EVENTS = {
     "sessionstart": _hook_sessionstart,
     "postedit": _hook_postedit,
     "stopcheck": _hook_stopcheck,
+}
+
+# Guard kind per hook event, for the §5.3 guard-fire feed. ``sessionstart``
+# is orientation, not a guard — it never records a fire.
+_HOOK_GUARD_KINDS = {
+    "pretooluse": "stance",
+    "postedit": "edit-advisor",
+    "stopcheck": "stop-advisory",
 }
 
 
@@ -7484,12 +7920,29 @@ def cmd_hook(target: Path, event: str) -> int:
     payload (``tool_input.file_path``) and warns on stderr; ``stopcheck``
     prints session-close advisories to stderr. Every event fails open on a
     missing / malformed payload, config, or state.
+
+    This dispatch is one of the two guard-fire choke points (KL-3, plan
+    §5.3): each warning a guard hook surfaces is appended to
+    ``<state_dir>/guard-fires.jsonl`` (surface ``hook``, posture ``advisory``
+    — hooks never block). The write is fail-open and never alters the exit
+    code: telemetry must never crash a hook.
     """
     handler = _HOOK_EVENTS.get(event)
     if handler is None:
         return 0
     try:
-        return handler(target)
+        warnings = handler(target)
+        kind = _HOOK_GUARD_KINDS.get(event)
+        if warnings and kind:
+            record_guard_fires(
+                target,
+                load_config(target).state_dir,
+                cmd=f"hook {event}",
+                surface="hook",
+                posture="advisory",
+                findings=[Finding("", kind, warning) for warning in warnings],
+            )
+        return 0
     except Exception:  # noqa: BLE001 — hooks fail open by contract, always 0
         return 0
 
@@ -7541,8 +7994,22 @@ def cmd_check(
     makes the memory ritual non-optional, not merely advised). Uses config
     defaults if ``target`` has no ``substrate.config.json`` yet, so a project
     can lint before onboarding.
+
+    Two KL-3 mechanisms ride the finding loop (plan §5.3):
+
+    - **Reasons-required allowlist**: ``<state_dir>/check-exceptions.yml``
+      entries suppress exact path+kind matches — but only entries carrying a
+      ``reason``; a reason-less entry is refused and reported as its own
+      finding. The session-log gate is never allowlistable.
+    - **Guard-fire telemetry** (the ``check`` choke point): every surfaced
+      finding — and every allowlist suppression, recorded with the entry's
+      verdict + reason (creating the entry IS the verdict event) — appends a
+      record to ``<state_dir>/guard-fires.jsonl``. Fail-open, written only
+      into an existing install; the ``ci`` surface + ``did_not_run`` rows are
+      derived by readers from the Checks API, never written in CI.
     """
     config = load_config(target)
+    posture = "blocking" if strict else "advisory"
     docs_root = target / config.docs_root
     doc_findings = run_doc_checks(
         docs_root,
@@ -7550,10 +8017,37 @@ def cmd_check(
         config.readpath_docs,
     )
     doc_findings = list(doc_findings) + _extra_check_findings(target, config)
+    entries, allow_findings = load_allowlist(target, config.state_dir)
+    doc_findings, suppressed = apply_allowlist(doc_findings, entries)
+    doc_findings += allow_findings
+    if suppressed:
+        _emit(
+            f"check: {len(suppressed)} finding(s) suppressed by allowlist "
+            "(reason-carrying entries; fires recorded with their verdicts).",
+        )
+        for finding, entry in suppressed:
+            record_guard_fires(
+                target,
+                config.state_dir,
+                cmd="check",
+                surface="check",
+                posture=posture,
+                findings=[finding],
+                verdict=entry.get("verdict"),
+                reason=entry.get("reason"),
+            )
     if doc_findings:
         _emit(f"check: {len(doc_findings)} finding(s):")
         for finding in doc_findings:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture=posture,
+            findings=doc_findings,
+        )
 
     log = latest_session_log(target / config.sessions_dir)
     log_missing: list[str] = check_log(log, config.session_markers) if log else []
@@ -7574,6 +8068,31 @@ def cmd_check(
             _emit(f"check: session log {rel} is missing: {', '.join(log_missing)}")
         else:
             _emit(f"check: session log {rel} complete.")
+    if log_missing or log_absent_fails:
+        # The session gate is a guard too (the kit's flagship one) — its
+        # fires feed B3 like any checker's. Never allowlistable, though.
+        if log_absent_fails:
+            gate_finding = Finding(
+                "",
+                "session-log",
+                f"no session log under {config.sessions_dir}/ "
+                "(--require-session-log)",
+            )
+        else:
+            log_rel = str(log.relative_to(target)) if log.is_relative_to(target) else str(log)
+            gate_finding = Finding(
+                log_rel,
+                "session-log",
+                f"missing: {', '.join(log_missing)}",
+            )
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="blocking" if (strict or require_session_log) else "advisory",
+            findings=[gate_finding],
+        )
 
     if not doc_findings and not log_missing and not log_absent_fails:
         _emit("check: all checks passed.")
@@ -8038,8 +8557,10 @@ def cmd_session_close(target: Path) -> int:
     """Run the session-close ritual: mine, index, advise, and report KPIs.
 
     Mines the session logs into the reflection buffer, rebuilds the episodic
-    index, prints the stop-check advisories, and ends with the KPI footer —
-    the engine analog of the one-idea / previous-session-review enders.
+    index, harvests the ``📊 Model:`` line into the PL-004 model-usage feed
+    (``telemetry/model-usage.jsonl`` — one row per session, KL-3), prints the
+    stop-check advisories, and ends with the KPI footer — the engine analog
+    of the one-idea / previous-session-review enders.
     """
     loaded = _require_state(target, "session-close")
     if loaded is None:
@@ -8051,6 +8572,9 @@ def cmd_session_close(target: Path) -> int:
     index_path = target / config.state_dir / EPISODIC_INDEX_FILENAME
     entries = rebuild_episodic_index(target / config.sessions_dir, index_path)
     _emit(f"session-close: indexed {len(entries)} session(s).")
+    log = latest_session_log(target / config.sessions_dir)
+    for line in harvest_model_usage(target, log):
+        _emit(f"session-close: {line}")
     # Re-read state: the mine above stamped reflection_buffer.last_mined, and
     # a pre-mine snapshot would re-advise the mine it just ran.
     backend = JsonStateBackend(_state_path(target, config))
