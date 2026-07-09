@@ -108,5 +108,23 @@
       "\ud83d\udcca"
     ],
     "summary": "> **Status:** `complete` *(band KL-4 in one PR \u2014 #14; friction issue #15 filed + triaged.)*"
+  },
+  {
+    "slug": "kl5-auto-draft",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "kl-5",
+      "1",
+      "2",
+      "auto-drafted",
+      "handoff",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #16 \u2014 band KL-5 first half; the `bench/` tree follows as the intentionally-open `do-not-automerge` PR.)*"
   }
 ]
