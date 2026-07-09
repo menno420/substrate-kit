@@ -40,6 +40,15 @@ the answer would actually matter and be actionable. A big or vague idea
 earns a dedicated research pass or its own session before being answered
 from memory alone.
 
+## Program law
+
+This model's program-wide form, and the rulings that bind every repo in the
+program, live canonically in [`docs/program/rulings.md`](program/rulings.md)
+(the [PL-NNN] register — e.g. PL-001 decide-and-flag, PL-002 never-wait,
+PL-007 enforce-don't-exhort) and
+[`docs/program/collaboration-model.md`](program/collaboration-model.md).
+**Cite PL-IDs — never copy ruling bodies.**
+
 ## Drift & staleness
 
 - When a doc and a source file disagree: Source code and merged PRs win; fix the doc on sight in the same session (drift older than the reconciliation marker is a bug, not a backlog item).

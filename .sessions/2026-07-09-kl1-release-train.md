@@ -1,8 +1,11 @@
 # Session 2026-07-09 — KL-1 release train → v1.0.0
 
 > **Status:** `complete` *(the whole KL-1 train: PR A = #8/f4609ea, PR B = #9,
-> PR C = the close-out + two gate-hole guards this file rides in — tag `v1.0.0`
-> pushed on PR C's merge commit; Release verified on the releases page.)*
+> PR C = #10 — the close-out + two gate-hole guards this file rides in; PR D =
+> #11 — the `workflow_dispatch` release path. Tag `v1.0.0` rides **PR D's**
+> merge commit `daaf29c`, cut via the dispatch run — not PR C's as this line
+> first said; drift fixed by the KL-2 session per source-wins. Release
+> verified on the releases page.)*
 
 **The train (founding plan §4 + §10 KL-1 row, one session, 2 PRs + tag):**
 

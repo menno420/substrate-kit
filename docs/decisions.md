@@ -17,3 +17,17 @@
   discipline let agents work correctly with little steering; adopting the
   kit starts substrate-kit governed instead of accreting rules ad hoc.
 - provenance: substrate-kit adoption interview
+
+## [D-0002] Program law lives in docs/program/ as the PL-register; consumers cite, never copy
+
+- status: decided
+- date: 2026-07-09
+- verdict: The canonical text of every program-level ruling exists only in
+  `docs/program/rulings.md` ([PL-NNN] blocks, provenance-required); planted
+  templates carry a pointer section citing PL-IDs, and a copied ruling body
+  anywhere else is a checker finding (`scripts/check_program_law.py`,
+  kit-quality CI).
+- why: One home kills duplicated-and-drifted law across the program's repos;
+  the D-ledger grammar already handles supersession + provenance.
+- provenance: founding plan §8 / KF-6 (owner-blessed under silence=consent);
+  shipped in band KL-2.

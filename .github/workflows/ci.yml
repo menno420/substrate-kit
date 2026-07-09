@@ -43,6 +43,11 @@ jobs:
         # Config lives in pyproject.toml [tool.ruff*]: T20 + S101 + TID251.
         run: python3 -m ruff check src/engine/
 
+      - name: Program law (§8.3 — PL register grammar + planted pointers)
+        # docs/program/rulings.md is the canonical PL-register; pointer
+        # sections in the planted templates cite PL-IDs, never copy bodies.
+        run: python3 scripts/check_program_law.py
+
       - name: Cold-adoption smoke (§3.2 item 4)
         # adopt into a scratch repo + check --strict green, then the
         # --wire-enforcement exit path (the born-self-verifying clause).

@@ -13,6 +13,22 @@ Each release publishes a GitHub Release for tag `vX.Y.Z` with three assets:
 and `release.json` (the machine-readable upgrade contract). The release
 workflow refuses to publish a version that has no section in this file.
 
+## [Unreleased]
+
+### Added
+
+- **The program governance home** (band KL-2, plan §8): `docs/program/` with
+  the canonical `[PL-NNN]` rulings register (PL-001…PL-009,
+  provenance-required) plus program copies of the collaboration model and the
+  decision-authority model; `docs/house-style.md` (§3.4/D-7 — the kit's
+  opinionated defaults, declared not configurable).
+- `scripts/check_program_law.py` in the `kit-quality` gate: PL-register
+  grammar, monotonic IDs, provenance-required on every block, and the
+  no-ruling-bodies-in-planted-pointers assertion.
+- **Templates** (MINOR — new planted content): `CONSTITUTION.md.tmpl` and
+  `collaboration-model.md.tmpl` gain a "Program law" pointer section citing
+  the register by PL-ID (consumers cite, never copy).
+
 ## [1.0.0] - 2026-07-09
 
 First release of substrate-kit as its own repository — the portable,
