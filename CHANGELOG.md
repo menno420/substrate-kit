@@ -86,22 +86,6 @@ workflow refuses to publish a version that has no section in this file.
   switches) + the exact 👤 P4 arming steps. Git is the prompt's source of
   truth; console copies are re-pasted on change.
 
-### Fixed
-
-- **`upgrade` from-version truth** (superbot-next#46): the vendored dist's
-  header now outranks a disagreeing `config.kit_version` pin when naming
-  `from_version` — a pin recorded BEFORE the first real upgrade (the D2
-  order) misreported the report/`last-upgrade.json` (pin said 1.0.0, the
-  archive honestly said `bootstrap-unknown.py`) and a rollback would have
-  restored the wrong pin. The hand-copied-new-dist case (header equals the
-  running `KIT_VERSION`) still trusts the pin; rollback now restores the
-  unrecorded sentinel `""` (never the literal `"unknown"`).
-- **`upgrade` input self-cleanup** (superbot-next#46): a completed upgrade
-  now removes the consumed `bootstrap.py.new` + the `release.json` next to
-  it instead of stranding them at the repo root; `--keep-inputs` opts out;
-  cleanup is fail-open and only ever touches the files the flow itself
-  consumed.
-
 - **Telemetry substrate** (band KL-3, plan §5.2/§5.3 — MINOR, new
   capability): guard-fire JSONL writers at the two local choke points
   (`check`'s finding loop, `hook`'s dispatch) appending §5.3 records to
@@ -138,6 +122,22 @@ workflow refuses to publish a version that has no section in this file.
 - **Templates** (MINOR — new planted content): `CONSTITUTION.md.tmpl` and
   `collaboration-model.md.tmpl` gain a "Program law" pointer section citing
   the register by PL-ID (consumers cite, never copy).
+
+### Fixed
+
+- **`upgrade` from-version truth** (superbot-next#46): the vendored dist's
+  header now outranks a disagreeing `config.kit_version` pin when naming
+  `from_version` — a pin recorded BEFORE the first real upgrade (the D2
+  order) misreported the report/`last-upgrade.json` (pin said 1.0.0, the
+  archive honestly said `bootstrap-unknown.py`) and a rollback would have
+  restored the wrong pin. The hand-copied-new-dist case (header equals the
+  running `KIT_VERSION`) still trusts the pin; rollback now restores the
+  unrecorded sentinel `""` (never the literal `"unknown"`).
+- **`upgrade` input self-cleanup** (superbot-next#46): a completed upgrade
+  now removes the consumed `bootstrap.py.new` + the `release.json` next to
+  it instead of stranding them at the repo root; `--keep-inputs` opts out;
+  cleanup is fail-open and only ever touches the files the flow itself
+  consumed.
 
 ## [1.0.0] - 2026-07-09
 
