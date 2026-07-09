@@ -22,6 +22,8 @@ stdlib; every write goes through ``atomic_write_text``.
 
 from __future__ import annotations
 
+import hashlib
+import re
 import sys
 from datetime import date
 from pathlib import Path
@@ -32,7 +34,7 @@ from engine.contextpack import pack_index_skeleton
 from engine.derive import derive_slots, record_derived_slots
 from engine.hooks.settings import full_settings_template, hooks_fill_table
 from engine.lib.atomicio import atomic_write_text
-from engine.lib.config import Config
+from engine.lib.config import KIT_VERSION, Config, save_config
 from engine.lib.guardrail import assert_safe_target
 from engine.render import build_context, find_placeholders, load_templates, render
 from engine.skills.skills import SKILLS, skill_document, skill_relpath
@@ -57,6 +59,75 @@ ADOPT_PLAN: list[tuple[str, str]] = [
     ("ideas-README.md.tmpl", "docs/ideas/README.md"),
     ("session-journal.md.tmpl", ".session-journal.md"),
 ]
+
+# State key holding {planted relpath: sha256 hex} for every doc the kit last
+# wrote (planted by adopt, or re-rendered in place by `render --live`).
+# "Consumer-untouched" is decided by comparing a doc's current hash to this
+# record — never by re-rendering old templates, whose slot/banner/date
+# substitution makes byte-matching impossible (founding plan §4.3). `upgrade`
+# reads it to classify planted-doc drift; installs predating the record have
+# no hashes and are honestly treated as consumer-diverged.
+DOC_HASHES_STATE_KEY = "planted_doc_hashes"
+
+
+def _sha256_text(text: str) -> str:
+    """Return the sha256 hex digest of ``text`` (utf-8)."""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def record_doc_hash(backend: Any, relpath: str, text: str) -> None:
+    """Record ``text``'s sha256 under ``relpath`` in the planted-doc hash map."""
+    hashes = dict(backend.get(DOC_HASHES_STATE_KEY) or {})
+    hashes[relpath] = _sha256_text(text)
+    backend.set(DOC_HASHES_STATE_KEY, hashes)
+
+
+def doc_is_untouched(backend: Any, relpath: str, current_text: str) -> bool:
+    """True when ``current_text`` still matches the recorded kit-written hash."""
+    hashes = backend.get(DOC_HASHES_STATE_KEY) or {}
+    recorded = hashes.get(relpath)
+    return recorded is not None and recorded == _sha256_text(current_text)
+
+
+BACKUP_DIRNAME = "backup"
+
+_DIST_VERSION_RE = re.compile(r"bootstrap v(\d[^\s]*)")
+
+
+def dist_version(text: str) -> str | None:
+    """Parse the version stamp out of a single-file bootstrap's header line."""
+    first_line = text.split("\n", 1)[0]
+    match = _DIST_VERSION_RE.search(first_line)
+    return match.group(1) if match else None
+
+
+def archive_dist(
+    root: Path,
+    config: Config,
+    dist_file: Path,
+    report: list[str],
+) -> Path | None:
+    """Bank ``dist_file`` under ``<state_dir>/backup/bootstrap-<version>.py``.
+
+    The §4.3 ordering constraint: an upgrade's planted-doc diff needs the OLD
+    dist's templates to still exist when it runs, so *both* ``adopt`` and
+    ``upgrade`` archive the running dist before anything could overwrite it —
+    the archive exists from v1.0.0 onward. Pre-stamp dists archive as
+    ``bootstrap-unknown.py``. Idempotent: an identical existing archive is
+    left alone; None when there is no single file to archive (source layout).
+    """
+    if not dist_file.is_file():
+        return None
+    text = dist_file.read_text(encoding="utf-8")
+    version = dist_version(text) or "unknown"
+    dest = root / config.state_dir / BACKUP_DIRNAME / f"bootstrap-{version}.py"
+    rel = f"{config.state_dir}/{BACKUP_DIRNAME}/bootstrap-{version}.py"
+    if dest.exists() and dest.read_text(encoding="utf-8") == text:
+        return dest
+    atomic_write_text(dest, text)
+    report.append(f"archived: {rel}")
+    return dest
+
 
 _ADOPT_NEXT_STEPS = (
     "next steps: run `bootstrap ask` to see the pending interview questions, "
@@ -156,13 +227,18 @@ def _adopt_dest(relpath: str, config: Config) -> str:
     return relpath
 
 
-def _adopt_plant(path: Path, relpath: str, text: str, report: list[str]) -> None:
-    """Write ``text`` at ``path`` unless it exists; report planted/kept."""
+def _adopt_plant(path: Path, relpath: str, text: str, report: list[str]) -> bool:
+    """Write ``text`` at ``path`` unless it exists; report planted/kept.
+
+    Returns True when the file was actually written (so callers can record
+    provenance — e.g. the planted-doc hash — only for kit-written content).
+    """
     if path.exists():
         report.append(f"kept: {relpath}")
-        return
+        return False
     atomic_write_text(path, text)
     report.append(f"planted: {relpath}")
+    return True
 
 
 def _adopt_stage(path: Path, relpath: str, text: str, report: list[str]) -> None:
@@ -306,6 +382,13 @@ def adopt(
     # never overwriting an existing answer), then build the render context.
     report.extend(record_derived_slots(backend, derive_slots(root, config.docs_root)))
     bootstrap_path = _vendor_bootstrap(root, report)
+    # (0c) Bank the running dist under <state_dir>/backup/ (§4.3): a future
+    # upgrade's doc diff needs the OLD templates to still exist, so the
+    # archive is written before anything could ever overwrite the file.
+    dist_file = Path(bootstrap_path)
+    if not dist_file.is_absolute():
+        dist_file = root / bootstrap_path
+    archive_dist(root, config, dist_file, report)
     context = build_context(backend.data)
     # The live integration mode is state, not a slot — render it truthfully.
     context.setdefault("integration_mode", str(backend.get("mode", "guided")))
@@ -319,7 +402,10 @@ def adopt(
             # The example D-0001 records THIS adoption — stamp the real date so
             # the planted ledger is check_ledger-clean from its first commit.
             text = text.replace("- date:\n", f"- date: {date.today().isoformat()}\n")
-        _adopt_plant(root / rel, rel, with_unrendered_banner(text), report)
+        final = with_unrendered_banner(text)
+        if _adopt_plant(root / rel, rel, final, report):
+            # Provenance for the upgrade diff (§4.3): hash what the kit wrote.
+            record_doc_hash(backend, rel, final)
 
     # (2) Session-log scaffolding.
     sessions_rel = f"{config.sessions_dir}/README.md"
@@ -371,7 +457,13 @@ def adopt(
     # (6) Explicit host opt-in: live .claude/ (still never overwrites).
     if include_claude:
         claude_dir = root / ".claude"
-        _adopt_plant(claude_dir / "CLAUDE.md", ".claude/CLAUDE.md", claude_doc, report)
+        if _adopt_plant(
+            claude_dir / "CLAUDE.md",
+            ".claude/CLAUDE.md",
+            claude_doc,
+            report,
+        ):
+            record_doc_hash(backend, ".claude/CLAUDE.md", claude_doc)
         _adopt_plant(
             claude_dir / "settings.json",
             ".claude/settings.json",
@@ -389,6 +481,14 @@ def adopt(
             live_ci_workflow(config.interpreter_for_checks or "python3"),
             report,
         )
+
+    # (6c) The install self-identifies (§4.1): record the kit version in the
+    # config file (a declared dataclass field — survives load→save) and state.
+    if config.kit_version != KIT_VERSION:
+        config.kit_version = KIT_VERSION
+        save_config(root, config)
+    backend.set("kit_version", KIT_VERSION)
+    report.append(f"recorded: kit_version {KIT_VERSION}")
 
     # (7) Point the adopter at the interview loop.
     report.append(_ADOPT_NEXT_STEPS)

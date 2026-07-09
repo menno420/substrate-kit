@@ -18,10 +18,13 @@ pytest.importorskip("engine.hooks.settings")
 
 from engine.adopt import (
     ADOPT_PLAN,
+    DOC_HASHES_STATE_KEY,
     LIVE_CI_RELPATH,
     UNRENDERED_BANNER_FIRST_LINE,
     adopt,
     ci_snippet,
+    dist_version,
+    doc_is_untouched,
     live_ci_workflow,
     strip_unrendered_banner,
     with_unrendered_banner,
@@ -29,7 +32,7 @@ from engine.adopt import (
 from engine.agents.agents import AGENTS
 from engine.checks.check_docs import run_doc_checks
 from engine.ledger import parse_ledger
-from engine.lib.config import Config
+from engine.lib.config import KIT_VERSION, Config, load_config
 from engine.lib.guardrail import UnsafeTargetError
 from engine.lib.state import JsonStateBackend, default_state
 from engine.skills.skills import SKILLS
@@ -401,3 +404,81 @@ def test_wire_enforcement_does_not_clobber_an_existing_workflow(tmp_path):
     )
     assert workflow.read_text(encoding="utf-8") == "name: mine\n"
     assert f"kept: {LIVE_CI_RELPATH}" in lines
+
+
+# ---------------------------------------------------------------------------
+# Version + planted-doc hash recording (KL-1, founding plan §4.1/§4.3)
+# ---------------------------------------------------------------------------
+
+
+def test_adopt_records_kit_version_in_config_and_state(tmp_path):
+    root, config, lines = _adopt_into(tmp_path)
+    assert config.kit_version == KIT_VERSION
+    # Persisted (not just in-memory): reload both from disk.
+    assert load_config(root).kit_version == KIT_VERSION
+    backend = JsonStateBackend(root / config.state_dir / "state.json")
+    assert backend.get("kit_version") == KIT_VERSION
+    assert f"recorded: kit_version {KIT_VERSION}" in lines
+
+
+def test_adopt_records_a_hash_per_planted_doc(tmp_path):
+    root, config, _ = _adopt_into(tmp_path)
+    backend = JsonStateBackend(root / config.state_dir / "state.json")
+    hashes = backend.get(DOC_HASHES_STATE_KEY)
+    for _, rel in ADOPT_PLAN:
+        assert rel in hashes, rel
+        # The recorded hash matches the on-disk bytes → doc_is_untouched.
+        text = (root / rel).read_text(encoding="utf-8")
+        assert doc_is_untouched(backend, rel, text), rel
+
+
+def test_kept_docs_get_no_hash_recorded(tmp_path):
+    # A pre-existing (consumer-owned) file is never claimed as kit-written:
+    # no recorded hash → the upgrade diff honestly treats it as diverged.
+    root = tmp_path / "repo"
+    config = Config()
+    backend = _make_backend(root, config)
+    theirs = root / "CONSTITUTION.md"
+    theirs.parent.mkdir(parents=True, exist_ok=True)
+    theirs.write_text("consumer-owned\n", encoding="utf-8")
+    adopt(root, config, backend, kit_root=tmp_path / "kit")
+    hashes = (
+        JsonStateBackend(root / config.state_dir / "state.json").get(
+            DOC_HASHES_STATE_KEY,
+        )
+        or {}
+    )
+    assert "CONSTITUTION.md" not in hashes
+    assert not doc_is_untouched(backend, "CONSTITUTION.md", "consumer-owned\n")
+
+
+def test_hand_edit_breaks_untouched(tmp_path):
+    root, config, _ = _adopt_into(tmp_path)
+    backend = JsonStateBackend(root / config.state_dir / "state.json")
+    rel = "docs/architecture.md"
+    edited = (root / rel).read_text(encoding="utf-8") + "\nconsumer note\n"
+    assert not doc_is_untouched(backend, rel, edited)
+
+
+def test_adopt_archives_the_running_dist(tmp_path, monkeypatch):
+    # §4.3 ordering constraint: the archive must exist BEFORE any future
+    # overwrite, so adopt (not just upgrade) banks the running single file
+    # under <state_dir>/backup/bootstrap-<version>.py.
+    fake = tmp_path / "downloads" / "bootstrap.py"
+    fake.parent.mkdir(parents=True)
+    fake.write_text(
+        '"""substrate-kit bootstrap v0.9.9 — GENERATED, DO NOT EDIT."""\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("sys.argv", [str(fake), "adopt"])
+    root, config, lines = _adopt_into(tmp_path)
+    archived = root / config.state_dir / "backup" / "bootstrap-0.9.9.py"
+    assert archived.is_file()
+    assert archived.read_text(encoding="utf-8") == fake.read_text(encoding="utf-8")
+    assert f"archived: {config.state_dir}/backup/bootstrap-0.9.9.py" in lines
+
+
+def test_dist_version_parses_the_header_stamp():
+    header = '"""substrate-kit bootstrap v1.2.3 — GENERATED, DO NOT EDIT.\nrest'
+    assert dist_version(header) == "1.2.3"
+    assert dist_version('"""no stamp here"""') is None

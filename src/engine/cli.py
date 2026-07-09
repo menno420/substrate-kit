@@ -21,8 +21,15 @@ import sys
 import tempfile
 from datetime import date
 from pathlib import Path
+from typing import Any
 
-from engine.adopt import ADOPT_PLAN, _adopt_dest, adopt, strip_unrendered_banner
+from engine.adopt import (
+    ADOPT_PLAN,
+    _adopt_dest,
+    adopt,
+    record_doc_hash,
+    strip_unrendered_banner,
+)
 from engine.agents.agents import AGENTS, agent_document, agent_relpath
 from engine.checks.check_docs import run_doc_checks
 from engine.checks.check_namespace import check_namespace
@@ -54,7 +61,13 @@ from engine.ledger import (
     check_stamp_discipline,
 )
 from engine.lib.atomicio import atomic_write_text
-from engine.lib.config import Config, config_path, load_config, save_config
+from engine.lib.config import (
+    KIT_VERSION,
+    Config,
+    config_path,
+    load_config,
+    save_config,
+)
 from engine.lib.guardrail import UnsafeTargetError, assert_safe_target
 from engine.lib.modes import actuators_may_apply, triggers_mandate
 from engine.lib.state import JsonStateBackend, default_state
@@ -232,12 +245,14 @@ def cmd_ask(target: Path) -> int:
     return 0
 
 
-def _render_live(target: Path, context: dict[str, str]) -> int:
+def _render_live(target: Path, context: dict[str, str], backend: Any) -> int:
     """Fill remaining ``${slot}`` placeholders in the PLANTED docs, in place.
 
     Placeholders survive verbatim in a planted file until their slot fills, so
     substituting over the live text updates exactly the newly-answered slots
     while preserving every hand edit around them. Returns the leftover count.
+    Every rewrite re-records the doc's sha256 (the §4.3 "kit last wrote this"
+    provenance the upgrade diff keys on).
     """
     leftover_total = 0
     for _, plan_rel in ADOPT_PLAN:
@@ -254,6 +269,7 @@ def _render_live(target: Path, context: dict[str, str]) -> int:
             filled = strip_unrendered_banner(filled)
         if filled != text:
             atomic_write_text(path, filled)
+            record_doc_hash(backend, rel, filled)
             suffix = f" ({len(leftover)} slot(s) still unfilled)" if leftover else ""
             _emit(f"render: filled {rel}{suffix}")
     _emit(f"render: {leftover_total} unfilled placeholder(s) across planted docs.")
@@ -276,7 +292,7 @@ def cmd_render(target: Path, live: bool = False) -> int:
         return 1
     context = build_context(backend.data)
     if live:
-        return _render_live(target, context)
+        return _render_live(target, context, backend)
     out_dir = target / config.state_dir / "rendered"
     leftover_total = 0
     for name, text in load_templates().items():
@@ -1103,6 +1119,12 @@ def cmd_simulate(n: int, mode: str = "guided") -> int:
 def build_parser() -> argparse.ArgumentParser:
     """Construct the bootstrap argument parser."""
     parser = argparse.ArgumentParser(prog="bootstrap", description="substrate-kit")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"substrate-kit {KIT_VERSION}",
+        help="print the kit version and exit",
+    )
     parser.add_argument(
         "--simulate",
         type=int,

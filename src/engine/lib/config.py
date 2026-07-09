@@ -20,6 +20,16 @@ from engine.lib.atomicio import atomic_write_text
 CONFIG_FILENAME = "substrate.config.json"
 DEFAULT_STATE_DIR = ".substrate"
 
+# THE kit version (founding plan §4.1). Semver keyed to the planted-doc
+# contract, state schema, config schema, and CLI surface: MAJOR = breaking
+# change to any of those; MINOR = new capability; PATCH = fixes. Exposed as
+# `bootstrap.py --version`, stamped into the dist header by
+# `src/build_bootstrap.py`, and recorded into `substrate.config.json`
+# (`kit_version`) + state by `adopt`/`upgrade`. Bump together with
+# `pyproject.toml` `[project] version` (a test pins them equal) and a new
+# CHANGELOG.md section (the release workflow refuses to publish without one).
+KIT_VERSION = "1.0.0"
+
 
 def _new_project_id() -> str:
     """Return a short, stable identifier for one install."""
@@ -29,7 +39,10 @@ def _new_project_id() -> str:
 def _default_cadence() -> dict[str, int]:
     """Return the default cadence knobs (every hardcoded cadence lives here)."""
     return {
-        "reconciliation_prs": 20,
+        # 30, not 20: the source repo's live cadence (superbot Q-0134 — at burst
+        # velocity a 20-band fired the docs pass several times a day); the 20
+        # default was stale drift the founding plan §3.4 rules fixed.
+        "reconciliation_prs": 30,
         "reconciliation_sessions": 20,
         "compaction_sessions": 20,
         "critical_slot_grace_sessions": 3,
@@ -116,6 +129,13 @@ class Config:
     """Host-project configuration for one substrate-kit install."""
 
     project_id: str = field(default_factory=_new_project_id)
+    # The kit version this install last adopted/upgraded from — "" until an
+    # `adopt`/`upgrade` records it (a pre-release install honestly reports
+    # unrecorded rather than guessing). A DECLARED dataclass field on purpose:
+    # `from_dict` drops unknown keys and `save_config` serialises only
+    # dataclass fields, so a bare JSON key would be stripped on the next
+    # load→save round-trip (founding plan §4.1).
+    kit_version: str = ""
     interpreter: str = field(default_factory=lambda: sys.executable)
     interpreter_for_checks: str | None = None
     state_dir: str = DEFAULT_STATE_DIR
