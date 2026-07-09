@@ -1,11 +1,9 @@
 # substrate-kit · status
-updated: 2026-07-09T12:07Z
-phase: kit-lab run 2026-07-09 — bands KL-0…KL-5 done, KL-7 post-adopt ENGAGEMENT gate merged (PR #25 @ eb540d9); v1.0.0 released; 637 tests
-health: green (kit-quality CI green on last 8+ main runs incl. HEAD)
-last-shipped: #25 — KL-7 engagement gate (`check --strict` holds red until an adopted host is rendered + enforcing + looping)
-blockers: none agent-side. Owner-gated: PR #26 (PL-011 "adoption is not done until ENGAGED", do-not-automerge by design, awaiting ratification); portal gates P4 (arm daily lab-loop schedule), P10 (required-check swap), P5 (Railway project), P11 (public flip), P8 (license confirm)
-orders: acked= done=
-⚑ needs-owner: ratify PR #26; portal gates P4 / P10 / P5 / P11 / P8
-notes: honest two-incident ledger from 2026-07-09 (kit#22 do-not-automerge label race → guards #23/#24; superbot-next#44 premature merge → consumer dist upgrade). B1 baseline benchmark unblocked by #17. Manager recon grounded in README, docs/current-state.md, PRs #17/#22–#26, Actions runs @ eb540d9.
-
-⟵ manager-seeded starting point — substrate-kit, overwrite this with your own status on your first run.
+updated: 2026-07-09T14:06:15Z
+phase: ORDER 002 complete — the coordination protocol is a kit capability (band KL-8, PR #31) and v1.2.0 is released; next: consumer upgrades to v1.2.0, then the run-2 harness fixes
+health: green (kit-quality green on #31/#32 heads; suite 683; Release pipeline verified end-to-end today)
+last-shipped: #32 — v1.2.0 release cut; Release v1.2.0 LIVE 2026-07-09T14:05Z with bootstrap.py + .sha256 + release.json, asset sha256 258ab02a… verified equal to the merged dist
+blockers: none agent-side. Owner-gated: PR #26 (PL-011, do-not-automerge by design, awaiting ratification)
+orders: acked=001,002 done=001,002
+⚑ needs-owner: ratify PL-011 (PR #26, open + CI-green, merge = ratification); ratify/veto PL-010 (#22 — merged mechanically, reaction replaces the gate); P4 arm the kit-lab loop schedule; P10 required-check swap to kit-quality (runner-queue stalls hurt twice today — the #22 ~12-min lag and the stranded zero-check-run #27 — and the swap also retires the two legacy-alias jobs burning a runner per PR); P5 create Railway kit-lab → unblocks the P6 console move; P11 public flip or P13 read-only PAT; P8 confirm MIT license; delete merged claude/* branches (proxy-blocked session-side — or flip "Automatically delete head branches")
+notes: ORDER 001 done — B1 PASS recorded (#28) + v1.1.0 Release live (13:26Z). ORDER 002 done — control/ scaffold in ADOPT_PLAN (README contract + inbox/status skeletons), dist-shipped check_status_current (missing/heartbeat-less status gates strict RED; staleness advisory-only; Stop-hook session nag), in-job CI control fast lane in ci.yml + the planted substrate-gate.yml (never paths-ignore — required contexts must always report; THIS PR is the lane's first live exercise), v1.2.0 cut + verified. The spec's paths-ignore item was implemented as the in-job short-circuit (D-0007) after today's heartbeat-lane lesson; the #27 zero-check-run lesson is documented in the planted control-README template. PR #30 (earlier heartbeat session) still open on a stale base — its status.md content is superseded by this overwrite (overwrite-own, newest wins). Detail: docs/current-state.md + CHANGELOG [1.2.0] + D-0007.
