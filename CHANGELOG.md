@@ -15,6 +15,25 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-09
+
+New-capability release (MINOR): everything the kit-lab run built since
+v1.0.0 — program law, telemetry, the friction loop, the auto-drafted
+handoff + benchmark harness, and the post-adopt ENGAGEMENT gate that fixes
+the "adopted but never onboarded" fleet finding. No planted-doc, state
+schema, config schema, or CLI contract breaks.
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+**Benchmark outcome (KF-5 — mandatory run for a MINOR):** B1 cold-start
+run `2026-07-09-run01` — **VERDICT: PASS** (judge claude-opus-4-8,
+independent): ON wins M2 (resumed from a genuinely-used handoff) and M3
+(durable write-back). No regressions established. M1 unmeasurable this run
+(all 3 pairs scorer-tainted — artifacts of the scorer, not the kit; run-2
+harness fixes are filed in `docs/ideas/`); the T5 guard probe was n/a
+(headless arms never engaged the hook layer). Row 1 of
+`bench/results/cold-start/index.json`.
+
 ### Added
 
 - **The `bench/` tree — the pinned benchmark harness** (band KL-5, plan
@@ -255,4 +274,5 @@ by real consumers, and now nameable, pinnable, verifiable, and upgradeable.
   `init --unpack` it served never shipped, and it doubled every consumer's
   vendored file for nothing.
 
+[1.1.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.1.0
 [1.0.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.0.0
