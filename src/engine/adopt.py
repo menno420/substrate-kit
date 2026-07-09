@@ -356,7 +356,14 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
     check is REQUIRED a workflow that never runs leaves the context pending
     forever and auto-merge jams (the fleet-protocol heartbeat-lane lesson,
     2026-07-09). The required context always reports; coordination writes
-    never pay the heavy suite and never need a session card.
+    never pay the heavy suite and never need a session card. The lane is
+    **not checker-free though**: it still runs the scoped
+    ``check --strict --status-only`` heartbeat gate, because a control-only
+    diff edits exactly the files ``check_status_current`` validates — the
+    original lane skipped the one checker that could catch a broken/deleted
+    heartbeat, deferring the red onto the next unrelated PR (the fleet
+    adoption review finding, 2026-07-09). Stdlib-only on the system
+    ``python3``, so the lane stays fast.
     """
     return (
         "# substrate-kit enforcement gate (LIVE — installed by "
@@ -399,6 +406,17 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         "          fi\n"
         '          echo "control_only=$control_only" >> "$GITHUB_OUTPUT"\n'
         '          echo "control-only diff: $control_only"\n'
+        "      - name: control-status gate (fast lane — a control diff must "
+        "still prove its heartbeat)\n"
+        "        if: steps.lane.outputs.control_only == 'true'\n"
+        "        # The lane skips the heavy gate, but a control-only PR edits\n"
+        "        # exactly the files the status checker validates — without\n"
+        "        # this step a heartbeat-deleting control PR merges GREEN and\n"
+        "        # pre-reddens the NEXT unrelated PR (kit fleet review\n"
+        "        # 2026-07-09). Scoped + stdlib-only on the system python3\n"
+        "        # (no setup-python): the lane stays fast, and heartbeat PRs\n"
+        "        # still need no session card.\n"
+        "        run: python3 bootstrap.py check --strict --status-only\n"
         "      - uses: actions/setup-python@v5\n"
         "        if: steps.lane.outputs.control_only != 'true'\n"
         "        with:\n"

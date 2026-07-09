@@ -142,3 +142,29 @@
 - provenance: inbox ORDER 002; spec §2 (owner-locked decisions §0);
   lessons from kit PR #27 (zero check runs) and the 2026-07-09 heartbeat
   lane; shipped in band KL-8.
+
+## [D-0008] The control fast lane is never checker-free: the scoped status gate rides the lane
+
+- status: decided
+- date: 2026-07-09
+- verdict: The CI control fast lane (kit `ci.yml` + the planted
+  `substrate-gate.yml`) runs `check --strict --status-only` as a lane step
+  (`control_only == 'true'` only): a control-only diff edits exactly the
+  files `check_status_current` validates, so the lane skips the heavy
+  suite but never the one checker whose subject it is changing. The new
+  `--status-only` scope runs ONLY the heartbeat checker — allowlist +
+  guard-fire telemetry identical to a full run, session-log seam untouched
+  (heartbeat PRs carry no card; the lane cannot deadlock) — and is
+  stdlib-only so the lane step needs no `setup-python`/pip: coordination
+  writes stay seconds-fast.
+- why: Fleet adoption review 2026-07-09, finding 1 (med): a
+  heartbeat-deleting control-only PR rode the lane GREEN while
+  `check --strict` on the same tree exited 1 (`status-no-heartbeat`),
+  deferring the red onto the NEXT unrelated full-suite PR — the exact
+  "pre-reddened bomb" shape D-0007 rules out for wall-clock staleness,
+  reintroduced for content-validity. Demonstrated before/after on a
+  v1.2.0 fixture (verbatim outputs:
+  `docs/reports/2026-07-09-fleet-adoption-review.md` §2).
+- provenance: owner-directed fleet adoption review 2026-07-09 (assessor
+  finding, ship-now disposition); friction→guard (PL-007 enforce-don't-
+  exhort); this PR.

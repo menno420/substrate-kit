@@ -12,6 +12,15 @@
 > the independent audit's verdict, **both** incidents with their guards,
 > and the owner-gates checklist.
 
+> **📋 Fleet adoption review (2026-07-09, owner-directed):**
+> [`docs/reports/2026-07-09-fleet-adoption-review.md`](reports/2026-07-09-fleet-adoption-review.md)
+> — how every fleet repo handles the kit: per-repo verdicts (kit OK ·
+> superbot OK-pin-only · superbot-next DEGRADED · websites OK-recovered),
+> the kit's-own-promises proofs, the shipped fast-lane status gate
+> (decision ledgered in `docs/decisions.md`, PR #35), friction filings #36–#39, the context
+> self-sufficiency lens with the **cite-never-copy ⚑ owner ruling** it
+> needs, and the 5-item ⚑ needs-owner list.
+
 ## Stability baseline
 
 *(dated snapshot: 2026-07-09)*
@@ -175,15 +184,19 @@
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- PR #32 — **v1.2.0 release cut (this PR)**: version bump + CHANGELOG
-  roll + this ledger; followed post-merge by the `release.yml` dispatch
-  that tags `v1.2.0` and publishes the Release, then the ORDER 002
-  `control/status.md` overwrite (a control-only PR exercising the new
-  fast lane live). KL-7's companion PL-register note still rides its own
-  `do-not-automerge` PR #26 (left open for the owner). PR #30 (first
-  status heartbeat, control + ledger notes) may land in parallel —
-  status.md is overwrite-own, newest wins.
-  *(#31 — band KL-8 — MERGED 2026-07-09 and moved out of this list.)*
+- PR #35 — **fleet adoption review (this PR)**: the durable review report
+  + the fast-lane status gate (decision ledgered in `docs/decisions.md`) +
+  this ledger touch; friction issues
+  #36–#39 filed alongside. KL-7's companion PL-register note (PL-011)
+  still rides its own `do-not-automerge` PR #26 (left open for the
+  owner). Consumer-side, the live rollout session's superbot-next #69 and
+  websites #31 are mid-flight (reviewed by the report §4 — do not
+  duplicate); superbot #1894 (telemetry-append gate) shipped by a sibling
+  session. Inbox ORDER 003 (substrate-coordinator visibility band) is
+  acked-not-executed: its done-when requires a release cut, which this
+  session's mandate excludes — it is the next kit-band session's lane.
+  *(#32 — v1.2.0 release cut — MERGED + Release published 2026-07-09 and
+  moved out of this list; #30 closed-superseded by #33.)*
 
 ## Field notes — incident ledger (2026-07-09 run)
 
@@ -351,6 +364,19 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ## Recently shipped (newest first)
 
+- **#35 — fleet adoption review (owner-directed) + control fast-lane
+  status gate**: the durable review
+  (`docs/reports/2026-07-09-fleet-adoption-review.md` — per-repo verdicts,
+  promise proofs, self-sufficiency lens with the cite-never-copy ⚑ owner
+  ruling, 5 ⚑ needs-owner items); the fast-lane gate decision shipped
+  (ledgered in `docs/decisions.md`) — the fast lane now runs
+  `check --strict --status-only` (new scoped mode) in kit `ci.yml` + the
+  planted `substrate-gate.yml`, closing the heartbeat-deleting-PR bypass
+  (reproduced before/after); friction issues #36–#39 filed; sibling
+  session shipped superbot #1894 (telemetry-append gate).
+- **#33/#34 — control-only lane rides**: ORDER 002 status overwrite (#33,
+  the lane's first live exercise) and the manager's ORDER 003 inbox
+  append (#34).
 - **#32 — v1.2.0 release cut**: `KIT_VERSION`/pyproject/dist-header →
   1.2.0 (byte-pinned); CHANGELOG `[Unreleased]` → `## [1.2.0] -
   2026-07-09` with the KF-5 statement (standing B1 PASS row cited —

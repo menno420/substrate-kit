@@ -72,6 +72,26 @@ def test_short_circuit_reports_green_and_no_paths_ignore():
     assert SKIP_IF in gate
 
 
+def test_fast_lane_runs_the_status_scoped_gate():
+    # The fleet-adoption-review fix (2026-07-09): a control-only diff edits
+    # exactly the files check_status_current validates, so the lane must NOT
+    # skip that one checker — a heartbeat-deleting control PR used to ride
+    # the lane GREEN while `check --strict` on the same tree exits 1, and the
+    # red landed on the NEXT unrelated PR instead. The lane now runs the
+    # scoped `check --strict --status-only` gate (stdlib-only, no
+    # setup-python, session-log-free — heartbeat PRs still need no card).
+    text = _ci_text()
+    step = "- name: Control-status gate"
+    block = text.split(step, 1)
+    assert len(block) == 2, "fast lane misses the status-scoped gate step"
+    body = block[1].split("- name:", 1)[0]
+    # Runs ON the lane (== 'true'), not skipped by it.
+    assert "if: steps.lane.outputs.control_only == 'true'" in body
+    assert "check --strict --status-only" in body
+    # And stays cheap: plain system python3 against the vendored dist.
+    assert "python3 dist/bootstrap.py check --strict --status-only" in body
+
+
 def test_cold_smoke_walks_the_heartbeat_arc():
     text = _ci_text()
     # The smoke pins the KL-8 leg of the arc: still RED on the seed status,

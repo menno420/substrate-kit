@@ -571,3 +571,18 @@ def test_live_ci_workflow_carries_the_control_fast_lane():
     # And no live paths-ignore key anywhere — the short-circuit IS the skip
     # (the word appears only in the warning comment).
     assert "paths-ignore:" not in text
+
+
+def test_live_ci_workflow_fast_lane_still_gates_the_heartbeat():
+    text = live_ci_workflow()
+    # Fleet adoption review fix (2026-07-09): the lane must still run the
+    # scoped status gate — a control-only diff edits exactly the files
+    # check_status_current validates, so a checker-free lane let a
+    # heartbeat-deleting control PR merge green (red deferred onto the next
+    # unrelated PR). Plain system python3: setup-python is skipped on the
+    # lane, and the engine is stdlib-only by contract.
+    assert "python3 bootstrap.py check --strict --status-only" in text
+    step = text.split("- name: control-status gate", 1)
+    assert len(step) == 2, "planted gate misses the fast-lane status step"
+    body = step[1].split("- name:", 1)[0]
+    assert "if: steps.lane.outputs.control_only == 'true'" in body
