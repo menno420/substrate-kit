@@ -33,10 +33,14 @@ owner.**
    (fresh-label re-read saw `do-not-automerge`) — the #22 incident class is
    confirmed closed for this PR; the labeled-event disarm workflow covers
    any later arming.
-2. **Branch left "behind" main on purpose** (base moved when #25
-   auto-merged): the ruleset does not require up-to-date branches (P10
-   leaves it OFF), rulings.md has no conflict, and the PR-event CI tests
-   the merge result against latest main.
+2. **Stamp-discipline trip, caught by CI on the merge result and fixed**:
+   PL-011's provenance originally cited the literal `D-0006` id, and #25's
+   merge (mid-session) made `docs/current-state.md` that id's stamped home —
+   the `stamp` checker correctly held kit-quality red ("cited from 2
+   docs"). Fix: the provenance now names the ledger entry by band + PR +
+   path instead of the raw token (one-home rule kept intact). `origin/main`
+   was merged into the branch so every check ran on the true merge result
+   before the re-push.
 
 ### 💡 Session idea (dedup-checked against docs/ideas/ + roadmap)
 

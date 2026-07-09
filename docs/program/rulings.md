@@ -258,7 +258,9 @@
   superbot-next AND websites, stranded identically: planted docs still
   bannered with raw `${...}` slots, `session_count` 0, `.claude/` inert, no
   CI on main) + the owner directive routing the fix upstream into the kit
-  as P0; the enforcement mechanism is kit D-0006 / band KL-7 (kit PR #25).
+  as P0; the enforcement mechanism is the kit's band-KL-7 decision-ledger
+  entry (kit `docs/decisions.md`, shipped by kit PR #25 — the id itself
+  is stamped at its one home, `docs/current-state.md`).
   Owner ratification = the owner-reviewed merge of this ruling's own
   dedicated `do-not-automerge` PR (§8.3 — a program-law change ships as its
   own PR, never bundled into a band PR).
