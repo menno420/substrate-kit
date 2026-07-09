@@ -15,6 +15,15 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Gen-1 retro (inbox ORDER 005)**: `docs/retro/self-review-2026-07-09.md`
+  (every QUESTIONS.md question answered by ID, evidence-tied) +
+  `docs/retro/project-review-2026-07-09.md` (repo-verified state, the full
+  agent audit with discrepancies — incl. the telemetry harvest gap: 11
+  post-KL-3 session cards' `📊 Model:` lines never harvested — the
+  efficiency verdict, ⚑ owner actions, continuation plan). Docs-only.
+
 ## [1.4.0] - 2026-07-09
 
 New-capability release (MINOR): **configurable heartbeat paths** for
