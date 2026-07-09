@@ -1,0 +1,114 @@
+{
+  "graduation": {
+    "criteria": {
+      "blocking_questions": 0,
+      "critical_slots_filled_pct": 0.8
+    },
+    "soft_target_sessions": 50
+  },
+  "graduation_proposed": false,
+  "last_compaction_session": 0,
+  "mode": "active",
+  "mode_history": [
+    {
+      "date": "2026-07-09",
+      "mode": "active",
+      "session": 0
+    }
+  ],
+  "open_questions": [],
+  "project_id": "c24263e0f5f0",
+  "promotion_rights": "propose",
+  "quiet_sessions": 0,
+  "reflection_buffer": {
+    "active_count": 2,
+    "last_mined": "2026-07-09"
+  },
+  "review_log": [],
+  "session_count": 0,
+  "slot_values": {
+    "architecture_layers": {
+      "question_id": "Q-004",
+      "source": "user",
+      "value": "src/engine/ is the source of truth (stdlib-only; no print/assert/subprocess; atomic file writes); dist/bootstrap.py is GENERATED from it by src/build_bootstrap.py and byte-pinned by CI; templates live in src/engine/templates/ and render into planted docs; tests/ covers engine + dist equality; planted docs/ are output, never engine input. Import rule: engine modules import stdlib + each other only."
+    },
+    "doc_roots": {
+      "question_id": "Q-007",
+      "source": "confirmed:user",
+      "value": "docs"
+    },
+    "drift_resolution": {
+      "question_id": "Q-011",
+      "source": "user",
+      "value": "Source code and merged PRs win; fix the doc on sight in the same session (drift older than the reconciliation marker is a bug, not a backlog item)."
+    },
+    "integration_mode": {
+      "question_id": "Q-001",
+      "source": "user",
+      "value": "active"
+    },
+    "mutation_seam": {
+      "question_id": "Q-009",
+      "source": "user",
+      "value": "Every state mutation goes through the engine's transactional state backend (write-temp-then-atomic-replace; no partial writes); doc plants are skip-if-exists; the kit stages .claude/ material, the host installs it (no live .claude/ writes); the source-layout guardrail refuses writes to the kit's own tree \u2014 self-operation is exclusively via dist/bootstrap.py (plan \u00a73.3, D-6)."
+    },
+    "new_area_ownership": {
+      "question_id": "Q-013",
+      "source": "user",
+      "value": "docs/planning/ holds travelled program plans (owned by program sessions; the founding plan is read-only history except its \u00a712 decisions log); docs/program/ (lands KL-2) will hold canonical program law, owned by the lab loop."
+    },
+    "owner_profile": {
+      "question_id": "Q-008",
+      "source": "user",
+      "value": "Owner designs and steers; agents build end-to-end under program law: decide-and-flag (Q-0240) and never-wait (Q-0241 \u2014 silence = consent, control is reacting to what ships). Concise reports, flags over questions; reversible-by-default, telemetry-not-caps (Q-0249)."
+    },
+    "ownership_model": {
+      "question_id": "Q-006",
+      "source": "user",
+      "value": ".substrate/state.json is owned by the engine state backend (atomic, transactional writes only); dist/bootstrap.py is owned by src/build_bootstrap.py (regenerate, never hand-edit; CI byte-pins dist==fresh build); planted docs/ + .sessions/ are owned by sessions after the one-time \u00a73.3 seed, maintained like any consumer's; program law (docs/program/, KL-2) will be owned by the lab loop."
+    },
+    "primary_language": {
+      "question_id": "Q-003",
+      "source": "user",
+      "value": "Python 3.10+ (stdlib-only engine; no third-party runtime deps)"
+    },
+    "project_name": {
+      "question_id": "Q-002",
+      "source": "confirmed:user",
+      "value": "substrate-kit"
+    },
+    "review_ritual": {
+      "question_id": "Q-010",
+      "source": "user",
+      "value": "Every session opens a born-red session card PR early and flips it complete as the last commit; PRs merge on green CI (kit-quality) via auto-merge once \u00a73.2 item 7 makes the check required. Releases are semver GitHub Releases from v1.0.0 with bootstrap.py + sha256 + release.json assets (plan \u00a74); consumers pull upgrades, the lab never writes to consumer repos (KF-2)."
+    },
+    "staleness_review": {
+      "question_id": "Q-012",
+      "source": "user",
+      "value": "Reconciliation pass every 20 merged PRs (kit default; plan \u00a73.4 raises it to 30 at KL-1) \u2014 reconcile the ledger, disposition open PRs, plan the next band."
+    },
+    "verify_command": {
+      "question_id": "Q-005",
+      "source": "user",
+      "value": "python3.10 -m pytest tests/ -q"
+    }
+  },
+  "slots": {
+    "architecture_layers": "filled",
+    "doc_roots": "filled",
+    "drift_resolution": "filled",
+    "integration_mode": "filled",
+    "mutation_seam": "filled",
+    "new_area_ownership": "filled",
+    "owner_profile": "filled",
+    "ownership_model": "filled",
+    "primary_language": "filled",
+    "project_name": "filled",
+    "review_ritual": "filled",
+    "staleness_review": "filled",
+    "verify_command": "filled"
+  },
+  "stage": "integration",
+  "stance": "analysis",
+  "version": 1
+}
