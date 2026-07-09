@@ -51,6 +51,16 @@ jobs:
         run: |
           echo "control/**-only diff — heavy suite skipped; this required"
           echo "context still reports green so heartbeat PRs auto-merge."
+      - name: Control-status gate (fast lane — the one check a control diff must still pass)
+        if: steps.lane.outputs.control_only == 'true'
+        # The lane skips the heavy suite, but a control-only PR edits exactly
+        # the files check_status_current validates — without this step a
+        # heartbeat-deleting control PR merges GREEN and pre-reddens the NEXT
+        # unrelated full-suite PR (fleet adoption review 2026-07-09, finding
+        # 1). Scoped + stdlib-only on the system python3 (no setup-python, no
+        # pip install): the lane stays fast, and heartbeat PRs still need no
+        # session card (--status-only never touches the session-log seam).
+        run: python3 dist/bootstrap.py check --strict --status-only
 
       - uses: actions/setup-python@v5
         if: steps.lane.outputs.control_only != 'true'

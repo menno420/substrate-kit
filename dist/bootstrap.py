@@ -7785,7 +7785,14 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
     check is REQUIRED a workflow that never runs leaves the context pending
     forever and auto-merge jams (the fleet-protocol heartbeat-lane lesson,
     2026-07-09). The required context always reports; coordination writes
-    never pay the heavy suite and never need a session card.
+    never pay the heavy suite and never need a session card. The lane is
+    **not checker-free though**: it still runs the scoped
+    ``check --strict --status-only`` heartbeat gate, because a control-only
+    diff edits exactly the files ``check_status_current`` validates — the
+    original lane skipped the one checker that could catch a broken/deleted
+    heartbeat, deferring the red onto the next unrelated PR (the fleet
+    adoption review finding, 2026-07-09). Stdlib-only on the system
+    ``python3``, so the lane stays fast.
     """
     return (
         "# substrate-kit enforcement gate (LIVE — installed by "
@@ -7828,6 +7835,17 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         "          fi\n"
         '          echo "control_only=$control_only" >> "$GITHUB_OUTPUT"\n'
         '          echo "control-only diff: $control_only"\n'
+        "      - name: control-status gate (fast lane — a control diff must "
+        "still prove its heartbeat)\n"
+        "        if: steps.lane.outputs.control_only == 'true'\n"
+        "        # The lane skips the heavy gate, but a control-only PR edits\n"
+        "        # exactly the files the status checker validates — without\n"
+        "        # this step a heartbeat-deleting control PR merges GREEN and\n"
+        "        # pre-reddens the NEXT unrelated PR (kit fleet review\n"
+        "        # 2026-07-09). Scoped + stdlib-only on the system python3\n"
+        "        # (no setup-python): the lane stays fast, and heartbeat PRs\n"
+        "        # still need no session card.\n"
+        "        run: python3 bootstrap.py check --strict --status-only\n"
         "      - uses: actions/setup-python@v5\n"
         "        if: steps.lane.outputs.control_only != 'true'\n"
         "        with:\n"
@@ -9195,8 +9213,20 @@ def cmd_check(
     *,
     require_session_log: bool = False,
     session_log: Path | None = None,
+    status_only: bool = False,
 ) -> int:
     """Run every hygiene checker against ``target``.
+
+    ``status_only`` (CLI ``--status-only``) scopes the run to the control/
+    status heartbeat checker alone — the CI control fast lane's gate. A
+    control-only diff edits exactly the files ``check_status_current``
+    validates, so the lane must not skip that one checker (a
+    heartbeat-deleting control PR would merge green and pre-redden the NEXT
+    unrelated full-suite PR — the fleet-review 2026-07-09 finding), but it
+    must not pay the heavy suite either. Stdlib-only and session-log-free by
+    construction: heartbeat PRs carry no session card. The allowlist and
+    guard-fire telemetry apply exactly as in a full run, so a suppressed
+    status finding behaves identically on both lanes.
 
     Docs (badge/link/reachable), the decisions ledger + stamp discipline, the
     namespace/shadowing guard, the seam-authority fences, and the orientation
@@ -9235,20 +9265,26 @@ def cmd_check(
     """
     config = load_config(target)
     posture = "blocking" if strict else "advisory"
-    docs_root = target / config.docs_root
-    doc_findings = run_doc_checks(
-        docs_root,
-        config.badge_tokens,
-        config.readpath_docs,
-    )
     # The control-protocol heartbeat (KL-8): static gate findings (missing /
     # heartbeat-less status.md) ride the strict loop like every checker;
     # wall-clock staleness is advisory-only and handled below — a required CI
     # check must never red on time alone (see check_status_current's docstring).
     status_gate, status_advisories = check_status_current(target)
-    doc_findings = (
-        list(doc_findings) + _extra_check_findings(target, config) + status_gate
-    )
+    if status_only:
+        # --status-only: the fast lane's scoped gate (see docstring). Only
+        # the heartbeat checker runs; everything downstream (allowlist,
+        # guard fires, emit loop) is shared with the full run.
+        doc_findings = list(status_gate)
+    else:
+        docs_root = target / config.docs_root
+        doc_findings = list(
+            run_doc_checks(
+                docs_root,
+                config.badge_tokens,
+                config.readpath_docs,
+            )
+        )
+        doc_findings += _extra_check_findings(target, config) + status_gate
     entries, allow_findings = load_allowlist(target, config.state_dir)
     doc_findings, suppressed = apply_allowlist(doc_findings, entries)
     doc_findings += allow_findings
@@ -9300,12 +9336,22 @@ def cmd_check(
             findings=status_advisories,
         )
 
+    log_missing: list[str] = []
+    log_absent_fails = False
+    if status_only:
+        # The fast lane's scoped gate never touches the session-log seam: a
+        # control-only heartbeat PR carries no card by design (the lane's
+        # whole point), so gating on one here would deadlock every heartbeat.
+        if not doc_findings:
+            _emit("check: control-status check passed (--status-only).")
+            return 0
+        return 1 if strict else 0
     if session_log is not None:
         explicit = session_log if session_log.is_absolute() else target / session_log
         log = explicit if explicit.is_file() else None
     else:
         log = latest_session_log(target / config.sessions_dir)
-    log_missing: list[str] = check_log(log, config.session_markers) if log else []
+    log_missing = check_log(log, config.session_markers) if log else []
     # In gate mode an absent log is itself a failing condition, so it must feed
     # the exit code exactly like an incomplete one.
     log_absent_fails = log is None and require_session_log
@@ -10294,6 +10340,16 @@ def build_parser() -> argparse.ArgumentParser:
             "absent log, never a silent fallback"
         ),
     )
+    check.add_argument(
+        "--status-only",
+        action="store_true",
+        help=(
+            "run ONLY the control/ status heartbeat checker — the CI control "
+            "fast lane's scoped gate: a control-only diff edits exactly the "
+            "files this checker validates, so the lane must still prove the "
+            "heartbeat parses (stdlib-only, session-log-free)"
+        ),
+    )
     return parser
 
 
@@ -10330,6 +10386,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.strict,
                 require_session_log=args.require_session_log,
                 session_log=args.session_log,
+                status_only=args.status_only,
             )
         if args.command == "answer":
             return cmd_answer(args.target, args.slot, " ".join(args.value))
