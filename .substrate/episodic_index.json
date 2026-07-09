@@ -18,5 +18,77 @@
       "\u27f2"
     ],
     "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "kl1-ci-delta",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "kl-1",
+      "first",
+      "act",
+      "ci",
+      "repo-settings",
+      "delta",
+      "vs",
+      "plan",
+      "3",
+      "2",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "kl1-release-train",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "kl-1",
+      "release",
+      "train",
+      "v1",
+      "0",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2"
+    ],
+    "summary": "> **Status:** `complete` *(the whole KL-1 train: PR A = #8/f4609ea, PR B = #9,"
+  },
+  {
+    "slug": "kl2-governance-home",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "kl-2",
+      "program",
+      "governance",
+      "home",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(kit-side KL-2 in one PR \u2014 #12. The superbot"
+  },
+  {
+    "slug": "kl3-telemetry",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "kl-3",
+      "telemetry",
+      "substrate",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(kit-side KL-3 in one PR \u2014 #13.)*"
   }
 ]

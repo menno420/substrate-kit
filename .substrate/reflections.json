@@ -1,20 +1,50 @@
 [
   {
-    "id": "R-0001",
-    "lesson": "##  Self-initiated (deviations from the letter, per decide-and-flag)",
-    "evidence": "2026-07-09-kl0-dogfood-seed.md:L25",
+    "id": "R-0031",
+    "lesson": "Recurring attention on dist/bootstrap.py",
+    "evidence": "2026-07-09-kl0-dogfood-seed.md:L6, 2026-07-09-kl1-ci-delta.md:L10, 2026-07-09-kl1-release-train.md:L151, 2026-07-09-kl2-governance-home.md:L53, 2026-07-09-kl3-telemetry.md:L50",
     "tags": [
-      "flag"
+      "recurring-path"
     ],
     "status": "provisional",
     "date": "2026-07-09"
   },
   {
-    "id": "R-0002",
-    "lesson": "##  Session idea",
-    "evidence": "2026-07-09-kl0-dogfood-seed.md:L49",
+    "id": "R-0032",
+    "lesson": "Recurring attention on docs/current-state.md",
+    "evidence": "2026-07-09-kl0-dogfood-seed.md:L8, 2026-07-09-kl1-ci-delta.md:L44, 2026-07-09-kl1-release-train.md:L69",
     "tags": [
-      "idea"
+      "recurring-path"
+    ],
+    "status": "provisional",
+    "date": "2026-07-09"
+  },
+  {
+    "id": "R-0033",
+    "lesson": "Recurring attention on sessions/README.md",
+    "evidence": "2026-07-09-kl0-dogfood-seed.md:L17, 2026-07-09-kl3-telemetry.md:L39",
+    "tags": [
+      "recurring-path"
+    ],
+    "status": "provisional",
+    "date": "2026-07-09"
+  },
+  {
+    "id": "R-0034",
+    "lesson": "Recurring attention on src/build_bootstrap.py",
+    "evidence": "2026-07-09-kl1-ci-delta.md:L17, 2026-07-09-kl1-release-train.md:L36, 2026-07-09-kl2-governance-home.md:L39",
+    "tags": [
+      "recurring-path"
+    ],
+    "status": "provisional",
+    "date": "2026-07-09"
+  },
+  {
+    "id": "R-0035",
+    "lesson": "Recurring attention on src/engine/adopt.py",
+    "evidence": "2026-07-09-kl1-ci-delta.md:L47, 2026-07-09-kl1-release-train.md:L32",
+    "tags": [
+      "recurring-path"
     ],
     "status": "provisional",
     "date": "2026-07-09"
