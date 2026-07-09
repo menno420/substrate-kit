@@ -248,3 +248,34 @@
   expensive at row 1000.
 - scope: Amends (extends) PL-004; does not supersede it — every other part
   of the PL-004 discipline stands unchanged.
+
+## [PL-011] Adoption is not done until ENGAGED — the kit gates the last mile
+
+- status: decided
+- date: 2026-07-09
+- provenance: the independent fleet review (superbot
+  `docs/eap/fleet-review-2026-07-09.md` §4 — both fresh adopters,
+  superbot-next AND websites, stranded identically: planted docs still
+  bannered with raw `${...}` slots, `session_count` 0, `.claude/` inert, no
+  CI on main) + the owner directive routing the fix upstream into the kit
+  as P0; the enforcement mechanism is kit D-0006 / band KL-7 (kit PR #25).
+  Owner ratification = the owner-reviewed merge of this ruling's own
+  dedicated `do-not-automerge` PR (§8.3 — a program-law change ships as its
+  own PR, never bundled into a band PR).
+- verdict: A kit adoption reaches **done** only at the **ENGAGED** state:
+  every planted doc rendered (no UNRENDERED banner, no leftover `${...}`
+  slot), enforcement wired (a CI workflow on the host runs
+  `check --strict`), and the session loop running (`session_count ≥ 1` or a
+  real session card). A repo that plants the docs but never engages is a
+  **stranded adoption — an incident, not an onboarding**: program repos do
+  not count a consumer as adopted (done-claims, review verdicts, console
+  lanes) until its gate is green. Enforcement is mechanized, never exhorted
+  (PL-007): the kit's own `check --strict` carries a born-red post-adopt
+  gate that turns green exactly at ENGAGED, and `adopt` prints that gate's
+  findings as the onboarding checklist.
+- why: The decision half of the substrate travelled perfectly to both fresh
+  repos while the engagement half stranded in both, identically — invisible
+  precisely because adoption LOOKED complete; a doctrine this failure-prone
+  needs law plus a lock, not a next-steps line.
+- scope: Program-wide (every repo adopting the kit). Extends PL-007's
+  doctrine to the adoption lifecycle stage; amends nothing.
