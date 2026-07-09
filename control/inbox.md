@@ -32,7 +32,13 @@ do: Self-review retro. Answer EVERY question in docs/retro/QUESTIONS.md, by ID, 
 why: the owner is designing gen-2 Projects from gen-1's lived experience.
 done-when: self-review merged; status acks the order.
 
-## ORDER 006 · 2026-07-09T17:36Z · status: new
+## ORDER 006 · 2026-07-09T17:35Z · status: new
+priority: P1
+do: Capability-manifest band (owner directive 2026-07-09): sessions repeatedly fail to discover what they CAN do (claiming .mp4s unviewable though ffmpeg frame-extraction is standard; forgetting provisioned env tokens exist) and the owner has to remind them by hand. Ship kit-side: (1) a CAPABILITIES.md template planted on adopt (seed content: media→ffmpeg-frames→read recipe; printenv-before-assuming-no-credentials; the fleet's verified walls: tag/release/branch-delete 403s, env/routine/Project creation = owner clicks, self-merge classifier line, GraphQL quota) with the DISCOVERY RULE: check file → check env → attempt once + capture exact error → append the finding same session; (2) wire it into the orientation reading order (CLAUDE.md/CONSTITUTION templates) so every session reads it at start; (3) session-close nudge: "did you discover a new capability or wall this session? append it." Master copy lives at menno420/fleet-manager docs/capabilities.md — sync seed content from there.
+why: capability blindness burns owner attention as reminders and stalls sessions on imagined walls.
+done-when: template + orientation wiring + close-nudge in a release; adopters inherit on upgrade; status acks.
+
+## ORDER 007 · 2026-07-09T17:36Z · status: new
 priority: P2
 do: Two items from the fleet retro synthesis. (1) Dispose of PR #50 — the duplicate ORDER-005 execution (a second session saw the order still `new` and re-did it; #51 already merged the same paths). Close it with a supersede comment or salvage any unique content first. (2) The root cause is yours to fix kit-side: orders have no claim/lease — ship an order-claiming convention in the control band (e.g. an executing session appends `claimed-by: <session> <ts>` to its own status orders line FIRST and re-reads the inbox+sibling statuses before executing; document in control/README.md.tmpl) so two readers can't both execute the same `new` order. This was a realized failure today (your #50/#51), not a theoretical one.
 why: double-executed orders waste whole sessions; the fix is one convention line every adopter inherits.
