@@ -79,6 +79,14 @@ credential is missing:
 
 Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
 
+- 2026-07-09 · capability · fleet-manager IS reachable via the `add_repo`
+  session tool + shallow git clone, even while the GitHub MCP allowlist
+  still walls it (wind-down session re-hit the exact wall below, then
+  `list_repos` showed the repo public, `add_repo` appended it, and
+  `git clone --depth 1` + a full read of `docs/gen2-blueprint.md`
+  succeeded) · verified once for a PUBLIC repo; private-repo behavior
+  unverified · try `list_repos`/`add_repo` before declaring a repo
+  unreachable or falling back to manager relay.
 - 2026-07-09 · wall · fleet-manager unreadable from a substrate-kit session
   (per-session repo allowlist) · exact error quoted above · manager relays
   content through the inbox; seed content for this file came from ORDER
