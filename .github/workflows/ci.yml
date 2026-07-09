@@ -75,16 +75,22 @@ jobs:
           )
 
       - name: Session gate (§3.2 item 5 — dogfood, the born-red discipline)
-        # `check` picks the current session card as newest-by-mtime; a CI
-        # checkout flattens every mtime to checkout time, so restore each
-        # card's last-commit time first. A PR that adds an `in-progress`
-        # card stays red until the card flips complete.
+        # PR-diff-aware card selection: gate on the session card this PR/push
+        # actually touches, passed via `check --session-log` — this replaced
+        # the git-mtime-restore shim (a CI checkout flattens every mtime, so
+        # the engine's newest-by-mtime guess was arbitrary here). No card in
+        # the diff -> argument omitted -> the engine's mtime fallback
+        # (fail-open; on main every merged card is complete). A PR that adds
+        # an `in-progress` card stays red until the card flips complete.
         run: |
-          for f in .sessions/*.md; do
-            ts="$(git log -1 --format=%ct -- "$f")"
-            if [ -n "$ts" ]; then touch -d "@$ts" "$f"; fi
-          done
-          python3 dist/bootstrap.py check --strict --require-session-log
+          if [ -n "${{ github.base_ref }}" ]; then
+            range="origin/${{ github.base_ref }}...HEAD"
+          else
+            range="${{ github.event.before }}..${{ github.sha }}"
+          fi
+          card="$(git diff --name-only --diff-filter=d "$range" -- '.sessions/*.md' ':!.sessions/README.md' 2>/dev/null | tail -1)"
+          echo "session gate card: ${card:-<none - mtime fallback>}"
+          python3 dist/bootstrap.py check --strict --require-session-log ${card:+--session-log "$card"}
 
   # ── TEMPORARY legacy-context aliases (delete after P10 lands) ─────────────
   # Discovered live in PR #6: an owner-landed ruleset on main requires the

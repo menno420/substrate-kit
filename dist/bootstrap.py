@@ -1412,9 +1412,11 @@ host tunes the ritual without touching engine code.
 
 Unlike the host's version this port does **not** shell out to ``git`` to pick the
 "current" log — ``subprocess`` is banned in engine code and is host-CI sugar
-anyway. The current log is the newest ``*.md`` by mtime under ``sessions_dir``
-(the CLI also accepts an explicit ``--file``). Pure stdlib; returns the missing
-markers rather than printing.
+anyway. The current log is the newest ``*.md`` by mtime under ``sessions_dir``;
+CI workflows should prefer ``check --session-log <file>`` with the card the
+PR's diff touches, because a fresh checkout flattens every mtime to checkout
+time and silently degrades the newest-by-mtime guess. Pure stdlib; returns the
+missing markers rather than printing.
 """
 
 
@@ -2509,21 +2511,34 @@ def _ref_newest_logs(sessions_dir: Path, last_n: int) -> list[Path]:
 
 
 def _ref_clean_line(line: str) -> str:
-    """Strip bullets, blockquote marks, and the emoji markers from a mined line."""
-    text = line.strip().lstrip("-*> ").strip()
+    """Strip list/blockquote prefixes and the emoji markers from a mined line."""
+    text = _REF_LEAD_PREFIX_RE.sub("", line.strip())
     for mark in (_REF_IDEA_MARK, _REF_FLAG_MARK):
         text = text.replace(mark, "")
     return text.strip().lstrip(":").strip()
 
 
+# List/blockquote prefixes a marker-led line may open with: bullets ("- ", "* ",
+# "+ "), blockquotes ("> "), and ordered-list numbers ("1. ", "12) "), possibly
+# nested. Stripped before the marker-lead test below.
+_REF_LEAD_PREFIX_RE = re.compile(r"^(?:\s*(?:[-*+>]\s|\d{1,3}[.)]\s))*\s*")
+
+
 def _ref_marker_tags(line: str) -> list[str]:
-    """Return the candidate tags for a line's emoji markers (may be empty)."""
-    tags: list[str] = []
-    if _REF_IDEA_MARK in line:
-        tags.append("idea")
-    if _REF_FLAG_MARK in line:
-        tags.append("flag")
-    return tags
+    """Return the tags for a line *led* by an emoji marker (may be empty).
+
+    Only lines whose content starts at the marker — after list/blockquote
+    prefixes and emphasis characters — are lesson candidates. A mid-prose
+    marker mention ("see 💡 below for the durable fix", "its friction-index 💡
+    was left floating") is a cross-reference, not a lesson; harvesting those
+    produced junk fragments in the kit-lab band (observed 2026-07-09).
+    """
+    text = _REF_LEAD_PREFIX_RE.sub("", line).lstrip("*_ ")
+    if text.startswith(_REF_IDEA_MARK):
+        return ["idea"]
+    if text.startswith(_REF_FLAG_MARK):
+        return ["flag"]
+    return []
 
 
 def _ref_path_tokens(line: str) -> list[str]:
@@ -2569,14 +2584,16 @@ def mine_reflections(sessions_dir: Path, *, last_n: int = 5) -> list[dict]:
     Deterministic and read-only — never writes state; the caller decides what
     to promote into the buffer. Three extraction passes:
 
-      1. 💡 idea lines → ``{"lesson", "evidence", "tags": ["idea"]}``.
-      2. ⚑ flag lines → the same shape, tagged ``flag``.
+      1. 💡-led idea lines → ``{"lesson", "evidence", "tags": ["idea"]}``.
+      2. ⚑-led flag lines → the same shape, tagged ``flag``.
       3. Any file path cited in >= 2 different logs → one
          ``Recurring attention on <path>`` candidate.
 
-    Lines containing ``[DEPRECATED]`` are skipped entirely; ``#``-prefixed
-    heading lines never become lesson candidates (passes 1–2) but their path
-    tokens still feed pass 3.
+    Passes 1–2 require the marker to *lead* the line (after list/blockquote
+    prefixes) — a mid-prose marker mention is a cross-reference, never a
+    lesson. Lines containing ``[DEPRECATED]`` are skipped entirely;
+    ``#``-prefixed heading lines never become lesson candidates (passes 1–2)
+    but their path tokens still feed pass 3.
     """
     candidates: list[dict] = []
     sightings: dict[str, dict[str, str]] = {}
@@ -7496,7 +7513,13 @@ def _adopt_sessions_readme(markers: list[dict[str, str]]) -> str:
         "drafted section appended. A draft is a starting point, not a "
         "close-out: verify the evidence, resolve every `[[fill:]]` slot, "
         "then flip the Status badge — unresolved slots (and the `drafted` "
-        "status) keep the card counting incomplete.\n"
+        "status) keep the card counting incomplete.\n\n"
+        "**Guard recipes:** when a card records friction-to-guard material "
+        "for a *later* session (a deferred fix, a flagged footgun), carry a "
+        "one-line **guard recipe** naming the code anchors — function + file "
+        "+ the test target — not just the symptom. A symptom-only entry "
+        "costs the next session a re-derivation grep pass; a recipe lets it "
+        "land the guard in minutes.\n"
     )
 
 
@@ -7535,7 +7558,7 @@ def ci_snippet() -> str:
 LIVE_CI_RELPATH = ".github/workflows/substrate-gate.yml"
 
 
-def live_ci_workflow(interpreter: str = "python3") -> str:
+def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".sessions") -> str:
     """Return the LIVE (uncommented) CI gate workflow — the locked door.
 
     Unlike :func:`ci_snippet` (a commented example the host installs by hand),
@@ -7545,11 +7568,18 @@ def live_ci_workflow(interpreter: str = "python3") -> str:
     so the merge is **held red** until the session's journal is written and the
     whole hygiene suite passes. This is the forcing function that makes the
     memory ritual non-optional: a nag can be ignored, a failing required check
-    cannot. `fetch-depth: 0` gives the checkout full history (the gate itself is
-    git-free, but hosts commonly extend this workflow with diff-aware steps).
+    cannot. `fetch-depth: 0` gives the checkout the history the diff needs.
     A docs-only or bot PR that shouldn't need a session card is handled by the
     host adding a `paths-ignore:` or a label carve-out — kept strict by default
     on purpose (the discipline is the point).
+
+    The gate step is **PR-diff-aware**: a fresh CI checkout flattens every file
+    mtime to checkout time, so the engine's newest-by-mtime card guess is
+    arbitrary in CI (the kit's own CI once carried a git-mtime-restore shim for
+    exactly this). The workflow instead derives the card from what the PR/push
+    diff touches under ``sessions_dir`` and passes it via
+    ``check --session-log``; when the diff names no card the argument is
+    simply omitted and the engine's mtime fallback applies (fail-open).
     """
     return (
         "# substrate-kit enforcement gate (LIVE — installed by "
@@ -7573,7 +7603,22 @@ def live_ci_workflow(interpreter: str = "python3") -> str:
         "        with:\n"
         '          python-version: "3.x"\n'
         "      - name: substrate gate (docs + session-log required)\n"
-        f"        run: {interpreter} bootstrap.py check --strict --require-session-log\n"
+        "        # Gate on the session card THIS PR/push touches (CI flattens\n"
+        "        # mtimes, so the engine's newest-by-mtime guess is unreliable\n"
+        "        # here). No card in the diff -> no --session-log argument ->\n"
+        "        # the engine's mtime fallback (fail-open).\n"
+        "        run: |\n"
+        '          if [ -n "${{ github.base_ref }}" ]; then\n'
+        '            range="origin/${{ github.base_ref }}...HEAD"\n'
+        "          else\n"
+        '            range="${{ github.event.before }}..${{ github.sha }}"\n'
+        "          fi\n"
+        '          card="$(git diff --name-only --diff-filter=d "$range" -- '
+        f"'{sessions_dir}/*.md' ':!{sessions_dir}/README.md' 2>/dev/null "
+        '| tail -1)"\n'
+        '          echo "session gate card: ${card:-<none - mtime fallback>}"\n'
+        f"          {interpreter} bootstrap.py check --strict --require-session-log"
+        ' ${card:+--session-log "$card"}\n'
     )
 
 
@@ -7715,7 +7760,10 @@ def adopt(
         _adopt_plant(
             root / LIVE_CI_RELPATH,
             LIVE_CI_RELPATH,
-            live_ci_workflow(config.interpreter_for_checks or "python3"),
+            live_ci_workflow(
+                config.interpreter_for_checks or "python3",
+                sessions_dir=config.sessions_dir,
+            ),
             report,
         )
 
@@ -8721,6 +8769,7 @@ def cmd_check(
     strict: bool,
     *,
     require_session_log: bool = False,
+    session_log: Path | None = None,
 ) -> int:
     """Run every hygiene checker against ``target``.
 
@@ -8735,6 +8784,16 @@ def cmd_check(
     makes the memory ritual non-optional, not merely advised). Uses config
     defaults if ``target`` has no ``substrate.config.json`` yet, so a project
     can lint before onboarding.
+
+    ``session_log`` (CLI ``--session-log``) names the card to gate on
+    *explicitly* — the diff-aware selection a CI workflow derives from which
+    ``<sessions_dir>/*.md`` file the PR adds/changes. Without it the gate
+    falls back to newest-by-mtime, which a fresh CI checkout silently degrades
+    (every mtime flattens to checkout time), the trap that used to require a
+    git-mtime-restore shim before this step. A named file that does not exist
+    is treated exactly like an absent log (advisory by default, a hard failure
+    under ``require_session_log``) — an explicit selection never silently
+    falls back to a different card.
 
     Two KL-3 mechanisms ride the finding loop (plan §5.3):
 
@@ -8790,19 +8849,27 @@ def cmd_check(
             findings=doc_findings,
         )
 
-    log = latest_session_log(target / config.sessions_dir)
+    if session_log is not None:
+        explicit = session_log if session_log.is_absolute() else target / session_log
+        log = explicit if explicit.is_file() else None
+    else:
+        log = latest_session_log(target / config.sessions_dir)
     log_missing: list[str] = check_log(log, config.session_markers) if log else []
     # In gate mode an absent log is itself a failing condition, so it must feed
     # the exit code exactly like an incomplete one.
     log_absent_fails = log is None and require_session_log
     if log is None:
+        if session_log is not None:
+            absent = f"--session-log {session_log} does not exist"
+        else:
+            absent = f"no session log under {config.sessions_dir}/"
         if require_session_log:
             _emit(
-                f"check: MERGE HELD — no session log under {config.sessions_dir}/ "
+                f"check: MERGE HELD — {absent} "
                 "(--require-session-log): write one before merging.",
             )
         else:
-            _emit("check: no session log found yet (advisory — not a failure).")
+            _emit(f"check: {absent} (advisory — not a failure).")
     else:
         rel = log.relative_to(target) if log.is_relative_to(target) else log
         if log_missing:
@@ -8813,11 +8880,14 @@ def cmd_check(
         # The session gate is a guard too (the kit's flagship one) — its
         # fires feed B3 like any checker's. Never allowlistable, though.
         if log_absent_fails:
+            if session_log is not None:
+                absent = f"--session-log {session_log} does not exist"
+            else:
+                absent = f"no session log under {config.sessions_dir}/"
             gate_finding = Finding(
                 "",
                 "session-log",
-                f"no session log under {config.sessions_dir}/ "
-                "(--require-session-log)",
+                f"{absent} (--require-session-log)",
             )
         else:
             log_rel = str(log.relative_to(target)) if log.is_relative_to(target) else str(log)
@@ -9746,6 +9816,16 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="fail (not just advise) when the session log is missing — the CI gate mode",
     )
+    check.add_argument(
+        "--session-log",
+        type=Path,
+        default=None,
+        help=(
+            "gate on this session card explicitly (e.g. the card the PR's diff "
+            "touches) instead of newest-by-mtime; a missing file counts as an "
+            "absent log, never a silent fallback"
+        ),
+    )
     return parser
 
 
@@ -9781,6 +9861,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.target,
                 args.strict,
                 require_session_log=args.require_session_log,
+                session_log=args.session_log,
             )
         if args.command == "answer":
             return cmd_answer(args.target, args.slot, " ".join(args.value))

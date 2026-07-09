@@ -55,6 +55,23 @@ story, the frontmatter keeps the score.
   dedicated ruling PR (its own PR — a program-law change is never bundled
   into a band PR).
 
+## Shipped (survive window open)
+
+(Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
+after the 30-day window, `reverted` otherwise.)
+
+- [PR-diff-aware session-gate card selection](session-gate-diff-aware-selection-2026-07-09.md)
+  — **shipped** kit PR #19 (2026-07-09): `check --session-log <file>` + the
+  diff-derived card in kit CI and the planted `substrate-gate.yml`; the
+  mtime-restore shim class deleted. Window closes 2026-08-08.
+- [Reflection miner: line-start markers only](reflection-miner-line-start-markers-2026-07-09.md)
+  — **shipped** kit PR #19 (2026-07-09): mid-prose 💡/⚑ fragments no longer
+  mine as junk lessons. Window closes 2026-08-08.
+- [Guard recipes in session cards](session-card-guard-recipes-2026-07-09.md)
+  — **shipped** kit PR #19 (2026-07-09): friction→guard entries carry
+  function + file + test anchors; convention in both `.sessions/README`s.
+  Window closes 2026-08-08.
+
 ## Historical / pointer stubs
 
 (Link-resolution stubs for travelled docs — canonical copies live in the
