@@ -49,6 +49,12 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- [CHANGELOG Unreleased-section structure checker](changelog-unreleased-structure-checker-2026-07-09.md)
+  — state: captured; origin: lab (run close-out 2026-07-09 — the docs-drift
+  audit found the same mid-section `### Fixed` insertion made twice
+  independently, PR #14 on main + PR #17's pending patch); next: a
+  groomed-ideas increment ships checker + test + CI step (guard recipe in
+  the file); sequenced AFTER #17 merges.
 - [Pinned feed contract — doctrine for cross-repo committed-artifact seams](pinned-feed-contract-doctrine-2026-07-09.md)
   — state: captured; origin: consumer:menno420/superbot (pattern proven
   end-to-end in superbot PR #1884 + websites PR #11 — the first consumer-side

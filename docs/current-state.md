@@ -11,7 +11,7 @@
 *(dated snapshot: 2026-07-09)*
 
 - The kit engine is finished + enforced: the full test suite at `tests/` is green
-  (535 tests after KL-3); `src/engine/` is stdlib-only, `dist/bootstrap.py` is
+  (618 tests after groomed-ideas-1, PR #19); `src/engine/` is stdlib-only, `dist/bootstrap.py` is
   generated and byte-pinned by the dist-equality test. Do not re-audit without a
   reported regression.
 - **KL-0 is DONE** (founding plan §10 band zero): the repo exists, the kit is seeded,
@@ -27,9 +27,14 @@
   verb** (archive-first, hash-based doc diff, `--apply-docs` covenant,
   `--rollback`); `_ENGINE_MANIFEST` dropped; `reconciliation_prs` default → 30.
   **D2 is now FULLY done**: the consumer pin PRs merged — superbot #1879
-  (`substrate.config.json` with `kit_version: 1.0.0` next to its in-tree copy)
-  and superbot-next #42; superbot-next #44 additionally upgraded its vendored
-  dist to the released v1.0.0.
+  (`substrate.config.json` with `kit_version: 1.0.0`; the in-tree
+  `substrate-kit/` copy it sat next to was then REMOVED in superbot #1882 —
+  the pin + vendored dist is superbot's only kit presence now) and
+  superbot-next #42; superbot-next **#46** additionally upgraded its
+  vendored dist to the released v1.0.0 (verified live: its first leg #44
+  merged prematurely with only the born-red card — the OLD dist's `check`
+  can't hold a card red; #46 "completes prematurely-merged #44" and shipped
+  the upgrade itself).
 - **KL-2 (governance home) is DONE both-sided** (plan §8 + §10 KL-2 row):
   kit-side PR #12 — `docs/program/` (the [PL-NNN] register PL-001…PL-009,
   README, canonical program collaboration-model + agent-decision-authority),
@@ -175,52 +180,70 @@ still renders from superbot's committed `console.json`. Exact steps:
 
 ## Next action
 
-**⚑ Owner blessing of the first benchmark rubric (👤, plan §5.0), then the
-B1 baseline firing.** KL-5's two build halves are done: the auto-drafted
-handoff merged (PR #16) and the `bench/` tree rides an intentionally-OPEN
-`do-not-automerge` PR — the benchmark-integrity law says the loop never
-merges its own rubric/tasks/seeds change, and the FIRST rubric version is
-owner-blessed. Merge that PR (or contest it on the PR thread) — **B1's
-first baseline firing waits for it** (T2→T4 per arm + T5, the post-auto-
-draft shape; run per `bench/README.md`, never by the session that authored
-the rubric).
+*(**Pending-only by convention** — a DONE item moves to "Recently shipped"
+on the next touch and never accretes here; adopted from the groomed-ideas-1
+⟲ review, implemented at the run close-out.)*
 
-**Band KL-6 status (console feeds + move) — the unblocked half is DONE
-(PR #18 + the superbot companion PR); the rest is a blocked ledger:**
+### Owner gates — each with its one-line unblock
 
-- ✅ **B4 ideas-frontmatter convention + `check_idea_index.py`** (kit PR #18,
-  same-PR per §5.4): frontmatter on every `docs/ideas/` entry, checker in
-  kit-quality, entries migrated, planted `ideas-README` template updated.
-- ✅ **Exporter `telemetry` family + the declared "Kit lab — benchmarks &
-  guards" lane** — superbot-side (the exporter lives there:
-  `scripts/export_dashboard_data.py` + `botsite/console/console.js`), see
-  the companion superbot PR.
-- ⛔ **Kit-lab lane real data** — blocked on the bench PR's owner blessing
-  (`bench/results/*/index.json` exists only on that open PR) **and** on
-  👤 P11-or-P13 for the cross-repo read; until then the lane is declared
-  with its exact contract, never fake rows.
-- ⛔ **B2/B3/B4 sweeps in the loop** — blocked on 👤 P13 (read-only
-  consumer scopes, KF-11); the B4 data model the sweep writes into is now
-  live (the frontmatter above).
-- ⛔ **P6 console move** — blocked on 👤 P5; exact steps in the owner-action
-  section above.
+1. **👤 Bless the bench rubric → merge PR #17** (plan §5.0;
+   `do-not-automerge`, CI-green, card complete): review `bench/rubric/*` on
+   the PR and merge it — or contest on the thread. **Unblocks the B1
+   baseline firing** (and the kit-lab console lane's first real data).
+2. **👤 P4 — arm the kit-lab loop**: Console → Schedules → paste the prompt
+   from `docs/operations/lab-loop.md` § Arming verbatim (cron `0 6 * * *`
+   UTC · fresh session per fire · Sonnet-class). **Unblocks D3** (≥3
+   scheduled fires each shipping a real run report). Full steps in the P4
+   section above.
+3. **👤 P10 — required-check swap**: in the `main` ruleset replace the two
+   legacy contexts with the single `kit-quality`. **Unblocks deleting the
+   two `legacy-alias-*` jobs** from `ci.yml` (agent queue item 5). Detail
+   in the P10 section above.
+4. **👤 P5 — create Railway project `kit-lab`** (portal-only; region
+   `europe-west4` · no spend caps per PL-005 · HQ `#railway-alerts` rule).
+   **Unblocks the P6 console move** (agent-built). Full steps in the P5
+   section above.
+5. **👤 P11 — flip the repo public** (KF-10; rode v1.0.0) **or veto → 👤
+   P13** (read-only consumer-scope PAT, KF-11). Either one **unblocks the
+   cross-repo reads**: kit data in the merged console AND the loop's
+   B2/B3/B4 sweeps.
+6. **👤 P8 — confirm the MIT license** (applied as the flagged ⚑ default at
+   KL-1): one word confirms, or name the replacement.
 
-**Post-band groomed-ideas increment (PR #19) — DONE:** three recorded ideas
-shipped in one PR — `check --session-log <file>` + PR-diff-aware card
-selection in the kit's `ci.yml` and the planted `substrate-gate.yml` (the
-git-mtime-restore CI shim is deleted and no longer travels to consumers);
-the reflection miner only harvests marker-LED 💡/⚑ lines (mid-prose junk
-fixed); the guard-recipe convention in both `.sessions/README`s. Each idea
-carries a B4 `shipped` frontmatter row in `docs/ideas/` (the PR #18
-convention exercised for real).
+### Agent queue — in order, as the gates open
 
-*(Done and no longer next: KL-4 — PR #14; KL-5 — PR #16 + the open bench PR,
-see Stability baseline; D3 waits only on 👤 P4 arming above; the `feature
-build` taxonomy ruling is a separate discuss-first PR —
-`docs/ideas/feature-build-task-class-2026-07-09.md`.)*
+1. **B1 baseline firing (post-#17 merge)**: run per `bench/README.md` —
+   T2→T4 per arm + T5, the post-auto-draft shape — **never by the session
+   that authored the rubric** (A-16); results append to
+   `bench/results/cold-start/index.json`. Same session: fix the
+   `[Unreleased]` heading order #17's CHANGELOG insert leaves behind
+   (flagged on the #17 thread at the run close-out).
+2. **Cut v1.1.0 (post-B1)**: deliberately deferred until B1 can fire —
+   **KF-5 makes benchmarks mandatory-to-run for a MINOR**; release via the
+   `release.yml` `workflow_dispatch` path (tag pushes 403 — see Review
+   rhythm).
+3. **The `feature build` task-class ruling** (PL-004 amendment,
+   `docs/ideas/feature-build-task-class-2026-07-09.md`): its own
+   discuss-first PR — a program-law change is never bundled into a band PR.
+4. **Remaining KL-6 blocked pieces, as gates open**: kit-lab console lane
+   real data (needs #17 **and** P11-or-P13 — until then the lane stays
+   declared-with-contract, never fake rows); B2/B3/B4 sweeps in the loop
+   (need P13; the B4 write-model is live since PR #18); P6 console move
+   (needs P5 — lab-side steps in the P5 section above).
+5. **Delete the two `legacy-alias-*` jobs from `ci.yml` (post-P10).**
+6. **superbot-next `📊 Model:` needle**: nothing to build — `upgrade` adds
+   the marker on that repo's next kit upgrade; verify it on that upgrade's
+   session card.
 
 ## Recently shipped (newest first)
 
+- **#20 — pinned-feed-contract doctrine (B4 capture)**: the cross-repo
+  committed-artifact seam doctrine captured as a routed idea
+  (`docs/ideas/pinned-feed-contract-doctrine-2026-07-09.md`) — pattern
+  proven end-to-end the same day in superbot #1884 (the console feed's
+  pinned contract doc) + websites #11 (consumer-side contract pass, which
+  caught a live dict-vs-list shape defect); next stop is a groomed-ideas
+  increment shipping the doctrine note.
 - **#19 — groomed-ideas-1**: diff-aware session-gate selection
   (`check --session-log`; diff-derived card in kit CI + the planted
   `substrate-gate.yml`; mtime shim deleted); reflection-miner line-start
@@ -235,8 +258,10 @@ build` taxonomy ruling is a separate discuss-first PR —
   planted `ideas-README` template documents the convention (dist
   regenerated); `telemetry/*.jsonl merge=union` gitattribute (append-only
   rows never conflict across parallel sessions); 👤 P5/P6 owner steps + the
-  KL-6 blocked ledger in this file; suite 588 → 611. Companion superbot PR:
-  exporter `telemetry` family + the declared kit-lab lane.
+  KL-6 blocked ledger in this file; suite 588 → 611. Companion superbot PR
+  #1883: exporter `telemetry` family + the declared kit-lab lane (its row
+  contract then pinned by superbot #1884 + read consumer-side in websites
+  #11 — see the #20 row above).
 - **#16 — KL-5 (1/2) auto-drafted handoff**: `src/engine/loop/handoff.py`
   (session-start anchor; evidence gathering — mtime scan + pure-file-parse
   git HEAD; drafted skeleton / appended close-out; `draft` verb); the
