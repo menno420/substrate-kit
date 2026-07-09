@@ -17,12 +17,21 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
-- **Gen-1 retro (inbox ORDER 005)**: `docs/retro/self-review-2026-07-09.md`
-  (every QUESTIONS.md question answered by ID, evidence-tied) +
-  `docs/retro/project-review-2026-07-09.md` (repo-verified state, the full
-  agent audit with discrepancies — incl. the telemetry harvest gap: 11
-  post-KL-3 session cards' `📊 Model:` lines never harvested — the
-  efficiency verdict, ⚑ owner actions, continuation plan). Docs-only.
+- **Coordinator-lane retro companions** (ORDER 005, twin execution):
+  `docs/retro/self-review-2026-07-09-coordinator-lane.md` +
+  `docs/retro/project-review-2026-07-09-coordinator-lane.md` — the
+  parallel coordinator-spawned lane's independent answers + the
+  session-side agent audit (35-session fact ledger, model split, stall
+  census) cross-checked against the repo with discrepancies named (incl.
+  the telemetry harvest gap: 11 post-KL-3 cards' Model lines never
+  harvested). Docs-only.
+
+- **Gen-1 retro self-review + project review** (inbox ORDER 005):
+  `docs/retro/self-review-2026-07-09.md` — every `docs/retro/QUESTIONS.md`
+  question answered by ID with PR/commit/file evidence — and
+  `docs/retro/project-review-2026-07-09.md` — true current state, the full
+  agent audit (every session, with stall/death causes classified), the
+  honest efficiency verdict, ⚑ owner actions, and the continuation plan.
 
 ## [1.4.0] - 2026-07-09
 

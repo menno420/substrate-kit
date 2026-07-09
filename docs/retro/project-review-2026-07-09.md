@@ -1,303 +1,236 @@
-# Project review — substrate-kit gen-1 (2026-07-09)
+# Project review — substrate-kit (2026-07-09)
 
-> **Status:** `audit`
->
-> The owner-directed companion to the ORDER 005 self-review
-> ([self-review-2026-07-09.md](self-review-2026-07-09.md)): what this
-> Project is, its TRUE repo-verified state, the full agent audit
-> (coordinator-session facts cross-checked against the repo, discrepancies
-> named), the honest efficiency verdict, the ⚑ owner-actions list, and the
-> continuation plan. Repo facts verified live on 2026-07-09 (main at
-> `de77b6c`); session-side facts that the repo cannot confirm are marked
-> **"per coordinator"**.
+> **Status:** `audit` (dated snapshot — written by the ORDER 005 retro
+> session, same PR as [self-review-2026-07-09.md](self-review-2026-07-09.md);
+> facts verified against live GitHub + the working tree at
+> 2026-07-09 ~17:15Z; source code and merged PRs win over this file)
 
-## (a) What this Project is + true current state
+## (a) What this Project is, and its true current state
 
-**What it is.** substrate-kit is the fleet's **portable agent-memory
-substrate and the lab that improves it**: a stdlib-only engine
-(`src/engine/`, shipped as the single-file `dist/bootstrap.py`) that any
-repo adopts to get the working-agreement docs, the session loop (born-red
-cards, auto-drafted handoff), the checker gate (`check --strict`), the
-control/ coordination bus, telemetry, and the upgrade path — plus, in this
-repo only, the **benchmark harness** (`bench/`) that measures whether the
-kit actually helps, and the program-law register (`docs/program/`). The
-repo is its own consumer #0 and the substrate coordinator for the fleet
-(`docs/adopters.md`).
+**substrate-kit is the fleet's substrate coordinator — the kit-lab.** It
+builds, benches, and releases the substrate kit (`dist/bootstrap.py`, a
+generated single-file stdlib-only engine) that the fleet's repos adopt for
+session discipline, checks, telemetry, and the control/ coordination bus; it
+never writes to adopter repos (KF-2) and improves the kit from relayed
+adopter evidence. Founding charter:
+`docs/planning/kit-lab-founding-plan-2026-07-07.md`.
 
-**True current state — verified against the repo, not memory:**
+True state, verified live (not from memory):
 
-- **main = `de77b6c`** (#47); the full suite is **705 tests, green**
-  (verified locally this session: `python3 -m pytest tests/ -q`).
-- **5 releases exist, all published 2026-07-09** by github-actions via the
-  `release.yml` dispatch path: v1.0.0 (03:58Z) → v1.1.0 (13:26Z) →
-  v1.2.0 (14:05Z) → v1.3.0 (15:24Z) → v1.4.0 (16:57Z). Tags v1.0.0–v1.4.0
-  confirmed in-repo.
-- **44 merged PRs** in the #1–#48 range (#15, #36–#39 are issues; #26 open
-  by design; #30 closed unmerged, superseded). Since then: **#49** (this
-  session's pin-path seed fix, open + `do-not-automerge` by law), **#50**
-  (this retro, in flight), **#51** (a duplicate ORDER 005 PR from a
-  parallel session — see §(b) discrepancy 2).
-- **Benchmark: `bench/results/cold-start/index.json` has exactly 2 rows** —
-  run01 **PASS** (M1 unmeasurable, scorer-tainted) and run02 **FAIL**
-  (strict F-5; first clean M1 measurement regressed while M2/M3 favor ON
-  inside the 7k budget). Judge both times: `claude-opus-4-8`. Family below
-  the KF-8 trend threshold (needs ≥3).
-- **Control ritual:** `control/status.md` reports
-  `orders: acked=001,002,003,004,005 done=001,002,003,004` — ORDER 005 is
-  what this session executes. Inbox carries ORDERS 001–005 verbatim.
-- **Adopters** (`docs/adopters.md`): kit-lab (consumer #0, HEAD) ·
+- **v1.4.0 is the live release**; five version cuts all dated 2026-07-09
+  (v1.0.0–v1.4.0 in `CHANGELOG.md`, each published via the `release.yml`
+  `workflow_dispatch` path with bootstrap.py + sha256 + release.json
+  assets).
+- **41 merged PRs** (live PR list: #1–#48 range minus issue numbers
+  #15/#36–#39, minus open #26, minus closed-unmerged #30; #47 — the
+  environment-setup-script doc — merged 2026-07-09T17:02:51Z under the
+  owner account; whether it was hand-clicked or automation cannot be
+  determined from the repo). **38 of the 41 merged on 2026-07-09 alone.**
+- **Test suite: 705 passing** (`python3.10 -m pytest tests/ -q` on this
+  review's tree, matching the v1.4.0 card's count; grown 483 → 705 across
+  the bands).
+- **Bands KL-0…KL-8 complete** (`docs/current-state.md` § Stability
+  baseline, band-by-band with PRs); **inbox ORDERS 001–004 done, ORDER 005
+  is this PR** (`control/inbox.md` / `control/status.md`
+  `orders: acked=001-005 done=001-004`).
+- **Open PRs at review time:** #26 (PL-011 ruling text — owner-gated by
+  design, merge = ratification), #49 (make_seed pin-path fix,
+  `do-not-automerge`, opened 17:09Z — owner merge unblocks B1 run-3), plus
+  the in-flight ORDER 005 work itself — see the duplication note in (b).
+- **4 open friction issues** #36–#39 (filed by the fleet review, PR #35).
+- **B1 cold-start family at 2 rows**
+  (`bench/results/cold-start/index.json`): run-1 **PASS**, run-2 **FAIL
+  (strict F-5, advisory per KF-5)** — both judged by claude-opus-4-8; no
+  trend claim (KF-8 needs ≥3).
+- **Adopter registry** (`docs/adopters.md`): kit-lab HEAD (consumer #0) ·
   superbot-next v1.2.0 ENGAGED · websites v1.2.0 ENGAGED · superbot v1.0.0
-  deliberate pin-only · superbot-games two-lane (version not yet relayed) ·
-  trading-strategy + game repos planned.
-- **Open friction issues:** #36–#39 (fleet-review filings); #15 filed and
-  triaged (closed).
-- **Standing incidents ledger: two** (`docs/current-state.md` §Field
-  notes): the #22 label-race merge (guards since: #23 fresh-label re-read,
-  #24 disarm workflow + law label gate) and superbot-next#44's card-gate
-  slip (guard: the consumer's own dist upgrade).
-- **Owner-gated, still pending:** P4 (lab-loop cron), P5 (Railway), P8
-  (MIT confirm), P10 (required-context swap), P11-or-P13 (public flip or
-  read-only PAT), PL-011 ratification (#26), the rubric F-5 wording ruling,
-  and — new via #47 — the corrected web-environment setup script paste.
+  pin-only (deliberate; now four releases behind) · superbot-games — the
+  two-lane adopter, version/engagement not yet relayed · trading-strategy
+  planned.
+- **Two incidents on 2026-07-09** — kit#22 (label-race auto-merge of a law
+  PR) and superbot-next#44 (65-second merge on an in-progress card) — both
+  guarded since (`docs/reports/2026-07-09-kit-lab-run.md` §3).
 
-## (b) Agent audit — every session, cross-checked
+## (b) Agent audit — every session that worked this Project
 
-**Model provenance (authoritative session-side, per coordinator; repo
-corroboration noted):** the kit-lab coordinator session runs on
-**claude-fable-5**; every spawned build/collect/record worker inherited
-**claude-fable-5** unless deliberately overridden; the **12 benchmark ARM
-sessions ran claude-sonnet-5** (deliberate: same model both arms per the
-rubric); the **2 benchmark judges ran claude-opus-4-8** (deliberate:
-stronger than the arms, independent). Repo corroboration: all 10
-`telemetry/model-usage.jsonl` rows say `fable-5 · high`; every completed
-session card's `📊 Model:` line says fable-5; both bench index rows record
-`judge_model: claude-opus-4-8`. **The arm models are NOT independently
-verifiable from the repo** (run manifests carry no model field) — sonnet-5
-for arms stands as "per coordinator". ~40 workers total per coordinator;
-the repo cannot count sessions that produced no artifact.
+Model attribution is exactly as strong as the repo's evidence: the `📊
+Model:` line convention began at KL-3 (PR #13), so **everything earlier is
+honestly "cannot be determined"**. Where a card exists it is cited; PR
+timestamps are from the live API. Stall/death causes are classified **(a)
+our instructions/setup · (b) platform limit/bug · (c) the work itself**.
 
-**Session-by-session** (coordinator facts 1–35, verified where the repo
-can; classification (a) = our setup/pattern, (b) = platform):
+| Session (card) | PRs | Model (evidence) | Outcome / incidents |
+|---|---|---|---|
+| Repo population + CI + CODEOWNERS (no cards — pre-card era, 2026-07-08) | #1–#3 | cannot be determined (no card, no telemetry existed) | Clean; driven by the coordinator session. |
+| KL-0 dogfood seed (`2026-07-09-kl0-dogfood-seed.md`) | #4/#5 | cannot be determined — card predates the KL-3 Model-line convention | Card-only PR #4 auto-merged alone 15 s after open (**no required checks existed yet** — cause (a) setup). |
+| KL-1 CI delta (`2026-07-09-kl1-ci-delta.md`) | #6 | cannot be determined (no Model line) | Friction: direct api.github.com 403 (b); 405 revealing the owner-landed legacy required contexts (a+b) → alias bridge jobs. |
+| KL-1 release train (`2026-07-09-kl1-release-train.md`) | #7–#11 → v1.0.0 | cannot be determined (no Model line) | #7 instant-merged red — skipped-check-satisfies-required footgun (b, with (a) alias design); #9 auto-merged pre-close-out (a); tag-push HTTP 403 → dispatch path (b). |
+| KL-2 governance home (`…kl2-governance-home.md`) | #12 | fable-5 · high · docs-only + test writing (compound, off-taxonomy class) | Clean. |
+| KL-3 telemetry (`…kl3-telemetry.md`) | #13 | fable-5 · high · kernel/architecture design | Clean; Model-line convention starts here. |
+| KL-4 lab loop + friction (`…kl4-lab-loop.md`) | #14 | fable-5 · high · kernel/architecture design | Clean (issue #15 filed + triaged same day). |
+| KL-5 auto-draft (`…kl5-auto-draft.md`) | #16 | fable-5 · high · kernel/architecture design | Clean. |
+| KL-5 bench tree (`…kl5-bench-tree.md`) | #17 | fable-5 · high · kernel/architecture design | `do-not-automerge` by design; owner-blessed + owner-merged after ~5¾ h (ledgered in `docs/decisions.md`). |
+| KL-6 unblocked (`…kl6-unblocked.md`) | #18 | fable-5 · high · kernel/architecture design | Clean. |
+| Groomed ideas 1 (`…groomed-ideas-1.md`) | #19 | fable-5 · high · kernel/architecture design | Clean. |
+| Pinned-feed idea (`…pinned-feed-contract-idea.md`) | #20 | fable-5 · high · idea/planning | Clean. |
+| Run close-out (`…run-closeout.md`) | #21 | fable-5 · high · docs-only | Undercounted incidents (1 vs the true 2) — corrected by #24. |
+| PL-004 feature-build (`…pl004-feature-build.md`) | #22 | fable-5 · high · feature build | **Incident kit#22**: `do-not-automerge` law PR auto-merged via the enabler's stale-label read + ~12-min runner-queue lag (a+b). |
+| Enabler-race hotfix (`…enabler-race-hotfix.md`) | #23 | fable-5 · high · runtime bugfix | Clean; verified merged via auto-merge as designed. |
+| Audit follow-ups (`…audit-followups.md`) | #24 | fable-5 · high · feature build | Clean; branch-delete 403 + permission-classifier denial hit and correctly abandoned (b). |
+| P0 engage gate (`…p0-adopt-engage-gate.md`) | #25 (+#26 opened) | fable-5 · high · feature build | Clean; #26 deliberately left open (owner gate). |
+| B1 record (`…b1-record.md`) | #28 | fable-5 · high · docs-only | Clean; recorder ≠ judge held. |
+| v1.1.0 release (`…v1.1.0-release.md`) | #29 | fable-5 · high · **release** (off-taxonomy class) | Clean. |
+| KL-8 control band (`…kl8-control-protocol-band.md`) | #31 | fable-5 · high · feature build | Clean; caught the silent MODULE_ORDER dist NameError live and pinned it. |
+| v1.2.0 release (`…v1.2.0-release.md`) | #32 | fable-5 · high · **release** (off-taxonomy class) | Clean. |
+| ORDER 002 status overwrite (no card — control-only fast-lane ride) | #33 | cannot be determined | Clean (23-s lane merge, by design). |
+| Fleet adoption review (`…fleet-adoption-review.md`) | #35 | fable-5 · high · review/verify | Clean; filed #36–#39; shipped the fast-lane status gate. |
+| Run-2 harness prep (`…run2-harness-prep.md`) | #40 | fable-5 · high · runtime bugfix | Clean. |
+| ORDER 003 (`…order003.md`) | #41 (+overwrite #42, no card) | fable-5 · high · feature build | Clean → v1.3.0. |
+| B1 run-2 record (`…b1-run2-record.md`) | #44 | fable-5 · high · docs-only | Clean; FAIL verdict recorded verbatim. |
+| ORDER 004 (`…order004.md`) | #46 (+overwrite #48, no card) | fable-5 · high · **feature build + release cut** (compound class) | Clean → v1.4.0; deferred ORDER 005 with a flagged priority deviation. |
+| Heartbeat protocol attempt (no card) | #30 — **closed unmerged** | cannot be determined | The lane's one abandoned PR: superseded same-day by the status-overwrite pattern (KL-8) — cause (a), protocol churn during adoption. |
+| The session that died at provisioning (no card — evidenced only by PR #47's body) | none — delivered nothing | cannot be determined (it never reached the repo) | Killed by the owner-configured environment setup script: assumed repo cwd + unguarded `pip install -r` on a repo with no requirements.txt; exit 1 ends the session — cause (a) owner-configured script bug + (b) platform behavior (setup exit 1 is fatal). |
+| Manager/coordinator inbox writes (Contents API, no sessions in-repo) | #27/#34/#43/#45 | cannot be determined from this repo | Clean; #34's 19-s unvalidated merge is issue #36 report 2. |
+| B1 bench **judge** (not a builder session) | — | **claude-opus-4-8**, recorded verbatim in both `bench/results/cold-start/*/report.md` | Grader ≠ builder per the allocation ladder; both verdicts recorded unedited. |
+| Env-setup doc session (PR body names session `…01Y5uPEhxhYUvC8qMpoDDvJ7` — a worker of this wake-up session) | #47 | fable-5 (inherited from this wake-up session) | Merged 17:02:51Z under the owner account after a branch update; who clicked is not determinable from the repo. |
+| **This wake-up session** (2026-07-09, this PR + its workers: repo survey, audit gather, the #47 steward above, this author, a status-overwrite worker to follow) | this PR | **claude-fable-5** (stated per repo convention as fable-5); all workers inherit it | In flight. |
 
-| # | Session (evidence) | Verdict + friction |
-|---|---|---|
-| 1 | Orientation scout (no repo artifact) | clean — per coordinator |
-| 2 | KL-0 (#4/#5, cards `kl0-dogfood-seed`) | clean; **incident: #4 instant-merged** — no required checks existed yet (a) |
-| 3 | KL-1 CI delta (#6) | clean; discovered the owner-landed legacy-name ruleset mid-session (a) |
-| 4 | KL-1 release train (#7–#11, v1.0.0) | one mid-work stop on **tag-push HTTP 403**; resumed; released via `release.yml` dispatch (b). Repo confirms: #7 card-only instant-merge, #11 carries the dispatch path, issue #15 report 2 |
-| 5 | PR #17 label check (read-only) | clean |
-| 6 | Consumer pins (superbot#1879, superbot-next#42) | clean — cross-repo, cited in `current-state.md` D2 |
-| 7 | KL-2 governance home (#12) | clean; **shared `/home/user` checkout collision** with a parallel worker → all later workers moved to scratchpad worktrees (a, fixed same day) |
-| 8 | superbot-next v1.0.0 upgrade (their #44/#46) | clean; **incident: their #44 premature merge** — old dist couldn't hold a card red (a); ledgered in `current-state.md` §Field notes |
-| 9 | KL-2 riders (superbot#1881) | clean; **~30 min lost to ~25-min-stale MCP PR reads** (b) |
-| 10 | superbot in-tree removal (superbot#1882) | **stalled twice** on background watchers that cannot wake a stopped agent; coordinator resumed both (a pattern + b semantics) |
-| 11 | KL-3 telemetry (#13) | clean |
-| 12 | KL-4 lab loop + friction (#14, issue #15) | clean |
-| 13 | KL-5 (#16 + #17) | clean; **caught the enabler label race live on #17** after a coordinator webhook nudge; disarmed by hand; guard shipped inside #17 |
-| 14 | KL-6 unblocked (#18 + superbot#1883) | one timer-stall (class as row 10); resumed; clean |
-| 15 | Groomed ideas (#19) | clean |
-| 16 | Console contract (superbot#1884 + websites#11 + kit#20) | clean; **found + fixed a live websites dict-vs-list dashboard bug** |
-| 17 | Run close-out (#21) | clean |
-| 18 | PL-004 discuss PR (#22) | **GOVERNANCE INCIDENT**: `do-not-automerge` PR merged mechanically — enabler armed from a stale pre-label event payload after a ~12-min runner-queue lag; the worker's disarm calls had landed pre-arm as no-ops. (a) our guard rode unmerged #17 + (b) stale-payload semantics. Contained same-hour by #23. Repo confirms: incident comment on #22, guards on main |
-| 19 | Enabler hotfix (#23) | one background-poll stall; resumed; clean; repo confirms #23 merged via auto-merge as designed |
-| 20 | Audit follow-ups + day report (#24) | one monitor stall; resumed; clean; **disproved the auditor's #23 API-merge suspicion** (verify-then-fix) |
-| 21 | Branch-deletion attempt (#24 card ⚑) | **fully blocked**: git push --delete 403, REST 403, GraphQL deleteRef disabled, no MCP tool. Zero deletions, honest report (b) |
-| 22 | P0 engagement gate (#25 + PL-011 #26) | clean; **bitten twice by our own guards** (born-red hold through a surprise #17 merge; stamp-discipline check) — guards working as designed |
-| 23 | #17 merge attempt | **DENIED by the auto-mode permission classifier** (relayed owner consent insufficient); resolved when the owner typed "merge 17" in-session; branch-prep worker merged (b — arguably correct trust boundary). Same classifier class later denied a worker-spawn including merging #26 → **#26 is now an owner one-click item** |
-| 24 | B1 run-1 (prep + 6 sonnet-5 cold arms + 3 collect workers + opus-4-8 judge + record #28) | clean pipeline; found 3 M1 scorer artifacts + the T5-headless limitation; **verdict PASS** (repo: index row 1, run dir) |
-| 25 | Control adopt worker → follow-up (#27 + #30) | first worker **stopped correctly at contract-missing** (#27 unmerged, 0 CI runs — manager's API-authored PR triggered no CI, (b)); follow-up landed #27 + heartbeat #30 (superseded, closed); one **~35-min runner-queue stall** on the legacy alias contexts (b) |
-| 26 | v1.1.0 release (#29) | one poller stall; resumed; **one flagged force-with-lease on its OWN branch** (rebase after #27); legacy-alias jobs cancelled by a queue stall needed `rerun_failed_jobs` (b) |
-| 27 | ORDER 002 control band (#31/#32/#33, v1.2.0) | clean; **live-proved the control fast lane (7-second CI)** on #33 |
-| 28 | Close-#30 worker | clean |
-| 29 | superbot-next v1.2.0 upgrade (their #69) | clean; ENGAGED end state; no kit bugs |
-| 30 | websites upgrade + de-strand (their #31) | clean; corrected the stale fleet-review premise (websites already had required CI); **found the `parse_model_line` shadowing bug** (fixed kit-side in #40) |
-| 31 | Harness/telemetry fixes (#40) | clean |
-| 32 | ORDER 003 (#41/#42, v1.3.0) | clean |
-| 33 | B1 run-2 (prep — **found the make_seed yield-keyword bug**, seed 424242→424243 deviation in the manifest `runner_notes`; ON-arm engagement forced by our own P0 gate; 6 sonnet arms; 3 collects; opus judge; record #44) | clean pipeline; **verdict strict-F-5 FAIL** (M1 regressed on the first clean measurement; M2/M3 ON in-budget) |
-| 34 | ORDER 004 (#46/#48, v1.4.0) | clean; `enable_pr_auto_merge` **rate-limited once**, retried OK (b) |
-| 35 | This worker — ORDER 005 + review + seed-fix #49 | in flight; frictions logged below |
+**⚠ Duplication note (live, as of ~17:15Z):** a sibling session
+(`…01CJfdy7YxUw8oXj4Wfngdyc` — the same session ID as the fleet-review §4
+rollout session) opened **PR #49** (the pin-path seed fix, correctly
+owner-gated) and then **PR #50 at 17:10:07Z — a second, parallel ORDER 005
+attempt targeting these same two file paths**. Two lanes picked up the same
+P1 order within minutes of each other; whichever lands second will conflict.
+This is itself gen-1 evidence for the retro's coordination findings (no
+claim/lease mechanism on orders — the inbox marks status `new` until the
+manager flips it, so two readers can both see "new" and both execute). This
+review proceeded per its own order; the collision is flagged here rather
+than silently raced.
 
-**Coordinator annex (verified where possible):** coordinator session model
-claude-fable-5 (per coordinator — no repo artifact). Sibling sessions
-today: "Verify kit-lab run output" (independent audit — its verdict is
-cited in the day report), "Fleet kit-adoption review" (**repo-confirmed**:
-kit#35 + issues #36–#39; superbot#1894 per coordinator), "Mirror fleet
-spec heartbeat format" (superbot#1898 — per coordinator, other repo), one
-inline read-only branch-list subagent (fable-5, ~104s, clean — per
-coordinator). The coordinator cannot determine child-session models from
-its side (the spawn API exposes none) — repo telemetry is the only
-cross-check, and it only covers sessions that ran `session-close` here.
+**Stall/death census:** one dead-at-provisioning session (a+b, above); one
+abandoned PR (#30, a); two premature-merge incidents (kit#22 a+b;
+superbot-next#44 — consumer-side, old vendored dist, a); zero sessions lost
+to the work itself (c). Where a fate or model is not knowable from the repo,
+the table says so — no invented attribution.
 
-**Discrepancies + repo-side additions vs the coordinator facts:**
+## (c) Retro answers
 
-1. **PR #47 is missing from the coordinator's list** — "Document the
-   corrected Claude Code on the web environment setup script" (merged
-   17:02Z, session `01Y5uPEhxhYUvC8qMpoDDvJ7`): a web session was killed
-   at provisioning by the environment's setup script (wrong cwd +
-   hard-fail on a missing `requirements.txt`) and a session documented the
-   corrected script in `docs/environment-setup-script.md` + a pending
-   owner action in `current-state.md`. The repo knows a casualty + a fix
-   the session-side ledger doesn't.
-2. **PR #51 — live duplicate of ORDER 005** (branch
-   `claude/laughing-franklin-ey1v37`, session `01S7eRG1Zz5irp4iuaAFWNA1`,
-   opened 17:11:50Z, ~90s after this session's #50): a parallel session
-   started the same retro lane. Flagged on #51 with a stand-down request;
-   gen-1 friction evidence for the claim-before-commit rule (self-review
-   F1.3).
-3. **Telemetry undercounts the run**: `telemetry/model-usage.jsonl` has
-   **10 rows** while 21+ completed session cards carry valid `📊 Model:`
-   lines — every card from the enabler hotfix (#23) onward went
-   unharvested (the harvest runs only inside `session-close`, which later
-   sessions didn't run here). Where rows exist they corroborate the
-   coordinator (all fable-5 · high); where they don't, the coordinator's
-   facts are the only record — exactly the fragility this retro exists to
-   surface.
-4. **"8 listed merged branches" is stale**: that was the #24-era count.
-   Today **25 stale head branches of closed PRs** exist (every `claude/*`,
-   `manager/*`, `docs/*` branch except open #26/#49/#50/#51's) — the
-   deletion blockade (row 21) plus five more sessions of merges. Exact
-   list in §(e).
-5. Minor: coordinator fact 24 says "record #28" under B1 run-1 — repo
-   confirms, and adds that #28 also filed the three harness follow-up
-   ideas the run-2 session then consumed. No contradiction, just the repo
-   being more complete.
-6. Everything else checked — PR numbers, verdicts, incident timelines,
-   release paths, and the #30 supersede all match the repo record.
-
-## (c) The ORDER 005 answers
-
-Every `docs/retro/QUESTIONS.md` question answered by ID:
-**[self-review-2026-07-09.md](self-review-2026-07-09.md)** (A1–A4 work &
-correctness · B1–B4 errors & friction, including the full error table ·
-C1–C4 efficiency · D1–D5 autonomy · E1–E4 protocol & environment · F1–F4
-redesign payload · G1–G3 kit addendum).
+The full gen-1 self-review — every `docs/retro/QUESTIONS.md` ID answered
+with evidence — is
+[**self-review-2026-07-09.md**](self-review-2026-07-09.md).
 
 ## (d) Honest efficiency verdict
 
-**Where the time actually went.** Build time was the majority and was
-productive (8 bands, 5 releases, a benchmark run twice, 3 consumer
-rollouts). The recoverable losses were almost entirely *waiting*:
+**Where time actually went** (derived from PR open→merge timestamps — the
+repo records no durations, see self-review C1): the day ran 02:33Z → 17:02Z
+with 38 merged PRs. The genuinely productive spine — bands KL-2…KL-8, the
+bench, the orders — moved at roughly one substantial PR per 25–35 minutes.
+The visible sinks: (1) **CI/merge mechanics and incident guard-building** —
+sessions #23 and #24 exist wholly because of incident #22, and the #7/#9/#10
+arc exists wholly because the required-check ruleset didn't match the
+shipped CI; add the legacy-alias runner burned on every one of 41 PRs. (2)
+**The ~5¾-h #17 blessing wait** (05:47→11:32Z) — the one long owner-gated
+stall, and per the day report it was **parallelized well**: seven PRs
+(#18–#24) merged inside that window, so the wall-clock cost to the lane was
+near zero even though the bench band's completion moved by half a day. (3)
+**Bench rework between runs** — run-1's M1 was unmeasurable (scorer taints),
+so PR #40 rebuilt scorer parts and run-2 repeated the measurement; a
+pre-run smoke would have collapsed that loop.
 
-- **2 × ~35-min runner-queue stalls** on the legacy alias required
-  contexts (sessions 25/26) — root cause P10, cleared by
-  `rerun_failed_jobs`;
-- **~30-min MCP-staleness poll** (session 9) — the PR had merged 25
-  minutes before the API said so;
-- **6 stall-resume roundtrips** (sessions 10×2, 14, 19, 20, 26) — each one
-  a stopped worker waiting on a watcher that cannot wake it, plus
-  coordinator time to notice and resume;
-- **1 rate-limit retry** (session 34) — trivial;
-- incident containment (#22 → #23/#24) — real time, but it bought the
-  guard stack and the honest incident ledger, so only partly "lost".
+**What I'd redo, in order:** (1) **P10 first — before any auto-merge use**:
+the required-check swap is the root cause under both incidents and the
+alias-job tax; it is one owner click and it was still pending at day's end.
+(2) **Land the engagement gate before inviting adopters**: both fresh
+adopters stranded half-engaged in exactly the shape KL-7 (PR #25) later made
+impossible — the gate was built as a P0 *reaction* to the stranding review
+rather than a precondition of the invitations. (3) **Bench harness smoke
+before run-1**: the seed sweep + scorer known-bad fixtures (now riding
+PR #49 / shipped in #40) would have made run-1's M1 measurable and saved the
+run-2 deviation.
 
-**What I'd redo, in order** (mirrors self-review C4): (1) **P10 swap on
-day one** — deletes the alias jobs and both 35-min stalls before they
-exist; (2) **scratchpad worktrees from the first worker** — deletes the
-/home/user collision; (3) **in-turn-polling doctrine in every worker
-prompt from the start** — deletes the 6 stall-resumes; (4) **control fast
-lane earlier** (with ORDER 001, not 002) — heartbeats were paying
-full-suite CI for half a day; (5) **needle byte-forms in the planted
-README from the start** — marker retrofits at `upgrade` cost every
-existing install a version lag.
+## (e) ⚑ Owner actions — exact steps, and what each unblocks
 
-## (e) ⚑ OWNER ACTIONS — exact clicks + what each unblocks
+1. **P10 — required-check swap** (root cause of both incidents).
+   github.com/menno420/substrate-kit → **Settings** → **Rules → Rulesets**
+   (or **Branches** → the `main` branch-protection rule, whichever the repo
+   uses) → edit the rule for `main` → under required status checks,
+   **remove** the two legacy contexts **"Kit test suite"** and
+   **"Cold-adoption smoke (adopt + check --strict)"** (these are the alias
+   jobs' display names in `.github/workflows/ci.yml` lines 226/238) →
+   **add** required check **"kit-quality"** (source: GitHub Actions) → save.
+   Leave "Require branches to be up to date" OFF. *Unblocks:* deleting the
+   two `legacy-alias-*` jobs from `ci.yml` (agent-queue item), stops paying
+   a duplicate runner per PR, and retires the incident class.
+2. **Auto-delete merged branches + clean the stale ones.** Settings →
+   **General** → scroll to **Pull Requests** → tick **"Automatically delete
+   head branches"** → then open the repo's **Branches** page and delete the
+   stale merged `claude/*` branches listed there (agents get HTTP 403 on
+   branch deletion — `.sessions/2026-07-09-audit-followups.md` flag 1).
+   *Unblocks:* branch hygiene without a recurring ⚑ line.
+3. **Ratify PL-011 — merge PR #26.** Open
+   github.com/menno420/substrate-kit/pull/26 → read the one-page ruling
+   ("adoption is not done until ENGAGED") → **Merge = ratification**; to
+   veto, comment on the PR instead. *Unblocks:* PL-011 becomes program law
+   on main; issue #37's "native-substrate consumer" state design follows
+   it.
+4. **Ratify or veto PL-010 retroactively** (it reached main via incident
+   #22, not review). Comment on PR #22 (a 👍 or "ratified" suffices per
+   `docs/current-state.md` owner-gate 2), or add a stamp block to
+   `docs/program/rulings.md` per that file's convention. To veto: say so —
+   a revert PR restores the 8-class taxonomy.
+5. **Rule the rubric F-5 wording** (pin path — it rules B1 run-3's
+   verdict). Read
+   `docs/ideas/rubric-f5-none-regressing-wording-2026-07-09.md` → reply
+   with **strict** ("none regressing", any M1 regression fails) or
+   **7k-budget** (the orientation budget is M1's yardstick). Note the pin
+   path: the wording-fix PR must carry `do-not-automerge` and your merge.
+6. **Merge PR #49** (one click — the make_seed keyword-safety fix +
+   prepare smoke; `bench/seeds/` is a pin path so owner merge =
+   ratification). *Unblocks:* B1 run-3 on a valid seed 424242.
+7. **Paste the environment setup script.** The corrected script is already
+   on main (`docs/environment-setup-script.md`, PR #47 — merged) — the
+   remaining step is owner-only: open the Claude Code web UI → this
+   Project's **environment settings** → replace the setup script with the
+   doc's fenced script verbatim → save. *Unblocks:* no more sessions dying
+   at provisioning (one already did — PR #47's body has the provision
+   log).
+8. **The standing platform gates** (all carried in `control/status.md` ⚑):
+   **P4** arm the lab loop (Console → Schedules → paste the prompt from
+   `docs/operations/lab-loop.md` § Arming, cron `0 6 * * *` UTC, fresh
+   session per fire — unblocks D3); **P5** create Railway project
+   `kit-lab` (region europe-west4, no spend caps per PL-005 — unblocks the
+   P6 console move); **P11** flip the repo public **or** **P13** a
+   read-only PAT (either unblocks cross-repo reads: the merged console +
+   B2–B4 sweeps); **P8** confirm MIT (one word).
+9. **Fleet-side clicks** (carried from the fleet review §5 in
+   `control/status.md`): make the kit gate a **required** status check on
+   superbot-next's main (its PRs #51/#68 merged red without it); decide
+   **superbot's upgrade** (deliberate v1.0.0 pin now four releases behind
+   v1.4.0); one glance at **websites** Settings → Rules to confirm its
+   `quality` check is required; rule the **cite-never-copy carve-out**
+   (fleet review §3.3 — pick shape 1/2/3; everything in §3.4 beyond the
+   no-conflict items waits on it).
 
-1. **Merge PR #26** (PL-011 ratification) — open
-   <https://github.com/menno420/substrate-kit/pull/26>, one click on
-   "Merge pull request". Merge = ratify; to veto, comment instead and a
-   session reverts the register note. **Unblocks:** the adoption-is-ENGAGED
-   law becoming citable program law.
-2. **Merge PR #49** (make_seed yield-keyword fix + prepare seed-suite
-   smoke; pin-path, CI-green, card complete) — open
-   <https://github.com/menno420/substrate-kit/pull/49>, one click.
-   **Unblocks: B1 run-3** (the seed generator can currently not serve seed
-   424242-class draws).
-3. **Rubric F-5 wording decision** — read
-   `docs/ideas/rubric-f5-none-regressing-wording-2026-07-09.md` (two
-   readings, A strict / B budget-purposive, one paragraph each) and answer
-   "A" or "B" in any channel. **Unblocks:** run-3's verdict landing under a
-   ruled reading instead of a disputed one.
-4. **P10 — required-context swap**: Settings → Rules → the `main` ruleset →
-   edit required status checks → **remove** "Kit test suite" and
-   "Cold-adoption smoke (adopt + check --strict)", **add** `kit-quality`
-   (source: GitHub Actions). Leave "Require branches to be up to date"
-   OFF. **Unblocks:** deleting the two `legacy-alias-*` jobs (agent does
-   it next session) and ends the alias-queue-stall class (~70 min lost
-   this run).
-5. **P4 — arm the lab loop**: Console → kit-repo environment → Schedules →
-   New schedule → paste the fenced prompt from
-   `docs/operations/lab-loop.md` § Arming verbatim → cron `0 6 * * *`
-   (UTC) → fresh session per fire ON → Sonnet-class model →
-   unrestricted-branch-push OFF, auto-fix PRs ON. **Unblocks:** D3 (the
-   self-running daily loop; ≥3 scheduled fires).
-6. **P5 — create Railway project `kit-lab`**: region `europe-west4`, no
-   spend caps (PL-005), notification rule → HQ `#railway-alerts`; then put
-   a project-scoped `RAILWAY_TOKEN` in the kit repo's environment.
-   **Unblocks:** the P6 console move (agent-built).
-7. **P8 — confirm MIT**: one word ("MIT ok") or name a replacement.
-   **Unblocks:** closing the license ⚑ carried since KL-1.
-8. **P11 or P13** — either flip the repo public (Settings → General →
-   Danger Zone → Change visibility) **or** veto and create a read-only
-   consumer-scope PAT for cross-repo reads. **Unblocks:** kit data in the
-   merged console + the loop's B2/B3/B4 sweeps.
-9. **Branch cleanup**: Settings → General → Pull Requests → check
-   **"Automatically delete head branches"** (prevents recurrence); then
-   delete the 25 stale branches of closed PRs — fastest via each closed
-   PR's "Delete branch" button, or Code → Branches: `populate-kit`,
-   `kit-ci`, `setup/codeowners`, `claude/kl0-dogfood-seed`,
-   `claude/kl0-dogfood-seed-2`, `claude/kl1-ci-delta`,
-   `claude/kl1-release-train`, `claude/kl1-upgrade-verb`,
-   `claude/kl1-close-guards`, `claude/kl1-release-dispatch`,
-   `claude/kl2-governance-home`, `claude/kl3-telemetry`,
-   `claude/kl4-lab-loop`, `claude/kl5-auto-draft`, `claude/kl5-bench-tree`,
-   `claude/kl6-unblocked`, `claude/groomed-ideas-1`,
-   `claude/pinned-feed-contract-idea`, `claude/run-closeout`,
-   `claude/pl004-feature-build`, `claude/enabler-race-hotfix`,
-   `claude/audit-followups-2026-07-09`, `claude/p0-adopt-engage-gate`,
-   `manager/control-plant`, `claude/b1-record-run01`,
-   `claude/v1.1.0-release`, `claude/control-protocol-adopt`,
-   `claude/kl8-control-protocol`, `claude/order002-status`,
-   `manager/inbox-2026-07-09-3`, `claude/fleet-adoption-review-2026-07-09`,
-   `claude/run2-harness-prep`,
-   `claude/order003-adopter-visibility-2026-07-09`,
-   `claude/order003-status-overwrite-2026-07-09`,
-   `manager/order-004-heartbeat-paths`, `claude/b1-run2-record-2026-07-09`,
-   `claude/fleet-retro-2026-07-09`,
-   `claude/order004-heartbeat-paths-2026-07-09`,
-   `claude/order004-status-overwrite-2026-07-09`,
-   `docs/web-env-setup-script` — **keep** the branches of open PRs
-   (#26 `claude/pl011-adoption-engaged`, #49
-   `claude/seed-fix-yield-keyword-2026-07-09`, #51
-   `claude/laughing-franklin-ey1v37`) until they resolve. (Agents cannot
-   do any of this: deletion is 403-blocked in-session — audit row 21.)
-   **Unblocks:** nothing functional; ends the clutter class permanently.
-10. **superbot upgrade decision**: superbot's deliberate pin-only stance
-    is now **4 releases behind** (v1.0.0 vs v1.4.0). Recommendation
-    (decide-and-flag): stay pin-only until the F-5 ruling + run-3, then
-    upgrade in one hop; say "upgrade now" to override. **Unblocks:** the
-    fleet's last non-ENGAGED adopter, whenever taken.
-11. **Web-environment setup script** (new, via PR #47): paste the guarded
-    script from `docs/environment-setup-script.md` into the environment's
-    "Setup script" field (owner-only settings dialog). **Unblocks:** no
-    more sessions killed at provisioning (one confirmed casualty).
+## (f) Continuation — zero owner input needed, in order
 
-## (f) Continuation — what proceeds without the owner
-
-The coordinator keeps executing; nothing below waits on a human:
-
-- **B1 run-3** fires as soon as #49 merges (and lands under the ruled
-  F-5 reading if the ruling arrives first — otherwise recorded under
-  strict-with-caveat exactly like run-2). Family reaches the KF-8
-  threshold (≥3 rows) at run-3.
-- **T5 probe redesign** — `docs/ideas/t5-headless-guard-surface-2026-07-09.md`
-  (two runs of "guard probe n/a headless" evidence) graduates from idea to
-  a planned harness change for run-3 or run-4.
-- **The daily lab loop's prompt is ready** (`docs/operations/lab-loop.md`)
-  — the moment P4 is armed it runs without further setup; until then,
-  manually-fired sessions cover the same duties.
-- **Inbox orders** continue to be acked and executed as they arrive
-  (the control ritual is proven through ORDER 005).
-- Groomed follow-ups queue behind those: the engagement checker's
-  comment-leniency fix (issue #36 report 1), the inbox append-only checker
-  (report 2), `adopt --lane` (the #46 idea, G1's fix), and the telemetry
-  write-at-card-commit convention (discrepancy 3).
+1. **Run-2 harness follow-ups, ordinary lane** — starts **immediately after
+   this PR lands**: the `run_ab.py prepare` RED→ENGAGED→GREEN engagement-arc
+   scripting (`docs/ideas/run-ab-prepare-engagement-arc-2026-07-09.md`), the
+   `render --live` CLAUDE.md gap
+   (`docs/ideas/render-live-claude-md-gap-2026-07-09.md`), and the
+   `_adopt_sessions_readme` Model-line checker false-red
+   (`docs/ideas/model-line-checker-false-red-2026-07-09.md`). (The fourth
+   follow-up — the make_seed fix + prepare seed-smoke — already rides
+   pin-path PR #49 and waits on the owner, not on the lane.)
+2. **B1 run-3** once PR #49 is owner-merged (or, if it stays open, fired
+   under the documented seed-bump deviation rule) — ideally after the F-5
+   wording ruling so the verdict lands under the ruled reading; family
+   reaches 3 rows and KF-8 trend claims become possible.
+3. **`_enforcement_wired` real-parse fix** (issue #36 report 1): strip
+   comment content before the substring test + known-bad fixture test —
+   closes the "ENGAGED with a dead door" hole.
+4. **Inbox-grammar validator** (issue #36 report 2): control-lane checker —
+   `control/inbox.md` diffs must be pure-append vs merge-base + ORDER-block
+   grammar; composes with the scoped status gate on the same fast lane.
+   (The ORDER-005 double-execution recorded in §(b) is fresh evidence for
+   also adding an order-claim convention while in there.)
