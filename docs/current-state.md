@@ -50,14 +50,51 @@
   installs); `telemetry/allocation-ladder.md` + `telemetry/README.md` seeded.
   **D6's kit-side half holds** (`model-usage.jsonl` non-empty — consumer #0's
   own session-close wrote the first row); the console lane render is KL-6.
+- **KL-4 (lab loop + friction) is DONE build-side** (plan §10 KL-4 row, §6,
+  §9.1; PR #14): `docs/operations/lab-loop.md` (the §6.2 9-part prompt,
+  paste-ready; definition table; `Run type: routine · lab`; kill switches;
+  the exact 👤 P4 arming steps); the **`friction` verb**
+  (`export`/`list`/`show` — envelope `{schema, repo, project_id,
+  kit_version, reports[reflection-records]}` → `.substrate/friction-outbox/`;
+  the engine writes + prints the issue-ready text, the session/agent files
+  the issue; `session-close` advises on pending envelopes); the `friction`
+  label live on this repo (auto-created with issue #15); **D4 PROVEN** —
+  superbot's hand-authored 👤 P9 report filed as friction issue #15 and
+  triaged same-day (report 1 → fixed in the lab-loop prompt's MCP-staleness
+  cross-check; report 2 → fixed in this file's release wording (dispatch
+  path is the agent default); report 3 → backlogged at
+  `docs/ideas/feature-build-task-class-2026-07-09.md`, routed
+  discuss-first). Also two field fixes from superbot-next#46: `upgrade`
+  from-version truth (header outranks a disagreeing pre-upgrade config pin;
+  honest rollback) + input self-cleanup (`bootstrap.py.new`/`release.json`
+  removed on completion, `--keep-inputs` opts out). Suite 535 → 557.
+  **D3 is PENDING owner arming (👤 P4)**: ≥3 consecutive scheduled fires
+  each shipping a real run report — the loop cannot arm itself.
 
 ## In flight
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- PR #13 — **KL-3 telemetry substrate** (this session). Tag `v1.0.0` rides PR
-  D **#11**'s merge commit `daaf29c` (the `workflow_dispatch` release path),
-  Release published with the 3 assets.
+- PR #14 — **KL-4 lab loop + friction** (this session). Friction issue #15
+  (superbot's first report) filed + triaged through it.
+
+## Pending owner action — 👤 P4 (arm the kit-lab loop) ⚑
+
+**The one action D3 waits on.** The KL-4 build is done; the routine cannot
+arm itself (console Schedules are owner-side). Exact steps — full detail in
+[`docs/operations/lab-loop.md`](operations/lab-loop.md) § Arming:
+
+1. Console → the kit repo's environment → **Schedules → New schedule**.
+2. Paste the fenced prompt block from `docs/operations/lab-loop.md`, verbatim.
+3. Cron `0 6 * * *` (UTC) · fresh session per fire ON.
+4. Model: **Sonnet-class** (D-11 default; the prompt handles Opus escalation).
+5. Unrestricted-branch-push OFF · auto-fix PRs ON.
+6. Kill switch = the Schedule's own pause toggle (PL-008 — unset breaks nothing).
+
+Optional rider (👤 P12): a user-PAT (kit-repo Issues:RW) if you want a
+`friction`-labeled issue to hot-fire the loop — app/integration-token-authored
+issues do not fire routines, so without it the triage SLA is the daily cron
+(≤24 h), which is the plan's stated default.
 
 ## Pending owner action — 👤 P10 (repo settings, §3.2 item 7)
 
@@ -94,19 +131,30 @@ when `bench/` exists (KL-5).
 
 ## Next action
 
-**Band KL-4 — the lab loop + friction protocol** (plan §10 KL-4 row, §6, §9;
-depends on KL-2, which is done): (1) `docs/operations/lab-loop.md` — the §6.2
-9-part prompt, paste-ready — and the routine armed (👤 P4, console-side);
-(2) the `friction export` verb + `.substrate/friction-outbox/` + issue
-filing per the §9.1 envelope; (3) the `friction` label + trigger on this
-repo; (4) first triage proven on superbot's hand-authored report (👤 P9);
-(5) the `Run type: routine · lab` report token. *(Done and no longer next:
-KL-2's superbot companion riders — superbot #1881; KL-1's consumer pin PRs —
-superbot #1879 + superbot-next #42, with superbot-next #44 upgrading its
-vendored dist to v1.0.0; KL-3 — PR #13, see Stability baseline.)*
+**Band KL-5 — the benchmark harness + the auto-drafted-handoff build** (plan
+§10 KL-5 row, §5.0/§5.1; depends on KL-3, done): (1) the
+**auto-drafted-handoff** build — session-close + stop-hook draft the card
+from git diff + verify state, drafted-vs-completed distinction in the
+checker (the ruled prerequisite for any new cold-start A/B); (2) the
+`bench/` tree — rubrics (**first version owner-blessed per §5.0**, authored
+on a `do-not-automerge` PR), T1–T5 task texts copied in from companion D §3
++ the F-5 pass bar (absolute URLs in `bench/README.md`), seed generator,
+`score_m1.py`, `run_ab.py`, `check_bench_integrity.py` (label-gate +
+append-aware results rule); (3) the **B1 baseline firing** (T2→T4 per arm +
+T5) recorded to `bench/results/`. ~3 PRs. *(Done and no longer next: KL-4 —
+PR #14, see Stability baseline; D3 waits only on 👤 P4 arming above; the
+`feature build` taxonomy ruling is a separate discuss-first PR —
+`docs/ideas/feature-build-task-class-2026-07-09.md`.)*
 
 ## Recently shipped (newest first)
 
+- **#14 — KL-4 lab loop + friction**: `docs/operations/lab-loop.md` (the
+  §6.2 prompt + P4 arming steps); `src/engine/loop/friction.py` + the
+  `friction` CLI verb (envelope → `.substrate/friction-outbox/`; agent
+  files the issue); session-close outbox advisory; `friction` label +
+  issue #15 filed and triaged (D4 proven); `upgrade` field fixes
+  (from-version truth + input self-cleanup, superbot-next#46);
+  `docs/ideas/feature-build-task-class-2026-07-09.md`; suite 535 → 557.
 - **#13 — KL-3 telemetry substrate**: `src/engine/loop/telemetry.py`
   (guard-fire JSONL writer + 📊-line parser/harvest, fail-open by contract) +
   `src/engine/checks/allowlist.py` (reasons-required `check-exceptions.yml`,
@@ -167,4 +215,4 @@ vendored dist to v1.0.0; KL-3 — PR #13, see Stability baseline.)*
 
 ## Review rhythm
 
-Every session opens a born-red session card PR early and flips it complete as the last commit; PRs merge on green CI (kit-quality) via auto-merge once §3.2 item 7 makes the check required — **until P10 is confirmed, prefer merging by hand (MCP) after verifying CI green on the final head**: the #7 incident proved arming can mean merging instantly. Releases are semver GitHub Releases from v1.0.0 with bootstrap.py + sha256 + release.json assets (plan §4); a release = push an annotated `vX.Y.Z` tag on a main commit whose CHANGELOG.md carries that version's section (`release.yml` refuses otherwise); published releases are never deleted — supersede (§6.4). Consumers pull upgrades (`bootstrap.py.new upgrade`), the lab never writes to consumer repos (KF-2).
+Every session opens a born-red session card PR early and flips it complete as the last commit; PRs merge on green CI (kit-quality) via auto-merge once §3.2 item 7 makes the check required — **until P10 is confirmed, prefer merging by hand (MCP) after verifying CI green on the final head**: the #7 incident proved arming can mean merging instantly. Releases are semver GitHub Releases from v1.0.0 with bootstrap.py + sha256 + release.json assets (plan §4); a release = the `release.yml` **`workflow_dispatch` run** on a main commit whose CHANGELOG.md carries that version's section (the run performs the refuse-to-release guards, creates the annotated `vX.Y.Z` tag in-Actions, and publishes) — this is the DEFAULT and only agent-runnable path, because the session git proxy refuses tag pushes with HTTP 403 (friction issue #15 report 2; v1.0.0 was cut this way); a hand-pushed tag still works owner-side; published releases are never deleted — supersede (§6.4). Consumers pull upgrades (`bootstrap.py.new upgrade`), the lab never writes to consumer repos (KF-2).

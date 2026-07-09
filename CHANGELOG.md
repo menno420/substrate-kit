@@ -17,6 +17,40 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **The `friction` verb + outbox** (band KL-4, plan §9.1 — MINOR, new CLI
+  capability): `friction export` collects the install's ⚑ friction records
+  (reflection buffer + a full session-log scan, deduplicated — D-14), wraps
+  them in the wire envelope `{schema: 1, repo, project_id, kit_version,
+  reports[reflection-records]}`, writes it to
+  `<state_dir>/friction-outbox/` (atomic, serial-numbered), and prints the
+  issue-ready title + body; `friction list` / `friction show <name>` drive
+  the drain. The engine (stdlib-only, credential-free) never files the
+  issue — the session/agent files it on the kit repo with the `friction`
+  label and deletes the drained file; `session-close` advises on pending
+  envelopes (best-effort, fail-open).
+- **The lab-loop routine doc** (`docs/operations/lab-loop.md`, plan §6):
+  definition table + the paste-ready 9-part prompt (daily cron `0 6 * * *`
+  UTC, fresh session per fire, Sonnet-class default / Opus escalation per
+  D-11, the scope fence, the `Run type: routine · lab` token, kill
+  switches) + the exact 👤 P4 arming steps. Git is the prompt's source of
+  truth; console copies are re-pasted on change.
+
+### Fixed
+
+- **`upgrade` from-version truth** (superbot-next#46): the vendored dist's
+  header now outranks a disagreeing `config.kit_version` pin when naming
+  `from_version` — a pin recorded BEFORE the first real upgrade (the D2
+  order) misreported the report/`last-upgrade.json` (pin said 1.0.0, the
+  archive honestly said `bootstrap-unknown.py`) and a rollback would have
+  restored the wrong pin. The hand-copied-new-dist case (header equals the
+  running `KIT_VERSION`) still trusts the pin; rollback now restores the
+  unrecorded sentinel `""` (never the literal `"unknown"`).
+- **`upgrade` input self-cleanup** (superbot-next#46): a completed upgrade
+  now removes the consumed `bootstrap.py.new` + the `release.json` next to
+  it instead of stranding them at the repo root; `--keep-inputs` opts out;
+  cleanup is fail-open and only ever touches the files the flow itself
+  consumed.
+
 - **Telemetry substrate** (band KL-3, plan §5.2/§5.3 — MINOR, new
   capability): guard-fire JSONL writers at the two local choke points
   (`check`'s finding loop, `hook`'s dispatch) appending §5.3 records to

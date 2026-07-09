@@ -2562,6 +2562,178 @@ def mine_reflections(sessions_dir: Path, *, last_n: int = 5) -> list[dict]:
         )
     return candidates
 
+# --- engine/loop/friction.py ---
+"""The friction-report protocol's consumer half (founding plan §9.1, KL-4).
+
+The context-delta loop, cross-repo: a consumer collects its kit-friction ⚑
+records, wraps them in a small envelope, and files them as a **GitHub issue
+labeled ``friction`` on the kit repo** (⚑ KF-7). The engine is stdlib-only
+and holds no network credentials, so the split is explicit:
+
+- **The engine (``friction export``)** builds the envelope and writes it to
+  the outbox at ``<state_dir>/friction-outbox/`` — the same outbox §9.1
+  prescribes for network/credential failure, used unconditionally: every
+  export lands there first, and the file doubles as the retry buffer.
+- **The session/agent files the issue** (its GitHub surface — MCP, ``gh``,
+  Actions) using the issue-ready title + body ``friction export``/``show``
+  print, then deletes the drained outbox file. Session-close advises on
+  pending files (best-effort, fail-open — the lab cannot drain a consumer's
+  outbox; it has no consumer write access).
+
+Envelope (§9.1, D-14 — the payload IS the reflection record shape)::
+
+    { "schema": 1, "repo": "<github full name>", "project_id": "<config id>",
+      "kit_version": "1.0.0", "reports": [ {reflection-record…}, … ] }
+
+Reports = the reflection buffer's ``flag``-tagged records **plus** a direct
+session-log scan for un-mined ⚑ lines — the buffer is a 5-slot rolling
+window, not an archive, so export never depends on it alone (D-14).
+"""
+
+
+
+
+FRICTION_SCHEMA = 1
+FRICTION_OUTBOX_DIRNAME = "friction-outbox"
+FRICTION_LABEL = "friction"
+
+# owner/repo out of a git remote URL — tolerant of https, ssh, and proxy
+# forms (…github.com/owner/repo.git · git@github.com:owner/repo ·
+# http://proxy/git/owner/repo). Fail-open: no match reads as "".
+_REMOTE_REPO_RE = re.compile(r"[:/]([\w.-]+/[\w.-]+?)(?:\.git)?\s*$")
+
+
+def detect_repo(root: Path) -> str:
+    """Best-effort ``owner/repo`` from ``.git/config``'s origin URL ("" if not).
+
+    Pure file parsing (the engine may not shell out): finds the
+    ``[remote "origin"]`` section's ``url =`` line and extracts the last two
+    path components. Any failure — no repo, detached layouts, exotic
+    remotes — returns ``""`` so the caller can require ``--repo`` instead.
+    """
+    config_path = root / ".git" / "config"
+    try:
+        text = config_path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    in_origin = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("["):
+            in_origin = stripped.replace("'", '"') == '[remote "origin"]'
+            continue
+        if in_origin and stripped.startswith("url"):
+            _, _, url = stripped.partition("=")
+            match = _REMOTE_REPO_RE.search(url.strip())
+            return match.group(1) if match else ""
+    return ""
+
+
+def friction_reports(target: Path, config: Any) -> list[dict]:
+    """Collect the ⚑ friction records for one export (D-14, both sources).
+
+    Buffer records tagged ``flag`` come through verbatim (full reflection
+    record shape); the direct session-log scan adds un-mined ⚑ lines as
+    ``{lesson, evidence, tags}`` records, deduplicated against the buffer
+    (and against each other) by lesson text.
+    """
+    reflections_path = target / config.state_dir / REFLECTIONS_FILENAME
+    reports = [
+        entry
+        for entry in load_reflections(reflections_path)
+        if "flag" in (entry.get("tags") or [])
+    ]
+    seen = {str(entry.get("lesson", "")) for entry in reports}
+    # A deliberately huge last_n: the export scans EVERY session log — the
+    # buffer's 5-slot window must never bound what gets reported.
+    for candidate in mine_reflections(target / config.sessions_dir, last_n=100000):
+        if "flag" not in candidate.get("tags", []):
+            continue
+        lesson = str(candidate.get("lesson", ""))
+        if not lesson or lesson in seen:
+            continue
+        seen.add(lesson)
+        reports.append(candidate)
+    return reports
+
+
+def build_envelope(
+    *,
+    repo: str,
+    project_id: str,
+    kit_version: str,
+    reports: list[dict],
+) -> dict:
+    """Return the §9.1 wire envelope for ``reports``."""
+    return {
+        "schema": FRICTION_SCHEMA,
+        "repo": repo,
+        "project_id": project_id,
+        "kit_version": kit_version,
+        "reports": reports,
+    }
+
+
+def outbox_dir(target: Path, state_dir: str) -> Path:
+    """Return the friction-outbox directory for one install."""
+    return target / state_dir / FRICTION_OUTBOX_DIRNAME
+
+
+def list_outbox(target: Path, state_dir: str) -> list[Path]:
+    """Return the pending outbox envelopes, oldest first ([] when none)."""
+    box = outbox_dir(target, state_dir)
+    if not box.is_dir():
+        return []
+    return sorted(p for p in box.glob("*.json") if p.is_file())
+
+
+def write_outbox(target: Path, state_dir: str, envelope: dict) -> Path:
+    """Write ``envelope`` to a fresh outbox file (atomic); return its path."""
+    box = outbox_dir(target, state_dir)
+    stamp = date.today().isoformat()
+    serial = 1
+    while (path := box / f"{stamp}-friction-{serial:02d}.json").exists():
+        serial += 1
+    atomic_write_text(path, json.dumps(envelope, indent=2, sort_keys=True) + "\n")
+    return path
+
+
+def load_envelope(path: Path) -> dict | None:
+    """Read one outbox envelope; None on a missing/corrupt file (fail-open)."""
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return raw if isinstance(raw, dict) else None
+
+
+def friction_issue_title(envelope: dict) -> str:
+    """Return the friction issue's title line."""
+    repo = envelope.get("repo") or envelope.get("project_id") or "unknown consumer"
+    count = len(envelope.get("reports") or [])
+    version = envelope.get("kit_version") or "unrecorded"
+    plural = "s" if count != 1 else ""
+    return f"[friction] {repo}: {count} report{plural} @ kit v{version}"
+
+
+def friction_issue_body(envelope: dict) -> str:
+    """Return the friction issue's body: one-line summary + fenced JSON (§9.1)."""
+    reports = envelope.get("reports") or []
+    lessons = [str(r.get("lesson", ""))[:120] for r in reports[:3]]
+    summary = "; ".join(lesson for lesson in lessons if lesson) or "(no lessons)"
+    if len(reports) > 3:
+        summary += f"; … +{len(reports) - 3} more"
+    payload = json.dumps(envelope, indent=2, sort_keys=True)
+    return (
+        f"Consumer friction report — {summary}\n"
+        "\n"
+        f"```json\n{payload}\n```\n"
+        "\n"
+        f"*Filed per founding plan §9.1 (label `{FRICTION_LABEL}`; triage = "
+        "the lab loop's step 5 three-clause bar; disposition comment + "
+        "close).*\n"
+    )
+
 # --- engine/loop/telemetry.py ---
 """Telemetry substrate — guard-fire records + the model-usage harvest (KL-3).
 
@@ -7083,6 +7255,10 @@ then, in order:
    (staged ``.substrate/`` artifacts always regenerate; missing planted docs
    replant), migrates state (backup already banked), records the new
    ``kit_version``, and writes ``<state_dir>/upgrade-report.md``.
+6. **Cleans up its own inputs**: after the replace lands, the consumed
+   ``bootstrap.py.new`` and the ``release.json`` next to it are removed
+   (``--keep-inputs`` opts out) — the first field run (superbot-next#46)
+   left both stranded at the repo root.
 
 ``upgrade --rollback`` restores the banked state.json + the archived dist
 named by ``<state_dir>/backup/last-upgrade.json`` (staged artifacts regenerate
@@ -7332,6 +7508,7 @@ def run_upgrade(
     running: Path,
     apply_docs: bool = False,
     release_json: Path | None = None,
+    cleanup_inputs: bool = True,
 ) -> list[str]:
     """Execute the §4.3 upgrade flow; return the report lines.
 
@@ -7352,14 +7529,20 @@ def run_upgrade(
     # (2) Archive FIRST (§4.3): old dist + state.json, before any overwrite.
     vendored = find_vendored_bootstrap(root)
     old_text = vendored.read_text(encoding="utf-8") if vendored else None
-    # The recorded config version (stamped at the OLD adopt) outranks the
-    # vendored header: when the consumer already copied the new file over the
-    # old one by hand, the header would misreport the new version as "from".
-    old_version = (
-        config.kit_version
-        or (dist_version(old_text) if old_text else None)
-        or "unknown"
-    )
+    # From-version: the vendored header states what is actually installed and
+    # OUTRANKS the config pin when they disagree — a consumer may record its
+    # pin BEFORE the first real upgrade (the D2 order), leaving the pin
+    # aspirational while the file on disk is older or unstamped. The field
+    # case (superbot-next#46): pin said 1.0.0, the archive honestly said
+    # bootstrap-unknown.py, and a rollback would have restored the wrong pin.
+    # The one header that cannot name the true "from" is KIT_VERSION itself —
+    # the hand-copied-new-dist-over-old case — where the recorded pin wins
+    # (distinguishable exactly because the header equals KIT_VERSION).
+    header_version = dist_version(old_text) if old_text else None
+    if old_text is not None and header_version != KIT_VERSION:
+        old_version = header_version or "unknown"
+    else:
+        old_version = config.kit_version or header_version or "unknown"
     backup_dir = root / config.state_dir / BACKUP_DIRNAME
     archived = None
     if vendored is not None:
@@ -7417,8 +7600,10 @@ def run_upgrade(
         running.is_file()
         and dist_version(running.read_text(encoding="utf-8")) is not None
     )
+    replaced = False
     if vendored is not None and running_is_dist and running.resolve() != vendored.resolve():
         atomic_write_text(vendored, running.read_text(encoding="utf-8"))
+        replaced = True
         report.append(
             f"replaced: {vendored.relative_to(root)} "
             f"(v{old_version} -> v{KIT_VERSION}; old copy archived)",
@@ -7457,6 +7642,30 @@ def run_upgrade(
         upgrade_report_text(old_version, rows, applied),
     )
     report.append(f"report: {report_rel}")
+
+    # (9) Self-cleanup of the upgrade inputs: the consumer flow downloads
+    # ``bootstrap.py.new`` (+ its ``release.json``) next to the vendored file,
+    # and once the replace has landed both are strays the first field run
+    # (superbot-next#46) left behind. Only the files the flow itself consumed
+    # are touched — the running .new file that was just installed and the
+    # release.json sitting NEXT TO it (an explicit --release-json elsewhere is
+    # left alone). ``--keep-inputs`` opts out; a cleanup error never fails a
+    # completed upgrade (fail-open, like every non-essential step).
+    if cleanup_inputs and replaced:
+        for leftover in (running, candidate):
+            if leftover.parent != running.parent or not leftover.is_file():
+                continue
+            try:
+                leftover.unlink()
+                report.append(
+                    f"cleaned up: {leftover.name} "
+                    "(upgrade input; pass --keep-inputs to retain)",
+                )
+            except OSError:
+                report.append(
+                    f"note: could not remove {leftover.name} — "
+                    "delete it by hand.",
+                )
     return report
 
 
@@ -7488,8 +7697,13 @@ def run_rollback(root: Path, config: Config) -> list[str]:
                 f"restored: {vendored_rel} from {archived_rel} "
                 f"(back to v{meta.get('from_version')}).",
             )
-    if config.kit_version and config.kit_version != meta.get("from_version"):
-        config.kit_version = str(meta.get("from_version") or "")
+    recorded = str(meta.get("from_version") or "")
+    # "unknown" names an unstamped pre-release dist (the archive is
+    # bootstrap-unknown.py) — the honest config value for that state is the
+    # unrecorded sentinel "", never the literal string "unknown".
+    restored_pin = "" if recorded == "unknown" else recorded
+    if config.kit_version and config.kit_version != restored_pin:
+        config.kit_version = restored_pin
         save_config(root, config)
         report.append(f"restored: config kit_version -> {config.kit_version!r}.")
     report.append(
@@ -7509,7 +7723,8 @@ docs), ``skills`` / ``agents`` / ``hooks`` (list / ``--build`` the packs),
 ``hook <event>`` (the runtime hook entry points), ``check`` (every hygiene
 checker), ``triggers``, ``reflect``, ``episodes``, ``metrics``, ``maintain``,
 ``review`` (the independent-review seam), ``economy`` (the context-economy
-engine), ``ledger`` (the [D-NNNN] decisions ledger), and ``--simulate N
+engine), ``ledger`` (the [D-NNNN] decisions ledger), ``friction`` (export/list/show
+the §9.1 friction-report outbox), and ``--simulate N
 [--mode m]`` (the CI / proving smoke that drives the staged interview and
 asserts per-mode behavior). Output goes through ``_emit`` (``sys.stdout.write``)
 rather than ``print`` to keep the engine lint-clean.
@@ -8481,6 +8696,7 @@ def cmd_upgrade(
     apply_docs: bool,
     rollback: bool,
     release_json: Path | None,
+    keep_inputs: bool = False,
 ) -> int:
     """Run the §4.3 upgrade flow (or ``--rollback``) against ``target``.
 
@@ -8488,7 +8704,9 @@ def cmd_upgrade(
     (plus its ``release.json`` for sha256 verification) and run
     ``python3 bootstrap.py.new upgrade``. Archives before it overwrites;
     planted docs are only ever touched under ``--apply-docs`` and only when
-    the recorded hash proves the consumer never edited them.
+    the recorded hash proves the consumer never edited them. On completion
+    the consumed inputs (the ``.new`` file + its adjacent ``release.json``)
+    are removed unless ``--keep-inputs``.
     """
     loaded = _require_state(target, "upgrade")
     if loaded is None:
@@ -8512,6 +8730,7 @@ def cmd_upgrade(
             running=running,
             apply_docs=apply_docs,
             release_json=release_json,
+            cleanup_inputs=not keep_inputs,
         )
     except UpgradeRefused as exc:
         _emit(f"upgrade: REFUSED — {exc}")
@@ -8580,8 +8799,99 @@ def cmd_session_close(target: Path) -> int:
     backend = JsonStateBackend(_state_path(target, config))
     for line in evaluate_stop(target, config, backend):
         _emit(f"session-close: [advisory] {line}")
+    # §9.1: filing friction issues rides session-close, best-effort — the
+    # engine cannot reach GitHub, so it advises the session/agent instead.
+    pending = list_outbox(target, config.state_dir)
+    if pending:
+        _emit(
+            f"session-close: [advisory] {len(pending)} friction report(s) "
+            f"pending in {config.state_dir}/friction-outbox/ — file each as "
+            f"a `{FRICTION_LABEL}`-labeled issue on the kit repo "
+            "(`friction show <name>` prints the issue title+body), then "
+            "delete the drained file.",
+        )
     kpis = workflow_kpis(backend.data, target / config.sessions_dir)
     _emit(kpi_footer(kpis))
+    return 0
+
+
+def cmd_friction(
+    target: Path,
+    action: str,
+    *,
+    repo: str | None,
+    name: str | None,
+) -> int:
+    """Drive the §9.1 friction-report protocol's consumer half.
+
+    ``export`` collects the ⚑ friction records (reflection buffer + a full
+    session-log scan), wraps them in the wire envelope, writes it to
+    ``<state_dir>/friction-outbox/``, and prints the issue-ready title +
+    body — **the engine never files the issue itself** (stdlib-only, no
+    credentials): the session/agent files it on the kit repo with the
+    ``friction`` label and deletes the drained outbox file. ``list`` shows
+    pending outbox envelopes; ``show <name>`` re-prints one's issue text
+    (how a later session drains an outbox held by a network/credential
+    failure).
+    """
+    loaded = _require_state(target, "friction")
+    if loaded is None:
+        return 1
+    config, _ = loaded
+    if action == "list":
+        pending = list_outbox(target, config.state_dir)
+        for path in pending:
+            envelope = load_envelope(path) or {}
+            count = len(envelope.get("reports") or [])
+            _emit(f"  {path.name} — {count} report(s), repo {envelope.get('repo')!r}")
+        _emit(f"friction: {len(pending)} pending outbox envelope(s).")
+        return 0
+    if action == "show":
+        if not name:
+            _emit("friction: show needs the outbox file name (see `friction list`).")
+            return 2
+        path = target / config.state_dir / "friction-outbox" / name
+        envelope = load_envelope(path)
+        if envelope is None:
+            _emit(f"friction: no readable envelope at {path}.")
+            return 1
+        _emit(f"title: {friction_issue_title(envelope)}")
+        _emit("")
+        _emit(friction_issue_body(envelope))
+        return 0
+    if action != "export":
+        _emit(f"friction: unknown action {action!r} (export | list | show).")
+        return 2
+    reports = friction_reports(target, config)
+    if not reports:
+        _emit("friction: no \N{BLACK FLAG} friction records found — nothing to export.")
+        return 0
+    repo_name = repo or detect_repo(target)
+    if not repo_name:
+        _emit(
+            "friction: could not detect the GitHub repo from .git/config — "
+            "pass --repo <owner/name>.",
+        )
+        return 2
+    envelope = build_envelope(
+        repo=repo_name,
+        project_id=str(config.project_id),
+        # The honest install record — "" (rendered "unrecorded") when the
+        # install predates version recording; never guessed from KIT_VERSION.
+        kit_version=config.kit_version or "",
+        reports=reports,
+    )
+    path = write_outbox(target, config.state_dir, envelope)
+    rel = path.relative_to(target) if path.is_relative_to(target) else path
+    _emit(f"friction: wrote {rel} ({len(reports)} report(s)).")
+    _emit(
+        f"friction: now file it — open a `{FRICTION_LABEL}`-labeled issue on "
+        "the kit repo with the title+body below, then delete the outbox file.",
+    )
+    _emit("")
+    _emit(f"title: {friction_issue_title(envelope)}")
+    _emit("")
+    _emit(friction_issue_body(envelope))
     return 0
 
 
@@ -8747,6 +9057,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="release.json to verify this file's sha256 against "
         "(default: one next to the running file, when present)",
     )
+    upgrade_p.add_argument(
+        "--keep-inputs",
+        action="store_true",
+        help="keep bootstrap.py.new + its release.json after a completed "
+        "upgrade (default: the consumed inputs are removed)",
+    )
     upgrade_p.add_argument("--target", type=Path, default=Path.cwd())
     contextpack = sub.add_parser(
         "contextpack",
@@ -8806,6 +9122,23 @@ def build_parser() -> argparse.ArgumentParser:
     )
     economy.add_argument("--bands", type=int, default=24)
     economy.add_argument("--target", type=Path, default=Path.cwd())
+    friction = sub.add_parser(
+        "friction",
+        help="export/list/show §9.1 friction-report envelopes (outbox)",
+    )
+    friction.add_argument("action", choices=("export", "list", "show"))
+    friction.add_argument(
+        "name",
+        nargs="?",
+        default=None,
+        help="outbox file name (for show)",
+    )
+    friction.add_argument(
+        "--repo",
+        default=None,
+        help="this consumer's GitHub owner/name (default: parsed from .git/config)",
+    )
+    friction.add_argument("--target", type=Path, default=Path.cwd())
     ledger = sub.add_parser("ledger", help="append a [D-NNNN] decision")
     ledger.add_argument("--title", required=True)
     ledger.add_argument("--verdict", required=True)
@@ -8936,6 +9269,7 @@ def main(argv: list[str] | None = None) -> int:
                 apply_docs=args.apply_docs,
                 rollback=args.rollback,
                 release_json=args.release_json,
+                keep_inputs=args.keep_inputs,
             )
         if args.command == "contextpack":
             return cmd_contextpack(args.target, args.index)
@@ -8943,6 +9277,13 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_session_start(args.target)
         if args.command == "session-close":
             return cmd_session_close(args.target)
+        if args.command == "friction":
+            return cmd_friction(
+                args.target,
+                args.action,
+                repo=args.repo,
+                name=args.name,
+            )
         if args.command == "ledger":
             return cmd_ledger(
                 args.target,

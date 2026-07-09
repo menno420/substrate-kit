@@ -7,7 +7,8 @@ docs), ``skills`` / ``agents`` / ``hooks`` (list / ``--build`` the packs),
 ``hook <event>`` (the runtime hook entry points), ``check`` (every hygiene
 checker), ``triggers``, ``reflect``, ``episodes``, ``metrics``, ``maintain``,
 ``review`` (the independent-review seam), ``economy`` (the context-economy
-engine), ``ledger`` (the [D-NNNN] decisions ledger), and ``--simulate N
+engine), ``ledger`` (the [D-NNNN] decisions ledger), ``friction`` (export/list/show
+the §9.1 friction-report outbox), and ``--simulate N
 [--mode m]`` (the CI / proving smoke that drives the staged interview and
 asserts per-mode behavior). Output goes through ``_emit`` (``sys.stdout.write``)
 rather than ``print`` to keep the engine lint-clean.
@@ -76,6 +77,17 @@ from engine.loop.episodes import (
     EPISODIC_INDEX_FILENAME,
     rebuild_episodic_index,
     search_episodes,
+)
+from engine.loop.friction import (
+    FRICTION_LABEL,
+    build_envelope,
+    detect_repo,
+    friction_issue_body,
+    friction_issue_title,
+    friction_reports,
+    list_outbox,
+    load_envelope,
+    write_outbox,
 )
 from engine.loop.kpis import kpi_footer, workflow_kpis
 from engine.loop.maintenance import compaction_due, maintenance_report, run_compaction
@@ -1068,6 +1080,7 @@ def cmd_upgrade(
     apply_docs: bool,
     rollback: bool,
     release_json: Path | None,
+    keep_inputs: bool = False,
 ) -> int:
     """Run the §4.3 upgrade flow (or ``--rollback``) against ``target``.
 
@@ -1075,7 +1088,9 @@ def cmd_upgrade(
     (plus its ``release.json`` for sha256 verification) and run
     ``python3 bootstrap.py.new upgrade``. Archives before it overwrites;
     planted docs are only ever touched under ``--apply-docs`` and only when
-    the recorded hash proves the consumer never edited them.
+    the recorded hash proves the consumer never edited them. On completion
+    the consumed inputs (the ``.new`` file + its adjacent ``release.json``)
+    are removed unless ``--keep-inputs``.
     """
     loaded = _require_state(target, "upgrade")
     if loaded is None:
@@ -1099,6 +1114,7 @@ def cmd_upgrade(
             running=running,
             apply_docs=apply_docs,
             release_json=release_json,
+            cleanup_inputs=not keep_inputs,
         )
     except UpgradeRefused as exc:
         _emit(f"upgrade: REFUSED — {exc}")
@@ -1167,8 +1183,99 @@ def cmd_session_close(target: Path) -> int:
     backend = JsonStateBackend(_state_path(target, config))
     for line in evaluate_stop(target, config, backend):
         _emit(f"session-close: [advisory] {line}")
+    # §9.1: filing friction issues rides session-close, best-effort — the
+    # engine cannot reach GitHub, so it advises the session/agent instead.
+    pending = list_outbox(target, config.state_dir)
+    if pending:
+        _emit(
+            f"session-close: [advisory] {len(pending)} friction report(s) "
+            f"pending in {config.state_dir}/friction-outbox/ — file each as "
+            f"a `{FRICTION_LABEL}`-labeled issue on the kit repo "
+            "(`friction show <name>` prints the issue title+body), then "
+            "delete the drained file.",
+        )
     kpis = workflow_kpis(backend.data, target / config.sessions_dir)
     _emit(kpi_footer(kpis))
+    return 0
+
+
+def cmd_friction(
+    target: Path,
+    action: str,
+    *,
+    repo: str | None,
+    name: str | None,
+) -> int:
+    """Drive the §9.1 friction-report protocol's consumer half.
+
+    ``export`` collects the ⚑ friction records (reflection buffer + a full
+    session-log scan), wraps them in the wire envelope, writes it to
+    ``<state_dir>/friction-outbox/``, and prints the issue-ready title +
+    body — **the engine never files the issue itself** (stdlib-only, no
+    credentials): the session/agent files it on the kit repo with the
+    ``friction`` label and deletes the drained outbox file. ``list`` shows
+    pending outbox envelopes; ``show <name>`` re-prints one's issue text
+    (how a later session drains an outbox held by a network/credential
+    failure).
+    """
+    loaded = _require_state(target, "friction")
+    if loaded is None:
+        return 1
+    config, _ = loaded
+    if action == "list":
+        pending = list_outbox(target, config.state_dir)
+        for path in pending:
+            envelope = load_envelope(path) or {}
+            count = len(envelope.get("reports") or [])
+            _emit(f"  {path.name} — {count} report(s), repo {envelope.get('repo')!r}")
+        _emit(f"friction: {len(pending)} pending outbox envelope(s).")
+        return 0
+    if action == "show":
+        if not name:
+            _emit("friction: show needs the outbox file name (see `friction list`).")
+            return 2
+        path = target / config.state_dir / "friction-outbox" / name
+        envelope = load_envelope(path)
+        if envelope is None:
+            _emit(f"friction: no readable envelope at {path}.")
+            return 1
+        _emit(f"title: {friction_issue_title(envelope)}")
+        _emit("")
+        _emit(friction_issue_body(envelope))
+        return 0
+    if action != "export":
+        _emit(f"friction: unknown action {action!r} (export | list | show).")
+        return 2
+    reports = friction_reports(target, config)
+    if not reports:
+        _emit("friction: no \N{BLACK FLAG} friction records found — nothing to export.")
+        return 0
+    repo_name = repo or detect_repo(target)
+    if not repo_name:
+        _emit(
+            "friction: could not detect the GitHub repo from .git/config — "
+            "pass --repo <owner/name>.",
+        )
+        return 2
+    envelope = build_envelope(
+        repo=repo_name,
+        project_id=str(config.project_id),
+        # The honest install record — "" (rendered "unrecorded") when the
+        # install predates version recording; never guessed from KIT_VERSION.
+        kit_version=config.kit_version or "",
+        reports=reports,
+    )
+    path = write_outbox(target, config.state_dir, envelope)
+    rel = path.relative_to(target) if path.is_relative_to(target) else path
+    _emit(f"friction: wrote {rel} ({len(reports)} report(s)).")
+    _emit(
+        f"friction: now file it — open a `{FRICTION_LABEL}`-labeled issue on "
+        "the kit repo with the title+body below, then delete the outbox file.",
+    )
+    _emit("")
+    _emit(f"title: {friction_issue_title(envelope)}")
+    _emit("")
+    _emit(friction_issue_body(envelope))
     return 0
 
 
@@ -1334,6 +1441,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="release.json to verify this file's sha256 against "
         "(default: one next to the running file, when present)",
     )
+    upgrade_p.add_argument(
+        "--keep-inputs",
+        action="store_true",
+        help="keep bootstrap.py.new + its release.json after a completed "
+        "upgrade (default: the consumed inputs are removed)",
+    )
     upgrade_p.add_argument("--target", type=Path, default=Path.cwd())
     contextpack = sub.add_parser(
         "contextpack",
@@ -1393,6 +1506,23 @@ def build_parser() -> argparse.ArgumentParser:
     )
     economy.add_argument("--bands", type=int, default=24)
     economy.add_argument("--target", type=Path, default=Path.cwd())
+    friction = sub.add_parser(
+        "friction",
+        help="export/list/show §9.1 friction-report envelopes (outbox)",
+    )
+    friction.add_argument("action", choices=("export", "list", "show"))
+    friction.add_argument(
+        "name",
+        nargs="?",
+        default=None,
+        help="outbox file name (for show)",
+    )
+    friction.add_argument(
+        "--repo",
+        default=None,
+        help="this consumer's GitHub owner/name (default: parsed from .git/config)",
+    )
+    friction.add_argument("--target", type=Path, default=Path.cwd())
     ledger = sub.add_parser("ledger", help="append a [D-NNNN] decision")
     ledger.add_argument("--title", required=True)
     ledger.add_argument("--verdict", required=True)
@@ -1523,6 +1653,7 @@ def main(argv: list[str] | None = None) -> int:
                 apply_docs=args.apply_docs,
                 rollback=args.rollback,
                 release_json=args.release_json,
+                keep_inputs=args.keep_inputs,
             )
         if args.command == "contextpack":
             return cmd_contextpack(args.target, args.index)
@@ -1530,6 +1661,13 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_session_start(args.target)
         if args.command == "session-close":
             return cmd_session_close(args.target)
+        if args.command == "friction":
+            return cmd_friction(
+                args.target,
+                args.action,
+                repo=args.repo,
+                name=args.name,
+            )
         if args.command == "ledger":
             return cmd_ledger(
                 args.target,

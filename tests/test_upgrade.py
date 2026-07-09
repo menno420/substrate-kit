@@ -240,6 +240,7 @@ def test_run_upgrade_archives_replaces_and_reports(tmp_path):
     old = _fake_old_dist(root, {"architecture.md.tmpl": "old ${project_name}"})
     old_text = old.read_text(encoding="utf-8")
     running = _fake_new_dist(tmp_path)
+    new_text = running.read_text(encoding="utf-8")
     config.kit_version = "0.9.0"  # what the old adopt recorded
     lines = run_upgrade(
         root,
@@ -259,8 +260,11 @@ def test_run_upgrade_archives_replaces_and_reports(tmp_path):
     meta = json.loads((backup / "last-upgrade.json").read_text(encoding="utf-8"))
     assert meta["from_version"] == "0.9.0"
     assert meta["to_version"] == KIT_VERSION
-    # …the vendored file now IS the running (new) file…
-    assert old.read_text(encoding="utf-8") == running.read_text(encoding="utf-8")
+    # …the vendored file now IS the (new) file the flow ran from…
+    assert old.read_text(encoding="utf-8") == new_text
+    # …and the consumed .new input was cleaned up (default behavior).
+    assert not running.exists()
+    assert any("cleaned up: bootstrap.py.new" in line for line in lines)
     # …kit_version re-recorded, report written, sha note honest.
     assert load_config(root).kit_version == KIT_VERSION
     report = root / config.state_dir / "upgrade-report.md"
@@ -351,3 +355,135 @@ def test_upgrade_adds_model_line_needle_to_pre_kl3_install(tmp_path):
         m for m in load_config(root).session_markers if m.get("label") == "Model line"
     ]
     assert len(markers) == 1
+
+# ---------------------------------------------------------------------------
+# KL-4 field fixes (superbot-next#46): from-version truth + input cleanup
+# ---------------------------------------------------------------------------
+
+
+def test_pin_before_upgrade_reports_unknown_not_the_pin(tmp_path):
+    """The exact field scenario: kit_version pinned in config BEFORE the first
+    real upgrade (the D2 order), while the vendored file is an unstamped
+    pre-release bootstrap. from_version must agree with the archive
+    (bootstrap-unknown.py), not echo the aspirational pin."""
+    root, config, backend = _adopted(tmp_path)
+    old = root / "bootstrap.py"
+    old.write_text(
+        '"""hand-written pre-release bootstrap — no version stamp."""\n',
+        encoding="utf-8",
+    )
+    config.kit_version = KIT_VERSION  # the D2 pin, recorded ahead of the fact
+    running = _fake_new_dist(tmp_path)
+    run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    backup = root / config.state_dir / BACKUP_DIRNAME
+    assert (backup / "bootstrap-unknown.py").is_file()
+    meta = json.loads((backup / "last-upgrade.json").read_text(encoding="utf-8"))
+    assert meta["from_version"] == "unknown"  # was: the pin ("1.0.0")
+    # Rollback restores the honest unrecorded sentinel, never "unknown"/"1.0.0".
+    run_rollback(root, load_config(root))
+    assert load_config(root).kit_version == ""
+
+
+def test_header_outranks_a_disagreeing_config_pin(tmp_path):
+    """A stamped old dist whose header disagrees with the pin: the header
+    states what is actually installed and wins."""
+    root, config, backend = _adopted(tmp_path)
+    _fake_old_dist(root)  # header says v0.9.0
+    config.kit_version = "0.8.0"  # a stale/wrong pin
+    running = _fake_new_dist(tmp_path)
+    run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    backup = root / config.state_dir / BACKUP_DIRNAME
+    meta = json.loads((backup / "last-upgrade.json").read_text(encoding="utf-8"))
+    assert meta["from_version"] == "0.9.0"
+    assert (backup / "bootstrap-0.9.0.py").is_file()
+
+
+def test_hand_copied_new_dist_still_trusts_the_pin(tmp_path):
+    """The one header that cannot name the true "from" is KIT_VERSION itself —
+    the consumer hand-copied the new file over the old one — so the recorded
+    pin wins there (the pre-fix behavior, preserved)."""
+    root, config, backend = _adopted(tmp_path)
+    old = root / "bootstrap.py"
+    old.write_text(
+        f'"""substrate-kit bootstrap v{KIT_VERSION} — GENERATED."""\n',
+        encoding="utf-8",
+    )
+    config.kit_version = "0.9.0"  # what the old adopt recorded
+    running = _fake_new_dist(tmp_path)
+    run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    backup = root / config.state_dir / BACKUP_DIRNAME
+    meta = json.loads((backup / "last-upgrade.json").read_text(encoding="utf-8"))
+    assert meta["from_version"] == "0.9.0"
+
+
+def test_cleanup_also_removes_the_adjacent_release_json(tmp_path):
+    root, config, backend = _adopted(tmp_path)
+    _fake_old_dist(root)
+    running = _fake_new_dist(tmp_path)
+    digest = hashlib.sha256(running.read_bytes()).hexdigest()
+    rj = tmp_path / "release.json"
+    _write_release_json(rj, sha256=digest)
+    lines = run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    assert not running.exists()
+    assert not rj.exists()
+    assert any("cleaned up: release.json" in line for line in lines)
+
+
+def test_keep_inputs_opts_out_of_cleanup(tmp_path):
+    root, config, backend = _adopted(tmp_path)
+    _fake_old_dist(root)
+    running = _fake_new_dist(tmp_path)
+    lines = run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+        cleanup_inputs=False,
+    )
+    assert running.is_file()
+    assert not any("cleaned up" in line for line in lines)
+
+
+def test_no_cleanup_when_nothing_was_replaced(tmp_path):
+    """Consumer #0 shape: the running file IS the vendored file — the flow
+    must never delete the install's own bootstrap."""
+    root, config, backend = _adopted(tmp_path)
+    vendored = _fake_old_dist(root)
+    vendored.write_text(
+        f'"""substrate-kit bootstrap v{KIT_VERSION} — GENERATED."""\n',
+        encoding="utf-8",
+    )
+    lines = run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=vendored,
+    )
+    assert vendored.is_file()
+    assert not any("cleaned up" in line for line in lines)

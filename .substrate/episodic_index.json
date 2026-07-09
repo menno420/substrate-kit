@@ -90,5 +90,23 @@
       "\ud83d\udcca"
     ],
     "summary": "> **Status:** `complete` *(kit-side KL-3 in one PR \u2014 #13.)*"
+  },
+  {
+    "slug": "kl4-lab-loop",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "kl-4",
+      "lab",
+      "loop",
+      "friction",
+      "protocol",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(band KL-4 in one PR \u2014 #14; friction issue #15 filed + triaged.)*"
   }
 ]

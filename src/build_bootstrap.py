@@ -46,6 +46,7 @@ MODULE_ORDER = (
     "ledger.py",
     "loop/kpis.py",
     "loop/reflections.py",
+    "loop/friction.py",
     "loop/telemetry.py",
     "loop/episodes.py",
     "loop/triggers.py",
