@@ -190,11 +190,16 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
    `do-not-automerge`, CI-green, card complete): review `bench/rubric/*` on
    the PR and merge it — or contest on the thread. **Unblocks the B1
    baseline firing** (and the kit-lab console lane's first real data).
-2. **👤 Review + merge PR #22 — the PL-010 `feature build` task-class
-   ruling** (PL-004 amendment; `do-not-automerge`, CI-green, card
-   complete; decision brief in the PR body): the merge is the
-   ratification. **Unblocks correctly-labelled B2 rows** — until then
-   feature-work sessions keep filing nearest-neighbor classes.
+2. **👤 Ratify or veto PL-010 (#22)** — the `feature build` task-class
+   ruling (PL-004 amendment). ⚑ **PR #22 MERGED mechanically, NOT by
+   owner review**: despite its `do-not-automerge` label, the enabler
+   armed auto-merge off the stale PR-open event payload after a ~12-min
+   runner-queue lag (full timeline in the incident comment on #22; the
+   fresh-label re-read guard is now deployed on main). **PL-010 is live
+   on main** — owner *reaction* replaces the merge-as-ratification gate:
+   a 👍 or silence ratifies; to veto, say so and a revert PR restores
+   the 8-class taxonomy (nothing has consumed the new class except the
+   authoring session's own telemetry row).
 3. **👤 P4 — arm the kit-lab loop**: Console → Schedules → paste the prompt
    from `docs/operations/lab-loop.md` § Arming verbatim (cron `0 6 * * *`
    UTC · fresh session per fire · Sonnet-class). **Unblocks D3** (≥3
@@ -239,7 +244,13 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ## Recently shipped (newest first)
 
-- **#20 — pinned-feed-contract doctrine (B4 capture)**: the cross-repo
+- **#22 — PL-010: the 9th task class `feature build`** (PL-004 amendment):
+  `docs/program/rulings.md` [PL-010] + `TASK_CLASSES` 9th entry +
+  observe-first ladder row. ⚑ Merged **mechanically by the enabler
+  label-race**, not by the intended owner review — see owner gate 2 above
+  (ratify-or-veto) and the incident comment on #22; the enabler's
+  fresh-label re-read guard (from #17's diff) was hotfixed onto main in
+  response. the cross-repo
   committed-artifact seam doctrine captured as a routed idea
   (`docs/ideas/pinned-feed-contract-doctrine-2026-07-09.md`) — pattern
   proven end-to-end the same day in superbot #1884 (the console feed's
