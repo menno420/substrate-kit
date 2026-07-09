@@ -99,6 +99,31 @@ def test_unfilled_placeholders_stay_visible_under_banner(tmp_path):
     assert text.startswith(UNRENDERED_BANNER_FIRST_LINE)
 
 
+def test_capability_manifest_planted_with_discovery_rule(tmp_path):
+    # ORDER 006: the capability manifest plants at docs/CAPABILITIES.md,
+    # fully rendered (its only slot is the derivable project_name), carrying
+    # the discovery rule + the seeded fleet walls, and the orientation
+    # templates route sessions through it at start.
+    root, _, lines = _adopt_into(tmp_path)
+    manifest = root / "docs" / "CAPABILITIES.md"
+    assert manifest.is_file()
+    assert "planted: docs/CAPABILITIES.md" in lines
+    text = manifest.read_text(encoding="utf-8")
+    assert "${" not in text  # project_name derives → no banner, no leftovers
+    assert not text.startswith(UNRENDERED_BANNER_FIRST_LINE)
+    assert "THE DISCOVERY RULE" in text
+    assert "ffmpeg" in text
+    assert "printenv" in text
+    assert "workflow_dispatch" in text.lower() or "workflow_dispatch" in text
+    # Orientation wiring: constitution + orientation router name the manifest.
+    constitution = (root / "CONSTITUTION.md").read_text(encoding="utf-8")
+    assert "docs/CAPABILITIES.md" in constitution
+    orientation = (root / "docs" / "AGENT_ORIENTATION.md").read_text(
+        encoding="utf-8"
+    )
+    assert "docs/CAPABILITIES.md" in orientation
+
+
 def test_derived_slots_render_and_stay_provisional(tmp_path):
     root, config, lines = _adopt_into(tmp_path)
     backend = JsonStateBackend(root / config.state_dir / "state.json")

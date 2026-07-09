@@ -227,8 +227,23 @@
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- PR #46 — **ORDER 004 configurable heartbeat paths + v1.4.0 cut (this
-  PR)**: `substrate.config.json` → `heartbeat_files` (default
+- PR #63 — **ORDER 006 capability-manifest band + v1.5.0 cut (this PR)**:
+  new `CAPABILITIES.md.tmpl` planted at `docs/CAPABILITIES.md` (seed:
+  ffmpeg-frames media recipe, printenv-before-assuming, the fleet's
+  verified walls, THE DISCOVERY RULE + append log); orientation wiring in
+  `CLAUDE.md.tmpl` / `CONSTITUTION.md.tmpl` / `AGENT_ORIENTATION.md.tmpl`;
+  session-close capability-delta nudge in the `session-close` skill;
+  self-hosted `docs/CAPABILITIES.md` (incl. the live per-session
+  repo-allowlist wall: fleet-manager unreadable → master-copy sync is
+  manager-relayed); KIT_VERSION/pyproject → 1.5.0, CHANGELOG rolled, dist
+  byte-pinned, suite 705 → 707. Claimed FIRST via the #60 status overwrite
+  (visible claim before build — the #50/#51 twin-execution lesson; the
+  durable convention is ORDER 007's, still queued). Post-merge the session
+  dispatches `release.yml` `version=1.5.0`, then the ORDER 006 status
+  overwrite rides its own control-only PR as the deliberate LAST act.
+- PR #46 — **ORDER 004 configurable heartbeat paths + v1.4.0 cut
+  (MERGED 2026-07-09 — also in Recently shipped; kept here for the
+  post-merge steps it named, all done)**: `substrate.config.json` → `heartbeat_files` (default
   `["control/status.md"]`) threaded through `check_status_current` /
   both `cli.py` call sites / the Stop-hook reminder; per-lane
   multi-Project pattern in the planted `control/README.md` contract;
@@ -426,6 +441,11 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ## Recently shipped (newest first)
 
+- **#60 — ORDER 006 claim (control-only, fast lane)**: status overwrite
+  claiming ORDER 006 for the kit-lab coordinator lane BEFORE the build —
+  the manual stand-in for the order-claim convention ORDER 007 will make
+  durable; also records the #53 numbering-collision resolution (closed
+  unmerged, superseded — main's #55 append is canonical).
 - **#46 — ORDER 004: configurable heartbeat paths + v1.4.0 cut**: the
   status checker's path set is now config
   (`substrate.config.json` → `heartbeat_files`, default

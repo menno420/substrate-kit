@@ -115,6 +115,15 @@ def test_skill_document_wraps_body():
     assert "# question\n\nBODY TEXT\n" in doc
 
 
+def test_session_close_carries_capability_nudge():
+    # ORDER 006: the close procedure asks the capability-delta question and
+    # points at the planted manifest, so discoveries get appended same
+    # session instead of being re-paid by the next one.
+    body = get_skill("session-close")["body"]
+    assert "Capability delta" in body
+    assert "docs/CAPABILITIES.md" in body
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
