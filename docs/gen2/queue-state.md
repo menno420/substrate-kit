@@ -4,7 +4,8 @@
 > gen-1 wind-down (kit-lab lane, wind-down phase 2, PR #74). A gen-2 session
 > treats this as the handoff truth for WHAT is done / in flight / next; the
 > living ledger (`docs/current-state.md`) and live GitHub win over it as time
-> passes. Mined from `control/status.md` (2026-07-09T19:55:47Z overwrite),
+> passes. Mined from `control/status.md` (the 20:11Z fleet-wrap overwrite,
+> PR #75, which carries the wind-down claim untouched),
 > `docs/current-state.md`, the ⚑ OWNER-ACTION list, and the docs/retro
 > continuation sections.
 
@@ -28,9 +29,13 @@
   run01 **PASS** (M1 unmeasurable, scorer-tainted; judge claude-opus-4-8),
   run02 **FAIL** (strict F-5, advisory per KF-5, disputed wording — owner
   ruling pending; same judge). No trend claim — KF-8 needs ≥3 rows.
-- **Adopters** (`docs/adopters.md`): kit-lab HEAD (consumer #0) ·
-  superbot-next v1.2.0 ENGAGED · websites v1.2.0 ENGAGED · superbot v1.0.0
-  deliberate pin-only · superbot-games two-lane (version not relayed).
+- **v1.6.0 fleet rollout COMPLETE** (parallel fleet-wrap session, PR #75,
+  merged 20:17Z while this pack was being written): superbot-next v1.6.0
+  ENGAGED (superbot-next#96) · websites v1.6.0 ENGAGED (websites#45) ·
+  superbot v1.0.0 deliberate pin-only · superbot-games two-lane (version
+  not relayed) · kit-lab HEAD consumer #0 (`docs/adopters.md`). Four
+  upgrade-UX ideas filed from the rollout's field findings
+  (`docs/ideas/upgrade-*-2026-07-09.md`).
 - **Both gen-1 incidents guarded**: kit#22 label-race (guards #23 fresh-label
   re-read + #24 disarm workflow + `--label-gate`) and superbot-next#44
   card-gate slip (guard: the consumer's own dist upgrade). Map:
@@ -102,9 +107,15 @@ gen-2 variant: `docs/gen2/setup.sh`).
    card's session idea; the convention is doc-contract-only today).
 8. **OWNER-ACTION ↔ CAPABILITIES cross-reference advisory** (#68 card idea).
 9. **Post-P10: delete the two `legacy-alias-*` jobs from `ci.yml`.**
-10. **Consumer upgrades**: superbot-next + websites (ENGAGED on v1.2.0) walk
-    the upgrade checklist in the v1.6.0 release notes; superbot stays
-    owner-gated (item 10); superbot-games sets `heartbeat_files` two-lane.
+10. **Upgrade-UX fixes from the v1.6.0 rollout** *(the consumer-upgrades
+    item completed mid-wind-down — PR #75)*: the four filed ideas
+    (`--apply-docs` single-shot window · rollback-loses-hash-records ·
+    idempotent-archive report line, third field report · release.json
+    placement checklist line), all ordinary-lane with guard recipes.
+    superbot stays owner-gated (item 10); superbot-games sets
+    `heartbeat_files` two-lane at its adopt. Manager relay item: websites'
+    inbox ORDER 005 is genuinely unexecuted (needs a scoped websites
+    session — #75 status notes).
 11. **`adopt --lane`** (lane-aware adopt — self-review G1's fix for
     double-adoption; idea filed).
 12. **Post-P5/P11-or-P13**: P6 console move + kit lane real data + the loop's
