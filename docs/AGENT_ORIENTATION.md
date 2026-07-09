@@ -26,7 +26,9 @@ The planted doc set (this router reaches every live doc — keep it that way):
 `docs/collaboration-model.md` · `docs/helper-policy.md` ·
 `docs/repo-navigation-map.md` · `docs/ai-project-workflow.md` ·
 `docs/owner-profile.md` · `docs/current-state.md` · `docs/decisions.md` ·
-`docs/question-router.md` · `docs/ideas/README.md` — plus the root
+`docs/question-router.md` · `docs/ideas/README.md` · `docs/house-style.md`
+(the kit's opinionated defaults, D-7) · **`docs/program/README.md`** (the
+canonical program-law home — the [PL-NNN] register, KL-2) — plus the root
 `CONSTITUTION.md` (the working agreement) and `.session-journal.md`.
 
 ## Verifying any change

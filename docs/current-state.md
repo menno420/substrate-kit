@@ -11,7 +11,7 @@
 *(dated snapshot: 2026-07-09)*
 
 - The kit engine is finished + enforced: the full test suite at `tests/` is green
-  (481 tests after KL-1); `src/engine/` is stdlib-only, `dist/bootstrap.py` is
+  (501 tests after KL-2); `src/engine/` is stdlib-only, `dist/bootstrap.py` is
   generated and byte-pinned by the dist-equality test. Do not re-audit without a
   reported regression.
 - **KL-0 is DONE** (founding plan §10 band zero): the repo exists, the kit is seeded,
@@ -29,13 +29,22 @@
   **D2's remaining half is consumer-side**: pin PRs recording `kit_version: 1.0.0`
   into superbot (`substrate.config.json` next to its in-tree copy — §4.2 names it
   a KL-1 companion deliverable) and superbot-next.
+- **KL-2 (governance home) is DONE kit-side** (plan §8 + §10 KL-2 row; PR #12):
+  `docs/program/` (the [PL-NNN] register PL-001…PL-009, README, canonical
+  program collaboration-model + agent-decision-authority),
+  `scripts/check_program_law.py` in the kit-quality gate, "Program law"
+  pointer sections in the two planted templates + the kit's own copies,
+  `docs/house-style.md`. **D7's remaining half is the superbot companion PR**
+  (provenance riders on the origin Q-blocks — Next action below).
 
 ## In flight
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- Nothing beyond PR #9 (KL-1 PR B, this session). Tag `v1.0.0` rides its merge
-  commit — verify the Release published (3 assets) on the releases page.
+- PR #12 — **KL-2 governance home, kit-side** (this session). Tag `v1.0.0`
+  rides PR D **#11**'s merge commit `daaf29c` (the `workflow_dispatch` release
+  path), Release published with the 3 assets — earlier "rides #9/PR C" notes
+  in this file were drift, fixed per source-wins.
 
 ## Pending owner action — 👤 P10 (repo settings, §3.2 item 7)
 
@@ -72,20 +81,39 @@ when `bench/` exists (KL-5).
 
 ## Next action
 
-**KL-1's consumer half + KL-2**: (1) consumer pin PRs — record
-`kit_version: 1.0.0` in superbot (a `substrate.config.json` next to its in-tree
-copy; §4.2 companion deliverable) and in superbot-next; (2) then the **KL-2
-governance home** (`docs/program/` + PL-register + `check_program_law.py` +
-template pointer sections + `docs/house-style.md`; plan §8 + §10 KL-2 row).
+**KL-2's superbot companion + KL-1's consumer half + KL-3**: (1) the **KL-2
+superbot companion PR** — one-line "canonical home: kit
+`docs/program/rulings.md` PL-NNN" provenance riders on the origin Q-blocks
+(Q-0240/41/47/48/49 + Q-0120/0132/0105; plan §8.3.3 — explicitly out of the
+kit-side PR #12's scope); (2) consumer pin PRs — record `kit_version: 1.0.0`
+in superbot (a `substrate.config.json` next to its in-tree copy; §4.2
+companion deliverable, still absent at superbot head 9e35130) and in
+superbot-next; (3) then **KL-3 telemetry substrate** (guard-fire JSONL
+writers + `did_not_run` markers, reasons-required allowlist port, the
+`📊 Model:` run-report line + session-close harvest → `model-usage.jsonl`,
+`telemetry/allocation-ladder.md` seeded; plan §10 KL-3 row).
 
 ## Recently shipped (newest first)
 
-- **KL-1 PR C — close-out + two gate-hole guards**: legacy-alias CI jobs
+- **#12 — KL-2 governance home (kit-side)**: `docs/program/` — the canonical
+  [PL-NNN] rulings register (PL-001…PL-009 with superbot-Q provenance) +
+  README (cite-never-copy rule) + canonical program copies of
+  collaboration-model + agent-decision-authority; `scripts/check_program_law.py`
+  (grammar · monotonic IDs · provenance-required · no-bodies-in-pointers) in
+  kit-quality with 18 tests (suite 483 → 501); "Program law" pointer sections
+  in CONSTITUTION/collaboration-model templates (dist regenerated) + the
+  kit's own planted copies; `docs/house-style.md` (§3.4/D-7); D-0002;
+  CHANGELOG [Unreleased]; KL-1 tag-location drift fixed.
+- **#11 — KL-1 PR D: `workflow_dispatch` release path** (the session git proxy
+  cannot push tags — HTTP 403): the dispatched run performs the same
+  refuse-to-release guards, creates the annotated tag in-Actions, and
+  publishes the Release. **Tag `v1.0.0` rides this PR's merge commit
+  `daaf29c`** — v1.0.0 was cut through this path.
+- **KL-1 PR C (#10) — close-out + two gate-hole guards**: legacy-alias CI jobs
   `if: always()` + hard-fail on non-success kit-quality (a skipped alias no
   longer satisfies a required context — the #7 hole); engine session gate
   treats an `in-progress` Status badge as incomplete (real born-red, kit-wide —
-  the #9 hole); the PR B close-out docs. **Tag v1.0.0 pushed on this merge
-  commit** → first GitHub Release via `release.yml`.
+  the #9 hole); the PR B close-out docs.
 - **#9 — KL-1 PR B: the `upgrade` verb** (§4.3): sha256+version self-verification
   vs release.json; archive-first (old dist + state.json banked to
   `.substrate/backup/` before any overwrite); hash-based planted-doc diff report

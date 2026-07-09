@@ -43,6 +43,20 @@
 - Every rule change ships with its provenance id. This file carries **no
   history** — the ledger does; superseded rules are looked up there.
 
+## Program law
+
+Rulings that bind **every** repo in this program live canonically in this
+repo at [`docs/program/rulings.md`](docs/program/rulings.md) — the [PL-NNN]
+register: PL-001 decide-and-flag · PL-002 never-wait rebuild autonomy ·
+PL-003 rail-before-scale · PL-004 empirical model allocation · PL-005
+observe-first budgets · PL-006 source-wins / false-green · PL-007
+enforce-don't-exhort · PL-008 adopt-freely with a kill-switch · PL-009 the
+kit-lab's rails. **Cite PL-IDs — never copy ruling bodies.** Repo-local
+rulings stay in `docs/decisions.md` / `docs/question-router.md`; a local
+ruling promoted program-wide becomes a PL-block there and a pointer here.
+(substrate-kit is consumer #0 *and* the home — the citation rule is the same:
+this file cites, the register holds the text.)
+
 ## Rails specific to substrate-kit
 
 (Hand-filled: the project's own hard rules, one bullet each, each citing its
