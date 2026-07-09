@@ -16,7 +16,7 @@
 | 💡 | Session idea — one genuine new idea per session, mined into reflections | `src/engine/loop/reflections.py` (`_REF_IDEA_MARK`), `session_markers` default in `src/engine/lib/config.py` |
 | ⚑ | Self-initiated work / friction flag — the accountability line the owner filters on | `src/engine/loop/reflections.py` (`_REF_FLAG_MARK`) |
 | ⟲ | Previous-session review — the self-auditing chain | session-log convention (`.sessions/README.md`); the checker needle is the phrase "previous-session review" |
-| 📊 | Model/effort/task-class run-report line (the PL-004 telemetry feed; lands as a required needle at KL-3) | session-log convention; harvest wiring is band KL-3 |
+| 📊 | Model/effort/task-class run-report line (the PL-004 telemetry feed) — `- **📊 Model:** <model> · <effort> · <task-class>`; a required needle since KL-3, harvested by `session-close` into `telemetry/model-usage.jsonl` | `session_markers` default + `MODEL_LINE_NEEDLE` in `src/engine/loop/telemetry.py` |
 | 👤 | Owner-action item (portal clicks, credentials, rulings only the owner can execute) | docs convention (plans, current-state) |
 
 These emoji are **grammar, not decoration**: the reflection miner, the

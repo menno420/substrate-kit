@@ -164,7 +164,10 @@ def test_clean_tree_has_no_findings(tmp_path):
 
 
 def test_missing_markers_complete_vs_incomplete():
-    full = "> **Status:** `reference`\n\n💡 idea\n\nprevious-session review: ok\n"
+    full = (
+        "> **Status:** `reference`\n\n💡 idea\n\n"
+        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n"
+    )
     assert missing_markers(full, _MARKERS) == []
     bare = "nothing here\n"
     assert missing_markers(bare, _MARKERS) == [m["label"] for m in _MARKERS]
@@ -213,7 +216,7 @@ def test_in_progress_status_keeps_the_card_incomplete(tmp_path):
     _write(
         card,
         "# x\n\n> **Status:** `in-progress`\n\n💡 idea\n\n"
-        "previous-session review: ok\n",
+        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n",
     )
     missing = check_log(card, _MARKERS)
     assert missing == ["a completed Status (badge still says in-progress)"]
@@ -221,7 +224,7 @@ def test_in_progress_status_keeps_the_card_incomplete(tmp_path):
     _write(
         card,
         "# x\n\n> **Status:** `complete`\n\n💡 idea\n\n"
-        "previous-session review: ok\n",
+        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n",
     )
     assert check_log(card, _MARKERS) == []
 

@@ -31,3 +31,21 @@
   the D-ledger grammar already handles supersession + provenance.
 - provenance: founding plan §8 / KF-6 (owner-blessed under silence=consent);
   shipped in band KL-2.
+
+## [D-0003] Telemetry is fail-open, locally written, reader-derived in CI
+
+- status: decided
+- date: 2026-07-09
+- verdict: Guard-fire records are appended at the two local choke points
+  (`check`'s finding loop, `hook`'s dispatch) to `.substrate/guard-fires.jsonl`
+  and NEVER block or crash the guarded path (swallow-and-degrade); the `ci`
+  surface and `did_not_run` rows are derived by readers from the GitHub
+  Checks API, never written inside CI; `guard` granularity = the finding's
+  `kind`; writes engage only on an existing install (state dir present) so
+  `check` stays read-only pre-adoption; suppression requires a
+  reasons-carrying allowlist entry, which IS the fire's verdict event.
+- why: A telemetry writer that can redden a check inverts the kit's fail-open
+  hook contract; a JSONL appended in an Actions runner dies with the job, so
+  writing the CI surface locally would fabricate data the Checks API already
+  holds truthfully.
+- provenance: founding plan §5.3 + KF-9/D-10; shipped in band KL-3.

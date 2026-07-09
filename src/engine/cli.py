@@ -31,7 +31,8 @@ from engine.adopt import (
     strip_unrendered_banner,
 )
 from engine.agents.agents import AGENTS, agent_document, agent_relpath
-from engine.checks.check_docs import run_doc_checks
+from engine.checks.allowlist import apply_allowlist, load_allowlist
+from engine.checks.check_docs import Finding, run_doc_checks
 from engine.checks.check_namespace import check_namespace
 from engine.checks.check_orientation_budget import check_orientation_budget
 from engine.checks.check_seam_authority import check_seam_authority
@@ -92,6 +93,7 @@ from engine.loop.review_seam import (
     seam_wiring_doc,
     write_review_payload,
 )
+from engine.loop.telemetry import harvest_model_usage, record_guard_fires
 from engine.loop.triggers import check_triggers, mandatory_questions, trigger_block
 from engine.render import build_context, find_placeholders, load_templates, render
 from engine.skills.skills import (
@@ -417,33 +419,34 @@ def cmd_hooks(target: Path, build: bool) -> int:
     return 0
 
 
-def _hook_pretooluse(target: Path) -> int:
+def _hook_pretooluse(target: Path) -> list[str]:
     """PreToolUse stance guard: warn on stderr for an out-of-stance tool."""
     tool_name = tool_from_payload(sys.stdin.read())
     if not tool_name:
-        return 0
+        return []
     config = load_config(target)
     backend = JsonStateBackend(_state_path(target, config))
     stance = backend.data.get("stance") if backend.data else None
     if not stance:
-        return 0
+        return []
     warning = evaluate_tool(stance, tool_name)
     if warning:
         sys.stderr.write(warning + "\n")
-    return 0
+        return [warning]
+    return []
 
 
-def _hook_sessionstart(target: Path) -> int:
+def _hook_sessionstart(target: Path) -> list[str]:
     """SessionStart: print the mode-aware orientation composition to stdout."""
     config = load_config(target)
     backend = JsonStateBackend(_state_path(target, config))
     text = compose_orientation(target, config, backend)
     if text:
         sys.stdout.write(text)
-    return 0
+    return []
 
 
-def _hook_postedit(target: Path) -> int:
+def _hook_postedit(target: Path) -> list[str]:
     """PostToolUse: warn on stderr for a generated-artifact / unbadged-doc edit.
 
     Handles Edit/Write (``tool_input.file_path``) and NotebookEdit
@@ -456,26 +459,28 @@ def _hook_postedit(target: Path) -> int:
     try:
         payload = json.loads(raw) if raw.strip() else {}
     except json.JSONDecodeError:
-        return 0
+        return []
     tool_input = payload.get("tool_input") if isinstance(payload, dict) else None
     if not isinstance(tool_input, dict):
-        return 0
+        return []
     file_path = tool_input.get("file_path") or tool_input.get("notebook_path")
     if not isinstance(file_path, str) or not file_path:
-        return 0
+        return []
     warning = evaluate_edit(target, load_config(target), file_path)
     if warning:
         sys.stderr.write(warning + "\n")
-    return 0
+        return [warning]
+    return []
 
 
-def _hook_stopcheck(target: Path) -> int:
+def _hook_stopcheck(target: Path) -> list[str]:
     """Stop: print the session-close advisory lines to stderr."""
     config = load_config(target)
     backend = JsonStateBackend(_state_path(target, config))
-    for line in evaluate_stop(target, config, backend):
+    lines = evaluate_stop(target, config, backend)
+    for line in lines:
         sys.stderr.write(line + "\n")
-    return 0
+    return lines
 
 
 _HOOK_EVENTS = {
@@ -483,6 +488,14 @@ _HOOK_EVENTS = {
     "sessionstart": _hook_sessionstart,
     "postedit": _hook_postedit,
     "stopcheck": _hook_stopcheck,
+}
+
+# Guard kind per hook event, for the §5.3 guard-fire feed. ``sessionstart``
+# is orientation, not a guard — it never records a fire.
+_HOOK_GUARD_KINDS = {
+    "pretooluse": "stance",
+    "postedit": "edit-advisor",
+    "stopcheck": "stop-advisory",
 }
 
 
@@ -494,12 +507,29 @@ def cmd_hook(target: Path, event: str) -> int:
     payload (``tool_input.file_path``) and warns on stderr; ``stopcheck``
     prints session-close advisories to stderr. Every event fails open on a
     missing / malformed payload, config, or state.
+
+    This dispatch is one of the two guard-fire choke points (KL-3, plan
+    §5.3): each warning a guard hook surfaces is appended to
+    ``<state_dir>/guard-fires.jsonl`` (surface ``hook``, posture ``advisory``
+    — hooks never block). The write is fail-open and never alters the exit
+    code: telemetry must never crash a hook.
     """
     handler = _HOOK_EVENTS.get(event)
     if handler is None:
         return 0
     try:
-        return handler(target)
+        warnings = handler(target)
+        kind = _HOOK_GUARD_KINDS.get(event)
+        if warnings and kind:
+            record_guard_fires(
+                target,
+                load_config(target).state_dir,
+                cmd=f"hook {event}",
+                surface="hook",
+                posture="advisory",
+                findings=[Finding("", kind, warning) for warning in warnings],
+            )
+        return 0
     except Exception:  # noqa: BLE001 — hooks fail open by contract, always 0
         return 0
 
@@ -551,8 +581,22 @@ def cmd_check(
     makes the memory ritual non-optional, not merely advised). Uses config
     defaults if ``target`` has no ``substrate.config.json`` yet, so a project
     can lint before onboarding.
+
+    Two KL-3 mechanisms ride the finding loop (plan §5.3):
+
+    - **Reasons-required allowlist**: ``<state_dir>/check-exceptions.yml``
+      entries suppress exact path+kind matches — but only entries carrying a
+      ``reason``; a reason-less entry is refused and reported as its own
+      finding. The session-log gate is never allowlistable.
+    - **Guard-fire telemetry** (the ``check`` choke point): every surfaced
+      finding — and every allowlist suppression, recorded with the entry's
+      verdict + reason (creating the entry IS the verdict event) — appends a
+      record to ``<state_dir>/guard-fires.jsonl``. Fail-open, written only
+      into an existing install; the ``ci`` surface + ``did_not_run`` rows are
+      derived by readers from the Checks API, never written in CI.
     """
     config = load_config(target)
+    posture = "blocking" if strict else "advisory"
     docs_root = target / config.docs_root
     doc_findings = run_doc_checks(
         docs_root,
@@ -560,10 +604,37 @@ def cmd_check(
         config.readpath_docs,
     )
     doc_findings = list(doc_findings) + _extra_check_findings(target, config)
+    entries, allow_findings = load_allowlist(target, config.state_dir)
+    doc_findings, suppressed = apply_allowlist(doc_findings, entries)
+    doc_findings += allow_findings
+    if suppressed:
+        _emit(
+            f"check: {len(suppressed)} finding(s) suppressed by allowlist "
+            "(reason-carrying entries; fires recorded with their verdicts).",
+        )
+        for finding, entry in suppressed:
+            record_guard_fires(
+                target,
+                config.state_dir,
+                cmd="check",
+                surface="check",
+                posture=posture,
+                findings=[finding],
+                verdict=entry.get("verdict"),
+                reason=entry.get("reason"),
+            )
     if doc_findings:
         _emit(f"check: {len(doc_findings)} finding(s):")
         for finding in doc_findings:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture=posture,
+            findings=doc_findings,
+        )
 
     log = latest_session_log(target / config.sessions_dir)
     log_missing: list[str] = check_log(log, config.session_markers) if log else []
@@ -584,6 +655,31 @@ def cmd_check(
             _emit(f"check: session log {rel} is missing: {', '.join(log_missing)}")
         else:
             _emit(f"check: session log {rel} complete.")
+    if log_missing or log_absent_fails:
+        # The session gate is a guard too (the kit's flagship one) — its
+        # fires feed B3 like any checker's. Never allowlistable, though.
+        if log_absent_fails:
+            gate_finding = Finding(
+                "",
+                "session-log",
+                f"no session log under {config.sessions_dir}/ "
+                "(--require-session-log)",
+            )
+        else:
+            log_rel = str(log.relative_to(target)) if log.is_relative_to(target) else str(log)
+            gate_finding = Finding(
+                log_rel,
+                "session-log",
+                f"missing: {', '.join(log_missing)}",
+            )
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="blocking" if (strict or require_session_log) else "advisory",
+            findings=[gate_finding],
+        )
 
     if not doc_findings and not log_missing and not log_absent_fails:
         _emit("check: all checks passed.")
@@ -1048,8 +1144,10 @@ def cmd_session_close(target: Path) -> int:
     """Run the session-close ritual: mine, index, advise, and report KPIs.
 
     Mines the session logs into the reflection buffer, rebuilds the episodic
-    index, prints the stop-check advisories, and ends with the KPI footer —
-    the engine analog of the one-idea / previous-session-review enders.
+    index, harvests the ``📊 Model:`` line into the PL-004 model-usage feed
+    (``telemetry/model-usage.jsonl`` — one row per session, KL-3), prints the
+    stop-check advisories, and ends with the KPI footer — the engine analog
+    of the one-idea / previous-session-review enders.
     """
     loaded = _require_state(target, "session-close")
     if loaded is None:
@@ -1061,6 +1159,9 @@ def cmd_session_close(target: Path) -> int:
     index_path = target / config.state_dir / EPISODIC_INDEX_FILENAME
     entries = rebuild_episodic_index(target / config.sessions_dir, index_path)
     _emit(f"session-close: indexed {len(entries)} session(s).")
+    log = latest_session_log(target / config.sessions_dir)
+    for line in harvest_model_usage(target, log):
+        _emit(f"session-close: {line}")
     # Re-read state: the mine above stamped reflection_buffer.last_mined, and
     # a pre-mine snapshot would re-advise the mine it just ran.
     backend = JsonStateBackend(_state_path(target, config))

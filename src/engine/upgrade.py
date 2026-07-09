@@ -62,6 +62,7 @@ from engine.adopt import (
 from engine.lib.atomicio import atomic_write_text
 from engine.lib.config import KIT_VERSION, Config, save_config
 from engine.lib.state import STATE_SCHEMA_VERSION
+from engine.loop.telemetry import MODEL_LINE_NEEDLE
 from engine.render import build_context, load_templates, render
 
 LAST_UPGRADE_FILENAME = "last-upgrade.json"
@@ -398,6 +399,24 @@ def run_upgrade(
     # (6) Staged regeneration: adopt is idempotent — staged artifacts always
     # regenerate, planted docs skip-if-exist, kit_version records new.
     report += adopt(root, config, backend, kit_root=kit_root)
+
+    # (6b) KL-3: the 📊 Model needle joins session_markers at upgrade time —
+    # a consumer's gate only tightens when it upgrades, never mid-version
+    # (founding plan §5.2); the report says so out loud.
+    if not any(
+        m.get("needle") == MODEL_LINE_NEEDLE for m in config.session_markers
+    ):
+        config.session_markers.append(
+            {"label": "Model line", "needle": MODEL_LINE_NEEDLE},
+        )
+        save_config(root, config)
+        report.append(
+            "session_markers: added the \N{BAR CHART} Model line needle "
+            "(KL-3 telemetry) — session logs must now carry "
+            "`- **\N{BAR CHART} Model:** <model> \N{MIDDLE DOT} <effort> "
+            "\N{MIDDLE DOT} <task-class>`; session-close harvests it into "
+            "telemetry/model-usage.jsonl.",
+        )
 
     # (7) State migration (backup already banked above).
     backend.migrate(STATE_SCHEMA_VERSION)

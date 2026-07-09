@@ -17,6 +17,31 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Telemetry substrate** (band KL-3, plan §5.2/§5.3 — MINOR, new
+  capability): guard-fire JSONL writers at the two local choke points
+  (`check`'s finding loop, `hook`'s dispatch) appending §5.3 records to
+  `<state_dir>/guard-fires.jsonl` — fail-open by contract, written only into
+  an existing install; the `ci` surface + `did_not_run` rows stay derived by
+  readers from the Checks API, never written in CI.
+- **Reasons-required allowlist** (`<state_dir>/check-exceptions.yml`):
+  entries `{path, kind, reason (REQUIRED), triaged, by, verdict?}` suppress
+  exact path+kind finding matches; a reason-less entry is refused and
+  reported as its own finding; a suppression records the guard fire with the
+  entry's verdict (`accepted_risk` default / `false_positive`) + reason —
+  creating the entry IS the verdict event. The session-log gate is never
+  allowlistable.
+- **The `📊 Model:` run-report line + harvest**: `session-close` parses
+  `- **📊 Model:** <model> · <effort> · <task-class>[ · <tokens_out>]` from
+  the session card into `telemetry/model-usage.jsonl` (the PL-004 record:
+  `{session, date, model, effort, task_class, tokens_out, outcome}` —
+  `tokens_out` null-tolerated per KF-9, `outcome` an all-null object until
+  the lab sweep backfills it; one row per session slug).
+- **Session-marker needle**: `📊 Model:` joins the default
+  `session_markers` for new adopts; `upgrade` adds it to an existing
+  install's config and reports it — a consumer's gate only tightens when it
+  upgrades, never mid-version.
+- `telemetry/allocation-ladder.md` + `telemetry/README.md` seeded in the kit
+  repo (the program-wide PL-004 ladder with the KF-8 numbers; feed schemas).
 - **The program governance home** (band KL-2, plan §8): `docs/program/` with
   the canonical `[PL-NNN]` rulings register (PL-001…PL-009,
   provenance-required) plus program copies of the collaboration model and the

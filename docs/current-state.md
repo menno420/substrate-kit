@@ -11,7 +11,7 @@
 *(dated snapshot: 2026-07-09)*
 
 - The kit engine is finished + enforced: the full test suite at `tests/` is green
-  (501 tests after KL-2); `src/engine/` is stdlib-only, `dist/bootstrap.py` is
+  (535 tests after KL-3); `src/engine/` is stdlib-only, `dist/bootstrap.py` is
   generated and byte-pinned by the dist-equality test. Do not re-audit without a
   reported regression.
 - **KL-0 is DONE** (founding plan §10 band zero): the repo exists, the kit is seeded,
@@ -26,25 +26,38 @@
   guards → Release with bootstrap.py + .sha256 + release.json); the **`upgrade`
   verb** (archive-first, hash-based doc diff, `--apply-docs` covenant,
   `--rollback`); `_ENGINE_MANIFEST` dropped; `reconciliation_prs` default → 30.
-  **D2's remaining half is consumer-side**: pin PRs recording `kit_version: 1.0.0`
-  into superbot (`substrate.config.json` next to its in-tree copy — §4.2 names it
-  a KL-1 companion deliverable) and superbot-next.
-- **KL-2 (governance home) is DONE kit-side** (plan §8 + §10 KL-2 row; PR #12):
-  `docs/program/` (the [PL-NNN] register PL-001…PL-009, README, canonical
-  program collaboration-model + agent-decision-authority),
+  **D2 is now FULLY done**: the consumer pin PRs merged — superbot #1879
+  (`substrate.config.json` with `kit_version: 1.0.0` next to its in-tree copy)
+  and superbot-next #42; superbot-next #44 additionally upgraded its vendored
+  dist to the released v1.0.0.
+- **KL-2 (governance home) is DONE both-sided** (plan §8 + §10 KL-2 row):
+  kit-side PR #12 — `docs/program/` (the [PL-NNN] register PL-001…PL-009,
+  README, canonical program collaboration-model + agent-decision-authority),
   `scripts/check_program_law.py` in the kit-quality gate, "Program law"
   pointer sections in the two planted templates + the kit's own copies,
-  `docs/house-style.md`. **D7's remaining half is the superbot companion PR**
-  (provenance riders on the origin Q-blocks — Next action below).
+  `docs/house-style.md`; superbot companion PR #1881 (merged 2026-07-09) —
+  "canonical home" provenance riders on the origin Q-blocks
+  (Q-0240/41/47/48/49 + Q-0120/0132/0105 → PL-001…PL-008). **D7 holds.**
+- **KL-3 (telemetry substrate) is DONE** (plan §10 KL-3 row; PR #13):
+  guard-fire JSONL writers at the two choke points (`cmd_check` finding loop +
+  `cmd_hook` dispatch → `.substrate/guard-fires.jsonl`, fail-open; `ci`
+  surface + `did_not_run` reader-derived from the Checks API, never written
+  in CI); the reasons-required allowlist (`.substrate/check-exceptions.yml`,
+  reason-less entries refused, an entry IS the verdict event); the
+  `📊 Model:` line + session-close harvest → `telemetry/model-usage.jsonl`
+  (PL-004 record, `tokens_out` null-tolerated); the `📊 Model:` needle in
+  default `session_markers` (new adopts) + added at `upgrade` (existing
+  installs); `telemetry/allocation-ladder.md` + `telemetry/README.md` seeded.
+  **D6's kit-side half holds** (`model-usage.jsonl` non-empty — consumer #0's
+  own session-close wrote the first row); the console lane render is KL-6.
 
 ## In flight
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- PR #12 — **KL-2 governance home, kit-side** (this session). Tag `v1.0.0`
-  rides PR D **#11**'s merge commit `daaf29c` (the `workflow_dispatch` release
-  path), Release published with the 3 assets — earlier "rides #9/PR C" notes
-  in this file were drift, fixed per source-wins.
+- PR #13 — **KL-3 telemetry substrate** (this session). Tag `v1.0.0` rides PR
+  D **#11**'s merge commit `daaf29c` (the `workflow_dispatch` release path),
+  Release published with the 3 assets.
 
 ## Pending owner action — 👤 P10 (repo settings, §3.2 item 7)
 
@@ -81,20 +94,26 @@ when `bench/` exists (KL-5).
 
 ## Next action
 
-**KL-2's superbot companion + KL-1's consumer half + KL-3**: (1) the **KL-2
-superbot companion PR** — one-line "canonical home: kit
-`docs/program/rulings.md` PL-NNN" provenance riders on the origin Q-blocks
-(Q-0240/41/47/48/49 + Q-0120/0132/0105; plan §8.3.3 — explicitly out of the
-kit-side PR #12's scope); (2) consumer pin PRs — record `kit_version: 1.0.0`
-in superbot (a `substrate.config.json` next to its in-tree copy; §4.2
-companion deliverable, still absent at superbot head 9e35130) and in
-superbot-next; (3) then **KL-3 telemetry substrate** (guard-fire JSONL
-writers + `did_not_run` markers, reasons-required allowlist port, the
-`📊 Model:` run-report line + session-close harvest → `model-usage.jsonl`,
-`telemetry/allocation-ladder.md` seeded; plan §10 KL-3 row).
+**Band KL-4 — the lab loop + friction protocol** (plan §10 KL-4 row, §6, §9;
+depends on KL-2, which is done): (1) `docs/operations/lab-loop.md` — the §6.2
+9-part prompt, paste-ready — and the routine armed (👤 P4, console-side);
+(2) the `friction export` verb + `.substrate/friction-outbox/` + issue
+filing per the §9.1 envelope; (3) the `friction` label + trigger on this
+repo; (4) first triage proven on superbot's hand-authored report (👤 P9);
+(5) the `Run type: routine · lab` report token. *(Done and no longer next:
+KL-2's superbot companion riders — superbot #1881; KL-1's consumer pin PRs —
+superbot #1879 + superbot-next #42, with superbot-next #44 upgrading its
+vendored dist to v1.0.0; KL-3 — PR #13, see Stability baseline.)*
 
 ## Recently shipped (newest first)
 
+- **#13 — KL-3 telemetry substrate**: `src/engine/loop/telemetry.py`
+  (guard-fire JSONL writer + 📊-line parser/harvest, fail-open by contract) +
+  `src/engine/checks/allowlist.py` (reasons-required `check-exceptions.yml`,
+  stdlib YAML-subset parser); the two choke points wired (`cmd_check` /
+  `cmd_hook`); `📊 Model:` needle in default markers + auto-added at
+  `upgrade`; `telemetry/` seeded (README + allocation-ladder); kit's own
+  config/README/model-usage row dogfooded; D-0003; suite 501 → 535.
 - **#12 — KL-2 governance home (kit-side)**: `docs/program/` — the canonical
   [PL-NNN] rulings register (PL-001…PL-009 with superbot-Q provenance) +
   README (cite-never-copy rule) + canonical program copies of
