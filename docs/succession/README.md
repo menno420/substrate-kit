@@ -3,6 +3,8 @@
 > **Status:** `owner-guidance` — wind-down handoff docs, one set per lane,
 > ALWAYS filename-suffixed with the lane name (multi-lane rule; the retro
 > pair each set builds on lives in [`docs/retro/`](../retro/README.md)).
+> The KIT-LAB lane's own pack lives in [`docs/gen2/`](../gen2/README.md)
+> (committed per the owner's wind-down directive, which named that path).
 
 ## SuperBot-rebuild coordinator lane (wind-down 2026-07-09)
 

@@ -383,6 +383,10 @@ still renders from superbot's committed `console.json`. Exact steps:
 on the next touch and never accretes here; adopted from the groomed-ideas-1
 ⟲ review, implemented at the run close-out.)*
 
+**→ Gen-2 boot:** a fresh gen-2 session starts from
+[`docs/gen2/next-boot.md`](gen2/next-boot.md) (the wind-down succession
+pack; queue truth in [`docs/gen2/queue-state.md`](gen2/queue-state.md)).
+
 ### Owner gates — each with its one-line unblock
 
 1. **👤 Bless the bench rubric → merge PR #17** (plan §5.0;
