@@ -13,7 +13,7 @@ and enforcement are separate opt-in steps nothing forces. This band ships the
 **born-red post-adopt engagement gate** — "enforce, don't exhort" (PL-007)
 applied to onboarding itself.
 
-## What shipped (PR #25, band KL-7, D-0005)
+## What shipped (PR #25, band KL-7, D-0006)
 
 - **`src/engine/checks/check_engagement.py`** — the ENGAGEMENT gate riding
   the ordinary `check` finding loop (strict-only exit impact, guard-fire
@@ -51,7 +51,7 @@ applied to onboarding itself.
   staging); `tests/test_cli_gate.py` fixture upgraded to an ENGAGED scratch
   (all slots answered pre-adopt, enforcement wired, `session_count` 1) so
   the session-log gate stays tested in isolation. Suite **626 → 637**.
-- **Governance** — `docs/decisions.md` [D-0005]; CHANGELOG `[Unreleased]`
+- **Governance** — `docs/decisions.md` [D-0006] (renumbered from D-0005 mid-session: #17's merge landed the bench-blessing D-0005 on main first); CHANGELOG `[Unreleased]`
   Added (bottom of section, away from #17's pending hunk);
   `docs/current-state.md` KL-7 band entry + #25 rows (owner-actions list
   untouched — stays the one live list). Dist regenerated + byte-pinned

@@ -17,6 +17,24 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **The `bench/` tree — the pinned benchmark harness** (band KL-5, plan
+  §5.0/§5.1 — MINOR, new capability; first rubric version **owner-blessed**
+  on the `do-not-automerge` PR that authored it): the B1 cold-start judge
+  rubric + the B2 allocation rubric; fixed task texts T1–T5 (T5 = the new
+  break-a-rule guard probe, D-17, run with `--wire-enforcement` arms); the
+  seed-corpus generator (`bench/seeds/make_seed.py` — fresh surface names
+  per run, same shape, one seeded untested bug); `bench/score_m1.py`
+  (scripted words-before-first-mutation over event-JSONL transcripts);
+  `bench/run_ab.py` (`prepare` builds identical arms + adopts ON + the §5.1
+  smoke step · `collect` files artifacts + scores M1 immediately ·
+  `record` appends schema-checked, run_id-deduped rows); append-only
+  `bench/results/{cold-start,allocation,guards,ideas,friction}/index.json`;
+  and `scripts/check_bench_integrity.py` in the kit-quality gate — pin-path
+  changes (`bench/rubric|tasks|seeds`) must ride a `do-not-automerge` PR,
+  and `bench/results/` history is immutable (index appends allowed,
+  edits/deletes never). B1's first firing follows the rubric's owner
+  blessing — never run or graded by the session that authored it.
+
 - **Auto-drafted session handoff** (band KL-5, plan §10 — MINOR, new
   capability; the ruled prerequisite for B1's first firing): `session-close`
   and the Stop hook now **draft** the session card's close-out from evidence
@@ -129,7 +147,7 @@ workflow refuses to publish a version that has no section in this file.
   `docs/program/rulings.md` [PL-010] amends PL-004's taxonomy; the
   allocation ladder gains an **observe-first** row (no seeded tier —
   PL-005: B2 data seeds it); existing dataset rows are never rewritten.
-- **The post-adopt ENGAGEMENT gate** (band KL-7, D-0005 — MINOR, new
+- **The post-adopt ENGAGEMENT gate** (band KL-7, D-0006 — MINOR, new
   checker; the fleet-review §4 fix): `check` now scans an adopted host and
   holds `--strict` **RED** until the last mile is walked — no planted doc
   under the UNRENDERED banner or carrying leftover `${...}` slots, a CI
@@ -146,6 +164,12 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Fixed
 
+- **auto-merge-enabler label race** (found live on the bench-tree PR #17):
+  an MCP-created PR gets its `do-not-automerge` label in a second call
+  right after create, so the enabler's payload-snapshot label check could
+  arm auto-merge on a PR that must never auto-merge. The enabler now waits
+  a grace beat and re-reads the labels FRESH from the API just before
+  arming, refusing when the label is present.
 - **`upgrade` from-version truth** (superbot-next#46): the vendored dist's
   header now outranks a disagreeing `config.kit_version` pin when naming
   `from_version` — a pin recorded BEFORE the first real upgrade (the D2

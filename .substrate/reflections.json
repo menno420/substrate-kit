@@ -48,5 +48,55 @@
     ],
     "status": "provisional",
     "date": "2026-07-09"
+  },
+  {
+    "id": "R-0132",
+    "lesson": "1.  **Live incident, fixed in-band (Q-0194 friction \u2192 guard):** the",
+    "evidence": "2026-07-09-kl5-bench-tree.md:L67",
+    "tags": [
+      "flag"
+    ],
+    "status": "provisional",
+    "date": "2026-07-09"
+  },
+  {
+    "id": "R-0133",
+    "lesson": "2.  Decide-and-flag: the M1 transcript contract is a defined event-JSONL",
+    "evidence": "2026-07-09-kl5-bench-tree.md:L75",
+    "tags": [
+      "flag"
+    ],
+    "status": "provisional",
+    "date": "2026-07-09"
+  },
+  {
+    "id": "R-0134",
+    "lesson": "3.  Decide-and-flag: a fifth results family `friction` beyond the plan's",
+    "evidence": "2026-07-09-kl5-bench-tree.md:L79",
+    "tags": [
+      "flag"
+    ],
+    "status": "provisional",
+    "date": "2026-07-09"
+  },
+  {
+    "id": "R-0135",
+    "lesson": "4.  Decide-and-flag: this card flips `complete` so kit-quality is GREEN on",
+    "evidence": "2026-07-09-kl5-bench-tree.md:L81",
+    "tags": [
+      "flag"
+    ],
+    "status": "provisional",
+    "date": "2026-07-09"
+  },
+  {
+    "id": "R-0136",
+    "lesson": "5.  Self-initiated: the enabler workflow edit (flag 1) was not in the band",
+    "evidence": "2026-07-09-kl5-bench-tree.md:L86",
+    "tags": [
+      "flag"
+    ],
+    "status": "provisional",
+    "date": "2026-07-09"
   }
 ]

@@ -69,7 +69,26 @@
 - provenance: founding plan §9.1 / KF-7 / D-14; shipped in band KL-4
   (PR #14); first report + triage = issue #15 (D4).
 
-## [D-0005] Adoption is born-red: check gates the ENGAGED state, adopt stages the door
+## [D-0005] First bench rubric version (PR #17) owner-blessed
+
+- status: decided
+- date: 2026-07-09
+- verdict: The first version of the bench rubrics (B1 cold-start + B2
+  allocation, PR #17) is **owner-blessed**: the owner said "you can merge
+  17" (relayed via the coordinator session), then "merge 17" as a direct
+  in-session instruction the same day. The merge of #17 was performed on
+  that direct instruction (squash), with the `do-not-automerge` label kept
+  as the §5.0 pin-path marker. This satisfies the §5.0 gate — B1's first
+  firing is unblocked.
+- why: §5.0 / check_bench_integrity law: pin-path content (`bench/rubric|
+  tasks|seeds`) rides a `do-not-automerge` PR and the first rubric version
+  ships only with explicit owner blessing, never merged silently by the
+  session that authored it. This entry is the durable provenance record of
+  that blessing.
+- provenance: founding plan §5.0/§5.1; PR #17 (band KL-5 2/2); blessing
+  2026-07-09.
+
+## [D-0006] Adoption is born-red: check gates the ENGAGED state, adopt stages the door
 
 - status: decided
 - date: 2026-07-09
