@@ -1,9 +1,7 @@
 # Session 2026-07-09 — KL-1 release train → v1.0.0
 
-> **Status:** `in-progress` *(PR B of the train underway: the `upgrade` verb per
-> §4.3 — archive-first, hash-based planted-doc diff report, `--apply-docs` on
-> untouched docs only, state backup + `--rollback`. PR A merged as #8/f4609ea.
-> Flips `complete` with the full session close-out, then tag `v1.0.0`.)*
+> **Status:** `complete` *(the whole KL-1 train: PR A = #8/f4609ea, PR B = #9 —
+> tag `v1.0.0` pushed on #9's merge commit; Release verified on the releases page.)*
 
 **The train (founding plan §4 + §10 KL-1 row, one session, 2 PRs + tag):**
 
@@ -43,6 +41,37 @@
 - Tests: 442 → 465 (version field round-trip, hash recording, adopt archiving,
   dist stamp, release-asset builder + refusal paths, render-live re-record).
 
+## PR B (#9) — what shipped
+
+- `src/engine/upgrade.py` + CLI verb `upgrade [--apply-docs] [--rollback]
+  [--release-json PATH]` (dist regenerated; upgrade.py joins MODULE_ORDER):
+  - **Self-verification** vs release.json (sha256 + version; refuse exit 2;
+    honest skip note when absent).
+  - **Archive-first (§4.3)**: old vendored dist → `.substrate/backup/
+    bootstrap-<old-version>.py`, state.json → `.substrate/backup/state.json`,
+    `last-upgrade.json` marker — all before any overwrite.
+  - **Hash-based planted-doc diff report** → `.substrate/upgrade-report.md`
+    (classes: unchanged / template-improved / consumer-edited / diverged; old
+    templates via `ast.literal_eval` of the archived dist's `_TEMPLATES` —
+    never executed; diverged docs get the template@old→new delta rendered
+    through the current slot context).
+  - **`--apply-docs` covenant**: only consumer-untouched docs; pre-hash
+    installs classify all-diverged.
+  - Staged regeneration (idempotent adopt pass) → state migration (post-backup)
+    → `kit_version` re-recorded → report.
+  - **`--rollback`** restores banked state + archived dist + config kit_version.
+- Tests 465 → 481; live end-to-end in a scratch repo (adopt → upgrade with and
+  without release.json → sha-mismatch refusal → rollback) all green.
+- `docs/current-state.md`: KL-1 marked done kit-side, D2's consumer-pin half +
+  KL-2 as next actions, P10 section updated with the #7 incident.
+
+## v1.0.0 — the tag + Release
+
+Annotated tag `v1.0.0` pushed on #9's squash-merge commit; `release.yml`
+published the GitHub Release with `bootstrap.py` + `bootstrap.py.sha256` +
+`release.json` (notes = the CHANGELOG 1.0.0 section). ⚑ **P11 rides this
+moment** (owner: flip the repo public, or veto → read-only-PAT fallback).
+
 ## ⚑ Flags
 
 1. ⚑ **LICENSE = MIT under "Menno van Hattum"** (owner item P8 — recorded default
@@ -63,6 +92,26 @@
    HTML comment in the CHANGELOG section (defaults: breaking=false,
    state_migration=false, min_upgrade_from=1.0.0) — the §4.1 schema fields need a
    source of truth per release and the CHANGELOG is the one already-enforced home.
+5. ⚑ **v1.0.0 cut this session** (plan KF-1/D-2: first release is 1.0.0, decided,
+   never-wait). Published releases are never deleted — a bad one is superseded
+   (§6.4).
+6. ⚑ Deviation from the session brief: PRs were merged **by hand via MCP after
+   verifying CI green** rather than trusting the enabler — the #7 instant-merge
+   proved arming unsafe until P10 is confirmed; `current-state.md` ▶ Review
+   rhythm now says so.
+
+## KPIs / verification
+
+- `python3.10 -m pytest tests/ -q` → **481 passed** (442 → 465 in PR A → 481 in PR B).
+- `python3.10 -m ruff check src/engine/` → clean (both PRs).
+- `python3.10 src/build_bootstrap.py` → byte-equal to committed dist at each push.
+- `python3.10 dist/bootstrap.py --version` → `substrate-kit 1.0.0`.
+- Cold scratch: `adopt` → `check --strict` green; `kit_version` recorded;
+  `.substrate/backup/bootstrap-1.0.0.py` banked at adopt.
+- Live upgrade drive (scratch): verify-pass with matching release.json; REFUSED
+  (exit 2) on sha mismatch; report written; rollback restored state + dist.
+- `src/build_release_json.py --version 1.0.0 --verify-only` → green (the tag's
+  refuse-to-release guard, dry-run before tagging).
 
 ## 💡 Session idea
 
