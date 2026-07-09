@@ -75,3 +75,24 @@ jobs:
             if [ -n "$ts" ]; then touch -d "@$ts" "$f"; fi
           done
           python3 dist/bootstrap.py check --strict --require-session-log
+
+  # ── TEMPORARY legacy-context aliases (delete after P10 lands) ─────────────
+  # Discovered live in PR #6: an owner-landed ruleset on main requires the
+  # ORIGINAL job names "Kit test suite" and "Cold-adoption smoke (adopt +
+  # check --strict)". Those jobs were folded into kit-quality above, so the
+  # legacy contexts would sit "expected" forever and block every merge. These
+  # aliases report the legacy contexts green iff kit-quality passed. Once the
+  # ruleset requires `kit-quality` instead (docs/current-state.md 👤 P10),
+  # delete both jobs.
+  legacy-alias-test:
+    name: Kit test suite
+    needs: kit-quality
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "legacy required-context alias — real gate is kit-quality"
+  legacy-alias-smoke:
+    name: Cold-adoption smoke (adopt + check --strict)
+    needs: kit-quality
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "legacy required-context alias — real gate is kit-quality"

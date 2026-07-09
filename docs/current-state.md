@@ -28,23 +28,27 @@
 
 ## Pending owner action — 👤 P10 (repo settings, §3.2 item 7)
 
-The `kit-quality` CI gates run but **nothing makes them bite** until these portal
-clicks land (the agent session's direct GitHub API is proxy-blocked — 403 on all
-tokens — and the MCP surface has no ruleset/settings tool, so this cannot be done
-from a session):
+**Partially landed by the owner between KL-0 and KL-1** (discovered live in PR #6:
+the merge came back "2 of 2 required status checks are expected"): a rule on `main`
+now requires the two ORIGINAL CI job names, **"Kit test suite"** and
+**"Cold-adoption smoke (adopt + check --strict)"**. PR #6 folded those jobs into
+the single §3.2 check `kit-quality` and bridges the gap with two TEMPORARY alias
+jobs in `ci.yml` that report the legacy contexts green iff `kit-quality` passes.
 
-1. **Settings → General → Pull Requests → enable "Allow auto-merge".**
-2. **Settings → Rules → Rulesets → New branch ruleset:**
-   - Name: `main-required-checks` · Enforcement: **Active**
-   - Target branches: **Include default branch**
-   - Enable **"Require status checks to pass"** → add required check
-     **`kit-quality`** (source: GitHub Actions)
-   - Leave "Require branches to be up to date" OFF (single-writer repo; ON
-     forces a CI re-run per merge).
+Remaining portal clicks (the agent session's direct GitHub API is proxy-blocked —
+403 on all tokens — and the MCP surface has no ruleset/settings tool):
 
-Until both land: the `auto-merge-enabler` workflow **refuses to arm** (it checks
-the branch-rules API first — the PR #4 instant-merge lesson), and sessions merge
-manually only after CI is green on the final head. Path-scoped required review on
+1. In the `main` rule, **replace the two legacy required checks with the single
+   `kit-quality`** (source: GitHub Actions). Leave "Require branches to be up to
+   date" OFF (single-writer repo; ON forces a CI re-run per merge).
+2. **Settings → General → Pull Requests → enable "Allow auto-merge"** (if not
+   already on).
+3. Say so (or just do it) — the next session then **deletes the two
+   `legacy-alias-*` jobs** from `ci.yml`.
+
+The `auto-merge-enabler` workflow arms only when main actually requires status
+checks (it asks the rules API first — the PR #4 instant-merge lesson), so it is
+live as soon as "Allow auto-merge" is on. Path-scoped required review on
 `bench/{rubric,tasks,seeds}` joins the ruleset when `bench/` exists (KL-5).
 
 ## Next action
@@ -62,7 +66,9 @@ KL-1 row).
   Python floor 3.10; `auto-merge-enabler` port with a refuse-to-arm guard when
   main has no required checks; KL-0 friction guards (adopt skips vendoring a
   root `bootstrap.py` when the target ships the generating `dist/bootstrap.py`;
-  reflection miner skips `#`-heading lines). §3.2 item 7 itself = 👤 P10 above.
+  reflection miner skips `#`-heading lines). §3.2 item 7's ruleset turned out
+  owner-landed mid-band with the legacy job names — bridged with temporary
+  alias jobs; context swap = 👤 P10 above.
 - **KL-0 finish** (#5): founding plan travelled in byte-identical; §3.3 dogfood
   seed (docs/ + `.sessions/` + `.substrate/` + `substrate.config.json` +
   `project.index.json`, all interview slots filled, mode `active`).
