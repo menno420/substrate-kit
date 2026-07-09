@@ -60,6 +60,10 @@ story, the frontmatter keeps the score.
   end-to-end in superbot PR #1884 + websites PR #11 — the first consumer-side
   pass caught a live shape defect); next: a groomed-ideas increment ships the
   doctrine note (template rider / recipe), scaffolding only if instances repeat.
+- [Taxonomy-surface sync checker (TASK_CLASSES ⇄ ladder ⇄ telemetry README)](taxonomy-surface-sync-checker-2026-07-09.md)
+  — state: captured; origin: lab (PL-010 session — three surfaces updated by
+  hand with nothing enforcing agreement; guard recipe in the file); next: a
+  groomed-ideas increment ships checker + test + CI step.
 - [A "feature build" task class for the Q-0248/PL-004 taxonomy](feature-build-task-class-2026-07-09.md)
   — state: **promoted** (PL-004 amendment, ruling PL-010); origin:
   superbot friction issue #15 report 3 + the KL-3 session idea; next: the
