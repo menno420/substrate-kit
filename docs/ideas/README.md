@@ -64,17 +64,18 @@ story, the frontmatter keeps the score.
   — state: captured; origin: lab (PL-010 session — three surfaces updated by
   hand with nothing enforcing agreement; guard recipe in the file); next: a
   groomed-ideas increment ships checker + test + CI step.
-- [Label-added disarm guard — the enabler race's residual half](label-added-disarm-guard-2026-07-09.md)
-  — state: captured; origin: lab (enabler-race-hotfix session — the deployed
-  fresh re-read is point-in-time; a label applied *after* arming still does
-  nothing; guard recipe in the file: `on: pull_request: [labeled]` →
-  `gh pr merge --disable-auto`); next: a groomed-ideas increment ships the
-  workflow + a live post-arm labelling verification.
+
 ## Shipped (survive window open)
 
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [Label-added disarm guard — the enabler race's residual half](label-added-disarm-guard-2026-07-09.md)
+  — **shipped** kit PR #24 (2026-07-09, audit follow-ups):
+  `.github/workflows/auto-merge-disarm.yml` (label at ANY time post-arm →
+  disarm; live-verified once on #24 itself) + its enforcement complement
+  `check_program_law.py --label-gate` and the honest guard-stack map
+  (`docs/operations/auto-merge-guards.md`). Window closes 2026-08-08.
 - [A "feature build" task class for the Q-0248/PL-004 taxonomy](feature-build-task-class-2026-07-09.md)
   — **shipped** kit PR #22 (2026-07-09), the PL-010 ruling; origin:
   superbot friction issue #15 report 3 + the KL-3 session idea. ⚑ #22
