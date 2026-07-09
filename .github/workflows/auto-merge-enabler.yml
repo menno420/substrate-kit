@@ -1,0 +1,68 @@
+name: auto-merge-enabler
+
+# §3.2 item 7's arming mechanism, ported from superbot's auto-merge-enabler
+# pattern: turn ON GitHub-native auto-merge for session PRs so they merge
+# themselves the moment the required `kit-quality` check passes — the session
+# just opens the PR born-red; GitHub does the gated merge when the card flips.
+#
+# HARD REQUIREMENTS (repo settings — provisioning row P10, see
+# docs/current-state.md; the workflow is inert until these exist):
+#   1. Settings → General → Pull Requests → "Allow auto-merge" = ON.
+#   2. A ruleset on `main` REQUIRING the "kit-quality" status check.
+#
+# KL-0 GUARD (this repo's own lesson, PR #4): with NO required check on main,
+# enabling auto-merge merges the PR INSTANTLY — a born-red session card lands
+# alone and the gate is inverted. So this workflow first asks the rules API
+# whether main actually requires status checks and refuses to arm otherwise.
+#
+# CARVE-OUT: label `do-not-automerge` at PR open = never armed.
+#
+# Provenance + reliability (Q-0105 pattern): ported 2026-07-09 (KL-1).
+# UNVERIFIED — watch the first few PRs; delete if it misfires (native
+# auto-merge can always be toggled by hand).
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: auto-merge-enabler-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  enable-auto-merge:
+    if: >-
+      github.repository == 'menno420/substrate-kit' &&
+      github.event.pull_request.draft == false &&
+      startsWith(github.head_ref, 'claude/') &&
+      !contains(github.event.pull_request.labels.*.name, 'do-not-automerge')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check main actually requires status checks (KL-0 guard)
+        id: rules
+        env:
+          GH_TOKEN: ${{ secrets.ROUTINE_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          required="$(gh api "repos/$GITHUB_REPOSITORY/rules/branches/main" \
+            --jq '[.[] | select(.type == "required_status_checks")] | length')"
+          echo "required=$required" >> "$GITHUB_OUTPUT"
+          if [ "$required" = "0" ]; then
+            echo "::warning::main has no required status checks — arming auto-merge would merge instantly (the KL-0 PR #4 footgun). Refusing to arm; land the P10 ruleset first."
+          fi
+      - name: Enable native auto-merge (squash)
+        if: steps.rules.outputs.required != '0'
+        env:
+          # Prefer a PAT so the eventual merge attributes to a real user
+          # (superbot's cadence-trigger lesson); GITHUB_TOKEN is the fallback.
+          GH_TOKEN: ${{ secrets.ROUTINE_PAT || secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if gh pr merge --auto --squash "$PR" --repo "$GITHUB_REPOSITORY"; then
+            echo "Auto-merge enabled for PR #$PR — it merges when 'kit-quality' is green."
+          else
+            echo "::warning::Could not enable auto-merge for PR #$PR. Confirm: (1) 'Allow auto-merge' is ON, (2) main requires the 'kit-quality' check, (3) the token has Pull requests + Contents write."
+          fi

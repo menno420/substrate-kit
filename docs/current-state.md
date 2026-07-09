@@ -24,27 +24,46 @@
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- Nothing beyond this seed PR.
+- Nothing beyond PR #6 (KL-1 first act, this session).
+
+## Pending owner action — 👤 P10 (repo settings, §3.2 item 7)
+
+The `kit-quality` CI gates run but **nothing makes them bite** until these portal
+clicks land (the agent session's direct GitHub API is proxy-blocked — 403 on all
+tokens — and the MCP surface has no ruleset/settings tool, so this cannot be done
+from a session):
+
+1. **Settings → General → Pull Requests → enable "Allow auto-merge".**
+2. **Settings → Rules → Rulesets → New branch ruleset:**
+   - Name: `main-required-checks` · Enforcement: **Active**
+   - Target branches: **Include default branch**
+   - Enable **"Require status checks to pass"** → add required check
+     **`kit-quality`** (source: GitHub Actions)
+   - Leave "Require branches to be up to date" OFF (single-writer repo; ON
+     forces a CI re-run per merge).
+
+Until both land: the `auto-merge-enabler` workflow **refuses to arm** (it checks
+the branch-rules API first — the PR #4 instant-merge lesson), and sessions merge
+manually only after CI is green on the final head. Path-scoped required review on
+`bench/{rubric,tasks,seeds}` joins the ruleset when `bench/` exists (KL-5).
 
 ## Next action
 
-**KL-1 first act (plan §10, D1 Lands cell): diff this repo's CI + settings against
-plan §3.2 and land the delta.** Known gaps, observed live on 2026-07-09:
-
-1. `kit-quality` is not a **required status check** and no ruleset guards `main`
-   (§3.2 item 7) — auto-merge on PR #4 fired instantly with only the born-red session
-   card, proving the session gate has no bite yet.
-2. No **session gate** in CI (`check --strict --require-session-log`, §3.2 item 5).
-3. No **dist-equality pin** as a CI step (§3.2 item 2 — exists only as a test).
-4. No **engine lint bans** job (no print/assert/subprocess, §3.2 item 3).
-5. CI installs Python 3.11 only; the floor is 3.10 (§3.2 item 6).
-
-Then the rest of **KL-1: release discipline toward v1.0.0** (`KIT_VERSION`, `--version`,
-CHANGELOG, `release.yml`, `upgrade` verb, LICENSE — plan §4 + §10).
+**KL-1 release train: `KIT_VERSION` + `--version` + CHANGELOG + `release.yml` +
+`upgrade` verb + LICENSE → tag v1.0.0; then consumer pin PRs** (plan §4 + §10
+KL-1 row).
 
 ## Recently shipped (newest first)
 
-- **KL-0 finish** (this PR): founding plan travelled in byte-identical; §3.3 dogfood
+- **#6 — KL-1 first act (CI delta vs §3.2)**: one required-check-shaped job
+  `kit-quality` (pytest · dist byte-pin · engine lint bans via ruff
+  T20/S101/TID251 · cold-adopt smoke incl. `--wire-enforcement` exit path ·
+  session gate `check --strict --require-session-log` with git-mtime restore);
+  Python floor 3.10; `auto-merge-enabler` port with a refuse-to-arm guard when
+  main has no required checks; KL-0 friction guards (adopt skips vendoring a
+  root `bootstrap.py` when the target ships the generating `dist/bootstrap.py`;
+  reflection miner skips `#`-heading lines). §3.2 item 7 itself = 👤 P10 above.
+- **KL-0 finish** (#5): founding plan travelled in byte-identical; §3.3 dogfood
   seed (docs/ + `.sessions/` + `.substrate/` + `substrate.config.json` +
   `project.index.json`, all interview slots filled, mode `active`).
 - #4 — born-red session card for this session (merged alone: no required checks yet).

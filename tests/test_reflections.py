@@ -245,6 +245,30 @@ def test_mine_last_n_limits_window(tmp_path):
     assert mine_reflections(sessions, last_n=1) == []
 
 
+def test_mine_skips_heading_lines(tmp_path):
+    # KL-0 friction guard: "## 💡 Session idea" section headers were mined as
+    # lesson texts. Headings never become candidates; their path tokens still
+    # feed the recurring-path pass.
+    sessions = tmp_path / ".sessions"
+    sessions.mkdir()
+    logs = {
+        "2026-07-08-a.md": "# A\n\n## ⚑ Work on docs/plan.md\n\n💡 real idea\n",
+        "2026-07-09-b.md": "# B\n\nplain mention of docs/plan.md\n",
+    }
+    for i, name in enumerate(sorted(logs)):
+        p = sessions / name
+        p.write_text(logs[name], encoding="utf-8")
+        os.utime(p, (2000 + i, 2000 + i))
+    candidates = mine_reflections(sessions)
+    lessons = {c["lesson"] for c in candidates}
+    assert "real idea" in lessons
+    assert not any("Work on" in lesson for lesson in lessons)
+    assert not any("flag" in c["tags"] for c in candidates)
+    recurring = [c for c in candidates if c["tags"] == ["recurring-path"]]
+    assert len(recurring) == 1
+    assert recurring[0]["evidence"] == "2026-07-08-a.md:L3, 2026-07-09-b.md:L3"
+
+
 def test_mine_absent_dir_and_never_writes(tmp_path):
     assert mine_reflections(tmp_path / "nope") == []
     sessions = _fixture_sessions(tmp_path)
