@@ -1,5 +1,5 @@
 # substrate-kit · status
-updated: 2026-07-09T12:29:00Z
+updated: 2026-07-09T12:33:00Z
 phase: founding bands + KL-7 done; B1 PASS recorded (#28); v1.1.0 cut in flight (PR #29 open + release.yml dispatch to follow); control protocol adopted this session (PR #27 landed + this first heartbeat, PR #30)
 health: green
 last-shipped: #28 — B1 first cold-start row recorded (run 2026-07-09-run01, VERDICT PASS, judge claude-opus-4-8; raw run dir committed)

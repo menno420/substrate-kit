@@ -1,6 +1,6 @@
 # Session 2026-07-09 — Control protocol adoption: land #27 + first status heartbeat
 
-> **Status:** `in-progress`
+> **Status:** `complete` *(PR #30 — auto-merge armed at open)*
 
 **Scope (about to do):** land the manager's control-plant PR #27 (it sat
 open behind main with no CI runs — the fleet bus was dark on main): merge
