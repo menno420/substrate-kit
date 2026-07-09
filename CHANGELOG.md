@@ -38,6 +38,21 @@ workflow refuses to publish a version that has no section in this file.
   PL-004 feed. Everything fail-open: drafting can never crash a hook or
   session-close.
 
+- **The B4 ideas-frontmatter convention + `check_idea_index.py`** (band
+  KL-6, plan §5.4 — MINOR, new checker; convention and checker ship in the
+  same PR): every `docs/ideas/` entry opens with a flat YAML-subset
+  frontmatter block `{state, origin, shipped_pr, shipped_repo, merged_date,
+  outcome}` — the machine-readable "ideas that ship and survive" record the
+  B4 sweep scores. `scripts/check_idea_index.py` (stdlib, kit-quality gate)
+  enforces the grammar, the outcome-consistency rules (ship outcomes require
+  the ship fields; `survived` requires the 30-day D-15 window), the
+  `-YYYY-MM-DD.md` cohort-key filename, and README-backlog index consistency
+  (every file linked, every link resolving). Existing entries migrated; the
+  planted `ideas-README` template documents the convention for consumers
+  (dist regenerated + byte-pinned). `telemetry/*.jsonl` gains a
+  `merge=union` gitattribute so parallel sessions' append-only rows never
+  conflict.
+
 - **The `friction` verb + outbox** (band KL-4, plan §9.1 — MINOR, new CLI
   capability): `friction export` collects the install's ⚑ friction records
   (reflection buffer + a full session-log scan, deduplicated — D-14), wraps

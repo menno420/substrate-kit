@@ -147,6 +147,32 @@ Remaining portal clicks:
 Path-scoped required review on `bench/{rubric,tasks,seeds}` joins the ruleset
 when `bench/` exists (KL-5).
 
+## Pending owner action — 👤 P5 (Railway project `kit-lab`) → then the P6 console move
+
+**The console move (plan §7.2 P6, band KL-6) is owner-gated on P5 and stays
+blocked until it lands.** Reality update since the plan was written: the
+**websites repo** (menno420/websites PRs #7/#8) now runs `botsite` +
+`dashboard` as Railway services in project `superbot-websites`, rendering
+superbot's committed `site.json` / `dashboard.json` / `console.json`; the
+program-console shell itself (superbot PR #1802, `botsite/console/console.js`)
+still renders from superbot's committed `console.json`. Exact steps:
+
+1. **👤 P5 — create Railway project `kit-lab`** (portal action; agents never
+   touch Railway — ambient tokens/IDs may point at production): region
+   `europe-west4`, **no spend caps** (Q-0249/PL-005 — telemetry, not caps),
+   notification rule → HQ `#railway-alerts`, workspace soft-limit alert.
+   Deferrable whole until first deploy need (the kickoff pattern). Then put a
+   project-scoped `RAILWAY_TOKEN` in the kit repo's environment (P3 rider).
+2. **Lab-side after P5** (a later session builds it — nothing for the owner):
+   the `/console` route + vendored `ds/` assets + a **program-wide producer**
+   (merges superbot's console rows with the kit's `telemetry/` +
+   `bench/results/` feeds) move onto the `kit-lab` project; superbot's
+   exporter keeps producing superbot rows (plan P6).
+3. **Cross-repo read for the merged feeds**: the kit's feeds become readable
+   to the producer via 👤 P11 (public flip, KF-10) or the 👤 P13 read-only
+   PAT — one of the two must exist before the merged console renders kit
+   data.
+
 ## Next action
 
 **⚑ Owner blessing of the first benchmark rubric (👤, plan §5.0), then the
@@ -157,15 +183,45 @@ merges its own rubric/tasks/seeds change, and the FIRST rubric version is
 owner-blessed. Merge that PR (or contest it on the PR thread) — **B1's
 first baseline firing waits for it** (T2→T4 per arm + T5, the post-auto-
 draft shape; run per `bench/README.md`, never by the session that authored
-the rubric). After that: **band KL-6** (console feeds + move — exporter
-telemetry family, the kit-lab lane, B4 ideas-frontmatter convention +
-`check_idea_index.py`, the P6 console move). *(Done and no longer next:
-KL-4 — PR #14; KL-5 — PR #16 + the open bench PR, see Stability baseline;
-D3 waits only on 👤 P4 arming above; the `feature build` taxonomy ruling is
-a separate discuss-first PR — `docs/ideas/feature-build-task-class-2026-07-09.md`.)*
+the rubric).
+
+**Band KL-6 status (console feeds + move) — the unblocked half is DONE
+(PR #18 + the superbot companion PR); the rest is a blocked ledger:**
+
+- ✅ **B4 ideas-frontmatter convention + `check_idea_index.py`** (kit PR #18,
+  same-PR per §5.4): frontmatter on every `docs/ideas/` entry, checker in
+  kit-quality, entries migrated, planted `ideas-README` template updated.
+- ✅ **Exporter `telemetry` family + the declared "Kit lab — benchmarks &
+  guards" lane** — superbot-side (the exporter lives there:
+  `scripts/export_dashboard_data.py` + `botsite/console/console.js`), see
+  the companion superbot PR.
+- ⛔ **Kit-lab lane real data** — blocked on the bench PR's owner blessing
+  (`bench/results/*/index.json` exists only on that open PR) **and** on
+  👤 P11-or-P13 for the cross-repo read; until then the lane is declared
+  with its exact contract, never fake rows.
+- ⛔ **B2/B3/B4 sweeps in the loop** — blocked on 👤 P13 (read-only
+  consumer scopes, KF-11); the B4 data model the sweep writes into is now
+  live (the frontmatter above).
+- ⛔ **P6 console move** — blocked on 👤 P5; exact steps in the owner-action
+  section above.
+
+*(Done and no longer next: KL-4 — PR #14; KL-5 — PR #16 + the open bench PR,
+see Stability baseline; D3 waits only on 👤 P4 arming above; the `feature
+build` taxonomy ruling is a separate discuss-first PR —
+`docs/ideas/feature-build-task-class-2026-07-09.md`.)*
 
 ## Recently shipped (newest first)
 
+- **#18 — KL-6 (unblocked half)**: the B4 ideas-frontmatter convention +
+  `scripts/check_idea_index.py` in kit-quality (grammar · outcome
+  consistency · 30-day survive window · cohort-key filenames · README index
+  consistency); existing `docs/ideas/` entries migrated (the auto-draft
+  handoff idea records its first real B4 `shipped` outcome — PR #16);
+  planted `ideas-README` template documents the convention (dist
+  regenerated); `telemetry/*.jsonl merge=union` gitattribute (append-only
+  rows never conflict across parallel sessions); 👤 P5/P6 owner steps + the
+  KL-6 blocked ledger in this file; suite 588 → 611. Companion superbot PR:
+  exporter `telemetry` family + the declared kit-lab lane.
 - **#16 — KL-5 (1/2) auto-drafted handoff**: `src/engine/loop/handoff.py`
   (session-start anchor; evidence gathering — mtime scan + pure-file-parse
   git HEAD; drafted skeleton / appended close-out; `draft` verb); the

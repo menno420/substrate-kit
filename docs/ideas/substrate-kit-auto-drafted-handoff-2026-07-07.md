@@ -1,3 +1,12 @@
+---
+state: historical
+origin: consumer:menno420/superbot
+shipped_pr: 16
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-09
+outcome: shipped
+---
+
 # Substrate-kit auto-drafted handoff (2026-07-07) — pointer stub
 
 > **Status:** `historical`

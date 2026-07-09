@@ -43,6 +43,11 @@ jobs:
         # Config lives in pyproject.toml [tool.ruff*]: T20 + S101 + TID251.
         run: python3 -m ruff check src/engine/
 
+      - name: Idea index (§5.4 — B4 frontmatter + backlog consistency)
+        # docs/ideas/ entries carry the idea-outcome frontmatter; the README
+        # backlog indexes every file. A convention ships with its checker.
+        run: python3 scripts/check_idea_index.py
+
       - name: Program law (§8.3 — PL register grammar + planted pointers)
         # docs/program/rulings.md is the canonical PL-register; pointer
         # sections in the planted templates cite PL-IDs, never copy bodies.
