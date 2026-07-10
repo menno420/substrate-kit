@@ -14,6 +14,7 @@ from engine.loop.telemetry import (
     TASK_CLASSES,
     harvest_model_usage,
     parse_model_line,
+    reconcile_model_usage,
     record_guard_fires,
 )
 
@@ -274,6 +275,96 @@ def test_harvest_none_log_is_an_advisory(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# reconcile_model_usage (whole-tree write-at-commit sweep)
+# ---------------------------------------------------------------------------
+
+
+def _write_card(root: Path, name: str, *, status: str = "complete") -> Path:
+    """Write a session card with a chosen Status badge + a valid 📊 line."""
+    sessions = root / ".sessions"
+    sessions.mkdir(exist_ok=True)
+    card = sessions / name
+    card.write_text(
+        f"# card\n\n> **Status:** `{status}`\n\n{MODEL_LINE}", "utf-8"
+    )
+    return card
+
+
+def test_reconcile_records_every_complete_card_not_just_latest(tmp_path):
+    # The undercount fix: the lossy single-latest harvest missed any card
+    # committed under a newer one. Reconcile sweeps them all.
+    for i in range(3):
+        _write_card(tmp_path, f"2026-07-0{i + 1}-card-{i}.md")
+    lines = reconcile_model_usage(tmp_path, tmp_path / ".sessions")
+    assert any("reconcile recorded 3" in line for line in lines)
+    sessions = {r["session"] for r in _read_jsonl(tmp_path / MODEL_USAGE_RELPATH)}
+    assert sessions == {"2026-07-01-card-0", "2026-07-02-card-1", "2026-07-03-card-2"}
+
+
+def test_reconcile_count_equals_eligible_cards_no_undercount(tmp_path):
+    # Done-when: stored count == eligible (complete + valid line) card count.
+    for i in range(5):
+        _write_card(tmp_path, f"2026-07-0{i + 1}-eligible-{i}.md")
+    # A card with no 📊 line is NOT eligible and must not inflate the count.
+    (tmp_path / ".sessions" / "2026-07-06-noline.md").write_text(
+        "# card\n\n> **Status:** `complete`\n\nno telemetry line here\n", "utf-8"
+    )
+    reconcile_model_usage(tmp_path, tmp_path / ".sessions")
+    assert len(_read_jsonl(tmp_path / MODEL_USAGE_RELPATH)) == 5
+
+
+def test_reconcile_skips_in_progress_card_until_it_flips_complete(tmp_path):
+    # Write-at-card-commit: a born-red / in-progress card has no finished
+    # session to report — it earns its row only once it commits complete.
+    card = _write_card(tmp_path, "2026-07-01-born-red.md", status="in-progress")
+    reconcile_model_usage(tmp_path, tmp_path / ".sessions")
+    assert not (tmp_path / MODEL_USAGE_RELPATH).exists()
+    # Flip to complete → the very next reconcile picks it up.
+    card.write_text(f"# card\n\n> **Status:** `complete`\n\n{MODEL_LINE}", "utf-8")
+    reconcile_model_usage(tmp_path, tmp_path / ".sessions")
+    (record,) = _read_jsonl(tmp_path / MODEL_USAGE_RELPATH)
+    assert record["session"] == "2026-07-01-born-red"
+
+
+def test_reconcile_skips_drafted_fill_slots(tmp_path):
+    # A KL-5 auto-draft still carrying a bare [[fill:]] slot is drafted, not
+    # completed — reconcile leaves it for a real close-out.
+    (tmp_path / ".sessions").mkdir()
+    (tmp_path / ".sessions" / "2026-07-01-drafted.md").write_text(
+        "# card\n\n> **Status:** `complete`\n\n"
+        "- **📊 Model:** [[fill: model]] · high · docs-only\n",
+        "utf-8",
+    )
+    reconcile_model_usage(tmp_path, tmp_path / ".sessions")
+    assert not (tmp_path / MODEL_USAGE_RELPATH).exists()
+
+
+def test_reconcile_is_idempotent(tmp_path):
+    _write_card(tmp_path, "2026-07-01-once.md")
+    reconcile_model_usage(tmp_path, tmp_path / ".sessions")
+    lines = reconcile_model_usage(tmp_path, tmp_path / ".sessions")
+    assert any("no unrecorded complete cards" in line for line in lines)
+    assert len(_read_jsonl(tmp_path / MODEL_USAGE_RELPATH)) == 1
+
+
+def test_reconcile_preserves_rows_harvest_already_wrote(tmp_path):
+    # Reconcile only APPENDS the missing — it never disturbs the latest-card
+    # row harvest wrote, and dedupes against it.
+    log = _write_card(tmp_path, "2026-07-02-latest.md")
+    harvest_model_usage(tmp_path, log)
+    _write_card(tmp_path, "2026-07-01-older.md")
+    reconcile_model_usage(tmp_path, tmp_path / ".sessions")
+    sessions = [r["session"] for r in _read_jsonl(tmp_path / MODEL_USAGE_RELPATH)]
+    assert sorted(sessions) == ["2026-07-01-older", "2026-07-02-latest"]
+    assert sessions.count("2026-07-02-latest") == 1  # no double-append
+
+
+def test_reconcile_no_sessions_dir_is_a_noop(tmp_path):
+    assert reconcile_model_usage(tmp_path, tmp_path / ".sessions") == []
+    assert not (tmp_path / MODEL_USAGE_RELPATH).exists()
+
+
+# ---------------------------------------------------------------------------
 # The two choke points (cmd_check / cmd_hook)
 # ---------------------------------------------------------------------------
 
@@ -368,3 +459,22 @@ def test_cmd_session_close_harvests_model_line(tmp_path, capsys):
     assert "model-usage: recorded 2026-07-09-close" in out
     (record,) = _read_jsonl(tmp_path / MODEL_USAGE_RELPATH)
     assert record["model"] == "fable-5"
+
+
+def test_cmd_session_close_reconciles_every_card_not_just_latest(tmp_path, capsys):
+    # The write-at-commit fix at the session-close choke point: an older card
+    # that never got its own close-out is swept in alongside the latest.
+    config = Config()
+    save_config(tmp_path, config)
+    backend = JsonStateBackend(tmp_path / config.state_dir / "state.json")
+    with backend.transaction():
+        for key, value in default_state(config.project_id).items():
+            backend.set(key, value)
+    _write_log(tmp_path, "2026-07-08-older.md")
+    _write_log(tmp_path, "2026-07-09-latest.md")
+    rc = cli.cmd_session_close(tmp_path)
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "reconcile recorded" in out
+    sessions = {r["session"] for r in _read_jsonl(tmp_path / MODEL_USAGE_RELPATH)}
+    assert sessions == {"2026-07-08-older", "2026-07-09-latest"}
