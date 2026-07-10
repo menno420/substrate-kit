@@ -1,6 +1,6 @@
 # 2026-07-10 — gen-2: fix engagement-checker comment-leniency (issue #36 rpt 1)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** claude-opus-4-8 · high · gen-2 kit-side checker fix (single scoped
   PR: strip `#`-comment content before the `enforcement-unwired` needle test)
