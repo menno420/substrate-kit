@@ -97,7 +97,15 @@ def test_main_writes_the_three_assets_plus_notes(tmp_path, capsys):
     assert payload["sha256"] == digest
     assert payload["upgrade_steps"]
     assert payload["changelog_anchor"].startswith("https://github.com/")
-    assert (out / "notes.md").read_text(encoding="utf-8").strip()
+    notes = (out / "notes.md").read_text(encoding="utf-8")
+    assert notes.strip()
+    # ORDER 003 (adopter-visibility band): every release's notes carry the
+    # adopter upgrade checklist, version-stamped for THIS release, ending in
+    # the `kit:` status-line self-report step (enforce, don't exhort — the
+    # appender lives in main(), so an author cannot forget it).
+    assert "## Adopter upgrade checklist" in notes
+    assert f"kit: v{kit_version()}" in notes
+    assert "{version}" not in notes
 
 
 def test_main_refuses_on_version_mismatch(capsys):

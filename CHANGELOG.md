@@ -17,6 +17,395 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **SuperBot-coordinator lane wind-down succession pack** (docs-only,
+  suffixed per the multi-lane rule): `docs/succession/` (new, with README
+  index) carrying the gen-2 next-boot guide (read order, queue state,
+  walking-skeleton check, known walls with exact error text), the Custom
+  Instructions rewrite proposal, the environment spec (setup script
+  re-verified exit-0 in no-repo and with-repo cases), and gen-2 blueprint
+  feedback; plus the wind-down retro addendum
+  `docs/retro/wind-down-review-2026-07-09-superbot-coordinator.md`
+  (whole-life summary, exact-error friction ledger, first-person close)
+  and the lane heartbeat flipped to wind-down-complete.
+
+## [1.6.0] - 2026-07-09
+
+New-capability release (MINOR) covering two coordination-protocol bands
+(inbox ORDERs 007 + 008, both from the 2026-07-09 fleet retro synthesis /
+owner directive; ORDER 008's band merged in PR #68, ORDER 007's in this
+cut's PR):
+
+- **Owner-action quality band (ORDER 008):** agents' ⚑ needs-owner asks
+  were too often unnecessary (assumed walls nobody hit) or unactionable by
+  a non-technical owner. Every ask now carries six REQUIRED OWNER-ACTION
+  fields — WHAT / WHERE / HOW / WHY-IT-MATTERS / UNBLOCKS /
+  VERIFIED-NEEDED (attempted, or the exact wall; assumption-based asks
+  banned) — with an advisory `check` warning and a session-close hygiene
+  step behind it.
+- **Order-claiming convention (ORDER 007):** the root-cause fix for the
+  realized #50/#51 twin-execution failure (two sessions both saw an order
+  still `new` and executed it twice). An executing session now claims
+  FIRST — `claimed-by:` on its own status orders line, landed on main
+  before any build work — re-reads inbox + sibling statuses after the
+  claim merges, and stale claims (~24h, no activity) expire so a dead
+  lane never deadlocks an order.
+
+No planted-doc, state schema, config schema, or CLI contract breaks (the
+new checker is advisory-only and can never red a gate; template changes
+are additive; existing installs inherit both bands on `upgrade`).
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+**Benchmark outcome (KF-5 — mandatory statement for a MINOR):** no fresh
+firing this release — both bands are templates + docs + an advisory-only
+checker and touch no scored surface; the standing run of record remains B1
+run-2 (`2026-07-09-run02`, VERDICT: FAIL under strict F-5,
+advisory-to-pass) as stated in v1.4.0/v1.5.0. Run-3 stays gated behind the
+#49 seed fix (owner-gated, one click) and the F-5 wording ruling.
+
+### Added
+
+- **Owner-action quality band** (ORDER 008, PR #68):
+  - `check_owner_actions.py` — advisory-only checker (never
+    exit-affecting, both CI lanes incl. `--status-only`): one
+    `owner-action-fields` finding per configured heartbeat file whose
+    `⚑ needs-owner` value is non-`none` while the file lacks any of the
+    six field labels; guard-fire telemetry recorded; multi-lane via
+    `heartbeat_files`; fail-open on unreadable files.
+  - `control-README.md.tmpl` § "⚑ needs-owner — the OWNER-ACTION item
+    format": the six REQUIRED fields, the
+    try-it-yourself-or-cite-the-exact-wall bar, stale-ask expiry,
+    fewer-clearer-asks doctrine (self-hosted `control/README.md` matches).
+  - Doctrine wiring: `CONSTITUTION.md.tmpl` autonomy rail "Owner
+    attention is the scarcest resource"; `collaboration-model.md.tmpl`
+    § "Routing work to the owner"; `session-close` skill step 3
+    "Owner asks" (steps renumbered).
+- **Order-claiming convention** (ORDER 007, this PR):
+  - `control-README.md.tmpl` § "Claiming an order — one executor per
+    order": claim FIRST on your own status orders line
+    (`claimed-by: <ids> <lane-or-session> <ISO8601>`, landed on main
+    before build), re-read inbox + sibling statuses post-merge (tiebreak:
+    earliest merged claim), ~24h no-activity claim expiry; the
+    per-session ritual bullet and the status-format `orders:` line now
+    reference the claim (self-hosted `control/README.md` matches).
+    One-writer-per-file is preserved — a lane only ever claims on its
+    own status file.
+
+### Changed
+
+- Suite 707 → 722 (owner-action checker suite + skill/adopt wiring +
+  claim-convention plant assertions).
+
+### Notes
+
+- ORDER 007's other half — disposing of duplicate-execution PR #50 — was
+  verified already terminal (merged 2026-07-09T17:40:03Z as the
+  lane-suffixed salvage, before the order was appended); a disposition
+  comment on #50 records the audit trail.
+
+## [1.5.0] - 2026-07-09
+
+New-capability release (MINOR): the **capability-manifest band** (inbox
+ORDER 006, owner directive 2026-07-09 — sessions repeatedly stall on
+imagined walls and forget provisioned capabilities, burning owner attention
+as hand reminders). Adopted repos now get a planted `docs/CAPABILITIES.md` —
+the verified ledger of what sessions can/cannot do plus THE DISCOVERY RULE
+(check file → check env → attempt once + capture the exact error → append
+same session) — wired into the orientation reading order and nudged at
+session close. No planted-doc, state schema, config schema, or CLI contract
+breaks (one additive ADOPT_PLAN entry; existing installs inherit the doc on
+`upgrade`, skip-if-exists as always).
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+**Benchmark outcome (KF-5 — mandatory statement for a MINOR):** no fresh
+firing this release — the band is templates + docs wiring and touches no
+scored surface; the standing run of record remains B1 run-2
+(`2026-07-09-run02`, VERDICT: FAIL under strict F-5, advisory-to-pass) as
+stated in v1.4.0. Run-3 is deliberately gated behind the #49 seed fix
+(owner-gated, one click) and the F-5 wording ruling.
+
+### Added
+
+- **`CAPABILITIES.md.tmpl`** (ORDER 006): new content template planted at
+  `docs/CAPABILITIES.md` on adopt — seed content: the media→ffmpeg-frames→
+  read recipe, printenv-before-assuming-no-credentials, and the fleet's
+  verified walls (tag/release/branch-delete 403s with the
+  workflow_dispatch release workaround, env/routine/Project creation =
+  owner clicks, the self-merge classifier line incl. the
+  coordinator-vs-child asymmetry, the GraphQL quota), plus THE DISCOVERY
+  RULE and an append log.
+- **Orientation wiring** (ORDER 006): `CLAUDE.md.tmpl`,
+  `CONSTITUTION.md.tmpl` (a "Capabilities are discovered, never assumed"
+  working-agreement bullet), and `AGENT_ORIENTATION.md.tmpl` (start-of-
+  session list + planted-doc set) all route every session through
+  `docs/CAPABILITIES.md` at start.
+- **Session-close capability nudge** (ORDER 006): the `session-close`
+  skill's procedure gains step 2 — "did you discover a new capability or
+  hit a wall this session? append it."
+- **Self-hosted `docs/CAPABILITIES.md`** in this repo, seeded with the
+  fleet findings plus a same-day live one: cross-repo reads are
+  allowlisted per session (`menno420/fleet-manager` returned "not
+  configured for this session" — which is also why the master-copy sync is
+  documented as manager-relayed rather than performed directly).
+
+- **SuperBot-coordinator lane wake-up review** (suffixed per the owner's
+  multi-lane rule; a different Project than kit-lab, filed here because the
+  gen-1 retro protocol lives in `docs/retro/`):
+  `docs/retro/project-review-2026-07-09-superbot-coordinator.md` (the
+  SuperBot-rebuild true state + full coordinator-fleet agent audit +
+  efficiency verdict + ⚑ owner actions + continuation) and
+  `docs/retro/self-review-2026-07-09-superbot-coordinator.md` (every
+  `docs/retro/QUESTIONS.md` ID answered from the coordinator lane's
+  vantage), plus the lane heartbeat
+  `control/status-superbot-coordinator.md` (not yet in `heartbeat_files`
+  by design — kit-lab owns the config; decide-and-flag).
+- **Kit-lab-coordinator-lane retro companions** (ORDER 005, twin execution):
+  `docs/retro/self-review-2026-07-09-kitlab-coordinator.md` +
+  `docs/retro/project-review-2026-07-09-kitlab-coordinator.md` — the
+  parallel coordinator-spawned lane's independent answers + the
+  session-side agent audit (35-session fact ledger, model split, stall
+  census) cross-checked against the repo with discrepancies named (incl.
+  the telemetry harvest gap: 11 post-KL-3 cards' Model lines never
+  harvested). Docs-only.
+- **Gen-1 retro self-review + project review** (inbox ORDER 005):
+  `docs/retro/self-review-2026-07-09.md` — every `docs/retro/QUESTIONS.md`
+  question answered by ID with PR/commit/file evidence — and
+  `docs/retro/project-review-2026-07-09.md` — true current state, the full
+  agent audit (every session, with stall/death causes classified), the
+  honest efficiency verdict, ⚑ owner actions, and the continuation plan.
+
+## [1.4.0] - 2026-07-09
+
+New-capability release (MINOR): **configurable heartbeat paths** for
+multi-Project repos (inbox ORDER 004, rider to v1.3.0's adopter-visibility
+band — relayed from a real adopter finding: superbot-games is a SHARED repo
+with per-lane heartbeats, and the status checker hardcoded
+`control/status.md`, misfiring on that shape). The validated heartbeat set
+is now `substrate.config.json` → `heartbeat_files` (default
+`["control/status.md"]`), the per-lane pattern is documented in the planted
+`control/README.md` contract, and superbot-games is registered as the
+two-lane adopter. No planted-doc, state schema, config schema, or CLI
+contract breaks (the config key is additive; unset configs behave exactly
+as before).
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+**Benchmark outcome (KF-5 — mandatory run for a MINOR):** B1 run-2
+(`2026-07-09-run02`, fired since v1.3.0 on the #40-fixed scorer) is the run
+of record — **VERDICT: FAIL** under the strict F-5 "none regressing" clause
+(judge claude-opus-4-8, independent; M1 regressed ON 1706/2272/531 vs OFF
+556/1481/511) while ON wins M2 + M3 inside the 7k budget with zero
+unrecoverable errors. Advisory-to-pass per KF-5's letter — a release that
+regresses the A/B says so in its own changelog (founding plan §4). No trend
+claim (family at 2 rows; KF-8 needs ≥3); the F-5 wording decision is
+⚑ owner-pending (`docs/ideas/rubric-f5-none-regressing-wording-2026-07-09.md`).
+
+### Added
+
+- **Configurable heartbeat paths** (ORDER 004): new `substrate.config.json`
+  key `heartbeat_files` (list of repo-relative status files; default
+  `["control/status.md"]`; empty/unset falls back to the default so a
+  misconfiguration can never silently disable the gate).
+  `check_status_current` validates every listed file independently —
+  per-lane `status-missing` / `status-no-heartbeat` gate findings and
+  per-lane `status-stale` advisories, each naming its own file — and both
+  `cli.py` consumers (`cmd_check`, incl. the `--status-only` control fast
+  lane, and `cmd_adopt`'s engagement checklist) plus the Stop-hook
+  overwrite reminder read the configured list (the hook clears on ANY
+  fresh lane, since it cannot know which lane a session belongs to).
+- **Per-lane multi-Project pattern in the planted contract**
+  (`control-README.md.tmpl` + the kit's own `control/README.md`): one
+  status file per lane (`control/status-<lane>.md`), single manager-owned
+  `inbox.md`, lanes declared via `heartbeat_files` — the one-writer rule
+  scales by splitting the heartbeat, never by sharing it.
+- **`docs/adopters.md`: superbot-games registered as the two-lane adopter**
+  (per-lane heartbeats `control/status-mining.md` +
+  `control/status-exploration.md`; kit_version/engaged pending the first
+  relayed per-lane `kit:` line).
+- **B1 run-2 recorded** (`2026-07-09-run02`, PR #44): second cold-start
+  row appended (append-only) + raw run dir committed at
+  `bench/results/cold-start/2026-07-09-run02/`. Judge claude-opus-4-8
+  (independent): **VERDICT FAIL** under the strict F-5 "none regressing"
+  clause — the first clean M1 measurement on the #40-fixed scorer
+  regressed (ON 1706/2272/531 vs OFF 556/1481/511) — while ON wins M2
+  (handoff actually used) + M3 (durable write-back) inside the 7k budget
+  with zero unrecoverable errors; advisory per KF-5, no trend claim
+  (family at 2 rows, KF-8 needs ≥3). Run-2 follow-up ideas filed
+  (rubric F-5 wording owner brief · make_seed yield-keyword bug ·
+  prepare engagement arc · render CLAUDE.md gap · T5 idea updated with
+  the last-card gate gap); fixes deliberately not in the recording PR.
+
+## [1.3.0] - 2026-07-09
+
+New-capability release (MINOR): the substrate-coordinator visibility band
+(inbox ORDER 003, rider to v1.2.0's coordination protocol) — every adopter
+self-reports its kit state in its own heartbeat, kit-lab keeps the fleet
+adopter registry, and every release's notes automatically carry the adopter
+upgrade checklist — plus the fleet-review fast-lane hardening and the run-2
+harness fixes shipped since v1.2.0. Zero new access anywhere (KF-2-clean:
+the kit never writes adopter repos; the manager relays orders). No
+planted-doc, state schema, config schema, or CLI contract breaks.
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+**Benchmark outcome (KF-5 — mandatory run for a MINOR):** the standing B1
+cold-start baseline `2026-07-09-run01` — **VERDICT: PASS** (judge
+claude-opus-4-8, independent; row 1 of
+`bench/results/cold-start/index.json`) — remains the run of record. No fresh
+firing this MINOR: run-2 is the next queued lane, deliberately sequenced
+*after* this release so it fires on the fixed scorer (both run-1 M1 scorer
+taints were fixed + regression-tested in #40); advisory-to-pass per KF-5's
+own letter; no trend claim (KF-8 needs ≥3 paired runs).
+
+### Added
+
+- **The `kit:` heartbeat self-report line** (ORDER 003 item 1): the planted
+  `control/status.md` seed now carries
+  `kit: v<X.Y.Z> · check: green|red · engaged: yes|no`, rendered with the
+  REAL running kit version at adopt — `build_context` injects the
+  engine-computed `kit_version` key (`ENGINE_CONTEXT_KEYS`, exempt from the
+  template/bank coherence guard) on every render path — and the planted
+  `control/README.md` contract documents the line's format + update duty
+  (keep the version current in the same session as every upgrade). Every
+  adopter self-reports kit state in its heartbeat; the coordinator needs
+  zero new access.
+- **`docs/adopters.md` — the fleet adopter registry** (ORDER 003 item 2):
+  repo · kit_version · engaged · last-seen, sole writer kit-lab, seeded
+  from the 2026-07-09 fleet-review facts (superbot-next + websites ENGAGED
+  on v1.2.0, superbot deliberate v1.0.0 pin-only, trading-strategy + game
+  repos planned). Fed by relayed `kit:` heartbeats, never by writing
+  adopter repos (KF-2).
+- **Adopter upgrade checklist in every release's notes** (ORDER 003
+  item 3): `src/build_release_json.py` appends the version-stamped
+  checklist (run `upgrade` → `check --strict` green → engagement green →
+  update your `kit:` status line) to `notes.md` automatically — the
+  appender lives in the asset builder, so a release author cannot forget
+  it (enforce, don't exhort).
+- **`check --status-only` — the fast lane's scoped gate** (MINOR, new CLI
+  capability): runs ONLY the `control/` status heartbeat checker
+  (`check_status_current`); the allowlist and guard-fire telemetry apply
+  exactly as in a full run, and the session-log seam is never touched
+  (heartbeat PRs carry no card by design, so the lane cannot deadlock).
+  Stdlib-only, so a CI lane can run it on the system `python3` without
+  `setup-python`.
+
+### Fixed
+
+- **The CI control fast lane is no longer checker-free** (fleet adoption
+  review 2026-07-09, finding 1 — med): the lane skipped
+  `check_status_current` on exactly the PRs that write control files, so
+  a heartbeat-deleting control-only PR rode the lane GREEN while
+  `check --strict` on the same tree exits 1 (`status-no-heartbeat`) —
+  deferring the red onto the NEXT unrelated full-suite PR, the same
+  "bomb" shape the checker's docstring rules out for time-staleness,
+  reintroduced for content-validity. Both the kit's own `ci.yml` and the
+  planted `substrate-gate.yml` now run `check --strict --status-only` as
+  a fast-lane step (only when `control_only == 'true'`). Reproduced
+  before/after on a v1.2.0 fixture; pinned by
+  `tests/test_ci_control_lane.py` + `tests/test_adopt.py`; scoping
+  behavior pinned by three `tests/test_cli_gate.py` cases.
+- **`bench/score_m1.py` run-1 artifact fixes** (#40, run-2 harness prep):
+  read-only fd redirects (`2>/dev/null`, `2>&1`, …) no longer count as
+  mutations, and a mutating tool_use whose paired tool_result is an error
+  is cancelled (failed Edits don't stop the M1 count) — all three run-1
+  M1 taints reproduce as regression tests; recorded run-1 results
+  untouched (append-only law).
+- **`parse_model_line` last-valid-line fix** (#40, found live in
+  websites#31): a prose line that merely mentions the `📊 Model:` marker
+  can no longer shadow the genuine line into a false "no line" advisory —
+  the harvest keeps the last line that parses validly.
+
+## [1.2.0] - 2026-07-09
+
+New-capability release (MINOR): the fleet coordination protocol becomes a
+kit capability — every adopted repo gets the `control/` git-as-message-bus
+(manager inbox + project status heartbeat + the planted contract), the
+heartbeat is enforced by a new dist-shipped checker, and coordination
+writes ride a CI fast lane that can never jam a required context. No
+planted-doc, state schema, config schema, or CLI contract breaks.
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+**Benchmark outcome (KF-5 — mandatory run for a MINOR):** the standing B1
+cold-start baseline `2026-07-09-run01` — **VERDICT: PASS** (judge
+claude-opus-4-8, independent; row 1 of
+`bench/results/cold-start/index.json`, recorded earlier the same day for
+the v1.1.0 cycle) — is the run of record for this release: no fresh firing
+was made because run-2 is deliberately gated behind the filed harness
+fixes (`docs/ideas/score-m1-mutation-artifacts-2026-07-09.md` et al. — a
+same-day re-fire would reproduce the known-tainted M1 pairs), KF-5 is
+advisory-to-pass and never release-blocking, and no trend claim is made
+(KF-8 requires ≥3 paired runs). Nothing in this release touches the
+benchmarked handoff surface.
+
+### Added
+
+- **The `control/` fleet-coordination scaffold** (band KL-8, inbox ORDER
+  002; canonical spec: superbot
+  `docs/planning/fleet-coordination-protocol-2026-07-09.md` §2 — MINOR,
+  new templates): `adopt` now plants the git-as-message-bus protocol in
+  every host — a generalized `control/README.md` contract (roles, the
+  one-writer-per-file rule, both file formats, and the two 2026-07-09 CI
+  lessons: prefer an in-job fast lane over `paths-ignore`, and
+  API-authored PRs may carry zero check runs — the manager's canonical
+  inbox write is a direct Contents-API commit to the default branch) plus
+  seeded-skeleton `control/inbox.md` (manager-written orders) and
+  `control/status.md` (the project-written heartbeat — honestly
+  heartbeat-less until the first real overwrite). Skip-if-exists,
+  hash-recorded, `${project_name}`-rendered like every plant.
+- **`check_status_current` — the status-freshness checker** (engine-side,
+  ships in the dist — MINOR, new checker): a missing or heartbeat-less
+  `control/status.md` rides the strict finding loop RED
+  (`status-missing` / `status-no-heartbeat` — the spec's "graduates to
+  the born-red post-adopt gate", printed on the adopt checklist alongside
+  the KL-7 engagement findings); wall-clock staleness (`status-stale`,
+  > 72h) is **advisory-only** — surfaced and telemetry-recorded but never
+  exit-affecting, so a required CI check can never red on time alone.
+  The Stop hook gains a fifth advisory: `control/status.md` not
+  overwritten this session (file mtime vs the KL-5 session anchor).
+  Input-gated: a host without `control/` sees nothing.
+- **The CI control fast lane**: a control-only diff (`control/**` and
+  nothing else — a heartbeat, an inbox append) short-circuits the heavy
+  suite GREEN **in-job** in both the kit's own `ci.yml` and the planted
+  `substrate-gate.yml` — deliberately never `paths-ignore`, because a
+  REQUIRED context that never reports stays pending forever and jams
+  heartbeat auto-merge; the session gate is among the skipped steps
+  (coordination writes need no session card). Pinned by
+  `tests/test_ci_control_lane.py`; the cold-adopt smoke now walks the
+  extended arc (RED on the seed status → GREEN after the first real
+  heartbeat).
+
+### Fixed
+
+- **Dist-completeness guard**: an engine module missing from
+  `build_bootstrap.MODULE_ORDER` builds a dist whose `cmd_check` crashes
+  with a `NameError` at runtime while the byte-pin stays green (the fresh
+  build is equally incomplete) — hit live when `check_status_current.py`
+  first shipped. `test_module_order_covers_every_engine_module` now pins
+  `MODULE_ORDER` == the on-disk `src/engine/` module set.
+
+## [1.1.0] - 2026-07-09
+
+New-capability release (MINOR): everything the kit-lab run built since
+v1.0.0 — program law, telemetry, the friction loop, the auto-drafted
+handoff + benchmark harness, and the post-adopt ENGAGEMENT gate that fixes
+the "adopted but never onboarded" fleet finding. No planted-doc, state
+schema, config schema, or CLI contract breaks.
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+**Benchmark outcome (KF-5 — mandatory run for a MINOR):** B1 cold-start
+run `2026-07-09-run01` — **VERDICT: PASS** (judge claude-opus-4-8,
+independent): ON wins M2 (resumed from a genuinely-used handoff) and M3
+(durable write-back). No regressions established. M1 unmeasurable this run
+(all 3 pairs scorer-tainted — artifacts of the scorer, not the kit; run-2
+harness fixes are filed in `docs/ideas/`); the T5 guard probe was n/a
+(headless arms never engaged the hook layer). Row 1 of
+`bench/results/cold-start/index.json`.
+
+### Added
+
 - **The `bench/` tree — the pinned benchmark harness** (band KL-5, plan
   §5.0/§5.1 — MINOR, new capability; first rubric version **owner-blessed**
   on the `do-not-automerge` PR that authored it): the B1 cold-start judge
@@ -162,6 +551,15 @@ workflow refuses to publish a version that has no section in this file.
   onboarded while being neither rendered nor enforcing. The cold-adoption
   smoke + tests pin the full RED→ENGAGED→GREEN arc.
 
+- **B1's first cold-start row recorded** (run `2026-07-09-run01` — the
+  KF-5 benchmark-ran condition for the next MINOR): judge claude-opus-4-8
+  (independent), **VERDICT: PASS** — ON wins M2 (resumed from a
+  genuinely-used handoff) + M3 (durable write-back); M1 unmeasurable this
+  run (all 3 pairs scorer-tainted); T5 guard probe n/a (headless arms never
+  engaged the hook layer). Row 1 of `bench/results/cold-start/index.json`
+  + the committed raw run dir (`bench/results/cold-start/2026-07-09-run01/`);
+  the three harness follow-ups filed under `docs/ideas/` for run-2 fixes.
+
 ### Fixed
 
 - **auto-merge-enabler label race** (found live on the bench-tree PR #17):
@@ -246,4 +644,9 @@ by real consumers, and now nameable, pinnable, verifiable, and upgradeable.
   `init --unpack` it served never shipped, and it doubled every consumer's
   vendored file for nothing.
 
+[1.5.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.5.0
+[1.4.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.4.0
+[1.3.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.3.0
+[1.2.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.2.0
+[1.1.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.1.0
 [1.0.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.0.0

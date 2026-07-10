@@ -126,6 +126,125 @@ def test_score_m1_bash_mutations_stop_the_count(tmp_path):
         assert record["m1_words_before_first_mutation"] == expected, command
 
 
+# Run-1 artifact regressions (idea score-m1-mutation-artifacts-2026-07-09;
+# evidence: bench/results/cold-start/2026-07-09-run01/ — ON-T2 line 15,
+# OFF-T4 line 1, OFF-T5 lines 5-9).
+
+
+def test_score_m1_readonly_fd_redirects_are_not_mutations_on_t2_off_t4(tmp_path):
+    # ON-T2's line-15 artifact (`git log ... 2>/dev/null | head` counted as
+    # the first mutation) and OFF-T4's identical artifact at line 1 (-> m1 0).
+    for command in (
+        "cd /repo && git status && git log --oneline -5 2>/dev/null | head",
+        "cd /repo && ls -la && git log --oneline -15 2>/dev/null | head -20",
+        "grep -r pattern . 2>&1",
+        "python3 -m pytest -q >/dev/null 2>&1",
+    ):
+        transcript = tmp_path / "t.jsonl"
+        _write_transcript(
+            transcript,
+            [
+                {"type": "tool_use", "name": "Bash", "input": {"command": command}},
+                {"type": "tool_result", "content": "one two three"},
+                {"type": "tool_use", "name": "Edit", "input": {"file_path": "x"}},
+            ],
+        )
+        record = score_m1.score_transcript(transcript)
+        assert record["m1_words_before_first_mutation"] == 3, command
+        assert record["first_mutation"]["tool"] == "Edit", command
+
+
+def test_score_m1_genuine_file_redirects_still_mutate(tmp_path):
+    for command in ("echo hi > out.txt", "make 2> err.log", "run >> build.log"):
+        transcript = tmp_path / "t.jsonl"
+        _write_transcript(
+            transcript,
+            [
+                {"type": "tool_result", "content": "a b"},
+                {"type": "tool_use", "name": "Bash", "input": {"command": command}},
+                {"type": "tool_result", "content": "c d e"},
+            ],
+        )
+        record = score_m1.score_transcript(transcript)
+        assert record["m1_words_before_first_mutation"] == 2, command
+        assert record["first_mutation"]["tool"] == "Bash", command
+
+
+def test_score_m1_failed_mutation_result_does_not_stop_the_count_off_t5(tmp_path):
+    # OFF-T5's artifact: the counted "first mutation" (Edit @ line 5) FAILED
+    # with `tool_use_error: File has not been read yet`; the first successful
+    # mutation is the Edit at line 9. The error text still counts as consumed
+    # tool output.
+    transcript = tmp_path / "t.jsonl"
+    _write_transcript(
+        transcript,
+        [
+            {"type": "tool_use", "name": "Grep", "input": {"pattern": "total"}},
+            {"type": "tool_result", "content": "one two three four"},  # 4 words
+            {"type": "tool_use", "name": "Edit", "input": {"file_path": "cli.py"}},
+            {
+                "type": "tool_result",
+                "content": "<tool_use_error>File has not been read yet.</tool_use_error>",
+            },  # 6 words, counted — the Edit never mutated
+            {"type": "tool_use", "name": "Read", "input": {"file_path": "cli.py"}},
+            {"type": "tool_result", "content": "five six"},  # 2 words
+            {"type": "tool_use", "name": "Edit", "input": {"file_path": "cli.py"}},
+            {"type": "tool_result", "content": "The file cli.py has been updated"},
+        ],
+    )
+    record = score_m1.score_transcript(transcript)
+    assert record["first_mutation"] is not None
+    assert record["first_mutation"]["line"] == 7  # the SUCCESSFUL Edit
+    assert record["m1_words_before_first_mutation"] == 4 + 6 + 2
+
+
+def test_score_m1_error_flag_result_also_cancels_the_candidate(tmp_path):
+    # The Anthropic message shape signals failure via is_error, not a marker.
+    transcript = tmp_path / "t.jsonl"
+    _write_transcript(
+        transcript,
+        [
+            {"type": "tool_result", "content": "a b c"},
+            {"type": "tool_use", "name": "Write", "input": {"file_path": "x"}},
+            {"type": "tool_result", "content": "permission denied", "is_error": True},
+        ],
+    )
+    record = score_m1.score_transcript(transcript)
+    assert record["first_mutation"] is None  # the only mutation attempt failed
+    assert record["m1_words_before_first_mutation"] == 5
+
+
+def test_score_m1_unpaired_mutation_still_stops_conservatively(tmp_path):
+    # No paired result before the next tool_use / end of stream -> the
+    # mutating tool_use still stops the count (over-counting "mutating" is
+    # the conservative direction, per the module docstring).
+    transcript = tmp_path / "t.jsonl"
+    _write_transcript(
+        transcript,
+        [
+            {"type": "tool_result", "content": "a b"},
+            {"type": "tool_use", "name": "Write", "input": {"file_path": "x"}},
+            {"type": "tool_use", "name": "Read", "input": {"file_path": "y"}},
+            {"type": "tool_result", "content": "c d e"},
+        ],
+    )
+    record = score_m1.score_transcript(transcript)
+    assert record["first_mutation"] is not None
+    assert record["first_mutation"]["tool"] == "Write"
+    assert record["m1_words_before_first_mutation"] == 2
+    # ... and at end-of-stream too.
+    _write_transcript(
+        transcript,
+        [
+            {"type": "tool_result", "content": "a b"},
+            {"type": "tool_use", "name": "Bash", "input": {"command": "rm -rf build"}},
+        ],
+    )
+    record = score_m1.score_transcript(transcript)
+    assert record["first_mutation"] is not None
+    assert record["m1_words_before_first_mutation"] == 2
+
+
 def test_score_m1_block_content_and_no_mutation(tmp_path):
     transcript = tmp_path / "t.jsonl"
     _write_transcript(

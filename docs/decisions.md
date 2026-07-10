@@ -111,3 +111,117 @@
   don't exhort") applied to onboarding itself.
 - provenance: owner directive routing the fleet-review §4 finding into the
   kit (superbot `docs/eap/fleet-review-2026-07-09.md`); band KL-7, PR #25.
+
+## [D-0007] The control protocol ships in the kit: static states gate, time only warns
+
+- status: decided
+- date: 2026-07-09
+- verdict: The fleet coordination protocol (git-as-message-bus) is a kit
+  capability (band KL-8, inbox ORDER 002): `adopt` plants
+  `control/README.md` + seeded `inbox.md`/`status.md` (skip-if-exists,
+  hash-recorded); `check_status_current` is ENGINE-side so it ships in the
+  dist to every adopter — a missing or heartbeat-less `status.md` gates
+  `check --strict` RED (static, deterministic — the born-red graduation,
+  printed on the adopt checklist), while wall-clock staleness (>72h) is
+  advisory-only + Stop-hook-nagged, never exit-affecting: a REQUIRED CI
+  check must not red on time alone. Coordination writes ride an IN-JOB CI
+  fast lane (control-only diff short-circuits green, session gate
+  included), never `paths-ignore` — a required context that never reports
+  stays pending and jams heartbeat auto-merge. The manager's canonical
+  inbox write is a direct Contents-API commit to the default branch;
+  API-authored PRs may carry zero check runs (the #27 lesson), documented
+  in the planted contract.
+- why: The spec (superbot
+  `docs/planning/fleet-coordination-protocol-2026-07-09.md` §2) names the
+  checker and a `paths-ignore`; both needed one resolution each against
+  lived 2026-07-09 evidence — "warns → graduates to the born-red gate"
+  split by determinism (static protocol states vs wall-clock), and
+  `paths-ignore` replaced by the in-job short-circuit after the
+  heartbeat-lane jam lesson (a never-reporting required context blocks
+  auto-merge forever).
+- provenance: inbox ORDER 002; spec §2 (owner-locked decisions §0);
+  lessons from kit PR #27 (zero check runs) and the 2026-07-09 heartbeat
+  lane; shipped in band KL-8.
+
+## [D-0008] The control fast lane is never checker-free: the scoped status gate rides the lane
+
+- status: decided
+- date: 2026-07-09
+- verdict: The CI control fast lane (kit `ci.yml` + the planted
+  `substrate-gate.yml`) runs `check --strict --status-only` as a lane step
+  (`control_only == 'true'` only): a control-only diff edits exactly the
+  files `check_status_current` validates, so the lane skips the heavy
+  suite but never the one checker whose subject it is changing. The new
+  `--status-only` scope runs ONLY the heartbeat checker — allowlist +
+  guard-fire telemetry identical to a full run, session-log seam untouched
+  (heartbeat PRs carry no card; the lane cannot deadlock) — and is
+  stdlib-only so the lane step needs no `setup-python`/pip: coordination
+  writes stay seconds-fast.
+- why: Fleet adoption review 2026-07-09, finding 1 (med): a
+  heartbeat-deleting control-only PR rode the lane GREEN while
+  `check --strict` on the same tree exited 1 (`status-no-heartbeat`),
+  deferring the red onto the NEXT unrelated full-suite PR — the exact
+  "pre-reddened bomb" shape D-0007 rules out for wall-clock staleness,
+  reintroduced for content-validity. Demonstrated before/after on a
+  v1.2.0 fixture (verbatim outputs:
+  `docs/reports/2026-07-09-fleet-adoption-review.md` §2).
+- provenance: owner-directed fleet adoption review 2026-07-09 (assessor
+  finding, ship-now disposition); friction→guard (PL-007 enforce-don't-
+  exhort); this PR.
+
+## [D-0009] Adopter visibility is heartbeat-self-report + a kit-lab registry — never new access
+
+- status: decided
+- date: 2026-07-09
+- verdict: The substrate coordinator sees the fleet through three passive
+  surfaces (inbox ORDER 003): (1) every adopter self-reports
+  `kit: v<X.Y.Z> · check: green|red · engaged: yes|no` in its own
+  `control/status.md` (seeded rendered-with-the-real-version at adopt via
+  the engine-computed `kit_version` context key — `ENGINE_CONTEXT_KEYS`,
+  injected in `build_context` so every render path fills it; documented in
+  the planted contract's format block); (2) kit-lab maintains
+  `docs/adopters.md` (repo · kit_version · engaged · last-seen), sole
+  writer kit-lab, updated only from relayed/readable evidence with
+  `last-seen` = the evidence date — staleness reads as *dark*, never as
+  wrong; (3) every release's notes carry the adopter upgrade checklist,
+  appended automatically by `src/build_release_json.py` (the asset
+  builder, so an author cannot forget it), whose final step — update your
+  `kit:` line — is the loop that feeds the registry. Existing adopters
+  (planted pre-v1.3.0, skip-if-exists means no re-render) gain the line
+  via that same checklist step.
+- why: The kit had the improvement engine but no adopter visibility
+  (manager research 2026-07-09) — kit-lab is the fleet's substrate
+  coordinator yet could not see who runs what version. KF-2 (the lab
+  never writes consumer repos) rules out any active probe; the
+  coordination protocol's one-writer-per-file heartbeats already carry
+  exactly the needed channel, so visibility rides them with zero new
+  access.
+- provenance: inbox ORDER 003 (manager research 2026-07-09, rider to
+  ORDER 002/D-0007); KF-2; shipped in PR #41 with the v1.3.0 cut.
+
+## [D-0010] Heartbeat paths are config, not constants — a shared repo gates one status file per lane
+
+- status: decided
+- date: 2026-07-09
+- verdict: The status checker's validated path set is
+  `substrate.config.json` → `heartbeat_files` (default
+  `["control/status.md"]`; empty/unset falls back to the default so a
+  misconfiguration can never silently disable the gate). Every listed file
+  is validated independently — per-lane gate findings and staleness
+  advisories, each naming its own file — and every consumer (cmd_check
+  incl. the `--status-only` fast lane, cmd_adopt's engagement checklist,
+  the Stop-hook overwrite reminder) reads the configured list. The Stop
+  hook clears on ANY fresh lane: it cannot know which lane a session
+  belongs to, so it must not nag another lane's duty. The multi-Project
+  pattern itself (one `control/status-<lane>.md` per lane, single
+  manager-owned `inbox.md`, lanes declared in `heartbeat_files`) is part
+  of the planted `control/README.md` contract.
+- why: superbot-games is a real SHARED repo running per-lane heartbeats
+  (`control/status-mining.md` + `control/status-exploration.md`), and the
+  v1.3.0 checker hardcoded `control/status.md` — misfiring on the first
+  multi-Project adopter. One-writer-per-file scales by splitting the
+  heartbeat per lane, never by sharing one file across writers (the
+  protocol's own conflict-free rule, D-0007).
+- provenance: inbox ORDER 004 (manager relay of the superbot-games
+  finding, 2026-07-09; rider to ORDER 003/D-0009); shipped in PR #46 with
+  the v1.4.0 cut.

@@ -40,6 +40,12 @@ def _adopt_scratch(root: Path, kit_root: Path) -> Config:
         )
     adopt(root, config, backend, kit_root=kit_root, wire_enforcement=True)
     backend.set("session_count", 1)
+    # KL-8: the control loop is engaged too — a real heartbeat replaces the
+    # adopt seed (whose status-no-heartbeat finding would red these checks).
+    (root / "control" / "status.md").write_text(
+        "# scratch · status\nupdated: 2026-07-09T12:00Z\nphase: fixture\n",
+        encoding="utf-8",
+    )
     return config
 
 
@@ -165,3 +171,63 @@ def test_explicit_session_log_accepts_an_incomplete_named_card(tmp_path):
         session_log=Path(config.sessions_dir) / "2026-07-09-red.md",
     )
     assert rc == 1
+
+
+# ---------------------------------------------------------------------------
+# The fast lane's scoped gate — `check --status-only` (fleet review 2026-07-09)
+# ---------------------------------------------------------------------------
+
+
+def test_status_only_reds_on_a_broken_heartbeat(tmp_path, capsys):
+    root = tmp_path / "repo"
+    _adopt_scratch(root, tmp_path / "kit")
+    # The bypass this closes: a control-only PR deletes/corrupts the
+    # heartbeat; the fast lane used to skip every checker and report green.
+    (root / "control" / "status.md").write_text(
+        "# scratch · status\nphase: heartbeat deleted\n", encoding="utf-8"
+    )
+    rc = cmd_check(root, strict=True, status_only=True)
+    assert rc == 1
+    assert "status-no-heartbeat" in capsys.readouterr().out
+
+
+def test_status_only_is_green_on_a_live_heartbeat_without_a_card(tmp_path, capsys):
+    root = tmp_path / "repo"
+    _adopt_scratch(root, tmp_path / "kit")
+    # No session card exists (a heartbeat PR never carries one) and even
+    # require_session_log must not deadlock the lane: --status-only never
+    # touches the session-log seam.
+    rc = cmd_check(root, strict=True, require_session_log=True, status_only=True)
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "control-status check passed (--status-only)" in out
+    assert "MERGE HELD" not in out
+
+
+def test_status_only_ignores_non_status_findings(tmp_path):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    # A born-red card would red the FULL gate — but it is outside the scoped
+    # run: the lane's verdict is about the heartbeat, nothing else.
+    red = root / config.sessions_dir / "2026-07-09-red.md"
+    red.write_text("# red\n\n> **Status:** `in-progress`\n", encoding="utf-8")
+    assert (
+        cmd_check(
+            root,
+            strict=True,
+            require_session_log=True,
+            session_log=Path(config.sessions_dir) / "2026-07-09-red.md",
+            status_only=True,
+        )
+        == 0
+    )
+    # Sanity: the same tree fails the full gate (the scoping is real).
+    assert (
+        cmd_check(
+            root,
+            strict=True,
+            require_session_log=True,
+            session_log=Path(config.sessions_dir) / "2026-07-09-red.md",
+        )
+        == 1
+    )

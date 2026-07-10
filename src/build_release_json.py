@@ -8,7 +8,9 @@ is not self-consistent, then emits the three Release assets:
 - ``bootstrap.py.sha256``    — ``<hex>  bootstrap.py`` (shasum -a 256 format)
 - ``release.json``           — the machine-readable upgrade contract
 - ``notes.md``               — the CHANGELOG section (release notes body;
-  not attached as an asset, used for the Release description)
+  not attached as an asset, used for the Release description) + the standing
+  adopter upgrade checklist (:data:`ADOPTER_CHECKLIST`, ORDER 003 — appended
+  to every release so it can't be forgotten)
 
 Refusal conditions (exit 1, one line each):
 
@@ -51,6 +53,27 @@ _META_RE = re.compile(
     r"state_migration=(?P<migration>true|false)\s+"
     r"min_upgrade_from=(?P<min_from>\S+?)\s*-->",
 )
+
+# Appended to EVERY release's notes body (inbox ORDER 003, adopter-visibility
+# band): the upgrade ritual an adopter walks, ending with the `kit:`
+# status-line self-report that feeds the kit's docs/adopters.md registry.
+# Lives here — not in each CHANGELOG section — so publishing it is automatic
+# (enforce, don't exhort): a release author cannot forget it.
+ADOPTER_CHECKLIST = """\
+## Adopter upgrade checklist
+
+1. **Run the upgrade**: download `bootstrap.py` from this release next to
+   your vendored copy as `bootstrap.py.new`, then
+   `python3 bootstrap.py.new upgrade` (archive-first; `--rollback` undoes).
+2. **Verify the gate**: `python3 bootstrap.py check --strict` → green on
+   your tree (fix findings before shipping the upgrade PR).
+3. **Verify engagement**: the post-adopt engagement gate stays green — no
+   UNRENDERED banner/slot, live CI runs the gate, session loop engaged.
+4. **Update your `kit:` status line**: in your `control/status.md`, set
+   `kit: v{version} · check: <verdict> · engaged: <yes|no>` in the same
+   session — this heartbeat is how the substrate coordinator sees your kit
+   state (registry: `docs/adopters.md` in menno420/substrate-kit).
+"""
 
 
 def kit_version() -> str:
@@ -180,7 +203,8 @@ def main(argv: list[str] | None = None) -> int:
     changelog = CHANGELOG_PATH.read_text(encoding="utf-8")
     section = changelog_section(args.version, changelog)
     heading, body = section if section else ("", "")
-    (out / "notes.md").write_text(body + "\n", encoding="utf-8")
+    checklist = ADOPTER_CHECKLIST.format(version=args.version)
+    (out / "notes.md").write_text(body + "\n\n" + checklist, encoding="utf-8")
     sys.stdout.write(f"release: wrote 4 asset file(s) to {out} (sha256 {sha256}).\n")
     return 0
 

@@ -1,0 +1,160 @@
+diff --git a/README.md b/README.md
+index e15f23a..e5abf03 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,8 @@
+ 
+ A tiny visit-log CLI: `log` records with a category and
+ duration, then `list`, `total`, `filter <category>` (case-insensitive),
+-and `top` them.
++`top`, and `report` them. `report` prints one
++`<category>: <count> records, <total>` line per category (highest total
++first) and a final `overall: <count> records, <total>` line.
+ 
+ Run the tests with `python3 -m pytest tests/`.
+diff --git a/cedarvisit/__pycache__/__init__.cpython-311.pyc b/cedarvisit/__pycache__/__init__.cpython-311.pyc
+new file mode 100644
+index 0000000..1e7bbba
+Binary files /dev/null and b/cedarvisit/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/cedarvisit/__pycache__/cli.cpython-311.pyc b/cedarvisit/__pycache__/cli.cpython-311.pyc
+new file mode 100644
+index 0000000..ae926e6
+Binary files /dev/null and b/cedarvisit/__pycache__/cli.cpython-311.pyc differ
+diff --git a/cedarvisit/__pycache__/ops.cpython-311.pyc b/cedarvisit/__pycache__/ops.cpython-311.pyc
+new file mode 100644
+index 0000000..2d37148
+Binary files /dev/null and b/cedarvisit/__pycache__/ops.cpython-311.pyc differ
+diff --git a/cedarvisit/__pycache__/store.cpython-311.pyc b/cedarvisit/__pycache__/store.cpython-311.pyc
+new file mode 100644
+index 0000000..57e7e1e
+Binary files /dev/null and b/cedarvisit/__pycache__/store.cpython-311.pyc differ
+diff --git a/cedarvisit/cli.py b/cedarvisit/cli.py
+index 18b0e28..ba71fe9 100644
+--- a/cedarvisit/cli.py
++++ b/cedarvisit/cli.py
+@@ -1,6 +1,6 @@
+ """cedarvisit — a tiny visit-log CLI.
+ 
+-Commands: log (add a record) · list · total · filter <category> · top.
++Commands: log (add a record) · list · total · filter <category> · top · report.
+ """
+ 
+ import argparse
+@@ -22,6 +22,7 @@ def main(argv=None):
+     filter_p.add_argument("category")
+     top_p = sub.add_parser("top", help="highest-duration categories")
+     top_p.add_argument("--limit", type=int, default=3)
++    sub.add_parser("report", help="per-category count and total, plus overall")
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -40,6 +41,13 @@ def main(argv=None):
+     elif args.command == "top":
+         for category, subtotal in ops.top_categories(records, args.limit):
+             print(f"{category}: {subtotal}")
++    elif args.command == "report":
++        if not records:
++            print("no records.")
++        else:
++            for category, count, total in ops.category_report(records):
++                print(f"{category}: {count} records, {total}")
++            print(f"overall: {len(records)} records, {ops.total_duration(records)}")
+     return 0
+ 
+ 
+diff --git a/cedarvisit/ops.py b/cedarvisit/ops.py
+index a3dd0ac..7cf8a8d 100644
+--- a/cedarvisit/ops.py
++++ b/cedarvisit/ops.py
+@@ -22,6 +22,20 @@ def filter_by_category(records, category):
+     return [r for r in records if r["category"] == category]
+ 
+ 
++def category_report(records):
++    """Return ``(category, count, total)`` rows, sorted by total, highest first.
++
++    Ties on total break alphabetically by category, matching
++    :func:`top_categories`.
++    """
++    stats = {}
++    for r in records:
++        count, total = stats.get(r["category"], (0, 0.0))
++        stats[r["category"]] = (count + 1, total + r["duration"])
++    rows = [(category, count, total) for category, (count, total) in stats.items()]
++    return sorted(rows, key=lambda row: (-row[2], row[0]))
++
++
+ def top_categories(records, limit=3):
+     """Return the ``limit`` categories with the highest summed duration."""
+     totals = {}
+diff --git a/tests/__pycache__/__init__.cpython-311.pyc b/tests/__pycache__/__init__.cpython-311.pyc
+new file mode 100644
+index 0000000..abfa173
+Binary files /dev/null and b/tests/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/tests/__pycache__/test_cedarvisit.cpython-311-pytest-9.1.1.pyc b/tests/__pycache__/test_cedarvisit.cpython-311-pytest-9.1.1.pyc
+new file mode 100644
+index 0000000..7dfaeaf
+Binary files /dev/null and b/tests/__pycache__/test_cedarvisit.cpython-311-pytest-9.1.1.pyc differ
+diff --git a/tests/test_cedarvisit.py b/tests/test_cedarvisit.py
+index f3f1aeb..3fd7ab2 100644
+--- a/tests/test_cedarvisit.py
++++ b/tests/test_cedarvisit.py
+@@ -1,6 +1,8 @@
+ """Tests for cedarvisit core operations."""
+ 
+-from cedarvisit import ops
++import pytest
++
++from cedarvisit import cli, ops
+ 
+ 
+ def _sample():
+@@ -37,3 +39,48 @@ def test_top_categories_ranked():
+ 
+ def test_top_categories_limit():
+     assert len(ops.top_categories(_sample(), limit=1)) == 1
++
++
++def test_category_report_rows():
++    assert ops.category_report(_sample()) == [
++        ("travel", 1, 30.0),
++        ("food", 2, 20.0),
++    ]
++
++
++def test_category_report_ties_break_alphabetically():
++    records = []
++    ops.add_record(records, "b", 5.0)
++    ops.add_record(records, "a", 5.0)
++    assert ops.category_report(records) == [("a", 1, 5.0), ("b", 1, 5.0)]
++
++
++def test_category_report_empty():
++    assert ops.category_report([]) == []
++
++
++def test_report_command_output(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["log", "food", "12.5", "--note", "lunch"])
++    cli.main(["log", "travel", "30.0"])
++    cli.main(["log", "food", "7.5"])
++    capsys.readouterr()
++    assert cli.main(["report"]) == 0
++    assert capsys.readouterr().out == (
++        "travel: 1 records, 30.0\n"
++        "food: 2 records, 20.0\n"
++        "overall: 3 records, 50.0\n"
++    )
++
++
++def test_report_command_empty_data(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    assert cli.main(["report"]) == 0
++    assert capsys.readouterr().out == "no records.\n"
++
++
++def test_report_command_rejects_extra_arguments(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit) as excinfo:
++        cli.main(["report", "unexpected"])
++    assert excinfo.value.code == 2

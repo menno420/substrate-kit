@@ -49,6 +49,61 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- [`--apply-docs` is a single-shot window — misleading "re-run" hint](upgrade-apply-docs-single-shot-window-2026-07-09.md)
+  — state: captured; origin: lab (v1.6.0 fleet rollout — observed on both
+  consumer upgrade runs, superbot-next#96 + websites#45: post-run, the
+  improved-docs classification can never recur, so the report's "re-run with
+  --apply-docs" hint is a no-op); next: a groomed-ideas increment ships
+  post-hoc apply against the banked archived dist (guard recipe in the
+  file); ordinary lane, engine fix → dist byte-pin.
+- [`upgrade --rollback` + re-run loses the adopt-pass doc-hash records](upgrade-rollback-loses-doc-hash-records-2026-07-09.md)
+  — state: captured; origin: lab (v1.6.0 fleet rollout — the rollback
+  recovery path restores pre-upgrade state.json, discarding
+  `planted_doc_hashes`, so kit-written docs re-classify consumer-diverged);
+  next: a groomed-ideas increment records the hash when a kept doc
+  byte-matches the new template render (guard recipe in the file); ordinary
+  lane, engine fix → dist byte-pin.
+- [Upgrade report shows only the NEW dist's `archived:` line](upgrade-archive-report-line-gap-2026-07-09.md)
+  — state: captured; origin: lab (**third field report** of the same
+  confusion — seen again on superbot-next#96 + websites#45; cosmetic but
+  priority-bumped on repetition); next: a groomed-ideas increment makes the
+  idempotent `archive_dist` path print `(already banked)` instead of
+  silence (guard recipe in the file); one-liner, engine fix → dist byte-pin.
+- [Upgrade checklist: place `release.json` next to `bootstrap.py.new`](upgrade-checklist-release-json-placement-2026-07-09.md)
+  — state: captured; origin: lab (v1.6.0 fleet rollout — the checklist never
+  mentions `release.json`, and without the adjacent file the sha256
+  self-verification silently skips); next: a groomed-ideas increment adds
+  the checklist line (+ optionally a "verification skipped" report note);
+  ordinary lane, `src/build_release_json.py` + release-notes test.
+- [Rubric F-5 wording: "none regressing" vs the 7k-budget yardstick](rubric-f5-none-regressing-wording-2026-07-09.md)
+  — state: captured; origin: lab (B1 run `2026-07-09-run02` — the first
+  clean M1 measurement made two readings of the pinned F-5 text produce
+  opposite verdicts on the same evidence; decision brief with both runs'
+  evidence in the file); next: **OWNER decision** — `bench/rubric/` is a
+  pin path, any wording change rides a `do-not-automerge` review PR.
+- [make_seed: keyword domain nouns generate SyntaxError seeds](make-seed-yield-keyword-bug-2026-07-09.md)
+  — state: captured; origin: lab (run-2 prepare — ordered seed 424242 hit
+  the harvest/`yield` domain, a Python-keyword identifier → SyntaxError
+  seed; runner deviated to 424243 by rule, manifest `runner_notes`);
+  next: fix + prepare-runs-the-seed-suite smoke (guard recipe in the
+  file); ⚑ `bench/seeds/` is a PIN PATH → the fix rides `do-not-automerge`.
+- [run_ab prepare vs the P0 engagement gate](run-ab-prepare-engagement-arc-2026-07-09.md)
+  — state: captured; origin: lab (run-2 prepare — the post-run-1 KL-7
+  gate holds a bare adopt born-red, so prepare's smoke fails by design
+  and the runner hand-engaged the ON arm + hand-wrote the manifest);
+  next: a groomed-ideas increment scripts the RED→ENGAGED→GREEN arc into
+  `cmd_prepare` (ordinary lane — `run_ab.py` is NOT pin-path).
+- [Engine gap: `render --live` cannot fill `.claude/CLAUDE.md`](render-live-claude-md-gap-2026-07-09.md)
+  — state: captured; origin: lab (run-2 prepare — `check_engagement`
+  flags the file's unrendered banner while the render verb skips it; the
+  KL-7 checklist can't be completed by its own commands); next: a
+  groomed-ideas increment makes `render --live` cover it (or documents
+  the exemption) + a zero-findings smoke leg; engine fix, dist byte-pin.
+- [`bootstrap heartbeat` — a mechanical status.md writer](heartbeat-verb-2026-07-09.md)
+  — state: captured; origin: lab (band KL-8 — the moment the heartbeat
+  became enforced, its hand-formatted timestamp became the weakest link;
+  guard recipe in the file); next: a groomed-ideas increment ships the verb
+  (ordinary lane — additive CLI verb, MINOR).
 - [CHANGELOG Unreleased-section structure checker](changelog-unreleased-structure-checker-2026-07-09.md)
   — state: captured; origin: lab (run close-out 2026-07-09 — the docs-drift
   audit found the same mid-section `### Fixed` insertion made twice
@@ -64,11 +119,42 @@ story, the frontmatter keeps the score.
   — state: captured; origin: lab (PL-010 session — three surfaces updated by
   hand with nothing enforcing agreement; guard recipe in the file); next: a
   groomed-ideas increment ships checker + test + CI step.
+- [T5 protocol: headless arms never engage the hook layer](t5-headless-guard-surface-2026-07-09.md)
+  — state: captured; origin: lab (B1 run 2026-07-09-run01 — the guard probe
+  produced zero evidence, judge §5.5 item 2; **run `2026-07-09-run02`
+  reconfirmed it unchanged on the fully-ENGAGED arm and added the
+  last-card gate gap** — a cardless T5 stays `check --strict` green
+  because the T4-era card satisfies the last-card rule; run-2 evidence
+  in the file); next: discuss-first shape choice (hooks-active arms vs
+  check-driven T5 redesign, either way needing a card-freshness notion); ⚑ any
+  `bench/tasks/T5.md` change is a PIN PATH → `do-not-automerge` owner review.
+- [Kit-version / readiness cell on the control-plane board](control-board-kit-readiness-cell-2026-07-09.md)
+  — state: captured; origin: consumer:menno420/websites (surfaced during the
+  websites v1.2.0 upgrade, websites#31); next: kit side rides ORDER 003 (the
+  `kit:` heartbeat line + docs/adopters.md); the board-cell rendering then
+  travels to menno420/websites as a parse+badge increment (guard recipe in
+  the file).
+- [ON-arm "missing: Model line" persistent red — needle vs card format](model-line-checker-false-red-2026-07-09.md)
+  — state: captured; origin: lab (B1 run 2026-07-09-run01 — judge-flagged
+  PL-006 material); **investigated 2026-07-09 (PR #40):** resolved to the
+  arm-authoring-gap side, traced to the planted `.sessions/README.md`
+  listing marker labels without their needle byte-forms
+  (`_adopt_sessions_readme()`); separate from the harvest-shadowing bug PR
+  #40 fixed; next: plant `label (needle)` pairs + a needle-naming checker
+  message (guard recipe in the file).
 
 ## Shipped (survive window open)
 
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
+
+- [score_m1: mutation-regex + failed-tool-event artifacts](score-m1-mutation-artifacts-2026-07-09.md)
+  — **shipped** kit PR #40 (2026-07-09, run-2 harness prep): read-only fd
+  redirects (`2>/dev/null`, `2>&1`) no longer match the mutation regex, and
+  a mutating tool_use whose paired tool_result is an error no longer counts
+  as the first mutation; regression tests reproduce all three run-1
+  artifact cases (run-1's recorded results untouched — append-only).
+  Window closes 2026-08-08.
 
 - [Label-added disarm guard — the enabler race's residual half](label-added-disarm-guard-2026-07-09.md)
   — **shipped** kit PR #24 (2026-07-09, audit follow-ups):

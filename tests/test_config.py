@@ -64,3 +64,16 @@ def test_kit_version_survives_from_dict_roundtrip(tmp_path: Path):
     save_config(tmp_path, c)
     assert load_config(tmp_path).kit_version == "1.0.0"
     assert json.loads(c.to_json())["kit_version"] == "1.0.0"
+
+
+def test_heartbeat_files_default_and_roundtrip(tmp_path: Path):
+    # ORDER 004: the status checker's path set is config, not a constant.
+    config = Config()
+    assert config.heartbeat_files == ["control/status.md"]
+    config.heartbeat_files = [
+        "control/status-mining.md",
+        "control/status-exploration.md",
+    ]
+    save_config(tmp_path, config)
+    loaded = load_config(tmp_path)
+    assert loaded.heartbeat_files == config.heartbeat_files

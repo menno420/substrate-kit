@@ -1,5 +1,49 @@
 [
   {
+    "slug": "audit-followups",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "audit",
+      "follow-ups",
+      "label-guard",
+      "holes",
+      "honest",
+      "incident",
+      "count",
+      "branch",
+      "hygiene",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "b1-record",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "b1",
+      "record",
+      "first",
+      "cold-start",
+      "row",
+      "run-dir",
+      "commit",
+      "harness",
+      "follow-ups",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #28 \u2014 auto-merge armed at open)*"
+  },
+  {
     "slug": "enabler-race-hotfix",
     "date": "2026-07-09",
     "tags": [
@@ -17,6 +61,26 @@
       "\ud83d\udcca"
     ],
     "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "fleet-adoption-review",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "fleet",
+      "adoption",
+      "review",
+      "owner-directed",
+      "control-lane",
+      "status",
+      "gate",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #35 \u2014 auto-merge armed at open via MCP, per convention)*"
   },
   {
     "slug": "groomed-ideas-1",
@@ -201,6 +265,46 @@
     "summary": "> **Status:** `complete` *(PR #18 \u2014 the KL-6 pieces not blocked on PR #17's"
   },
   {
+    "slug": "kl8-control-protocol-band",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "band",
+      "kl-8",
+      "coordination-protocol",
+      "kit",
+      "order",
+      "002",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #31 \u2014 auto-merge armed at open)*"
+  },
+  {
+    "slug": "p0-adopt-engage-gate",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "p0",
+      "close",
+      "render",
+      "engage",
+      "adoption",
+      "gap",
+      "band",
+      "kl-7",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #25 \u2014 band PR, auto-merge armed at open; the"
+  },
+  {
     "slug": "pinned-feed-contract-idea",
     "date": "2026-07-09",
     "tags": [
@@ -254,5 +358,48 @@
       "\ud83d\udcca"
     ],
     "summary": "> **Status:** `complete` *(PR #21 \u2014 the run-level close-out increment;"
+  },
+  {
+    "slug": "v1.1.0-release",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "v1",
+      "1",
+      "0",
+      "release",
+      "cut",
+      "p1",
+      "publish",
+      "everything",
+      "since",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #29 \u2014 auto-merge armed at open)*"
+  },
+  {
+    "slug": "v1.2.0-release",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "v1",
+      "2",
+      "0",
+      "release",
+      "cut",
+      "order",
+      "002",
+      "leg",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #32 \u2014 auto-merge armed at open)*"
   }
 ]

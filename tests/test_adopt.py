@@ -99,6 +99,64 @@ def test_unfilled_placeholders_stay_visible_under_banner(tmp_path):
     assert text.startswith(UNRENDERED_BANNER_FIRST_LINE)
 
 
+def test_capability_manifest_planted_with_discovery_rule(tmp_path):
+    # ORDER 006: the capability manifest plants at docs/CAPABILITIES.md,
+    # fully rendered (its only slot is the derivable project_name), carrying
+    # the discovery rule + the seeded fleet walls, and the orientation
+    # templates route sessions through it at start.
+    root, _, lines = _adopt_into(tmp_path)
+    manifest = root / "docs" / "CAPABILITIES.md"
+    assert manifest.is_file()
+    assert "planted: docs/CAPABILITIES.md" in lines
+    text = manifest.read_text(encoding="utf-8")
+    assert "${" not in text  # project_name derives → no banner, no leftovers
+    assert not text.startswith(UNRENDERED_BANNER_FIRST_LINE)
+    assert "THE DISCOVERY RULE" in text
+    assert "ffmpeg" in text
+    assert "printenv" in text
+    assert "workflow_dispatch" in text.lower() or "workflow_dispatch" in text
+    # Orientation wiring: constitution + orientation router name the manifest.
+    constitution = (root / "CONSTITUTION.md").read_text(encoding="utf-8")
+    assert "docs/CAPABILITIES.md" in constitution
+    orientation = (root / "docs" / "AGENT_ORIENTATION.md").read_text(
+        encoding="utf-8"
+    )
+    assert "docs/CAPABILITIES.md" in orientation
+
+
+def test_order_claim_convention_planted(tmp_path):
+    # ORDER 007: the planted control/README.md carries the order-claiming
+    # convention — claim FIRST on your own status orders line (landed on
+    # main before build), re-read after merge, stale claims expire — so no
+    # two lanes ever execute the same `new` order (the #50/#51 root cause).
+    root, _, _ = _adopt_into(tmp_path)
+    readme = (root / "control" / "README.md").read_text(encoding="utf-8")
+    assert "Claiming an order" in readme
+    assert "claimed-by:" in readme
+    assert "claim it first" in readme.lower()
+    assert "Claims expire" in readme
+    # The status-format block advertises the claim annotation.
+    assert "[claimed-by: <ids> <lane-or-session> <ISO8601>]" in readme
+
+
+def test_owner_action_format_planted_and_wired(tmp_path):
+    # ORDER 008: the planted control/README.md carries the OWNER-ACTION item
+    # format (six REQUIRED fields, attempted-or-exact-wall), and the
+    # constitution + collaboration model carry the routing doctrine.
+    root, _, _ = _adopt_into(tmp_path)
+    readme = (root / "control" / "README.md").read_text(encoding="utf-8")
+    assert "OWNER-ACTION" in readme
+    for field in ("WHAT:", "WHERE:", "HOW:", "WHY-IT-MATTERS:", "UNBLOCKS:", "VERIFIED-NEEDED:"):
+        assert field in readme
+    assert "assumption-based ask" in readme
+    constitution = (root / "CONSTITUTION.md").read_text(encoding="utf-8")
+    assert "OWNER-ACTION" in constitution
+    assert "VERIFIED-NEEDED" in constitution
+    collab = (root / "docs" / "collaboration-model.md").read_text(encoding="utf-8")
+    assert "Routing work to the owner" in collab
+    assert "VERIFIED-NEEDED" in collab
+
+
 def test_derived_slots_render_and_stay_provisional(tmp_path):
     root, config, lines = _adopt_into(tmp_path)
     backend = JsonStateBackend(root / config.state_dir / "state.json")
@@ -511,3 +569,91 @@ def test_sessions_readme_carries_the_guard_recipe_convention(tmp_path):
     # Friction->guard entries name their code anchors, not just the symptom.
     assert "Guard recipes" in text
     assert "function + file" in text
+
+
+# ---------------------------------------------------------------------------
+# The control/ coordination scaffold + CI control fast lane (band KL-8)
+# ---------------------------------------------------------------------------
+
+
+def test_adopt_plants_the_control_bus(tmp_path):
+    root, _, lines = _adopt_into(tmp_path)
+    for rel in ("control/README.md", "control/inbox.md", "control/status.md"):
+        assert (root / rel).is_file(), rel
+        assert f"planted: {rel}" in lines
+    readme = (root / "control" / "README.md").read_text(encoding="utf-8")
+    # The contract's load-bearing lines travel: one writer per file, the two
+    # formats, and both 2026-07-09 CI lessons (fast lane over paths-ignore;
+    # API-authored PRs may carry zero check runs).
+    assert "One writer per file" in readme
+    assert "status.md" in readme and "inbox.md" in readme
+    assert "paths-ignore" in readme
+    assert "API-authored PRs may not trigger CI" in readme
+    # project_name derived at adopt: the local copy names its own repo.
+    assert "repo" in readme
+
+
+def test_control_status_seed_has_no_fake_heartbeat(tmp_path):
+    from engine.checks.check_status_current import parse_heartbeat
+
+    root, _, _ = _adopt_into(tmp_path)
+    seed = (root / "control" / "status.md").read_text(encoding="utf-8")
+    # Honest seed: no parseable heartbeat until the Project writes a real
+    # one — check gates strict RED on this state (status-no-heartbeat).
+    assert parse_heartbeat(seed) is None
+    assert "SOLE writer" in seed
+    inbox = (root / "control" / "inbox.md").read_text(encoding="utf-8")
+    assert "ONE writer: the manager" in inbox
+
+
+def test_control_status_seed_carries_the_kit_self_report_line(tmp_path):
+    # ORDER 003 (adopter-visibility band): the seed self-reports the REAL
+    # planted kit version — no stranded ${kit_version} placeholder — with the
+    # honest born-red starting values, and the planted contract documents the
+    # line's format so every adopter knows to keep it current.
+    root, _, _ = _adopt_into(tmp_path)
+    seed = (root / "control" / "status.md").read_text(encoding="utf-8")
+    assert f"kit: v{KIT_VERSION} · check: red · engaged: no" in seed
+    assert "${kit_version}" not in seed
+    readme = (root / "control" / "README.md").read_text(encoding="utf-8")
+    assert "kit: v<X.Y.Z> · check: green|red · engaged: yes|no" in readme
+
+
+def test_control_files_are_never_clobbered_on_readopt(tmp_path):
+    root, config, _ = _adopt_into(tmp_path)
+    status = root / "control" / "status.md"
+    status.write_text("# mine\nupdated: 2026-07-09T12:00Z\n", encoding="utf-8")
+    backend = JsonStateBackend(root / config.state_dir / "state.json")
+    lines = adopt(root, config, backend, kit_root=tmp_path / "kit")
+    assert status.read_text(encoding="utf-8") == "# mine\nupdated: 2026-07-09T12:00Z\n"
+    assert "kept: control/status.md" in lines
+
+
+def test_live_ci_workflow_carries_the_control_fast_lane():
+    text = live_ci_workflow()
+    # The lane detects a control/**-only diff and short-circuits IN-JOB —
+    # the required context always reports (paths-ignore would leave it
+    # pending and jam heartbeat auto-merge, the 2026-07-09 lesson).
+    assert "id: lane" in text
+    assert "grep -v '^control/'" in text
+    assert 'control_only=$control_only" >> "$GITHUB_OUTPUT"' in text
+    # Every heavy step is conditioned on the lane verdict.
+    assert text.count("if: steps.lane.outputs.control_only != 'true'") == 2
+    # And no live paths-ignore key anywhere — the short-circuit IS the skip
+    # (the word appears only in the warning comment).
+    assert "paths-ignore:" not in text
+
+
+def test_live_ci_workflow_fast_lane_still_gates_the_heartbeat():
+    text = live_ci_workflow()
+    # Fleet adoption review fix (2026-07-09): the lane must still run the
+    # scoped status gate — a control-only diff edits exactly the files
+    # check_status_current validates, so a checker-free lane let a
+    # heartbeat-deleting control PR merge green (red deferred onto the next
+    # unrelated PR). Plain system python3: setup-python is skipped on the
+    # lane, and the engine is stdlib-only by contract.
+    assert "python3 bootstrap.py check --strict --status-only" in text
+    step = text.split("- name: control-status gate", 1)
+    assert len(step) == 2, "planted gate misses the fast-lane status step"
+    body = step[1].split("- name:", 1)[0]
+    assert "if: steps.lane.outputs.control_only == 'true'" in body

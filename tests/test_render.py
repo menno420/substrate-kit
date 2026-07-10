@@ -2,7 +2,14 @@
 
 import build_bootstrap
 from engine.interview.question_bank import QUESTIONS
-from engine.render import build_context, find_placeholders, load_templates, render
+from engine.lib.config import KIT_VERSION
+from engine.render import (
+    ENGINE_CONTEXT_KEYS,
+    build_context,
+    find_placeholders,
+    load_templates,
+    render,
+)
 
 
 def test_find_placeholders():
@@ -18,7 +25,17 @@ def test_render_substitutes_filled_and_leaves_unfilled_visible():
 
 def test_build_context_from_slot_values():
     state = {"slot_values": {"project_name": {"value": "Demo"}}}
-    assert build_context(state) == {"project_name": "Demo"}
+    assert build_context(state) == {"project_name": "Demo", "kit_version": KIT_VERSION}
+
+
+def test_build_context_always_injects_kit_version():
+    # The engine-computed key (ORDER 003): every render path flows through
+    # build_context, so the planted control/status.md `kit:` line always
+    # renders with the real running version — and a (hypothetical) slot of
+    # the same name would win over the constant.
+    assert build_context({})["kit_version"] == KIT_VERSION
+    state = {"slot_values": {"kit_version": {"value": "9.9.9"}}}
+    assert build_context(state)["kit_version"] == "9.9.9"
 
 
 def test_load_templates_returns_core_set():
@@ -33,12 +50,15 @@ def test_templates_only_reference_known_bank_slots():
     # renders with zero leftovers (template/bank coherence guard).
     bank_slots = {q["slot"] for q in QUESTIONS}
     for name, text in load_templates().items():
-        unknown = find_placeholders(text) - bank_slots
+        # ENGINE_CONTEXT_KEYS are engine-computed (build_context injects
+        # them), so a template may reference them without a bank question.
+        unknown = find_placeholders(text) - bank_slots - ENGINE_CONTEXT_KEYS
         assert not unknown, f"{name} references non-bank slots: {unknown}"
 
 
 def test_full_fill_renders_without_leftovers():
     context = {q["slot"]: f"v-{q['slot']}" for q in QUESTIONS}
+    context.update({key: f"v-{key}" for key in ENGINE_CONTEXT_KEYS})
     for name, text in load_templates().items():
         assert find_placeholders(render(text, context)) == set(), name
 
