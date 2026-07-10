@@ -55,6 +55,16 @@ PR from merging while the owner looks at it.
   requires `kit-quality` directly, the two legacy alias contexts carry the
   required-check role (they report `kit-quality`'s result, hard-failing on
   non-success — the #7 skipped-alias hole is closed).
+- **Fast-CI arm race (sub-~10 s gates):** on a repo whose required checks
+  finish in a few seconds, `enable_pr_auto_merge` can lose the race — the PR
+  flips `pending`→`clean` *before* the arm call lands, and GitHub rejects it
+  with "Pull request is in clean status" / "you can merge directly" rather
+  than arming. This is expected, not a fault. Fallback: **REST merge-on-green**
+  (poll the checks, then merge once they conclude) — or add a deliberate small
+  delay / a second slower gate job so a `pending` window exists to arm into.
+  Note this is only a concern for a *direct* arm attempt; the kit's own
+  `auto-merge-enabler.yml` reacts to the PR-open event and does not depend on
+  catching a `pending` window from the caller.
 - Provenance/reliability: guards 2–4 are Q-0105/PL-008 **unverified** at
   ship time (guard 3 live-verified once on PR #24) — confirm against ground
   truth across a few labelled PRs; delete any of them if they prove

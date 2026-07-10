@@ -85,8 +85,8 @@ def test_unstructured_ask_names_every_missing_field(tmp_path):
     findings = check_owner_actions(tmp_path)
     assert [f.kind for f in findings] == ["owner-action-fields"]
     assert findings[0].path == STATUS_RELPATH
-    for field in OWNER_ACTION_FIELDS:
-        assert field.rstrip(":") in findings[0].message
+    for alts in OWNER_ACTION_FIELDS:
+        assert alts[0].rstrip(":") in findings[0].message
     assert "assumption-based asks are banned" in findings[0].message
 
 
@@ -104,6 +104,43 @@ def test_partially_structured_ask_names_only_the_absent_fields(tmp_path):
 def test_fully_structured_ask_is_clean(tmp_path):
     _write(tmp_path, STATUS_RELPATH, _status("merge PR 7 — see block below", STRUCTURED_BLOCK))
     assert check_owner_actions(tmp_path) == []
+
+
+# ---------------------------------------------------------------------------
+# Token agreement — checker labels match the shipped templates, and the
+# shorthand spellings adopters write inline are accepted too (ITEM 1).
+# ---------------------------------------------------------------------------
+
+SHORTHAND_BLOCK = (
+    "\n⚑ OWNER-ACTION\nWHAT: merge PR 7.\n"
+    "WHERE: https://example.test/pr/7\nHOW: click Merge.\n"
+    "WHY: unblocks the release.\nUNBLOCKS: the v2 cut.\n"
+    "VERIFIED-WHEN: I attempted the merge and got 403 (exact error).\n"
+)
+
+
+def test_shorthand_why_verified_spellings_are_accepted(tmp_path):
+    # Adopters sometimes write the shorthand WHY / VERIFIED-WHEN inline; the
+    # checker accepts both those and the canonical WHY-IT-MATTERS /
+    # VERIFIED-NEEDED, so a complete ask never trips the advisory.
+    _write(tmp_path, STATUS_RELPATH, _status("merge PR 7", SHORTHAND_BLOCK))
+    assert check_owner_actions(tmp_path) == []
+
+
+def test_checker_canonical_labels_match_the_shipped_template():
+    # The checker's canonical labels and the OWNER-ACTION format block in the
+    # shipped control-README template MUST be the same tokens — checker and
+    # templates agree.
+    tmpl = (
+        Path(__file__).resolve().parents[1]
+        / "src"
+        / "engine"
+        / "templates"
+        / "control-README.md.tmpl"
+    ).read_text(encoding="utf-8")
+    for alts in OWNER_ACTION_FIELDS:
+        canonical = alts[0]
+        assert canonical in tmpl, f"{canonical} missing from control-README template"
 
 
 # ---------------------------------------------------------------------------
