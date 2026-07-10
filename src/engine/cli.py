@@ -34,6 +34,7 @@ from engine.adopt import (
 )
 from engine.agents.agents import AGENTS, agent_document, agent_relpath
 from engine.checks.allowlist import apply_allowlist, load_allowlist
+from engine.checks.check_claims import check_claims
 from engine.checks.check_docs import Finding, run_doc_checks
 from engine.checks.check_engagement import check_engagement
 from engine.checks.check_inbox_append import check_inbox_append
@@ -688,6 +689,15 @@ def cmd_check(
         target,
         status_files=config.heartbeat_files,
     )
+    # Order-claim hygiene (ORDER 007): advisory-only, like the staleness and
+    # owner-action warnings — a duplicate or stale `claimed-by:` is a
+    # coordination race the manager reconciles, never a required-check red.
+    # Runs on both lanes: claims live on the heartbeat orders line the fast
+    # lane already validates.
+    claim_advisories = check_claims(
+        target,
+        status_files=config.heartbeat_files,
+    )
     # The inbox append-only gate (issue #36 report 2): a control/inbox.md
     # change must be pure-append vs the merge-base + ORDER-grammar shaped.
     # Rides the finding loop like every checker; engages only when CI handed
@@ -779,6 +789,25 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=owner_ask_advisories,
+        )
+    if claim_advisories:
+        # Same warn-only contract as the advisories above (ORDER 007): the
+        # duplicate/stale-claim nudge is surfaced + telemetry-recorded but
+        # never counted toward the exit code — the manager adjudicates the
+        # tiebreak; the checker only flags the collision.
+        _emit(
+            f"check: {len(claim_advisories)} order-claim advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in claim_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=claim_advisories,
         )
 
     log_missing: list[str] = []
