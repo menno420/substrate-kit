@@ -99,6 +99,64 @@ def test_unfilled_placeholders_stay_visible_under_banner(tmp_path):
     assert text.startswith(UNRENDERED_BANNER_FIRST_LINE)
 
 
+def test_capability_manifest_planted_with_discovery_rule(tmp_path):
+    # ORDER 006: the capability manifest plants at docs/CAPABILITIES.md,
+    # fully rendered (its only slot is the derivable project_name), carrying
+    # the discovery rule + the seeded fleet walls, and the orientation
+    # templates route sessions through it at start.
+    root, _, lines = _adopt_into(tmp_path)
+    manifest = root / "docs" / "CAPABILITIES.md"
+    assert manifest.is_file()
+    assert "planted: docs/CAPABILITIES.md" in lines
+    text = manifest.read_text(encoding="utf-8")
+    assert "${" not in text  # project_name derives → no banner, no leftovers
+    assert not text.startswith(UNRENDERED_BANNER_FIRST_LINE)
+    assert "THE DISCOVERY RULE" in text
+    assert "ffmpeg" in text
+    assert "printenv" in text
+    assert "workflow_dispatch" in text.lower() or "workflow_dispatch" in text
+    # Orientation wiring: constitution + orientation router name the manifest.
+    constitution = (root / "CONSTITUTION.md").read_text(encoding="utf-8")
+    assert "docs/CAPABILITIES.md" in constitution
+    orientation = (root / "docs" / "AGENT_ORIENTATION.md").read_text(
+        encoding="utf-8"
+    )
+    assert "docs/CAPABILITIES.md" in orientation
+
+
+def test_order_claim_convention_planted(tmp_path):
+    # ORDER 007: the planted control/README.md carries the order-claiming
+    # convention — claim FIRST on your own status orders line (landed on
+    # main before build), re-read after merge, stale claims expire — so no
+    # two lanes ever execute the same `new` order (the #50/#51 root cause).
+    root, _, _ = _adopt_into(tmp_path)
+    readme = (root / "control" / "README.md").read_text(encoding="utf-8")
+    assert "Claiming an order" in readme
+    assert "claimed-by:" in readme
+    assert "claim it first" in readme.lower()
+    assert "Claims expire" in readme
+    # The status-format block advertises the claim annotation.
+    assert "[claimed-by: <ids> <lane-or-session> <ISO8601>]" in readme
+
+
+def test_owner_action_format_planted_and_wired(tmp_path):
+    # ORDER 008: the planted control/README.md carries the OWNER-ACTION item
+    # format (six REQUIRED fields, attempted-or-exact-wall), and the
+    # constitution + collaboration model carry the routing doctrine.
+    root, _, _ = _adopt_into(tmp_path)
+    readme = (root / "control" / "README.md").read_text(encoding="utf-8")
+    assert "OWNER-ACTION" in readme
+    for field in ("WHAT:", "WHERE:", "HOW:", "WHY-IT-MATTERS:", "UNBLOCKS:", "VERIFIED-NEEDED:"):
+        assert field in readme
+    assert "assumption-based ask" in readme
+    constitution = (root / "CONSTITUTION.md").read_text(encoding="utf-8")
+    assert "OWNER-ACTION" in constitution
+    assert "VERIFIED-NEEDED" in constitution
+    collab = (root / "docs" / "collaboration-model.md").read_text(encoding="utf-8")
+    assert "Routing work to the owner" in collab
+    assert "VERIFIED-NEEDED" in collab
+
+
 def test_derived_slots_render_and_stay_provisional(tmp_path):
     root, config, lines = _adopt_into(tmp_path)
     backend = JsonStateBackend(root / config.state_dir / "state.json")

@@ -15,6 +15,166 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **SuperBot-coordinator lane wind-down succession pack** (docs-only,
+  suffixed per the multi-lane rule): `docs/succession/` (new, with README
+  index) carrying the gen-2 next-boot guide (read order, queue state,
+  walking-skeleton check, known walls with exact error text), the Custom
+  Instructions rewrite proposal, the environment spec (setup script
+  re-verified exit-0 in no-repo and with-repo cases), and gen-2 blueprint
+  feedback; plus the wind-down retro addendum
+  `docs/retro/wind-down-review-2026-07-09-superbot-coordinator.md`
+  (whole-life summary, exact-error friction ledger, first-person close)
+  and the lane heartbeat flipped to wind-down-complete.
+
+## [1.6.0] - 2026-07-09
+
+New-capability release (MINOR) covering two coordination-protocol bands
+(inbox ORDERs 007 + 008, both from the 2026-07-09 fleet retro synthesis /
+owner directive; ORDER 008's band merged in PR #68, ORDER 007's in this
+cut's PR):
+
+- **Owner-action quality band (ORDER 008):** agents' ⚑ needs-owner asks
+  were too often unnecessary (assumed walls nobody hit) or unactionable by
+  a non-technical owner. Every ask now carries six REQUIRED OWNER-ACTION
+  fields — WHAT / WHERE / HOW / WHY-IT-MATTERS / UNBLOCKS /
+  VERIFIED-NEEDED (attempted, or the exact wall; assumption-based asks
+  banned) — with an advisory `check` warning and a session-close hygiene
+  step behind it.
+- **Order-claiming convention (ORDER 007):** the root-cause fix for the
+  realized #50/#51 twin-execution failure (two sessions both saw an order
+  still `new` and executed it twice). An executing session now claims
+  FIRST — `claimed-by:` on its own status orders line, landed on main
+  before any build work — re-reads inbox + sibling statuses after the
+  claim merges, and stale claims (~24h, no activity) expire so a dead
+  lane never deadlocks an order.
+
+No planted-doc, state schema, config schema, or CLI contract breaks (the
+new checker is advisory-only and can never red a gate; template changes
+are additive; existing installs inherit both bands on `upgrade`).
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+**Benchmark outcome (KF-5 — mandatory statement for a MINOR):** no fresh
+firing this release — both bands are templates + docs + an advisory-only
+checker and touch no scored surface; the standing run of record remains B1
+run-2 (`2026-07-09-run02`, VERDICT: FAIL under strict F-5,
+advisory-to-pass) as stated in v1.4.0/v1.5.0. Run-3 stays gated behind the
+#49 seed fix (owner-gated, one click) and the F-5 wording ruling.
+
+### Added
+
+- **Owner-action quality band** (ORDER 008, PR #68):
+  - `check_owner_actions.py` — advisory-only checker (never
+    exit-affecting, both CI lanes incl. `--status-only`): one
+    `owner-action-fields` finding per configured heartbeat file whose
+    `⚑ needs-owner` value is non-`none` while the file lacks any of the
+    six field labels; guard-fire telemetry recorded; multi-lane via
+    `heartbeat_files`; fail-open on unreadable files.
+  - `control-README.md.tmpl` § "⚑ needs-owner — the OWNER-ACTION item
+    format": the six REQUIRED fields, the
+    try-it-yourself-or-cite-the-exact-wall bar, stale-ask expiry,
+    fewer-clearer-asks doctrine (self-hosted `control/README.md` matches).
+  - Doctrine wiring: `CONSTITUTION.md.tmpl` autonomy rail "Owner
+    attention is the scarcest resource"; `collaboration-model.md.tmpl`
+    § "Routing work to the owner"; `session-close` skill step 3
+    "Owner asks" (steps renumbered).
+- **Order-claiming convention** (ORDER 007, this PR):
+  - `control-README.md.tmpl` § "Claiming an order — one executor per
+    order": claim FIRST on your own status orders line
+    (`claimed-by: <ids> <lane-or-session> <ISO8601>`, landed on main
+    before build), re-read inbox + sibling statuses post-merge (tiebreak:
+    earliest merged claim), ~24h no-activity claim expiry; the
+    per-session ritual bullet and the status-format `orders:` line now
+    reference the claim (self-hosted `control/README.md` matches).
+    One-writer-per-file is preserved — a lane only ever claims on its
+    own status file.
+
+### Changed
+
+- Suite 707 → 722 (owner-action checker suite + skill/adopt wiring +
+  claim-convention plant assertions).
+
+### Notes
+
+- ORDER 007's other half — disposing of duplicate-execution PR #50 — was
+  verified already terminal (merged 2026-07-09T17:40:03Z as the
+  lane-suffixed salvage, before the order was appended); a disposition
+  comment on #50 records the audit trail.
+
+## [1.5.0] - 2026-07-09
+
+New-capability release (MINOR): the **capability-manifest band** (inbox
+ORDER 006, owner directive 2026-07-09 — sessions repeatedly stall on
+imagined walls and forget provisioned capabilities, burning owner attention
+as hand reminders). Adopted repos now get a planted `docs/CAPABILITIES.md` —
+the verified ledger of what sessions can/cannot do plus THE DISCOVERY RULE
+(check file → check env → attempt once + capture the exact error → append
+same session) — wired into the orientation reading order and nudged at
+session close. No planted-doc, state schema, config schema, or CLI contract
+breaks (one additive ADOPT_PLAN entry; existing installs inherit the doc on
+`upgrade`, skip-if-exists as always).
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+**Benchmark outcome (KF-5 — mandatory statement for a MINOR):** no fresh
+firing this release — the band is templates + docs wiring and touches no
+scored surface; the standing run of record remains B1 run-2
+(`2026-07-09-run02`, VERDICT: FAIL under strict F-5, advisory-to-pass) as
+stated in v1.4.0. Run-3 is deliberately gated behind the #49 seed fix
+(owner-gated, one click) and the F-5 wording ruling.
+
+### Added
+
+- **`CAPABILITIES.md.tmpl`** (ORDER 006): new content template planted at
+  `docs/CAPABILITIES.md` on adopt — seed content: the media→ffmpeg-frames→
+  read recipe, printenv-before-assuming-no-credentials, and the fleet's
+  verified walls (tag/release/branch-delete 403s with the
+  workflow_dispatch release workaround, env/routine/Project creation =
+  owner clicks, the self-merge classifier line incl. the
+  coordinator-vs-child asymmetry, the GraphQL quota), plus THE DISCOVERY
+  RULE and an append log.
+- **Orientation wiring** (ORDER 006): `CLAUDE.md.tmpl`,
+  `CONSTITUTION.md.tmpl` (a "Capabilities are discovered, never assumed"
+  working-agreement bullet), and `AGENT_ORIENTATION.md.tmpl` (start-of-
+  session list + planted-doc set) all route every session through
+  `docs/CAPABILITIES.md` at start.
+- **Session-close capability nudge** (ORDER 006): the `session-close`
+  skill's procedure gains step 2 — "did you discover a new capability or
+  hit a wall this session? append it."
+- **Self-hosted `docs/CAPABILITIES.md`** in this repo, seeded with the
+  fleet findings plus a same-day live one: cross-repo reads are
+  allowlisted per session (`menno420/fleet-manager` returned "not
+  configured for this session" — which is also why the master-copy sync is
+  documented as manager-relayed rather than performed directly).
+
+- **SuperBot-coordinator lane wake-up review** (suffixed per the owner's
+  multi-lane rule; a different Project than kit-lab, filed here because the
+  gen-1 retro protocol lives in `docs/retro/`):
+  `docs/retro/project-review-2026-07-09-superbot-coordinator.md` (the
+  SuperBot-rebuild true state + full coordinator-fleet agent audit +
+  efficiency verdict + ⚑ owner actions + continuation) and
+  `docs/retro/self-review-2026-07-09-superbot-coordinator.md` (every
+  `docs/retro/QUESTIONS.md` ID answered from the coordinator lane's
+  vantage), plus the lane heartbeat
+  `control/status-superbot-coordinator.md` (not yet in `heartbeat_files`
+  by design — kit-lab owns the config; decide-and-flag).
+- **Kit-lab-coordinator-lane retro companions** (ORDER 005, twin execution):
+  `docs/retro/self-review-2026-07-09-kitlab-coordinator.md` +
+  `docs/retro/project-review-2026-07-09-kitlab-coordinator.md` — the
+  parallel coordinator-spawned lane's independent answers + the
+  session-side agent audit (35-session fact ledger, model split, stall
+  census) cross-checked against the repo with discrepancies named (incl.
+  the telemetry harvest gap: 11 post-KL-3 cards' Model lines never
+  harvested). Docs-only.
+- **Gen-1 retro self-review + project review** (inbox ORDER 005):
+  `docs/retro/self-review-2026-07-09.md` — every `docs/retro/QUESTIONS.md`
+  question answered by ID with PR/commit/file evidence — and
+  `docs/retro/project-review-2026-07-09.md` — true current state, the full
+  agent audit (every session, with stall/death causes classified), the
+  honest efficiency verdict, ⚑ owner actions, and the continuation plan.
+
 ## [1.4.0] - 2026-07-09
 
 New-capability release (MINOR): **configurable heartbeat paths** for
@@ -484,6 +644,7 @@ by real consumers, and now nameable, pinnable, verifiable, and upgradeable.
   `init --unpack` it served never shipped, and it doubled every consumer's
   vendored file for nothing.
 
+[1.5.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.5.0
 [1.4.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.4.0
 [1.3.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.3.0
 [1.2.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.2.0

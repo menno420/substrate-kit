@@ -227,8 +227,36 @@
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- PR #46 — **ORDER 004 configurable heartbeat paths + v1.4.0 cut (this
-  PR)**: `substrate.config.json` → `heartbeat_files` (default
+- PR #69 — **ORDER 007 order-claiming convention + v1.6.0 cut (this PR)**:
+  "Claiming an order" section in `control-README.md.tmpl` + local copy
+  (claim FIRST on your own status orders line, landed on main before
+  build; re-read inbox + sibling statuses post-merge; earliest-merged-
+  claim tiebreak; ~24h no-activity expiry); status-format `orders:` line
+  gains the `claimed-by:` annotation; #50 disposition verified already
+  terminal (merged 17:40Z as the lane-suffixed salvage) with an audit
+  comment; KIT_VERSION/pyproject → 1.6.0, CHANGELOG rolled (covers the
+  #68 ORDER 008 band too), dist byte-pinned, suite 721 → 722. Post-merge
+  the session dispatches `release.yml` `version=1.6.0`, then the ORDER
+  007+008 status overwrite (done gains 007,008) rides its own
+  control-only PR as the deliberate LAST act.
+- PR #63 — **ORDER 006 capability-manifest band + v1.5.0 cut (MERGED
+  2026-07-09, release verified — also in Recently shipped)**:
+  new `CAPABILITIES.md.tmpl` planted at `docs/CAPABILITIES.md` (seed:
+  ffmpeg-frames media recipe, printenv-before-assuming, the fleet's
+  verified walls, THE DISCOVERY RULE + append log); orientation wiring in
+  `CLAUDE.md.tmpl` / `CONSTITUTION.md.tmpl` / `AGENT_ORIENTATION.md.tmpl`;
+  session-close capability-delta nudge in the `session-close` skill;
+  self-hosted `docs/CAPABILITIES.md` (incl. the live per-session
+  repo-allowlist wall: fleet-manager unreadable → master-copy sync is
+  manager-relayed); KIT_VERSION/pyproject → 1.5.0, CHANGELOG rolled, dist
+  byte-pinned, suite 705 → 707. Claimed FIRST via the #60 status overwrite
+  (visible claim before build — the #50/#51 twin-execution lesson; the
+  durable convention is ORDER 007's, still queued). Post-merge the session
+  dispatches `release.yml` `version=1.5.0`, then the ORDER 006 status
+  overwrite rides its own control-only PR as the deliberate LAST act.
+- PR #46 — **ORDER 004 configurable heartbeat paths + v1.4.0 cut
+  (MERGED 2026-07-09 — also in Recently shipped; kept here for the
+  post-merge steps it named, all done)**: `substrate.config.json` → `heartbeat_files` (default
   `["control/status.md"]`) threaded through `check_status_current` /
   both `cli.py` call sites / the Stop-hook reminder; per-lane
   multi-Project pattern in the planted `control/README.md` contract;
@@ -355,6 +383,10 @@ still renders from superbot's committed `console.json`. Exact steps:
 on the next touch and never accretes here; adopted from the groomed-ideas-1
 ⟲ review, implemented at the run close-out.)*
 
+**→ Gen-2 boot:** a fresh gen-2 session starts from
+[`docs/gen2/next-boot.md`](gen2/next-boot.md) (the wind-down succession
+pack; queue truth in [`docs/gen2/queue-state.md`](gen2/queue-state.md)).
+
 ### Owner gates — each with its one-line unblock
 
 1. **👤 Bless the bench rubric → merge PR #17** (plan §5.0;
@@ -393,17 +425,23 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ### Agent queue — in order, as the gates open
 
-1. **Consumer upgrades to v1.4.0**: superbot-next + websites (currently
-   ENGAGED on v1.2.0) walk the adopter upgrade checklist in the v1.4.0
-   release notes (`bootstrap.py.new upgrade` → `check --strict` green →
-   engagement green → set the `kit:` status line); superbot's upgrade
-   stays owner-gated (deliberate v1.0.0 pin-only stance — ⚑ carried);
-   superbot-games (two-lane) should set `heartbeat_files` to its two lane
-   files when it adopts/upgrades. Registry rows update in
-   [`docs/adopters.md`](adopters.md) as evidence arrives. *(The
-   cut-v1.1.0/v1.2.0/v1.3.0/v1.4.0 items are DONE — PRs #29/#32/#41/#46 +
-   their dispatch runs; see the stability-baseline bullets.)*
-2. **B1 run-3 — AFTER the run-2 seed/harness follow-ups land** *(run-2
+1. **Upgrade-UX fixes from the v1.6.0 rollout field findings** *(the
+   consumer-upgrades item is DONE — superbot-next#96 + websites#45 merged
+   2026-07-09, both ENGAGED on v1.6.0; see Recently shipped + the registry.
+   superbot stays owner-gated pin-only ⚑; superbot-games two-lane
+   `heartbeat_files` note carries until it adopts)*: four B4 ideas filed
+   2026-07-09, all ordinary-lane with guard recipes in the files —
+   `--apply-docs` post-hoc apply against the banked archived dist
+   (`upgrade-apply-docs-single-shot-window-…`), hash-record on byte-match
+   so rollback+rerun stops losing provenance
+   (`upgrade-rollback-loses-doc-hash-records-…`), the idempotent-archive
+   `(already banked)` report line (third field report — priority bumped;
+   `upgrade-archive-report-line-gap-…`), and the release.json placement
+   line in the adopter checklist
+   (`upgrade-checklist-release-json-placement-…`).
+2. **B1 run-3 — AFTER the run-2 seed/harness follow-ups land** *(blocked
+   on 👤 owner: PR #49 merge (pin-path seed fix) + the rubric F-5 ruling;
+   run-2
    is DONE — fired on the fixed scorer and recorded, strict-F-5 FAIL
    advisory, PR #44; family at 2 rows, KF-8 needs ≥3 for any trend)*:
    land the make_seed `yield`-keyword fix + prepare-runs-seed-tests
@@ -426,6 +464,54 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 ## Recently shipped (newest first)
 
+- **#75 — fleet rollout v1.6.0 wrap-up (kit-side, docs-only)**: the
+  **v1.6.0 fleet rollout is COMPLETE — every active adopter is ENGAGED on
+  v1.6.0**. superbot-next#96 (merged 9761db4): v1.2.0→v1.6.0, upgrade
+  report 7 consumer-edited / 2 diverged / 1 missing→planted / 3
+  template-improved applied / 6 unchanged, `from_version` honest, inputs
+  self-cleaned, CAPABILITIES.md planted fully rendered + hash-recorded,
+  six-field heartbeat live, `check --strict` exit 0, 1124 tests green.
+  websites#45 (merged ab0995d): v1.2.0→v1.6.0, 13 kept / 5 diverged
+  hand-merged / 1 template-improved applied, CAPABILITIES.md replanted +
+  seeded with 4 repo-verified entries, six-field ⚑ rewrite, `check
+  --strict` exit 0, 125 tests green. Registry rows updated in
+  [`docs/adopters.md`](adopters.md); four upgrade-UX ideas filed (agent
+  queue item 1). **Manager relay item ⚑:** websites' inbox ORDER 005 is
+  genuinely unexecuted (`/queue` 404s live — websites#44 shipped only the
+  P0 ping-ack for their ORDER 006); it needs a scoped websites session,
+  relayed via the manager. superbot stays v1.0.0 pin-only (owner ⚑).
+- **#68 — ORDER 008: owner-action quality band**: OWNER-ACTION item
+  format (WHAT / WHERE / HOW / WHY-IT-MATTERS / UNBLOCKS /
+  VERIFIED-NEEDED — attempted-or-exact-wall; assumption-based asks
+  banned) in `control-README.md.tmpl` + local copy; new advisory-only
+  `check_owner_actions.py` (never exit-affecting, both lanes) + guard-fire
+  telemetry; CONSTITUTION/collaboration doctrine; session-close "Owner
+  asks" step. Suite 707 → 721. Version bump deferred to the #69 v1.6.0
+  cut (one release for both retro bands).
+- **#67 — ORDER 007+008 claim (control-only, fast lane)**: status
+  overwrite claiming both orders for the coordinator lane BEFORE the
+  builds — the second live run of the claim-first ritual, and the live
+  preview of the `claimed-by:` convention #69 makes durable.
+- **#66 — ORDER 006 status overwrite (control-only, fast lane)**:
+  done=001-006,009; v1.5.0 verified live (tag + 3 assets, sha256 match).
+- **#65 — ORDER 009 PING-ACK (P0 latency ping, control-only, fast
+  lane)**: ack line on main at 18:12Z (discovered 18:07:30Z via
+  mid-session inbox check); also acked 008. *(#64 was the manager's
+  ORDER 009 inbox append; #61 the ORDER 008 append; #59 the ORDER 007
+  append — manager writes, listed for PR-number continuity.)*
+- **#63 — ORDER 006: capability-manifest band + v1.5.0 cut**:
+  `CAPABILITIES.md.tmpl` planted at `docs/CAPABILITIES.md` (THE DISCOVERY
+  RULE + verified fleet walls + append log), orientation wiring
+  (CLAUDE/CONSTITUTION/AGENT_ORIENTATION templates), session-close
+  capability-delta nudge, self-hosted manifest incl. the live per-session
+  repo-allowlist wall; KIT_VERSION/pyproject → 1.5.0, CHANGELOG rolled,
+  dist byte-pinned. Suite 705 → 707. Release v1.5.0 dispatched + verified
+  (3 assets, sha256 of bootstrap.py matches merged dist).
+- **#60 — ORDER 006 claim (control-only, fast lane)**: status overwrite
+  claiming ORDER 006 for the kit-lab coordinator lane BEFORE the build —
+  the manual stand-in for the order-claim convention ORDER 007 will make
+  durable; also records the #53 numbering-collision resolution (closed
+  unmerged, superseded — main's #55 append is canonical).
 - **#46 — ORDER 004: configurable heartbeat paths + v1.4.0 cut**: the
   status checker's path set is now config
   (`substrate.config.json` → `heartbeat_files`, default
