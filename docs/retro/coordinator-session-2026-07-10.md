@@ -1,6 +1,6 @@
 # Coordinator relay sweep — 2026-07-10
 
-> **Status:** `record` — value that existed ONLY in the coordinator chat on
+> **Status:** `reference` — value that existed ONLY in the coordinator chat on
 > 2026-07-10, swept into a durable home at the gen-2 owner close-out. Every
 > item is attributed to **coordinator relay 2026-07-10**; where the fact is
 > already recorded elsewhere in the repo, this note CROSS-REFERENCES rather

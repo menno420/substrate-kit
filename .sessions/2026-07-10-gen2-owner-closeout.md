@@ -1,6 +1,6 @@
 # Session 2026-07-10 — gen-2 owner close-out: coordinator retro sweep + next-run brief + final heartbeat
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** claude-opus-4-8 · high · owner close-out (docs/control-only)
 
