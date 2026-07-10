@@ -15,6 +15,22 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-07-10
+
+Fix-and-hardening release (PATCH) shipping the v1.7.0 distribution-wave
+findings queue: the spurious upgrade-backup fix, the previously-LATENT
+`--inbox-base` wiring in the generated gate, and gate-refresh carve-out
+protection (all #137), riding with the two adopter-facing items staged since
+the v1.7.0 cut — the kit-owned `substrate-gate.yml` regeneration (#130) and
+the kit-upgrade currency checker + generated `docs/adopters.md` (#133) —
+plus the F-5 Reading-A ruling record (ORDER 011, #128) and the
+superbot-coordinator succession close-out. No planted-doc, state schema,
+config schema, or CLI contract breaks; adopters inherit everything on
+`upgrade`, and repos with an installed gate receive the kit-owned
+regeneration (now carve-out-protected) on that same hop.
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
 ### Fixed
 
 - **`bootstrap upgrade` no longer banks a spurious copy of the NEW dist**
@@ -936,6 +952,7 @@ by real consumers, and now nameable, pinnable, verifiable, and upgradeable.
   `init --unpack` it served never shipped, and it doubled every consumer's
   vendored file for nothing.
 
+[1.7.1]: https://github.com/menno420/substrate-kit/releases/tag/v1.7.1
 [1.7.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.7.0
 [1.6.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.6.0
 [1.5.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.5.0
