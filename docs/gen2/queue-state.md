@@ -16,6 +16,15 @@
 > left this file untouched (the #95-card convention: closures land on
 > status.md/current-state.md); this night-cap pass is the one batched
 > reconcile so the next boot reads current queue truth here directly.
+>
+> **RE-RECONCILED 2026-07-10 (gen-2, follow-on pass)** — main now at HEAD
+> `266807e`. **PR #106** (the FULL upgrade-apply-docs post-hoc mechanism)
+> landed AFTER the #109 night-cap pass — it sat ~1h green-behind and landed
+> via a branch-update at `855a8e4` — so agent-queue item 10's "full
+> post-hoc-apply mechanism idea stays `open`" line was stale and is corrected
+> below. Also landed after #109 (control-lane housekeeping, no queue impact):
+> #107 (claim night-cap groom) · #109 (this file's night-cap reconcile) ·
+> #110 (night-summary close, claim cleared, queue dry).
 
 ## DONE (evidence in parentheses — do not re-audit)
 
@@ -124,10 +133,12 @@ carry their exact gate:*
    and block every merge.
 10. ✅ **Upgrade-UX fixes from the v1.6.0 rollout** — DONE (PR #92, merged
     via the #98-lane adoption after its authoring session lost the race
-    to arm auto-merge): all four ideas, with the 4th (`--apply-docs`
-    single-shot window) shipped as the interim-hint slice — the full
-    post-hoc-apply mechanism idea stays `open`. superbot itself stays
-    owner-gated (OWNER-ACTION 8).
+    to arm auto-merge): all four ideas. The 4th (`--apply-docs`
+    single-shot window) shipped in #92 as the interim-hint slice; its
+    **full post-hoc-apply mechanism landed in PR #106** — a same-version
+    `--apply-docs` now recovers template improvements from the banked
+    pre-upgrade dist (no rollback needed), idea file `outcome: shipped`.
+    superbot itself stays owner-gated (OWNER-ACTION 8).
 11. ✅ **`adopt --lane`** — DONE (PR #103; claim #102): lane-aware adopt,
     the G1 double-adoption fix; 9 new tests.
 12. **Post-P5/P11-or-P13: P6 console move + kit lane real data + the

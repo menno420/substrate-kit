@@ -79,6 +79,23 @@ credential is missing:
 
 Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
 
+- 2026-07-10 · wall+recipe · **the auto-merge STALL CLASS, root cause.**
+  `.github/workflows/auto-merge-enabler.yml` fires only on
+  `pull_request: [opened, reopened, ready_for_review]` — **not**
+  `synchronize` — so it arms native auto-merge ONCE, at PR birth. The `main`
+  ruleset also requires branches be up to date. So a PR that goes `behind`
+  (main advances during its born-red/CI cycle) stalls **green-but-unmerged**
+  with auto-merge still armed but pointed at a stale head — and no re-arm
+  happens on later pushes. · evidence: **PR #106** sat ~1h green-behind, then
+  landed via a branch-update at `855a8e4`. · **RECIPE: `git merge origin/main`
+  into the branch + push** (a plain branch update, NOT a merge API call) —
+  CI re-runs on the now-up-to-date head and the still-armed native auto-merge
+  completes on green. PARTIAL FIX shipped this pass: added `synchronize` to
+  the enabler trigger so a fix-push / branch-update RE-ARMS (arming is
+  idempotent, never self-merges). ⚑ RESIDUAL — a PR that goes behind AFTER
+  its last push still won't self-heal; **fully closing this needs the owner
+  repo setting "automatically update branches"** (Settings → General → Pull
+  Requests) or equivalent auto-update-branch (OWNER-ACTION).
 - 2026-07-10 · wall+recipe · **armed auto-merge does NOT fire on a PR whose
   branch is `behind` main** — "Require branches to be up to date" currently
   behaves as ON for the required checks. · live-hit (night-cap session, PR
