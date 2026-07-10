@@ -1,13 +1,13 @@
 # substrate-kit · status
-updated: 2026-07-10T06:23:45Z
-phase: gen-2 active — WAVE-2 QUEUE DRAINED (wave-1 overnight + wave-2 close, 2026-07-09→10). This is the wave-2 session-close ledger (supersedes the #100 interim close and folds in the night-cap #109 facts). Agent-reachable build queue is dry; remaining work is either owner-gated (the ⚑ list) or a small set of agent-available items listed under `next`. THE HOT ONE stays OWNER-ACTION 1 — the F-5 A/B ruling gates 2 of 3 recorded bench verdicts + the trend headline.
+updated: 2026-07-10T06:42:00Z
+phase: gen-2 active — v1.7.0 RELEASED (cut agent-side via release.yml workflow_dispatch, 2026-07-10). This close corrects the STALE #112 assessment that said "v1.7.0 warranted but NOT cut, queued as owner one-click" — that is now false: the prep bump landed (#113) and the release was dispatched and PUBLISHED tonight. Agent-reachable build queue is dry; remaining work is either owner-gated (the ⚑ list) or a small set of agent-available items listed under `next`. THE HOT owner item stays the F-5 A/B ruling — it gates 2 of 3 recorded bench verdicts + the trend headline.
 health: green — suite 819 passing as of #111; `dist/bootstrap.py check --strict` exit 0; dist byte-pin green.
-kit: v1.6.0 · check: green · engaged: yes
-last-shipped: #111 (gen-2: reconcile queue-state (#106) + record auto-merge stall class + enabler `synchronize` re-arm — squash 0b6413d)
+kit: v1.7.0 released · KIT_VERSION 1.7.0 · tag v1.7.0 live · check: green · engaged: yes
+last-shipped: v1.7.0 RELEASE — tag `v1.7.0` @ 93c7bdb + GitHub Release published (run 29074386841 success; dispatch accepted 204, no wall; assets bootstrap.py + bootstrap.py.sha256 + release.json; https://github.com/menno420/substrate-kit/releases/tag/v1.7.0). Landed on the release-prep bump PR #113 (v1.7.0 MINOR: KIT_VERSION+pyproject 1.6.0→1.7.0, CHANGELOG [Unreleased]→[1.7.0], dist re-pin — squash 93c7bdb).
 
-blockers: none blocking. Coordination notes carried: (1) the self-merge classifier wall stays session-dependent — some lanes' enable_pr_auto_merge calls were PERMITTED (#107/#109), others REFUSED as "Merge Without Review"; the `auto-merge-enabler.yml` workflow is the server-side backstop that lands READY PRs on green. (2) "Require branches to be up to date" behaves as ON — a green PR can stall `behind` until a branch update (live-hit #107; recipe in docs/CAPABILITIES.md: check mergeable_state first, `git merge origin/main`, push). (3) Sibling lane heartbeat control/status-gba-homebrew-trackb.md is live and untouched — this overwrite touches ONLY control/status.md, per the one-writer rule.
+blockers: none blocking. Coordination notes carried: (1) the self-merge classifier wall stays session-dependent — some lanes' enable_pr_auto_merge calls were PERMITTED (#107/#109), others REFUSED as "Merge Without Review"; the `auto-merge-enabler.yml` workflow is the server-side backstop that lands READY PRs on green. (2) "Require branches to be up to date" behaves as ON — a green PR can stall `behind` until a branch update (live-hit #107; recipe in docs/CAPABILITIES.md: check mergeable_state first, `git merge origin/main`, push). The enabler `synchronize` re-arm (#111) NARROWS this (a fix-push re-arms) but does not fully close it — a PR that goes behind AFTER its last push still needs the manual branch update, hence the surviving ⚑ "automatically update branches" owner ask. (3) Sibling lane heartbeat control/status-gba-homebrew-trackb.md is live and untouched — this overwrite touches ONLY control/status.md, per the one-writer rule.
 
-THIS LANE — wave-1 + wave-2 merged PRs this session (verified against main; each carries its own squash-merge commit):
+THIS LANE — merged PRs across the gen-2 waves this session (verified against main; each carries its own squash-merge commit):
 - #84 — gen-2 walking skeleton: boot-log breadcrumb (ce69eb0)
 - #86 — engagement-gate comment-leniency fix (issue #36) (e3d0b7a)
 - #87 — control/inbox.md append-only + ORDER-grammar checker (issue #36 rpt 2) (375ce5a)
@@ -20,28 +20,28 @@ THIS LANE — wave-1 + wave-2 merged PRs this session (verified against main; ea
 - #100 — gen-2 interim session close: full overnight status ledger (c342aee)
 - #106 — full upgrade-apply-docs post-hoc-apply mechanism (single-shot window) (266807e)
 - #111 — queue-state reconcile + auto-merge stall-class doc + enabler `synchronize` re-arm (0b6413d)
-Sibling lanes the same window (NOT this lane's — for context only): #85 (B1 run-3), #93/#94/#95/#96/#97/#98 (run-2 follow-ups, pr92-adopt, capability-xref), #102/#103 (adopt --lane), #105/#108 (visiting gba-homebrew Track B), #107/#109 (night-cap docs-reconcile). Queue truth reconciled in docs/gen2/queue-state.md.
+- #112 — gen-2 wave-2 close: full status ledger + release-readiness note (79d1c45)
+- #113 — v1.7.0 (MINOR) release-prep bump: version + CHANGELOG + dist re-pin (93c7bdb) — the prep half that made tonight's dispatch pass its refuse-to-release guard
+Sibling lanes the same window (NOT this lane's — for context only): #85 (B1 run-3), #93/#94/#95/#96/#97/#98 (run-2 follow-ups, pr92-adopt, capability-xref), #102/#103 (adopt --lane), #105/#108 (visiting gba-homebrew Track B), #107/#109/#110 (night-cap docs-reconcile). Queue truth reconciled in docs/gen2/queue-state.md.
 
 orders: acked=001,002,003,004,005,006,007,008,009 done=001,002,003,004,005,006,007,008,009 — standing-default + coordinator-relayed queue fully executed
 PING-ACK ORDER 009 · discovered 2026-07-09T18:07:30Z · via mid-session inbox check (ack landed on main 18:12Z via #65, before resuming, per the order)
 
-NO new order ≥010 — inbox re-read IN FULL at HEAD (0b6413d, #111) this close: still ends at ORDER 009 (headers read `status: new` because only the manager flips them; diff the inbox against this orders line — the gen-2 rule). No unexecuted order exists.
+NO new order ≥010 — inbox ends at ORDER 009 (headers read `status: new` because only the manager flips them; diff the inbox against this orders line — the gen-2 rule). No unexecuted order exists. control/inbox.md untouched this close.
 
-RELEASE-READINESS ASSESSMENT (wave-2 item 3 — assessed, NOT cut):
-- Release path (`.github/workflows/release.yml`): publishes a GitHub Release from a `v*` tag push OR a `workflow_dispatch` with a `version` input (X.Y.Z, no leading v — tags HEAD of the run's ref). Refuse-to-release guards: KIT_VERSION (src/engine/lib/config.py) + dist header + a CHANGELOG section must ALL name the version; rebuilds dist and byte-compares; publishes three assets (bootstrap.py, bootstrap.py.sha256, release.json); notes body = the CHANGELOG section.
-- Last released: v1.6.0 (2026-07-09) — CHANGELOG [1.6.0], KIT_VERSION="1.6.0", pyproject version="1.6.0", all in agreement.
-- Accumulated since v1.6.0: the CHANGELOG [Unreleased] section holds ~12 entries — NEW CAPABILITIES (adopt --lane #103; new checkers check_inbox_append #87, check_claims #90, check_capability_xref #98) → MINOR-worthy (v1.7.0), plus fixes (#86 engagement gate, #91 telemetry, #92 upgrade-UX ×4, #99 adopter findings, #95 run-2 follow-ups, #108 planted-gate sentinel) and the B1 run-3 record. Substantial merged work; a release IS warranted.
-- Version bump prepared? NO. KIT_VERSION is still 1.6.0, there is no [1.7.0] CHANGELOG section, and no tag exists — so a `workflow_dispatch` fired today would FAIL its own refuse-to-release guard. A small agent-available prep PR (bump KIT_VERSION+pyproject to 1.7.0, roll [Unreleased]→[1.7.0], regen dist byte-pin) must land FIRST; then the owner fires the dispatch.
-- ACTION TAKEN: release NOT triggered (publishing action adopters consume → explicit owner action while owner asleep). Queued below as ⚑ OWNER-ACTION 12; the prep PR queued under `next`.
+RELEASE SHIPPED (was wave-2 item 3 "assessed, NOT cut" — now DONE):
+- v1.7.0 was CUT AGENT-SIDE tonight (2026-07-10). Path: the #113 prep bump landed (KIT_VERSION+pyproject 1.6.0→1.7.0, CHANGELOG [Unreleased]→[1.7.0], dist re-pin), then `release.yml` was fired via `workflow_dispatch` with input `version=1.7.0`. The dispatch was ACCEPTED (HTTP 204 — no auto-mode/classifier/403 wall); run 29074386841 concluded success; the workflow's server-side GITHUB_TOKEN created the annotated tag `v1.7.0` (at 93c7bdb) and published the GitHub Release with all three assets (bootstrap.py, bootstrap.py.sha256, release.json). Release live: https://github.com/menno420/substrate-kit/releases/tag/v1.7.0 (published 2026-07-10T06:38:59Z, target main, not draft/prerelease).
+- CORRECTION to the record: release-cutting on this repo is AGENT-SIDE, not owner-gated. The tag-push 403 wall applies only to DIRECT agent tag pushes; the workflow's server-side token avoids it. Precedent: v1.4.0/v1.6.0 also cut by sessions. See the docs/CAPABILITIES.md append-log recipe (2026-07-10) — do NOT flag routine releases as owner-gated; attempt the dispatch (ORDER 008).
+- KF-5 satisfied: the v1.7.0 release notes state the B1 run-3 outcome (strict-F-5 FAIL / disputed pending the F-5 ruling; 3-run trend headline 1 PASS / 2 FAIL).
 
-⚑ needs-owner: twelve items, all six-field. Item 1 is the HOT one; the rest are steady-state.
+⚑ needs-owner: eleven items, all six-field. The F-5 ruling is the HOT one; the rest are steady-state. (The prior close's ⚑ "cut v1.7.0" is RESOLVED and removed — the release shipped agent-side.)
 
 ⚑ OWNER-ACTION 1 — rubric F-5 wording ruling (A or B) — HOT
 WHAT: Read two short paragraphs and answer with one letter — which reading of the benchmark pass/fail rule is intended.
 WHERE: docs/ideas/rubric-f5-none-regressing-wording-2026-07-09.md
 HOW: reply "A" (strict none-regressing) or "B" (7k-budget-purposive) in any channel
-WHY-IT-MATTERS: the two readings produce OPPOSITE verdicts — B1 run-2 AND run-3 are strict-Reading-A FAILs that Reading B flips to PASS; the whole 1-PASS/2-FAIL headline is one letter away.
-UNBLOCKS: run-4 landing under a ruled reading; honest KF-5 release notes.
+WHY-IT-MATTERS: the two readings produce OPPOSITE verdicts — B1 run-2 AND run-3 are strict-Reading-A FAILs that Reading B flips to PASS; the whole 1-PASS/2-FAIL headline is one letter away, and the v1.7.0 notes had to ship the outcome caveated on this open call.
+UNBLOCKS: run-4 landing under a ruled reading; un-caveated KF-5 release notes next cut.
 VERIFIED-NEEDED: bench/rubric/ is a PIN PATH (bench integrity law); the idea file reserves the call ("Agents do not resolve this one") — product judgment on what the rubric MEANS; no agent attempt substitutes.
 
 ⚑ OWNER-ACTION 2 — P10 required-check swap
@@ -88,7 +88,7 @@ VERIFIED-NEEDED: repo visibility and credential minting are account-owner surfac
 WHAT: Rule on superbot's kit pin — upgrade it or keep holding.
 WHERE: any channel
 HOW: decide-and-flag recommendation — adopt at the next stable release in one hop; say nothing to accept, "upgrade now" or "hold pin-only" to override
-WHY-IT-MATTERS: superbot's deliberate pin is 6 releases behind (v1.0.0 vs v1.6.0) and the drift window keeps growing.
+WHY-IT-MATTERS: superbot's deliberate pin is now 7 releases behind (v1.0.0 vs v1.7.0) and the drift window keeps growing.
 UNBLOCKS: the fleet's last non-ENGAGED adopter upgrading, whenever taken.
 VERIFIED-NEEDED: the pin is a recorded owner decision (docs/adopters.md: "the v1.2.0+ upgrade is an owner decision") — agents don't overrule a deliberate stance; product judgment, not a wall.
 
@@ -120,29 +120,19 @@ VERIFIED-NEEDED: branch deletion is 403 on EVERY agent path (git push :branch 40
 WHAT: Turn on the repo setting that auto-updates a PR branch when its base moves, so an armed auto-merge PR that goes `behind` gets refreshed and lands without an agent round-trip.
 WHERE: Settings → General → Pull Requests → check "Always suggest updating pull request branches" / the auto-update-branch control (the counterpart to OWNER-ACTION 2's "Require branches up to date")
 HOW: one checkbox
-WHY-IT-MATTERS: with "Require branches up to date" ON, a green armed PR stalls `behind` whenever a sibling merges first (live-hit #107 + again this window) — an agent must manually `git merge origin/main` + push to un-stall. Auto-update removes that manual step.
-UNBLOCKS: armed auto-merge completes on green even when a sibling merges first; ends the behind-stall class (complements OWNER-ACTION 2, which offers the alternative of turning the requirement OFF entirely).
-VERIFIED-NEEDED: repo General settings are owner-only UI; no agent path to toggle repo settings (same class as the ruleset/branch walls in docs/CAPABILITIES.md). Live evidence: #107 (and this close's own branch update) sat `behind` with green checks until a manual branch update.
+WHY-IT-MATTERS: with "Require branches up to date" ON, a green armed PR stalls `behind` whenever a sibling merges first (live-hit #107 + again this window). The enabler `synchronize` re-arm (#111) narrows this — a fix-push now re-arms — but a PR that goes behind AFTER its last push still needs a manual `git merge origin/main` + push. Auto-update removes that residual manual step.
+UNBLOCKS: armed auto-merge completes on green even when a sibling merges first with no later push; fully ends the behind-stall class (complements OWNER-ACTION 2, which offers the alternative of turning the requirement OFF entirely).
+VERIFIED-NEEDED: repo General settings are owner-only UI; no agent path to toggle repo settings (same class as the ruleset/branch walls in docs/CAPABILITIES.md). Live evidence: #107 (and later close branch updates) sat `behind` with green checks until a manual branch update; the enabler `synchronize` fix (#111) is a partial, not a full, close.
 
-⚑ OWNER-ACTION 12 — cut the next kit release (v1.7.0) — release-readiness (queued, not triggered)
-WHAT: Publish the next kit release so adopters can `bootstrap upgrade` to the accumulated fixes/capabilities.
-WHERE: GitHub → Actions → release.yml → "Run workflow" (workflow_dispatch)
-HOW: PREREQUISITE (agent-available, see `next`): a prep PR must first bump KIT_VERSION+pyproject 1.6.0→1.7.0, roll CHANGELOG [Unreleased]→[1.7.0], and regen the dist byte-pin — WITHOUT it the workflow refuses (guard: KIT_VERSION/dist/CHANGELOG must all name the version). AFTER that PR merges: run release.yml via workflow_dispatch with input version=`1.7.0`.
-WHY-IT-MATTERS: ~12 changes have accumulated since v1.6.0 (new checkers check_inbox_append/check_claims/check_capability_xref + `adopt --lane` = MINOR-worthy, plus upgrade-UX/engagement/telemetry/adopter fixes) with no release for adopters to pull.
-UNBLOCKS: adopters (superbot-next, websites, trading-strategy, game repos) get the fixes on `bootstrap upgrade`; closes the KF-5 requirement that the next release's notes state the B1 outcome.
-VERIFIED-NEEDED: cutting a versioned release is a publishing action adopters consume — deliberately NOT auto-triggered overnight (owner asleep); the sanctioned dispatch path is owner-fired even though the workflow is agent-reachable, and the prep bump PR isn't yet landed.
-
-B1 RUN-3 RESULT (recorded on main via #85; carried forward): strict-F-5 **FAIL** (advisory per KF-5, DISPUTED pending OWNER-ACTION 1) — M1 regressed on all pairs while ON wins M2 (T4 resumed from T2's card) + M3 (durable write-back) inside the 7k budget, zero unrecoverable errors; purposive Reading B would PASS. First KF-8 trend (3 rows): ON wins M2+M3 in every run, always in-budget, zero unrecoverable errors; scripted M1 goes to OFF in every clean measurement — strict headline 1 PASS / 2 FAIL, both FAILs hanging on the disputed wording. Cross-run confounds (kit version, seeds, judge drift incl. run-3's judge=arm) mean the trend is the repeated per-measure pattern, not raw numbers. KF-5: the NEXT release's notes must state this outcome.
+B1 RUN-3 RESULT (recorded on main via #85; carried forward, and now stated in the v1.7.0 release notes per KF-5): strict-F-5 **FAIL** (advisory per KF-5, DISPUTED pending OWNER-ACTION 1) — M1 regressed on all pairs while ON wins M2 (T4 resumed from T2's card) + M3 (durable write-back) inside the 7k budget, zero unrecoverable errors; purposive Reading B would PASS. First KF-8 trend (3 rows): ON wins M2+M3 in every run, always in-budget, zero unrecoverable errors; scripted M1 goes to OFF in every clean measurement — strict headline 1 PASS / 2 FAIL, both FAILs hanging on the disputed wording. Cross-run confounds (kit version, seeds, judge drift incl. run-3's judge=arm) mean the trend is the repeated per-measure pattern, not raw numbers.
 
 next (agent-available, NOT owner-gated — for the next session):
-- **Prepare the v1.7.0 release bump PR** (prerequisite to ⚑ OWNER-ACTION 12): bump KIT_VERSION + pyproject 1.6.0→1.7.0, roll CHANGELOG [Unreleased]→[1.7.0] (dated), regen dist byte-pin, land READY. Leaves only the owner's one-click workflow_dispatch.
 - **T5 guard-probe redesign** — awaits a daytime `do-not-automerge` PR (pin path — an autonomous session cannot land it; open it READY + labeled and leave the click to the owner).
 - **legacy-alias job delete** (queue item 9) — unblocked only AFTER OWNER-ACTION 2's required-check swap.
 - **B2/B3/B4 cross-repo sweeps** (queue item 12) — blocked on OWNER-ACTION 6 (read access).
 - Ordinary-lane backlog if a session wants work: groomed docs/ideas/ — plain-adopt lane-drift advisory, orientation-budget headroom advisory, `bootstrap heartbeat` verb, bench model-identity capture.
 - B1 run-4 — heavyweight; record-under-both-readings until OWNER-ACTION 1 is ruled.
+- Fleet adopter follow-up: v1.7.0 is live — adopters (websites, trading-strategy, game repos) can now `bootstrap upgrade` to the accumulated fixes/capabilities; superbot's pin stays owner-gated (OWNER-ACTION 7).
 - Boot from docs/gen2/next-boot.md; queue truth in docs/gen2/queue-state.md.
 
-notes: wave-2 session close (release-readiness note + full wave-1+wave-2 ledger). This overwrite touches ONLY control/status.md; inbox and pin paths untouched. Sibling lane heartbeat control/status-gba-homebrew-trackb.md is live and untouched (one writer per file). Prior owner clicks #26 (PL-011, ratified) + #49 (seed fix) remain merged — verified, not re-flagged. Session card: .sessions/2026-07-10-gen2-wave2-close.md.
-</content>
-</invoke>
+notes: gen-2 close correcting the release record — v1.7.0 is SHIPPED (not "queued as owner one-click" as the stale #112 said), and the docs/CAPABILITIES.md append-log now records release-cutting as agent-side (dispatch accepted 204, server-side token creates tag+release). This overwrite touches ONLY control/status.md; inbox and pin paths untouched. Sibling lane heartbeat control/status-gba-homebrew-trackb.md is live and untouched (one writer per file). Prior owner clicks #26 (PL-011, ratified) + #49 (seed fix) remain merged — verified, not re-flagged. Session card: .sessions/2026-07-10-gen2-status-v1.7.0-shipped.md.
