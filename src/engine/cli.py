@@ -34,8 +34,10 @@ from engine.adopt import (
 )
 from engine.agents.agents import AGENTS, agent_document, agent_relpath
 from engine.checks.allowlist import apply_allowlist, load_allowlist
+from engine.checks.check_claims import check_claims
 from engine.checks.check_docs import Finding, run_doc_checks
 from engine.checks.check_engagement import check_engagement
+from engine.checks.check_inbox_append import check_inbox_append
 from engine.checks.check_namespace import check_namespace
 from engine.checks.check_owner_actions import check_owner_actions
 from engine.checks.check_status_current import check_status_current
@@ -113,7 +115,11 @@ from engine.loop.review_seam import (
     seam_wiring_doc,
     write_review_payload,
 )
-from engine.loop.telemetry import harvest_model_usage, record_guard_fires
+from engine.loop.telemetry import (
+    harvest_model_usage,
+    reconcile_model_usage,
+    record_guard_fires,
+)
 from engine.loop.triggers import check_triggers, mandatory_questions, trigger_block
 from engine.render import build_context, find_placeholders, load_templates, render
 from engine.skills.skills import (
@@ -609,8 +615,17 @@ def cmd_check(
     require_session_log: bool = False,
     session_log: Path | None = None,
     status_only: bool = False,
+    inbox_base: Path | None = None,
 ) -> int:
     """Run every hygiene checker against ``target``.
+
+    ``inbox_base`` (CLI ``--inbox-base``) names the merge-base version of
+    ``control/inbox.md`` — extracted by CI in bash, because engine code never
+    shells out to git (§3.2). When given, the append-only gate runs on both
+    lanes: the change to ``control/inbox.md`` must be pure-append vs that base
+    and its appended text must be well-formed ORDER blocks (issue #36 report
+    2). It rides the fast lane exactly like the status gate — an inbox append
+    is control-lane traffic — and self-skips when there is nothing to judge.
 
     ``status_only`` (CLI ``--status-only``) scopes the run to the control/
     status heartbeat checker alone — the CI control fast lane's gate. A
@@ -678,11 +693,28 @@ def cmd_check(
         target,
         status_files=config.heartbeat_files,
     )
+    # Order-claim hygiene (ORDER 007): advisory-only, like the staleness and
+    # owner-action warnings — a duplicate or stale `claimed-by:` is a
+    # coordination race the manager reconciles, never a required-check red.
+    # Runs on both lanes: claims live on the heartbeat orders line the fast
+    # lane already validates.
+    claim_advisories = check_claims(
+        target,
+        status_files=config.heartbeat_files,
+    )
+    # The inbox append-only gate (issue #36 report 2): a control/inbox.md
+    # change must be pure-append vs the merge-base + ORDER-grammar shaped.
+    # Rides the finding loop like every checker; engages only when CI handed
+    # in a base blob to diff against (no base → no-op, see the checker).
+    inbox_findings = (
+        check_inbox_append(target, inbox_base) if inbox_base is not None else []
+    )
     if status_only:
-        # --status-only: the fast lane's scoped gate (see docstring). Only
-        # the heartbeat checker runs; everything downstream (allowlist,
+        # --status-only: the fast lane's scoped gate (see docstring). Only the
+        # control-lane checkers run — the heartbeat gate and, when CI passes a
+        # base, the inbox append-only gate; everything downstream (allowlist,
         # guard fires, emit loop) is shared with the full run.
-        doc_findings = list(status_gate)
+        doc_findings = list(status_gate) + inbox_findings
     else:
         docs_root = target / config.docs_root
         doc_findings = list(
@@ -693,6 +725,7 @@ def cmd_check(
             )
         )
         doc_findings += _extra_check_findings(target, config) + status_gate
+        doc_findings += inbox_findings
     entries, allow_findings = load_allowlist(target, config.state_dir)
     doc_findings, suppressed = apply_allowlist(doc_findings, entries)
     doc_findings += allow_findings
@@ -760,6 +793,25 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=owner_ask_advisories,
+        )
+    if claim_advisories:
+        # Same warn-only contract as the advisories above (ORDER 007): the
+        # duplicate/stale-claim nudge is surfaced + telemetry-recorded but
+        # never counted toward the exit code — the manager adjudicates the
+        # tiebreak; the checker only flags the collision.
+        _emit(
+            f"check: {len(claim_advisories)} order-claim advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in claim_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=claim_advisories,
         )
 
     log_missing: list[str] = []
@@ -1347,6 +1399,13 @@ def cmd_session_close(target: Path) -> int:
     log = latest_session_log(target / config.sessions_dir)
     for line in harvest_model_usage(target, log):
         _emit(f"session-close: {line}")
+    # Whole-tree reconcile (KL-3 write-at-commit, gen-2 queue item 6): the
+    # single-latest harvest above only ever wrote the newest card's row, so a
+    # card committed under a newer one was never harvested (10 rows vs 42
+    # eligible cards). Sweep every complete card so no eligible card is left
+    # behind — idempotent + fail-open, so it costs a re-scan and nothing else.
+    for line in reconcile_model_usage(target, target / config.sessions_dir):
+        _emit(f"session-close: {line}")
     # Re-read state: the mine above stamped reflection_buffer.last_mined, and
     # a pre-mine snapshot would re-advise the mine it just ran.
     backend = JsonStateBackend(_state_path(target, config))
@@ -1779,6 +1838,17 @@ def build_parser() -> argparse.ArgumentParser:
             "heartbeat parses (stdlib-only, session-log-free)"
         ),
     )
+    check.add_argument(
+        "--inbox-base",
+        type=Path,
+        default=None,
+        help=(
+            "gate control/inbox.md against this merge-base copy of the file "
+            "(CI extracts the base blob with git, since engine code never "
+            "shells out): the change must be pure-append and its appended "
+            "text well-formed ORDER blocks; omit when there is no inbox diff"
+        ),
+    )
     return parser
 
 
@@ -1816,6 +1886,7 @@ def main(argv: list[str] | None = None) -> int:
                 require_session_log=args.require_session_log,
                 session_log=args.session_log,
                 status_only=args.status_only,
+                inbox_base=args.inbox_base,
             )
         if args.command == "answer":
             return cmd_answer(args.target, args.slot, " ".join(args.value))

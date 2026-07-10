@@ -49,6 +49,12 @@ MODULE_ORDER = (
     # After check_status_current.py: reuses its heartbeat_relpaths + path
     # constants (ORDER 008 owner-action quality band).
     "checks/check_owner_actions.py",
+    # After check_status_current.py: reuses its INBOX_RELPATH constant
+    # (issue #36 report 2 inbox append-only gate).
+    "checks/check_inbox_append.py",
+    # After check_status_current.py: reuses its heartbeat_relpaths + path
+    # constants (ORDER 007 order-claim hygiene advisory).
+    "checks/check_claims.py",
     "ledger.py",
     "loop/kpis.py",
     "loop/reflections.py",

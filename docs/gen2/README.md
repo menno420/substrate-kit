@@ -22,3 +22,7 @@
   each with gen-1 evidence.
 - Capstone retro:
   [../retro/project-review-2026-07-09-gen1-winddown.md](../retro/project-review-2026-07-09-gen1-winddown.md).
+
+Boot log:
+
+- 2026-07-10 — gen-2 boot session: walking-skeleton merge-path check.

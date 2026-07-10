@@ -20,6 +20,7 @@ from datetime import date
 from datetime import date as _led_date
 from datetime import date, datetime, timezone
 from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from typing import Any, NamedTuple
@@ -2252,6 +2253,397 @@ def check_owner_actions(
             )
     return findings
 
+# --- engine/checks/check_inbox_append.py ---
+"""Inbox append-only gate — ``control/inbox.md`` may only grow, ORDER-shaped.
+
+Why + provenance: the fleet coordination protocol (``control/README.md``)
+makes ``control/inbox.md`` the manager's ORDER bus with **one writer** and an
+**append-only** law — but that law was convention-only, enforced by nothing.
+The fleet adoption review 2026-07-09 (issue #36, report 2) proved the gap
+live: PR #34 (an ORDER 003 append) merged 19 s after it opened on the CI
+control fast lane, with zero validation that the change was pure-append, that
+existing ORDERs were untouched, or that the appended text was even a valid
+ORDER block. Any session could silently rewrite or erase orders on a green
+control-only PR.
+
+This checker closes the LAW half (PL-007, "enforce, don't exhort"): a change
+to ``control/inbox.md`` must be **PURE-APPEND** vs the merge-base — the base
+file's bytes are a *prefix* of the new file (existing bytes unchanged,
+additions only at/after the end) — and the appended text must follow the
+ORDER-block grammar (``control/README.md`` → "inbox.md order format"). Writer
+IDENTITY is deliberately NOT enforced: on a single-account program it is not
+enforceable in-repo (issue #36 report 2, stated honestly in the protocol
+doc); this gate enforces the part of the law that lives in the bytes.
+
+Diff access without shelling out: engine code is pure stdlib — ``subprocess``
+is banned (§3.2). So, exactly like the session-log gate, CI does the git work
+in bash (extract the merge-base blob of ``control/inbox.md`` to a file) and
+hands the path in via ``check --inbox-base <file>``; this checker only reads
+two files and compares them. No base path (a local ``check`` with no diff
+context, or the file/base absent) → **no-op**, the same fail-open posture as
+the mtime session-log fallback. It engages only when there is a real diff to
+judge, so ``check`` stays meaningful on a tree with no inbox change.
+"""
+
+
+
+
+# The ORDER header grammar (control/README.md "inbox.md order format"):
+#   ## ORDER <nnn> · <ISO8601> · status: <state>     [# optional manager note]
+# The `·` is U+00B7 (the protocol's separator). A trailing `#` note is allowed
+# (the README's own example carries one), so the value is the first token.
+_ORDER_HEADER_PREFIX = "## ORDER "
+_ORDER_HEADER_RE = re.compile(r"^## ORDER \S+ · .+ · status: \S+")
+
+# Every ORDER block carries these fields (control/README.md order format).
+_REQUIRED_FIELDS = ("priority:", "do:", "why:", "done-when:")
+
+
+def _order_grammar_findings(appended: str) -> list[Finding]:
+    """Return grammar findings for the ``appended`` region of the inbox.
+
+    The region is either the freshly appended ORDER block(s) (normal append)
+    or — when the change *created* the file — its whole body, which may open
+    with the file header (a ``#`` title + a ``>`` blockquote intro). Content
+    before the first ``## ORDER`` header is allowed only if it is that header
+    (blank / ``#`` / ``>`` lines); anything else is stray. Each ORDER block is
+    validated for a well-formed header and the four required fields.
+    """
+    lines = appended.splitlines()
+    header_idxs = [i for i, ln in enumerate(lines) if ln.startswith(_ORDER_HEADER_PREFIX)]
+    findings: list[Finding] = []
+
+    preamble_end = header_idxs[0] if header_idxs else len(lines)
+    for ln in lines[:preamble_end]:
+        stripped = ln.strip()
+        if stripped and not stripped.startswith(("#", ">")):
+            findings.append(
+                Finding(
+                    INBOX_RELPATH,
+                    "inbox-order-grammar",
+                    "appended content that is neither the file header nor a "
+                    "`## ORDER` block — the inbox appends ORDER blocks only "
+                    "(control/README.md order format).",
+                ),
+            )
+            break
+
+    bounds = header_idxs + [len(lines)]
+    for b in range(len(header_idxs)):
+        block = lines[bounds[b] : bounds[b + 1]]
+        findings += _validate_block(block)
+    return findings
+
+
+def _validate_block(block: list[str]) -> list[Finding]:
+    """Return findings for one ORDER block (header line through its body)."""
+    header = block[0]
+    if not _ORDER_HEADER_RE.match(header):
+        return [
+            Finding(
+                INBOX_RELPATH,
+                "inbox-order-grammar",
+                f"malformed ORDER header {header.strip()!r} — expected "
+                "`## ORDER <nnn> · <ISO8601> · status: <state>` "
+                "(control/README.md order format).",
+            ),
+        ]
+    missing = [
+        field
+        for field in _REQUIRED_FIELDS
+        if not any(ln.lstrip().startswith(field) for ln in block[1:])
+    ]
+    if missing:
+        label = header.strip()
+        return [
+            Finding(
+                INBOX_RELPATH,
+                "inbox-order-grammar",
+                f"{label!r} is missing required field(s): {', '.join(missing)} "
+                "— every order carries priority/do/why/done-when "
+                "(control/README.md order format).",
+            ),
+        ]
+    return []
+
+
+def check_inbox_append(target: Path, base_path: Path) -> list[Finding]:
+    """Return the append-only findings for ``target``'s ``control/inbox.md``.
+
+    ``base_path`` is the merge-base version of the file, extracted by CI (the
+    engine never shells out to git). Empty list means the change is a legal
+    pure-append of well-formed ORDER block(s) — or there is nothing to judge
+    (inbox or base absent/unreadable → fail open, like every other checker).
+    """
+    inbox = target / INBOX_RELPATH
+    base = Path(base_path)
+    if not inbox.is_file() or not base.is_file():
+        return []
+    try:
+        new_text = inbox.read_text(encoding="utf-8")
+        old_text = base.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return []  # fail open — an unreadable file is not a verdict
+
+    if not new_text.startswith(old_text):
+        # The append-only law is violated the instant the old bytes are no
+        # longer a prefix: an existing ORDER line was edited, reordered, or
+        # deleted. Grammar of the "appended" tail is meaningless here.
+        return [
+            Finding(
+                INBOX_RELPATH,
+                "inbox-not-append",
+                "control/inbox.md changed non-append vs the merge-base — the "
+                "one-writer/append-only law (control/README.md) allows only "
+                "additions at the end; an existing ORDER was edited, "
+                "reordered, or deleted. Restore the prior bytes verbatim and "
+                "append your new ORDER block instead.",
+            ),
+        ]
+    appended = new_text[len(old_text) :]
+    return _order_grammar_findings(appended)
+
+# --- engine/checks/check_claims.py ---
+"""Claim-aware checker — order-claims must be unique and live (ORDER 007).
+
+Why + provenance: the fleet coordination protocol (``control/README.md`` §
+"Claiming an order") makes every ``new`` order single-executor. Before
+building, a lane appends ``claimed-by: <order-ids> <lane-or-session>
+<ISO8601>`` to the ``orders:`` line of its OWN heartbeat (``control/status*.md``)
+and lands it on main FIRST — so two readers of the same ``status: new`` order
+cannot both execute it. That convention was born from a realized failure, not
+a theoretical one (substrate-kit PRs #50/#51: two lanes independently executed
+the same ORDER 005 the same day, and a whole session's work had to be
+reconciled as twins). But the convention shipped **doc-only** — enforced by
+nothing. This checker closes the "enforce, don't exhort" gap for the claim
+band, exactly as ``check_inbox_append`` did for the append-only law and
+``check_owner_actions`` did for the OWNER-ACTION format.
+
+What it flags (both **advisory** — a nudge, never a locked door, the same
+posture as the staleness + owner-action warnings):
+
+- ``claims-duplicate`` — two or more DISTINCT heartbeat files carry a
+  ``claimed-by:`` naming the SAME order id. That is the twin-execution race
+  itself: the tiebreak (earliest claim merged to main wins) is a human call,
+  so the checker surfaces the collision rather than picking a winner.
+- ``claims-stale`` — a live ``claimed-by:`` for an order that is (a) already
+  reported in some lane's ``done=`` (the executor was meant to DROP the claim
+  when moving the id into ``done=`` — a lingering claim on a done order is
+  dead), or (b) older than the convention's ~24h abandonment horizon (a claim
+  with no fresh activity "may be treated as abandoned and re-claimed"). The
+  checker cannot see build activity from the status file alone, so the age
+  finding is deliberately a *withdraw-or-refresh* nudge, not a verdict.
+
+Posture is **advisory-only, never exit-affecting** — the deliberate mirror of
+``check_owner_actions`` / ``check_status_current``'s staleness warning. Claims
+are a coordination hint the manager reconciles; a hard gate would red a
+required check on a race the checker can't adjudicate.
+
+Input-gated on the ``control/`` protocol and per heartbeat file, like every
+control-band checker. Pure stdlib — no ``subprocess`` (§3.2); it only reads the
+heartbeat files the fast lane already validates. Unreadable / claim-less files
+fail open (no verdict).
+"""
+
+
+
+
+# The convention's abandonment horizon (control/README.md § "Claims expire"):
+# a claim with no visible activity after ~24h may be re-claimed. Seeded here,
+# revisable by data (KF-8 posture), mirroring check_status_current's constant.
+CLAIM_STALE_HOURS = 24
+
+# The orders line carries the claim + the done ledger:
+#   orders: acked=<ids> done=<ids> [claimed-by: <ids> <lane> <ISO8601>]
+_ORDERS_RE = re.compile(r"^orders:\s*(.*)$", re.MULTILINE)
+_DONE_RE = re.compile(r"\bdone=(\S*)")
+# claimed-by: <ids> <lane-or-session> <ISO8601> — three whitespace tokens.
+# The ids token is `+`/`,`-separated (README example: `007+008`); the lane may
+# itself carry hyphens (`coordinator-lane`) so it is a whole token, not parsed.
+_CLAIMED_RE = re.compile(r"claimed-by:\s*(\S+)\s+(\S+)\s+(\S+)")
+
+
+def _norm_id(raw: str) -> str | None:
+    """Return a 3-digit-normalized order id (``7`` / ``007`` → ``007``), or None."""
+    token = raw.strip()
+    if not token.isdigit():
+        return None
+    return f"{int(token):03d}"
+
+
+def _expand_ids(token: str) -> set[str]:
+    """Expand an id list token to a normalized id set.
+
+    Handles the protocol's shapes: comma lists (``001,002``), ``+``-joined
+    claim ids (``007+008``), and inclusive ranges (``001-006``). Unparseable
+    fragments are skipped rather than crashing the scan.
+    """
+    ids: set[str] = set()
+    for part in re.split(r"[,+]", token):
+        part = part.strip()
+        if not part:
+            continue
+        if "-" in part:
+            lo_raw, _, hi_raw = part.partition("-")
+            lo, hi = lo_raw.strip(), hi_raw.strip()
+            if lo.isdigit() and hi.isdigit():
+                for n in range(int(lo), int(hi) + 1):
+                    ids.add(f"{n:03d}")
+                continue
+        norm = _norm_id(part)
+        if norm is not None:
+            ids.add(norm)
+    return ids
+
+
+def _parse_iso(raw: str) -> datetime | None:
+    """Parse a claim's ISO-8601 timestamp to an aware UTC datetime, or None.
+
+    Mirrors ``check_status_current.parse_heartbeat``'s normalization: a
+    trailing ``Z`` is rewritten for ``fromisoformat`` (Python 3.10 floor) and
+    a naive stamp is read as UTC (the contract says ISO8601, sessions write
+    UTC — treating it otherwise would fabricate staleness).
+    """
+    token = raw.strip()
+    if token.endswith(("Z", "z")):
+        token = token[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(token)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _orders_line(text: str) -> str | None:
+    """Return the first ``orders:`` line's value, or None when absent."""
+    match = _ORDERS_RE.search(text)
+    return match.group(1) if match else None
+
+
+def _done_ids(orders_value: str) -> set[str]:
+    """Return the set of order ids reported in ``done=`` on an orders line."""
+    match = _DONE_RE.search(orders_value)
+    return _expand_ids(match.group(1)) if match else set()
+
+
+def _claim(orders_value: str) -> tuple[set[str], str, datetime | None] | None:
+    """Return ``(ids, lane, ts)`` for the line's ``claimed-by:``, or None.
+
+    ``ids`` is the normalized claimed order-id set, ``lane`` the claimant
+    token, ``ts`` the parsed timestamp (None when unparseable — the age check
+    then simply skips, never fabricating staleness).
+    """
+    match = _CLAIMED_RE.search(orders_value)
+    if not match:
+        return None
+    ids = _expand_ids(match.group(1))
+    if not ids:
+        return None
+    return ids, match.group(2), _parse_iso(match.group(3))
+
+
+def check_claims(
+    target: Path,
+    *,
+    status_files: Sequence[str] | None = None,
+    now: datetime | None = None,
+) -> list[Finding]:
+    """Return advisory findings for duplicate / stale order-claims.
+
+    Scans every configured heartbeat file's ``orders:`` line for
+    ``claimed-by:`` annotations (ORDER 007). Emits ``claims-duplicate`` when
+    two distinct files claim one order id, and ``claims-stale`` when a live
+    claim names an order already in some lane's ``done=`` or is older than
+    ``CLAIM_STALE_HOURS``. Advisory by contract — callers must never count
+    these toward an exit code (see module docstring). Empty when the
+    ``control/`` protocol is absent, and fail-open on unreadable files.
+    """
+    relpaths = heartbeat_relpaths(status_files)
+    control_evidence = [INBOX_RELPATH, CONTROL_README_RELPATH, *relpaths]
+    if not any((target / rel).is_file() for rel in control_evidence):
+        return []
+
+    now = now or datetime.now(timezone.utc)
+    # Per file: its claim (ids, lane, ts). Plus the union of every done= ledger
+    # across lanes — an order done anywhere retires its claim everywhere.
+    claims: dict[str, tuple[set[str], str, datetime | None]] = {}
+    done_union: set[str] = set()
+    for rel in relpaths:
+        path = target / rel
+        if not path.is_file():
+            continue  # a missing heartbeat is check_status_current's finding
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue  # fail open — an unreadable file is not a verdict
+        orders_value = _orders_line(text)
+        if orders_value is None:
+            continue
+        done_union |= _done_ids(orders_value)
+        claim = _claim(orders_value)
+        if claim is not None:
+            claims[rel] = claim
+
+    findings: list[Finding] = []
+
+    # DUPLICATE — one order id claimed by two or more distinct files.
+    holders: dict[str, list[str]] = {}
+    for rel, (ids, _lane, _ts) in claims.items():
+        for oid in ids:
+            holders.setdefault(oid, []).append(rel)
+    for oid in sorted(holders):
+        rels = sorted(holders[oid])
+        if len(rels) < 2:
+            continue
+        who = ", ".join(f"{r} ({claims[r][1]})" for r in rels)
+        for rel in rels:
+            findings.append(
+                Finding(
+                    rel,
+                    "claims-duplicate",
+                    f"order {oid} is claimed by {len(rels)} lanes ({who}) — "
+                    "the twin-execution race (control/README.md § Claiming an "
+                    "order). Reconcile by the tiebreak (earliest claim merged "
+                    "to main wins); the loser withdraws its claim and stands "
+                    "down.",
+                ),
+            )
+
+    # STALE — a live claim for a done order, or one past the ~24h horizon.
+    for rel in sorted(claims):
+        ids, _lane, ts = claims[rel]
+        done_here = sorted(ids & done_union)
+        if done_here:
+            findings.append(
+                Finding(
+                    rel,
+                    "claims-stale",
+                    f"claim for order(s) {', '.join(done_here)} that already "
+                    "appear in a lane's done= — the executor drops the "
+                    "claimed-by annotation when moving ids into done= "
+                    "(control/README.md § Claiming an order). Withdraw the "
+                    "stale claim in your next heartbeat.",
+                ),
+            )
+        if ts is not None:
+            age_hours = (now - ts).total_seconds() / 3600
+            if age_hours > CLAIM_STALE_HOURS:
+                findings.append(
+                    Finding(
+                        rel,
+                        "claims-stale",
+                        f"claim for order(s) {', '.join(sorted(ids))} is "
+                        f"{age_hours:.0f}h old (> {CLAIM_STALE_HOURS}h "
+                        "abandonment horizon, control/README.md § Claims "
+                        "expire) — refresh it with a fresh heartbeat / open PR "
+                        "reference if still building, or withdraw it so the "
+                        "order can be re-claimed.",
+                    ),
+                )
+    return findings
+
 # --- engine/ledger.py ---
 """Decision ledger — the ``[D-NNNN]`` provenance-separated rulebook (Lane B6).
 
@@ -3291,6 +3683,30 @@ def parse_model_line(text: str) -> dict | None:
     return parsed
 
 
+def _build_model_usage_record(session: str, parsed: dict) -> dict:
+    """Build one PL-004 model-usage row from a session slug + parsed 📊 line.
+
+    Shared by ``harvest_model_usage`` (single-latest) and
+    ``reconcile_model_usage`` (whole-tree sweep) so both feeds emit the exact
+    same shape. ``outcome`` ships all-null — a later lab sweep backfills it.
+    """
+    match = _DATE_PREFIX_RE.match(session)
+    return {
+        "session": session,
+        "date": match.group(1) if match else date.today().isoformat(),
+        "model": parsed["model"],
+        "effort": parsed["effort"],
+        "task_class": parsed["task_class"],
+        "tokens_out": parsed["tokens_out"],
+        "outcome": {
+            "ci_green_first_push": None,
+            "checker_findings": None,
+            "merged_pr": None,
+            "reverted_within_window": None,
+        },
+    }
+
+
 def _model_usage_sessions(path: Path) -> set[str]:
     """Return the session slugs already recorded at ``path`` (dedupe key)."""
     sessions: set[str] = set()
@@ -3342,26 +3758,69 @@ def harvest_model_usage(root: Path, session_log: Path | None) -> list[str]:
         if session in _model_usage_sessions(path):
             lines.append(f"model-usage: {session} already recorded (skipped).")
             return lines
-        match = _DATE_PREFIX_RE.match(session)
-        record = {
-            "session": session,
-            "date": match.group(1) if match else date.today().isoformat(),
-            "model": parsed["model"],
-            "effort": parsed["effort"],
-            "task_class": parsed["task_class"],
-            "tokens_out": parsed["tokens_out"],
-            "outcome": {
-                "ci_green_first_push": None,
-                "checker_findings": None,
-                "merged_pr": None,
-                "reverted_within_window": None,
-            },
-        }
-        _append_jsonl(path, record)
+        _append_jsonl(path, _build_model_usage_record(session, parsed))
         lines.append(f"model-usage: recorded {session} -> {MODEL_USAGE_RELPATH}")
         return lines
     except Exception:  # noqa: BLE001 — telemetry fails open by contract
         return ["model-usage: harvest failed (fail-open) — row not recorded."]
+
+
+def reconcile_model_usage(root: Path, sessions_dir: Path) -> list[str]:
+    """Sweep EVERY complete session card into the model-usage feed (write-at-commit).
+
+    The single-latest ``harvest_model_usage`` at session-close only ever wrote
+    the *newest* card's row, so a card committed while a newer card already
+    existed never reached ``telemetry/model-usage.jsonl`` — the KL-3
+    undercount (gen-2 queue item 6: 10 recorded rows vs 42 eligible cards).
+    This reconcile closes that gap deterministically: it appends one row for
+    every **complete** card carrying a valid ``📊 Model:`` line that is not
+    already recorded, so the moment a card commits complete its telemetry row
+    exists and no later card can shadow it out of the harvest.
+
+    Completeness-gated on the exact machinery the session-log checker uses
+    (``status_in_progress`` + ``unresolved_fill_count``): a born-red /
+    in-progress / drafted card has no finished session to report and is picked
+    up only once it flips complete — the write-at-card-commit contract. The
+    record shape is the PL-004 object built by ``_build_model_usage_record``;
+    ``outcome`` starts all-null (the lab sweep backfills it). Idempotent
+    (dedupe by session slug, in-batch too — re-running never double-appends),
+    append-only, and fail-open like every telemetry path. Returns
+    human-readable summary lines for the CLI.
+    """
+    try:
+        if not sessions_dir.is_dir():
+            return []
+        path = root / MODEL_USAGE_RELPATH
+        recorded = _model_usage_sessions(path)
+        added: list[str] = []
+        for card in sorted(sessions_dir.glob("*.md")):
+            if card.name == "README.md":
+                continue
+            try:
+                text = card.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            # A card only earns its row once it commits complete — an
+            # in-progress or drafted (born-red) card is not a finished session.
+            if status_in_progress(text) or unresolved_fill_count(text):
+                continue
+            parsed = parse_model_line(text)
+            if parsed is None:
+                continue
+            session = card.stem
+            if session in recorded:
+                continue
+            _append_jsonl(path, _build_model_usage_record(session, parsed))
+            recorded.add(session)
+            added.append(session)
+        if not added:
+            return ["model-usage: reconcile — no unrecorded complete cards."]
+        head = f"model-usage: reconcile recorded {len(added)} card(s) -> {MODEL_USAGE_RELPATH}"
+        if len(added) <= 6:
+            head += f" ({', '.join(added)})"
+        return [head]
+    except Exception:  # noqa: BLE001 — telemetry fails open by contract
+        return ["model-usage: reconcile failed (fail-open) — rows not recorded."]
 
 # --- engine/loop/handoff.py ---
 """Auto-drafted session handoff (band KL-5, founding plan §10 — the ruled B1 prerequisite).
@@ -8405,22 +8864,38 @@ def _unrendered_findings(
     return findings
 
 
+def _strip_comment(line: str) -> str:
+    """Drop a YAML/shell ``#`` comment, keeping the code before it.
+
+    A whole-line comment (leading ``#``) yields ``""``; an inline `` #``
+    comment keeps the code up to it. A bare ``#`` with no leading space
+    (inside a URL or token) is left alone — kept simple, not a YAML parser.
+    """
+    if line.lstrip().startswith("#"):
+        return ""
+    idx = line.find(" #")
+    return line[:idx] if idx != -1 else line
+
+
 def _enforcement_wired(target: Path) -> bool:
     """True when some workflow under .github/workflows/ runs ``check --strict``.
 
     Substring match on purpose: it accepts the planted ``substrate-gate.yml``
     verbatim AND a host's hand-rolled gate (the kit repo's own ``ci.yml``) —
     the condition is "a CI door exists", not "our exact file was copied".
+    Comment content is stripped first, so a workflow that only *mentions* the
+    command inside a ``#`` comment is not a real door and stays unwired.
     """
     workflows = target / ".github" / "workflows"
     if not workflows.is_dir():
         return False
     for path in sorted(workflows.glob("*.yml")) + sorted(workflows.glob("*.yaml")):
         try:
-            if "check --strict" in path.read_text(encoding="utf-8"):
-                return True
+            text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
+        if any("check --strict" in _strip_comment(line) for line in text.splitlines()):
+            return True
     return False
 
 
@@ -9463,8 +9938,17 @@ def cmd_check(
     require_session_log: bool = False,
     session_log: Path | None = None,
     status_only: bool = False,
+    inbox_base: Path | None = None,
 ) -> int:
     """Run every hygiene checker against ``target``.
+
+    ``inbox_base`` (CLI ``--inbox-base``) names the merge-base version of
+    ``control/inbox.md`` — extracted by CI in bash, because engine code never
+    shells out to git (§3.2). When given, the append-only gate runs on both
+    lanes: the change to ``control/inbox.md`` must be pure-append vs that base
+    and its appended text must be well-formed ORDER blocks (issue #36 report
+    2). It rides the fast lane exactly like the status gate — an inbox append
+    is control-lane traffic — and self-skips when there is nothing to judge.
 
     ``status_only`` (CLI ``--status-only``) scopes the run to the control/
     status heartbeat checker alone — the CI control fast lane's gate. A
@@ -9532,11 +10016,28 @@ def cmd_check(
         target,
         status_files=config.heartbeat_files,
     )
+    # Order-claim hygiene (ORDER 007): advisory-only, like the staleness and
+    # owner-action warnings — a duplicate or stale `claimed-by:` is a
+    # coordination race the manager reconciles, never a required-check red.
+    # Runs on both lanes: claims live on the heartbeat orders line the fast
+    # lane already validates.
+    claim_advisories = check_claims(
+        target,
+        status_files=config.heartbeat_files,
+    )
+    # The inbox append-only gate (issue #36 report 2): a control/inbox.md
+    # change must be pure-append vs the merge-base + ORDER-grammar shaped.
+    # Rides the finding loop like every checker; engages only when CI handed
+    # in a base blob to diff against (no base → no-op, see the checker).
+    inbox_findings = (
+        check_inbox_append(target, inbox_base) if inbox_base is not None else []
+    )
     if status_only:
-        # --status-only: the fast lane's scoped gate (see docstring). Only
-        # the heartbeat checker runs; everything downstream (allowlist,
+        # --status-only: the fast lane's scoped gate (see docstring). Only the
+        # control-lane checkers run — the heartbeat gate and, when CI passes a
+        # base, the inbox append-only gate; everything downstream (allowlist,
         # guard fires, emit loop) is shared with the full run.
-        doc_findings = list(status_gate)
+        doc_findings = list(status_gate) + inbox_findings
     else:
         docs_root = target / config.docs_root
         doc_findings = list(
@@ -9547,6 +10048,7 @@ def cmd_check(
             )
         )
         doc_findings += _extra_check_findings(target, config) + status_gate
+        doc_findings += inbox_findings
     entries, allow_findings = load_allowlist(target, config.state_dir)
     doc_findings, suppressed = apply_allowlist(doc_findings, entries)
     doc_findings += allow_findings
@@ -9614,6 +10116,25 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=owner_ask_advisories,
+        )
+    if claim_advisories:
+        # Same warn-only contract as the advisories above (ORDER 007): the
+        # duplicate/stale-claim nudge is surfaced + telemetry-recorded but
+        # never counted toward the exit code — the manager adjudicates the
+        # tiebreak; the checker only flags the collision.
+        _emit(
+            f"check: {len(claim_advisories)} order-claim advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in claim_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=claim_advisories,
         )
 
     log_missing: list[str] = []
@@ -10201,6 +10722,13 @@ def cmd_session_close(target: Path) -> int:
     log = latest_session_log(target / config.sessions_dir)
     for line in harvest_model_usage(target, log):
         _emit(f"session-close: {line}")
+    # Whole-tree reconcile (KL-3 write-at-commit, gen-2 queue item 6): the
+    # single-latest harvest above only ever wrote the newest card's row, so a
+    # card committed under a newer one was never harvested (10 rows vs 42
+    # eligible cards). Sweep every complete card so no eligible card is left
+    # behind — idempotent + fail-open, so it costs a re-scan and nothing else.
+    for line in reconcile_model_usage(target, target / config.sessions_dir):
+        _emit(f"session-close: {line}")
     # Re-read state: the mine above stamped reflection_buffer.last_mined, and
     # a pre-mine snapshot would re-advise the mine it just ran.
     backend = JsonStateBackend(_state_path(target, config))
@@ -10633,6 +11161,17 @@ def build_parser() -> argparse.ArgumentParser:
             "heartbeat parses (stdlib-only, session-log-free)"
         ),
     )
+    check.add_argument(
+        "--inbox-base",
+        type=Path,
+        default=None,
+        help=(
+            "gate control/inbox.md against this merge-base copy of the file "
+            "(CI extracts the base blob with git, since engine code never "
+            "shells out): the change must be pure-append and its appended "
+            "text well-formed ORDER blocks; omit when there is no inbox diff"
+        ),
+    )
     return parser
 
 
@@ -10670,6 +11209,7 @@ def main(argv: list[str] | None = None) -> int:
                 require_session_log=args.require_session_log,
                 session_log=args.session_log,
                 status_only=args.status_only,
+                inbox_base=args.inbox_base,
             )
         if args.command == "answer":
             return cmd_answer(args.target, args.slot, " ".join(args.value))
