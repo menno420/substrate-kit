@@ -1,6 +1,6 @@
 # Session 2026-07-10 — EAP §6.1: substrate-gate.yml declared kit-owned (regenerated on adopt/upgrade)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** claude-fable-5 · medium · engine+tests
 
@@ -35,8 +35,35 @@ is the next release's distribution wave (noted as follow-on in status.md).
 
 ## Close-out
 
-(written at flip time — see below; this card opened born-red with the scope
-above as the in-flight declaration)
+**Shipped (session PR #130; claim fast-lane PR #129 → d3352f1):**
+
+- `src/engine/adopt.py` — step (6b) kit-owned regeneration: an EXISTING
+  live gate is regenerated in place on every adopt/upgrade pass
+  (byte-compare → `regenerated:` / `kept: (kit-owned, already current)`
+  report lines); `--wire-enforcement` still the only path that CREATES it.
+  Generated header + `live_ci_workflow()` / `adopt()` docstrings +
+  `ci_snippet()` declare the ownership; host carve-outs routed to a
+  separate workflow file.
+- `tests/test_adopt.py` — the old never-clobber test deliberately INVERTED
+  to kit-owned semantics (regenerate under wire-enforcement; regenerate on
+  default adopt when the gate exists; idempotent second pass; header
+  declaration). `tests/test_upgrade.py` — upgrade regenerates a stale gate;
+  upgrade never creates an uninstalled one.
+- `.substrate/ci/quality.yml.example` refreshed (was stale, pre-KL-8
+  wording); `CHANGELOG.md` [Unreleased] Changed entry (with the adopter
+  overwrite warning); dist rebuilt, byte-pin verified clean locally.
+
+**Verified:** `python3 -m pytest tests/ -q` → **823 passed** (819 on main →
+823: +5 new, −1 inverted); `python3 -m ruff check src/engine/` clean;
+`python3 src/build_bootstrap.py && git diff --exit-code dist/bootstrap.py`
+clean; `check --strict` green except this card's own born-red hold
+(by design — this flip clears it).
+
+**Mid-flight note:** the coordinator flagged PR #130's first CI run
+(29108440904) red as a possible breakage — diagnosis: kit-quality failed
+ONLY on `session log … badge still says in-progress` (the born-red hold
+working as designed), and the other two reds are the legacy-alias jobs
+mirroring kit-quality's result by design. No breakage; no fix needed.
 
 **⚑ Follow-on (next release's distribution wave, NOT this slice):** adopter
 repos with installed gates (gba-homebrew's hand-fixed copy included) receive
