@@ -23,7 +23,15 @@ name: auto-merge-enabler
 
 on:
   pull_request:
-    types: [opened, reopened, ready_for_review]
+    # `synchronize` (every push to the PR head) re-arms native auto-merge:
+    # arming is idempotent — `gh pr merge --auto` no-ops if already armed and
+    # RE-ARMS if a behind-state push disarmed it, and NEVER merges anything
+    # itself (the merge stays gated by the required `kit-quality` check). This
+    # narrows the "green-behind stall" class: a fix-push or `git merge
+    # origin/main` re-arms on the up-to-date head. It does NOT fully close it —
+    # a PR that goes behind AFTER its last push still needs the owner repo
+    # setting "automatically update branches" (⚑ see docs/CAPABILITIES.md).
+    types: [opened, reopened, ready_for_review, synchronize]
 
 permissions:
   contents: write
