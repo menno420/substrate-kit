@@ -1,0 +1,13 @@
+diff --git a/northride/cli.py b/northride/cli.py
+index 311d2eb..81ad5b8 100644
+--- a/northride/cli.py
++++ b/northride/cli.py
+@@ -38,7 +38,7 @@ def main(argv=None):
+         for r in records:
+             print(f"{r['category']}: {r['distance']} {r['note']}".rstrip())
+     elif args.command == "total":
+-        print(ops.total_distance(records))
++        print(f"{ops.total_distance(records):.2f}")
+     elif args.command == "filter":
+         for r in ops.filter_by_category(records, args.category):
+             print(f"{r['category']}: {r['distance']}")

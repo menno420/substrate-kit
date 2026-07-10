@@ -17,6 +17,20 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **B1 cold-start run 3 recorded (KF-8 threshold met — first legal trend
+  statement)**: row 3 appended to `bench/results/cold-start/index.json` +
+  committed run dir (`2026-07-10-run03`, seed 710301 northride, kit v1.6.0
+  ENGAGED arm). Judge verdict verbatim: **FAIL under the strict F-5 letter**
+  (M1 to OFF on all pairs 2004/2521/721 vs 562/967/509) while ON wins M2
+  (T4 resumed from T2's card and shipped its queued fix) + M3 (durable
+  write-back), max ON footprint 2,521 ≪ 7k budget, zero unrecoverable
+  errors; disputed pending the F-5 wording ruling (Reading B would PASS).
+  Trend across 3 runs: ON wins M2+M3 in every run, in-budget always; M1 to
+  OFF in every clean measurement (strict headline 1 PASS / 2 FAIL) —
+  caveated on the open ruling + version/seed/judge confounds (run-3
+  deviation: judge = arm model, claude-fable-5 everywhere, spawn-harness
+  model overrides ignored). Per KF-5 the next release's notes must state
+  this outcome.
 - **SuperBot-coordinator lane wind-down succession pack** (docs-only,
   suffixed per the multi-lane rule): `docs/succession/` (new, with README
   index) carrying the gen-2 next-boot guide (read order, queue state,
@@ -27,6 +41,28 @@ workflow refuses to publish a version that has no section in this file.
   `docs/retro/wind-down-review-2026-07-09-superbot-coordinator.md`
   (whole-life summary, exact-error friction ledger, first-person close)
   and the lane heartbeat flipped to wind-down-complete.
+
+### Fixed
+
+- **Run-2 ordinary-lane follow-ups (kit PR #95)** — the three engine/harness
+  gaps the B1 record sessions filed as idea files:
+  - `bench/run_ab.py prepare` no longer fails by design on ON arms: it walks
+    the KL-7 RED→ENGAGED→GREEN arc itself (deterministic seed-derived
+    interview answers, `render --live`, staged-gate install, first session
+    card, seed heartbeat), asserts `check --strict` exit 0, and writes
+    `manifest.json` on the failure path too (`smoke_failed` marker) so an
+    aborted prepare leaves evidence.
+  - `render --live` now covers `.claude/CLAUDE.md` (and every other
+    engagement-gate-scoped planted file): the render set is the gate's own
+    `scan_relpaths()`, so the two surfaces can never again disagree about
+    whose job a planted file is and the KL-7 checklist completes by its own
+    named commands.
+  - Session-marker misses name the expected byte-form: the planted
+    `.sessions/README.md` renders ``label (`needle`)`` pairs (a cold session
+    can learn the `📊 Model:` form from inside the repo) and the session-log
+    checker reports ``Model line (expected `📊 Model:`)`` instead of a bare
+    label that contradicts the visible card. (Distinct from the
+    `parse_model_line` harvest-shadowing fix in PR #40.)
 
 ## [1.6.0] - 2026-07-09
 

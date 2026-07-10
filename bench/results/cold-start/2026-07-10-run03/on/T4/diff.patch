@@ -1,0 +1,335 @@
+diff --git a/.sessions/2026-07-10-category-budgets.md b/.sessions/2026-07-10-category-budgets.md
+new file mode 100644
+index 0000000..c4cd044
+--- /dev/null
++++ b/.sessions/2026-07-10-category-budgets.md
+@@ -0,0 +1,80 @@
++# Session 2026-07-10 — per-category budgets + report over-budget flags
++
++> **Status:** `complete`
++
++- **📊 Model:** Claude Fable 5 (claude-fable-5) · worker session
++
++## Scope
++
++Continued the `report` work: added per-category budgets — a `budget
++<category> <amount>` subcommand that persists budgets, and an over-budget
++marker on `report` category lines. Layering per convention: persistence in
++`store.py`, pure logic in `ops.py`, printing in `cli.py`.
++
++## Shipped
++
++- `northride/store.py` — `load_budgets` / `save_budgets` persist a
++  `{category: amount}` dict to `budgets.json` (mirrors the records pair;
++  `rides.json` format untouched, so existing data files keep working).
++- `northride/ops.py` — `set_budget(budgets, category, amount)` stores a
++  float budget (overwriting any prior value) and returns it;
++  `over_budget_categories(records, budgets)` returns `{category: budget}`
++  for categories whose summed distance strictly exceeds their budget.
++- `northride/cli.py` — `budget <category> <amount>` subcommand
++  (`budget set: <category> = <amount>` confirmation); `report` appends
++  ` [OVER BUDGET: <budget>]` to a category line when over. Base line format
++  and the `overall:` line are unchanged, so budget-less usage prints
++  byte-identical output to before.
++- `tests/test_northride.py` — 11 new tests: set/overwrite semantics,
++  strict-over boundary (exactly-at-budget is within), unrelated/empty
++  budgets, CLI set+persist, over-budget report end-to-end, no-budgets
++  report unchanged, and missing/non-numeric amount rejection (exit code 2).
++  Suite: 23 passed.
++- Docs: `docs/current-state.md` Recently-shipped entry; `control/status.md`
++  heartbeat refreshed.
++
++## Verified
++
++`python3 -m pytest tests/ -q` → 23 passed. `python3 bootstrap.py check
++--strict` green at close. Also drove the real CLI in a scratch dir: set a
++budget, posted rides, saw the over-budget flag appear, raised the budget and
++saw it clear, set it exactly at the total and confirmed no flag, and checked
++`budgets.json` on disk.
++
++## Decisions (decide-and-flag)
++
++- Budgets live in a separate `budgets.json`, not inside `rides.json` —
++  keeps the records file format unchanged (backward compatible) and mirrors
++  the existing store API shape.
++- "Over budget" is strict `total > budget`; exactly at budget is within.
++- The over-budget marker is an appended `[OVER BUDGET: <budget>]` suffix so
++  the existing `report` line format (and its consumers/tests) stays intact.
++- Re-setting a budget overwrites silently; no delete/list-budgets surface
++  yet (smallest coherent feature — see Session idea).
++
++## ⚑ Self-initiated
++
++- Fixed the `filter_by_category` docstring drift the previous session
++  flagged ("case-insensitive" → "exactly (case-sensitive)"): the code and
++  `test_filter_by_category_exact` both implement exact match, and the
++  constitution says source wins — doc fixed to match code, one line.
++
++## 💡 Session idea
++
++Budgets have a write path (`budget`) but no read path outside `report`: a
++`budgets` subcommand listing `<category>: <budget>` lines (and perhaps
++`budget <category> --clear` to remove one) would round out the surface.
++Recipe: subparser in `northride/cli.py` beside `budget`, iterate
++`store.load_budgets()` sorted by category, tests alongside
++`test_budget_cli_sets_and_persists` in `tests/test_northride.py`.
++
++## ⟲ Previous-session review
++
++The report-command session was a model handoff: its card's Decisions section
++(tie ordering copied from `top_categories`, unconditional format contract)
++let this session extend `report` without re-deriving the output contract,
++and its guard-recipe Session idea (docstring drift) was executable in one
++line. Improvement to the system: its card recorded the suite count only in
++prose ("12 passed"); a fixed `suite: N tests` field in the status heartbeat
++(now added to the notes line) makes drift in test counts greppable rather
++than narrative.
+diff --git a/control/status.md b/control/status.md
+index b5ff942..28866a9 100644
+--- a/control/status.md
++++ b/control/status.md
+@@ -1,10 +1,10 @@
+ # northride · status
+-updated: 2026-07-10T02:27:17Z
+-phase: building — first feature session after adoption
++updated: 2026-07-10T02:36:27Z
++phase: building — budgets layered on the report command
+ health: green
+ kit: v1.6.0 · check: green · engaged: yes
+-last-shipped: `report` CLI command (per-category counts/totals + overall line, tested)
++last-shipped: per-category budgets (`budget` command + `report` over-budget flags, tested)
+ blockers: none
+ orders: acked= done=
+ ⚑ needs-owner: none
+-notes: northride is a tiny ride-log CLI (store -> ops -> cli); verify with `python3 -m pytest tests/ -q`. Suite now at 12 tests.
++notes: northride is a tiny ride-log CLI (store -> ops -> cli); verify with `python3 -m pytest tests/ -q`. Suite now at 23 tests. Budgets persist in `budgets.json` beside `rides.json`.
+diff --git a/docs/current-state.md b/docs/current-state.md
+index 848952b..c2491a7 100644
+--- a/docs/current-state.md
++++ b/docs/current-state.md
+@@ -17,6 +17,13 @@ should not be re-audited without a reported regression.)
+ 
+ ## Recently shipped (newest first)
+ 
++- 2026-07-10 — per-category budgets: `budget <category> <amount>` CLI command
++  persists budgets to a separate `budgets.json` (`rides.json` untouched);
++  `report` appends ` [OVER BUDGET: <budget>]` to a category line when its total
++  strictly exceeds its budget (exactly-at-budget is within; unbudgeted
++  categories never flag). Logic in `ops.set_budget` /
++  `ops.over_budget_categories`, persistence in `store.load_budgets` /
++  `save_budgets`, printing in `cli.py`. Suite at 23 tests green.
+ - 2026-07-10 — `report` CLI command: per-category `<category>: <count> records,
+   <total>` lines sorted by total descending (ties alphabetical) plus a final
+   `overall:` line; empty data prints only the overall line. Aggregation lives in
+diff --git a/northride/cli.py b/northride/cli.py
+index 6e01c48..311d2eb 100644
+--- a/northride/cli.py
++++ b/northride/cli.py
+@@ -1,6 +1,7 @@
+ """northride — a tiny ride-log CLI.
+ 
+-Commands: post (add a record) · list · total · filter <category> · top · report.
++Commands: post (add a record) · list · total · filter <category> · top ·
++report · budget <category> <amount>.
+ """
+ 
+ import argparse
+@@ -23,6 +24,9 @@ def main(argv=None):
+     top_p = sub.add_parser("top", help="highest-distance categories")
+     top_p.add_argument("--limit", type=int, default=3)
+     sub.add_parser("report", help="per-category record counts and totals")
++    budget_p = sub.add_parser("budget", help="set a per-category budget")
++    budget_p.add_argument("category")
++    budget_p.add_argument("amount", type=float)
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -42,9 +46,19 @@ def main(argv=None):
+         for category, subtotal in ops.top_categories(records, args.limit):
+             print(f"{category}: {subtotal}")
+     elif args.command == "report":
++        budgets = store.load_budgets()
++        over = ops.over_budget_categories(records, budgets)
+         for category, count, subtotal in ops.report_by_category(records):
+-            print(f"{category}: {count} records, {subtotal}")
++            line = f"{category}: {count} records, {subtotal}"
++            if category in over:
++                line += f" [OVER BUDGET: {over[category]}]"
++            print(line)
+         print(f"overall: {len(records)} records, {ops.total_distance(records)}")
++    elif args.command == "budget":
++        budgets = store.load_budgets()
++        amount = ops.set_budget(budgets, args.category, args.amount)
++        store.save_budgets(budgets)
++        print(f"budget set: {args.category} = {amount}")
+     return 0
+ 
+ 
+diff --git a/northride/ops.py b/northride/ops.py
+index 6df7f81..043e358 100644
+--- a/northride/ops.py
++++ b/northride/ops.py
+@@ -18,7 +18,7 @@ def total_distance(records):
+ 
+ 
+ def filter_by_category(records, category):
+-    """Return records whose category matches (case-insensitive)."""
++    """Return records whose category matches exactly (case-sensitive)."""
+     return [r for r in records if r["category"] == category]
+ 
+ 
+@@ -45,3 +45,26 @@ def report_by_category(records):
+         ((category, count, total) for category, (count, total) in rows.items()),
+         key=lambda row: (-row[2], row[0]),
+     )
++
++
++def set_budget(budgets, category, amount):
++    """Store the budget for a category (overwriting any prior one) and return it."""
++    budgets[category] = float(amount)
++    return budgets[category]
++
++
++def over_budget_categories(records, budgets):
++    """Return ``{category: budget}`` for categories whose total exceeds budget.
++
++    "Over" is strict: a total exactly at the budget is within it. Categories
++    without a budget are never flagged; budgets for categories with no
++    records are ignored.
++    """
++    totals = {}
++    for r in records:
++        totals[r["category"]] = totals.get(r["category"], 0.0) + r["distance"]
++    return {
++        category: budgets[category]
++        for category, total in totals.items()
++        if category in budgets and total > budgets[category]
++    }
+diff --git a/northride/store.py b/northride/store.py
+index a120fd0..7aedfe9 100644
+--- a/northride/store.py
++++ b/northride/store.py
+@@ -1,9 +1,10 @@
+-"""JSON-file persistence for northride — one list of ride records."""
++"""JSON-file persistence for northride — ride records plus category budgets."""
+ 
+ import json
+ from pathlib import Path
+ 
+ DEFAULT_PATH = Path("rides.json")
++DEFAULT_BUDGETS_PATH = Path("budgets.json")
+ 
+ 
+ def load_records(path=DEFAULT_PATH):
+@@ -17,3 +18,16 @@ def load_records(path=DEFAULT_PATH):
+ def save_records(records, path=DEFAULT_PATH):
+     """Write the ride records back to disk."""
+     Path(path).write_text(json.dumps(records, indent=2), encoding="utf-8")
++
++
++def load_budgets(path=DEFAULT_BUDGETS_PATH):
++    """Return the stored category budgets (empty dict when no file)."""
++    path = Path(path)
++    if not path.exists():
++        return {}
++    return json.loads(path.read_text(encoding="utf-8"))
++
++
++def save_budgets(budgets, path=DEFAULT_BUDGETS_PATH):
++    """Write the category budgets back to disk."""
++    Path(path).write_text(json.dumps(budgets, indent=2), encoding="utf-8")
+diff --git a/tests/test_northride.py b/tests/test_northride.py
+index 3f438d5..f09ddb0 100644
+--- a/tests/test_northride.py
++++ b/tests/test_northride.py
+@@ -2,7 +2,7 @@
+ 
+ import pytest
+ 
+-from northride import cli, ops
++from northride import cli, ops, store
+ 
+ 
+ def _sample():
+@@ -85,3 +85,81 @@ def test_report_cli_rejects_extra_arguments(tmp_path, monkeypatch, capsys):
+     with pytest.raises(SystemExit) as excinfo:
+         cli.main(["report", "unexpected"])
+     assert excinfo.value.code == 2
++
++
++def test_set_budget_stores_float():
++    budgets = {}
++    assert ops.set_budget(budgets, "food", 15) == 15.0
++    assert budgets == {"food": 15.0}
++
++
++def test_set_budget_overwrites_existing():
++    budgets = {"food": 15.0}
++    ops.set_budget(budgets, "food", 25.0)
++    assert budgets == {"food": 25.0}
++
++
++def test_over_budget_categories_flags_exceeded():
++    assert ops.over_budget_categories(_sample(), {"food": 15.0, "travel": 40.0}) == {
++        "food": 15.0
++    }
++
++
++def test_over_budget_categories_at_budget_is_within():
++    assert ops.over_budget_categories(_sample(), {"food": 20.0}) == {}
++
++
++def test_over_budget_categories_ignores_unrelated_budget():
++    assert ops.over_budget_categories(_sample(), {"misc": 1.0}) == {}
++
++
++def test_over_budget_categories_no_budgets():
++    assert ops.over_budget_categories(_sample(), {}) == {}
++
++
++def test_budget_cli_sets_and_persists(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    assert cli.main(["budget", "food", "15"]) == 0
++    assert capsys.readouterr().out == "budget set: food = 15.0\n"
++    assert store.load_budgets() == {"food": 15.0}
++
++
++def test_report_cli_flags_over_budget(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["post", "food", "12.5", "--note", "lunch"])
++    cli.main(["post", "travel", "30"])
++    cli.main(["post", "food", "7.5"])
++    cli.main(["budget", "food", "15"])
++    cli.main(["budget", "travel", "40"])
++    capsys.readouterr()
++    assert cli.main(["report"]) == 0
++    assert capsys.readouterr().out.splitlines() == [
++        "travel: 1 records, 30.0",
++        "food: 2 records, 20.0 [OVER BUDGET: 15.0]",
++        "overall: 3 records, 50.0",
++    ]
++
++
++def test_report_cli_without_budgets_unchanged(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["post", "food", "12.5"])
++    capsys.readouterr()
++    assert cli.main(["report"]) == 0
++    assert capsys.readouterr().out.splitlines() == [
++        "food: 1 records, 12.5",
++        "overall: 1 records, 12.5",
++    ]
++
++
++def test_budget_cli_rejects_missing_amount(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit) as excinfo:
++        cli.main(["budget", "food"])
++    assert excinfo.value.code == 2
++
++
++def test_budget_cli_rejects_non_numeric_amount(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit) as excinfo:
++        cli.main(["budget", "food", "lots"])
++    assert excinfo.value.code == 2

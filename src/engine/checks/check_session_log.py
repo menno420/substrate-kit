@@ -22,8 +22,24 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 
+def _marker_miss(marker: Mapping[str, str]) -> str:
+    """Name one missed marker: its label AND the exact byte-form expected.
+
+    ``Model line (expected `📊 Model:`)`` instead of a bare ``Model line`` —
+    the run-1 ON-arm false-red lesson (idea
+    model-line-checker-false-red-2026-07-09): a card visibly carrying a
+    ``> **Model:**`` line red as "missing: Model line" tells the agent
+    nothing about WHICH byte-form the needle scan wanted. A red must name
+    the expected form, never contradict what the agent can see on the card.
+    """
+    label = marker.get("label", "?") or "?"
+    needle = marker.get("needle", "")
+    return f"{label} (expected `{needle}`)" if needle else label
+
+
 def missing_markers(text: str, markers: Sequence[Mapping[str, str]]) -> list[str]:
-    """Return the labels of markers whose needle is absent from ``text``.
+    """Return, for each marker whose needle is absent from ``text``, its
+    label plus the expected byte-form (see :func:`_marker_miss`).
 
     Tolerant of partial host-config entries: a marker without a ``needle`` is
     skipped (nothing to search for) rather than raising, and a missing
@@ -31,7 +47,7 @@ def missing_markers(text: str, markers: Sequence[Mapping[str, str]]) -> list[str
     """
     lower = text.lower()
     return [
-        m.get("label", "?")
+        _marker_miss(m)
         for m in markers
         if m.get("needle") and m.get("needle", "").lower() not in lower
     ]
@@ -104,7 +120,7 @@ def check_log(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
-        return [m["label"] for m in markers]
+        return [_marker_miss(m) for m in markers]
     missing = missing_markers(text, markers)
     fills = unresolved_fill_count(text)
     if fills:

@@ -147,6 +147,27 @@
   (ordinary lane), and run-2 evidence added to `t5-headless-guard-surface`
   (guard probe n/a again on the fully-ENGAGED arm + the new last-card
   gate gap).
+- **B1's THIRD FIRING is RECORDED — VERDICT: FAIL (strict F-5, advisory
+  per KF-5; disputed pending OWNER-ACTION 3)** (run `2026-07-10-run03`,
+  seed 710301 northride, kit v1.6.0 ENGAGED, judge claude-fable-5; row 3
+  of `bench/results/cold-start/index.json` + committed run dir, PR #85).
+  Run-2's shape, sharper: **M1 to OFF on all pairs** (2004/2521/721 vs
+  562/967/509; ON's T2/T4 endpoint is the born-red-card Write), **ON
+  wins M2** (T4 resumed from T2's card AND shipped its queued
+  docstring fix) **and M3** (durable write-back twice), max ON footprint
+  2,521 ≪ 7k, zero unrecoverable errors. Family-first: a genuine
+  **session-time guard fire** (ON-T4 mid-session `check --strict` red →
+  repaired → green). Deviations recorded verbatim in the run dir: T5
+  guard probe n/a headless (third run); spawn harness ignored model
+  orders — **judge = arm model (claude-fable-5 everywhere)**, arms-equal
+  control held, judge separation by invocation only. **First legal KF-8
+  trend statement (3 rows):** the benefit is consistent in KIND — ON
+  wins M2 + M3 every run, always in-budget, zero unrecoverable errors —
+  while scripted M1 goes to OFF in every *clean* measurement (runs 2–3),
+  so the strict headline is 1 PASS / 2 FAIL. Trend caveats: both FAILs
+  hang on the disputed "none regressing" wording (Reading B would make
+  all three PASS-shaped), and version/seed/judge confounds mean the
+  trend is the repeated per-measure pattern, not the raw numbers.
 - **KL-7 (the adopt-engage gate) is DONE** (owner-directed P0 off the
   independent fleet review, superbot `docs/eap/fleet-review-2026-07-09.md`
   §4; D-0006; PR #25): both fresh adopters had stranded identically —
@@ -439,19 +460,16 @@ pack; queue truth in [`docs/gen2/queue-state.md`](gen2/queue-state.md)).
    `upgrade-archive-report-line-gap-…`), and the release.json placement
    line in the adopter checklist
    (`upgrade-checklist-release-json-placement-…`).
-2. **B1 run-3 — AFTER the run-2 seed/harness follow-ups land** *(blocked
-   on 👤 owner: PR #49 merge (pin-path seed fix) + the rubric F-5 ruling;
-   run-2
-   is DONE — fired on the fixed scorer and recorded, strict-F-5 FAIL
-   advisory, PR #44; family at 2 rows, KF-8 needs ≥3 for any trend)*:
-   land the make_seed `yield`-keyword fix + prepare-runs-seed-tests
-   smoke (⚑ pin path → `do-not-automerge`), the prepare engagement-arc
-   scripting + `render --live` CLAUDE.md gap (ordinary lane), the T5
-   guard-surface shape choice (pin path), and the Model-line false-red
-   `_adopt_sessions_readme` fix (guard recipes in the idea files); the
-   rubric F-5 wording ⚑ owner decision
-   (`rubric-f5-none-regressing-wording-2026-07-09.md`) should be ruled
-   before run-3 is judged so the verdict lands under the ruled reading.
+2. **Run-2/run-3 bench follow-ups** *(B1 run-3 itself is DONE — fired
+   2026-07-10 after the owner merged #49, recorded as row 3 with the first
+   legal KF-8 trend, PR #85; the three ordinary-lane follow-ups —
+   prepare engagement-arc scripting, `render --live` CLAUDE.md gap,
+   Model-line false-red `_adopt_sessions_readme`/checker-message fix —
+   shipped in PR #95, see Recently shipped)*: what remains is the T5
+   guard-surface shape choice (⚑ pin path → `do-not-automerge`) and the
+   rubric F-5 wording ⚑ owner ruling
+   (`rubric-f5-none-regressing-wording-2026-07-09.md`), now HOT — it
+   gates the meaning of 2 of 3 recorded verdicts before run-4.
 3. **Remaining KL-6 blocked pieces, as gates open**: kit-lab console lane
    real data (needs #17 **and** P11-or-P13 — until then the lane stays
    declared-with-contract, never fake rows); B2/B3/B4 sweeps in the loop
@@ -464,6 +482,14 @@ pack; queue truth in [`docs/gen2/queue-state.md`](gen2/queue-state.md)).
 
 ## Recently shipped (newest first)
 
+- **#95 — run-2 ordinary-lane follow-ups (queue item 3)**: (a)
+  `run_ab.py prepare` walks the ON-arm RED→ENGAGED→GREEN arc itself and
+  writes `manifest.json` even on smoke failure (`smoke_failed`) — no more
+  hand-engaged arms (runs 2–3 both paid this); (b) `render --live`
+  iterates the engagement gate's own `scan_relpaths()`
+  (`.claude/CLAUDE.md` included); (c) planted `.sessions/README.md`
+  carries marker byte-forms and checker misses name the expected form.
+  Suite 776 green, dist byte-pinned; the three idea files → shipped.
 - **#75 — fleet rollout v1.6.0 wrap-up (kit-side, docs-only)**: the
   **v1.6.0 fleet rollout is COMPLETE — every active adopter is ENGAGED on
   v1.6.0**. superbot-next#96 (merged 9761db4): v1.2.0→v1.6.0, upgrade

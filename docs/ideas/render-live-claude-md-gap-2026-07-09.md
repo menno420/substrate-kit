@@ -1,19 +1,20 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 95
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-10
+outcome: shipped
 ---
 
 # Engine gap: `render --live` cannot fill `.claude/CLAUDE.md` while `check_engagement` flags it (2026-07-09)
 
 > **Status:** `ideas`
 >
-> **State:** captured (B1 record session, run `2026-07-09-run02`).
-> Engine fix (`src/engine/`) — ordinary lane, dist regeneration +
-> byte-pin required.
+> **State:** captured (B1 record session, run `2026-07-09-run02`) →
+> promoted → **shipped** (kit PR #95, 2026-07-10, fix shape (a):
+> `render --live` iterates the engagement gate's own `scan_relpaths()`
+> scope, `.claude/CLAUDE.md` included). Engine fix — dist regenerated.
 
 ## The gap (found live, run-2 prepare)
 
