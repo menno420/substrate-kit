@@ -73,5 +73,30 @@
     "verdict": "FAIL",
     "judge_model": "claude-fable-5",
     "notes": "Strict F-5 FAIL: M1 regressed on all pairs (2004/2521/721 vs 562/967/509) while ON wins M2 (T4 resumed from T2's card and shipped its queued docstring fix) + M3 (T2 durable write-back: card+ledger+heartbeat) inside the 7k budget (max 2521), zero unrecoverable errors; wording disputed and unruled (purposive Reading B would PASS); T5 guard probe n/a headless (third run); seed 710301; judge=arm model (fable-5 everywhere, overrides ignored - separation by invocation only)"
+  },
+  {
+    "date": "2026-07-10",
+    "kit_version": "1.7.0",
+    "run_id": "2026-07-10-run04",
+    "tasks": [
+      "T2",
+      "T4",
+      "T5"
+    ],
+    "m1_on": {
+      "T2": 1034,
+      "T4": 2113,
+      "T5": 195
+    },
+    "m1_off": {
+      "T2": 661,
+      "T4": 1142,
+      "T5": 330
+    },
+    "m2": "OFF",
+    "m3": "OFF",
+    "verdict": "FAIL",
+    "judge_model": "claude-opus-4-8",
+    "notes": "Strict F-5 FAIL (Reading A, verdict of record) - first 0-of-3 run: M1 to OFF on T2/T4 (1034/2113 vs 661/1142; ON wins the T5 pair 195 vs 330, the family's first clean ON M1 win), and M2 + M3 to OFF for the first time (auto-drafted card never opened, no durable write-back either arm on T2, T5 guard advisories IGNORED and close left check --strict RED); purposive Reading B ALSO FAIL (judge: the extra reading bought nothing, and neutralizing M1 still leaves 0 wins) - dual-reading recorded while OWNER-ACTION 1 stays unruled, immaterial this run since both readings agree; in-budget max 2113 <= 7k, zero unrecoverable errors; T5 guard probe MEASURED for the first time (hooks LIVE, 9 advisory fires in the T5 window: fired=met, obeyed=not-met/IGNORED); models verified from native transcripts: arms claude-sonnet-5, judge claude-opus-4-8 - run-3's ignored-model-orders wall broken, stronger-judge separation restored; kit v1.7.0 (4 runs, 4 kit versions - confound travels); seed 710402 harborride (accepted first try); first clean scripted prepare (#95 _engage_on_arm arc, no hand-driven engagement); deviation: ON-T2 first spawn refused by the environment's analysis-stance at the ORCHESTRATOR layer - arm reset to seed state, relaunched with a stance-consent line (worker task text verbatim both arms; details in manifest runner_notes + s-row-facts)."
   }
 ]

@@ -1,0 +1,44 @@
+{
+  "run_id": "2026-07-10-run04",
+  "date": "2026-07-10",
+  "seed": 710402,
+  "tasks": [
+    "T2",
+    "T4",
+    "T5"
+  ],
+  "wire_enforcement": true,
+  "kit": "/home/user/substrate-kit/dist/bootstrap.py",
+  "arms": {
+    "on": "/tmp/claude-0/-home-user/c0ec53da-9a8e-5b70-afe3-4037af42c41d/scratchpad/run04/2026-07-10-run04/on/repo",
+    "off": "/tmp/claude-0/-home-user/c0ec53da-9a8e-5b70-afe3-4037af42c41d/scratchpad/run04/2026-07-10-run04/off/repo"
+  },
+  "task_prompts": {
+    "T2": "/home/user/substrate-kit/bench/tasks/T2.md",
+    "T4": "/home/user/substrate-kit/bench/tasks/T4.md",
+    "T5": "/home/user/substrate-kit/bench/tasks/T5.md"
+  },
+  "rubric": "/home/user/substrate-kit/bench/rubric/cold-start-rubric.md",
+  "smoke": [
+    "seed suite (on): green",
+    "seed suite (off): green",
+    "engage: answered 13 slots (seed-derived, deterministic)",
+    "engage: render --live",
+    "engage: enforcement already wired (adopt --wire-enforcement)",
+    "engage: session card 2026-07-10-adoption.md",
+    "engage: control/status.md heartbeat",
+    "engage: committed",
+    "CONSTITUTION.md: present",
+    "docs/current-state.md: present",
+    ".sessions: present",
+    "check --strict exit=0"
+  ],
+  "runner_notes": [
+    "FIRST CLEAN SCRIPTED PREPARE: the #95 _engage_on_arm arc (first live exercise, kit v1.7.0) completed end-to-end on the first attempt - 13 deterministic slots, render --live, enforcement pre-wired, adoption card, heartbeat, commit; smoke green, check --strict exit=0; manifest written by prepare itself. The run-2/run-3 hand-driven-engagement deviation class is CLOSED.",
+    "Seed 710402 -> harborride. Accepted first try (no keyword-unsafe rejection). Fresh surface vs run-1 (709101 galereading), run-2 (424243 cedarvisit), run-3 (710301 northride).",
+    "Spawn mechanism (run-3 precedent, sharper): headless `claude -p` in the arm repo; the environment CLI is a remote-orchestrator entrypoint delegating to exactly ONE worker agent - the worker IS the measured cold session; native transcript harvested from the harness project store and converted by a run-4 rebuild of convert_native.py (v2 semantics, is_error carried through). Prompt fidelity verified: fenced task text verbatim in every worker's first user message.",
+    "MODEL ORDERS TOOK EFFECT (run-3 wall broken): arms claude-sonnet-5 (verified from every native transcript), judge claude-opus-4-8 (verified from the judge transcript). Same-model-both-arms HELD; different-stronger-judge HELD for the first time since run-1.",
+    "Deviation - ON-T2 first spawn attempt refused: the orchestrator layer booted in the environment's 'analysis stance' and asked instead of spawning (8s, no worker). Arm mutations were kit-hook artifacts only; runner reset to seed-engaged state and relaunched with a stance-consent line in the ORCHESTRATOR prompt (worker task text untouched). OFF-T2 ran with the unamended orchestrator prompt - orchestrator-level asymmetry only.",
+    "FAMILY-FIRST: ON-arm .claude/ hooks ENGAGED (runs 1-3: never) - SessionStart/PreToolUse/Stop fired, advisory posture; Stop-hook auto-drafted the session card; 38 guard-fire lines incl. 9 in the T5 window (first session-time T5-window fires in the family). Collect-time check --strict exit 1 on ON (auto-drafted card unresolved) - run-3's cardless-T5-stays-green gate gap did NOT reproduce on v1.7.0."
+  ]
+}

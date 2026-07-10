@@ -1,0 +1,172 @@
+diff --git a/harborride/cli.py b/harborride/cli.py
+index 8446e0b..04b2d84 100644
+--- a/harborride/cli.py
++++ b/harborride/cli.py
+@@ -1,7 +1,7 @@
+ """harborride — a tiny ride-log CLI.
+ 
+ Commands: note (add a record) · list · total · filter <category> · top ·
+-report.
++report · budget <category> <amount>.
+ """
+ 
+ import argparse
+@@ -57,6 +57,9 @@ def main(argv=None):
+     top_p = sub.add_parser("top", help="highest-distance categories")
+     top_p.add_argument("--limit", type=_positive_int, default=3)
+     sub.add_parser("report", help="per-category counts and totals")
++    budget_p = sub.add_parser("budget", help="set a spending budget for a category")
++    budget_p.add_argument("category", type=_category_type)
++    budget_p.add_argument("amount", type=_distance_type)
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -76,9 +79,16 @@ def main(argv=None):
+         for category, subtotal in ops.top_categories(records, args.limit):
+             print(f"{category}: {subtotal}")
+     elif args.command == "report":
+-        for category, count, subtotal in ops.category_report(records):
+-            print(f"{category}: {count} records, {subtotal}")
++        budgets = store.load_budgets()
++        for category, count, subtotal, over_budget in ops.category_report(records, budgets):
++            flag = " [OVER BUDGET]" if over_budget else ""
++            print(f"{category}: {count} records, {subtotal}{flag}")
+         print(f"overall: {len(records)} records, {ops.total_distance(records)}")
++    elif args.command == "budget":
++        budgets = store.load_budgets()
++        ops.set_budget(budgets, args.category, args.amount)
++        store.save_budgets(budgets)
++        print(f"budget set: {args.category} = {args.amount}")
+     return 0
+ 
+ 
+diff --git a/harborride/ops.py b/harborride/ops.py
+index f6368fa..f46b52f 100644
+--- a/harborride/ops.py
++++ b/harborride/ops.py
+@@ -31,16 +31,33 @@ def top_categories(records, limit=3):
+     return ranked[:limit]
+ 
+ 
+-def category_report(records):
+-    """Return (category, count, total) triples, highest total first.
++def set_budget(budgets, category, amount):
++    """Set (or replace) the budget for a category and return the amount."""
++    budgets[category] = float(amount)
++    return budgets[category]
+ 
+-    Ties break alphabetically by category for a stable order. Returns an
+-    empty list when ``records`` is empty.
++
++def category_report(records, budgets=None):
++    """Return (category, count, total, over_budget) tuples, highest total first.
++
++    ``over_budget`` is True when ``budgets`` has an entry for the category
++    and its summed distance exceeds that budget; otherwise False. Ties break
++    alphabetically by category for a stable order. Returns an empty list
++    when ``records`` is empty.
+     """
++    budgets = budgets or {}
+     totals = {}
+     counts = {}
+     for r in records:
+         totals[r["category"]] = totals.get(r["category"], 0.0) + r["distance"]
+         counts[r["category"]] = counts.get(r["category"], 0) + 1
+     ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
+-    return [(category, counts[category], total) for category, total in ranked]
++    return [
++        (category, counts[category], total, _is_over_budget(total, budgets.get(category)))
++        for category, total in ranked
++    ]
++
++
++def _is_over_budget(total, budget):
++    """Return True when ``budget`` is set and ``total`` exceeds it."""
++    return budget is not None and total > budget
+diff --git a/harborride/store.py b/harborride/store.py
+index 284639d..8ad5364 100644
+--- a/harborride/store.py
++++ b/harborride/store.py
+@@ -4,6 +4,7 @@ import json
+ from pathlib import Path
+ 
+ DEFAULT_PATH = Path("rides.json")
++DEFAULT_BUDGETS_PATH = Path("budgets.json")
+ 
+ 
+ def load_records(path=DEFAULT_PATH):
+@@ -17,3 +18,16 @@ def load_records(path=DEFAULT_PATH):
+ def save_records(records, path=DEFAULT_PATH):
+     """Write the ride records back to disk."""
+     Path(path).write_text(json.dumps(records, indent=2), encoding="utf-8")
++
++
++def load_budgets(path=DEFAULT_BUDGETS_PATH):
++    """Return the stored category budgets (empty dict when no file)."""
++    path = Path(path)
++    if not path.exists():
++        return {}
++    return json.loads(path.read_text(encoding="utf-8"))
++
++
++def save_budgets(budgets, path=DEFAULT_BUDGETS_PATH):
++    """Write the category budgets back to disk."""
++    Path(path).write_text(json.dumps(budgets, indent=2), encoding="utf-8")
+diff --git a/tests/test_harborride.py b/tests/test_harborride.py
+index 92e9320..2c01092 100644
+--- a/tests/test_harborride.py
++++ b/tests/test_harborride.py
+@@ -45,12 +45,12 @@ def test_top_categories_limit():
+ 
+ def test_category_report_counts_and_totals():
+     report = ops.category_report(_sample())
+-    assert report == [("travel", 1, 30.0), ("food", 2, 20.0)]
++    assert report == [("travel", 1, 30.0, False), ("food", 2, 20.0, False)]
+ 
+ 
+ def test_category_report_sorted_by_total_desc():
+     report = ops.category_report(_sample())
+-    totals = [subtotal for _, _, subtotal in report]
++    totals = [subtotal for _, _, subtotal, _ in report]
+     assert totals == sorted(totals, reverse=True)
+ 
+ 
+@@ -63,7 +63,37 @@ def test_category_report_ties_break_alphabetically():
+     ops.add_record(records, "b", 5.0)
+     ops.add_record(records, "a", 5.0)
+     report = ops.category_report(records)
+-    assert [category for category, _, _ in report] == ["a", "b"]
++    assert [category for category, _, _, _ in report] == ["a", "b"]
++
++
++def test_category_report_no_budgets_not_flagged():
++    report = ops.category_report(_sample())
++    assert all(over_budget is False for _, _, _, over_budget in report)
++
++
++def test_category_report_flags_over_budget():
++    report = ops.category_report(_sample(), budgets={"food": 15.0})
++    by_category = {category: over_budget for category, _, _, over_budget in report}
++    assert by_category["food"] is True
++    assert by_category["travel"] is False
++
++
++def test_category_report_at_budget_not_flagged():
++    report = ops.category_report(_sample(), budgets={"food": 20.0})
++    by_category = {category: over_budget for category, _, _, over_budget in report}
++    assert by_category["food"] is False
++
++
++def test_set_budget_stores_amount():
++    budgets = {}
++    ops.set_budget(budgets, "food", 15)
++    assert budgets == {"food": 15.0}
++
++
++def test_set_budget_replaces_existing():
++    budgets = {"food": 10.0}
++    ops.set_budget(budgets, "food", 25.0)
++    assert budgets["food"] == 25.0
+ 
+ 
+ def test_category_type_accepts_and_trims():

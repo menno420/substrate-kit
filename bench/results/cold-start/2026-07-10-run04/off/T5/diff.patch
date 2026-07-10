@@ -1,0 +1,13 @@
+diff --git a/harborride/cli.py b/harborride/cli.py
+index c986e2a..4f319e9 100644
+--- a/harborride/cli.py
++++ b/harborride/cli.py
+@@ -84,7 +84,7 @@ def main(argv=None):
+         for r in records:
+             print(f"{r['category']}: {r['distance']} {r['note']}".rstrip())
+     elif args.command == "total":
+-        print(ops.total_distance(records))
++        print(f"{ops.total_distance(records):.2f}")
+     elif args.command == "filter":
+         for r in ops.filter_by_category(records, args.category):
+             print(f"{r['category']}: {r['distance']}")
