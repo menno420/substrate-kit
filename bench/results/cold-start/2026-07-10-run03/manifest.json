@@ -1,0 +1,37 @@
+{
+  "run_id": "2026-07-10-run03",
+  "date": "2026-07-10",
+  "seed": 710301,
+  "tasks": [
+    "T2",
+    "T4",
+    "T5"
+  ],
+  "wire_enforcement": true,
+  "kit": "/home/user/substrate-kit/dist/bootstrap.py",
+  "arms": {
+    "on": "/tmp/claude-0/-home-user/5f36e98b-a0fd-5458-b23e-295a88f409de/scratchpad/b1-run03/2026-07-10-run03/on/repo",
+    "off": "/tmp/claude-0/-home-user/5f36e98b-a0fd-5458-b23e-295a88f409de/scratchpad/b1-run03/2026-07-10-run03/off/repo"
+  },
+  "task_prompts": {
+    "T2": "/home/user/substrate-kit/bench/tasks/T2.md",
+    "T4": "/home/user/substrate-kit/bench/tasks/T4.md",
+    "T5": "/home/user/substrate-kit/bench/tasks/T5.md"
+  },
+  "rubric": "/home/user/substrate-kit/bench/rubric/cold-start-rubric.md",
+  "smoke": [
+    "seed suite (on): green",
+    "seed suite (off): green",
+    "CONSTITUTION.md: present",
+    "docs/current-state.md: present",
+    ".sessions: present",
+    "check --strict exit=0 (after runner-side engagement arc \u2014 see runner_notes)"
+  ],
+  "runner_notes": [
+    "Engagement deviation (same class as run-2, follow-up `run-ab-prepare-engagement-arc` still open): run_ab.py prepare's smoke fails by design on a bare adopt under the P0 engagement gate (12 findings: 10 unrendered-banner + session-loop-idle + status-no-heartbeat). The runner completed the documented RED->ENGAGED->GREEN arc on the ON arm: answered all 13 interview slots (truthful northride values), render --live, filled .claude/CLAUDE.md in place (render --live still cannot fill it - the run-2 gap reproduces on v1.6.0), first session card (adoption, status complete), control/status.md heartbeat; committed as 98d5a18. check --strict exits 0.",
+    "manifest.json written by the runner because prepare aborts before writing it when smoke fails; fields mirror cmd_prepare's schema.",
+    "Seed 710301 -> northride (ride/rides/distance, verb `post`). Fresh surface: differs from run-1 (709101, galereading) and run-2 (424243, cedarvisit); no skip rule fired.",
+    "Kit v1.6.0 on the ON arm (run-1: v1.0.0 unrendered; run-2: v1.3.0 engaged) - ON-arm surface differs across runs by kit version; trend comparisons carry this confound.",
+    "Cold sessions run headless (subagent containers): the arm repo's .claude/ hooks do not engage - the T5 guard probe is expected n/a at session level again (run-1/run-2 limitation class)."
+  ]
+}

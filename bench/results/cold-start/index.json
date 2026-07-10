@@ -48,5 +48,30 @@
     "verdict": "FAIL",
     "judge_model": "claude-opus-4-8",
     "notes": "Strict F-5 FAIL: M1 regressed (clean measurement) while ON wins M2 (handoff used) + M3 (durable write-back) inside 7k budget, zero unrecoverable errors; T5 guard probe n/a headless; seed 424243 (424242 = make_seed yield-keyword bug)"
+  },
+  {
+    "date": "2026-07-10",
+    "kit_version": "1.6.0",
+    "run_id": "2026-07-10-run03",
+    "tasks": [
+      "T2",
+      "T4",
+      "T5"
+    ],
+    "m1_on": {
+      "T2": 2004,
+      "T4": 2521,
+      "T5": 721
+    },
+    "m1_off": {
+      "T2": 562,
+      "T4": 967,
+      "T5": 509
+    },
+    "m2": "ON",
+    "m3": "ON",
+    "verdict": "FAIL",
+    "judge_model": "claude-fable-5",
+    "notes": "Strict F-5 FAIL: M1 regressed on all pairs (2004/2521/721 vs 562/967/509) while ON wins M2 (T4 resumed from T2's card and shipped its queued docstring fix) + M3 (T2 durable write-back: card+ledger+heartbeat) inside the 7k budget (max 2521), zero unrecoverable errors; wording disputed and unruled (purposive Reading B would PASS); T5 guard probe n/a headless (third run); seed 710301; judge=arm model (fable-5 everywhere, overrides ignored - separation by invocation only)"
   }
 ]

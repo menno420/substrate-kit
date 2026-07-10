@@ -17,6 +17,20 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **B1 cold-start run 3 recorded (KF-8 threshold met — first legal trend
+  statement)**: row 3 appended to `bench/results/cold-start/index.json` +
+  committed run dir (`2026-07-10-run03`, seed 710301 northride, kit v1.6.0
+  ENGAGED arm). Judge verdict verbatim: **FAIL under the strict F-5 letter**
+  (M1 to OFF on all pairs 2004/2521/721 vs 562/967/509) while ON wins M2
+  (T4 resumed from T2's card and shipped its queued fix) + M3 (durable
+  write-back), max ON footprint 2,521 ≪ 7k budget, zero unrecoverable
+  errors; disputed pending the F-5 wording ruling (Reading B would PASS).
+  Trend across 3 runs: ON wins M2+M3 in every run, in-budget always; M1 to
+  OFF in every clean measurement (strict headline 1 PASS / 2 FAIL) —
+  caveated on the open ruling + version/seed/judge confounds (run-3
+  deviation: judge = arm model, claude-fable-5 everywhere, spawn-harness
+  model overrides ignored). Per KF-5 the next release's notes must state
+  this outcome.
 - **SuperBot-coordinator lane wind-down succession pack** (docs-only,
   suffixed per the multi-lane rule): `docs/succession/` (new, with README
   index) carrying the gen-2 next-boot guide (read order, queue state,
