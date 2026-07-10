@@ -1,0 +1,15 @@
+# Fleet roster for `bootstrap currency` (EAP §6.3) — one `owner/repo` per
+# line; `#` starts a comment. Extra whitespace-separated tokens after the
+# repo name are ADDITIONAL heartbeat files to read (the multi-lane pattern:
+# raw fetches cannot list directories, so per-lane status files are declared
+# here as data). Read-only: the scanner never writes to these repos (KF-2).
+menno420/substrate-kit
+menno420/superbot-next
+menno420/websites
+menno420/superbot
+menno420/superbot-games control/status-mining.md control/status-exploration.md
+menno420/trading-strategy
+menno420/gba-homebrew
+menno420/pokemon-mod-lab
+menno420/venture-lab
+menno420/fleet-manager

@@ -35,6 +35,25 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Kit-upgrade currency checker + generated `docs/adopters.md`** (EAP
+  program review §6.3, menno420/superbot
+  `docs/eap/eap-program-review-2026-07-10.md` §6 item 3): nothing owned the
+  fleet's version spread — the adopter registry was a hand-written ledger
+  whose rows a repo's own *claim* could silently contradict. New
+  `bootstrap currency` subcommand (`engine/currency.py`) scans each rostered
+  repo's COMMITTED TREE read-only (vendored `bootstrap.py` header = primary
+  truth, `substrate.config.json` `kit_version` pin = secondary) plus its
+  heartbeat `kit:` self-report, regenerates `docs/adopters.md` (GENERATED
+  marker + provenance kept), and prints a drift report — tree vs self-report
+  disagreement is a loud DRIFT row, never silently resolved; a repo with no
+  kit artifact is "not adopted / unknown", not an error. Roster lives in
+  `docs/fleet-repos.txt` (per-lane heartbeats declared as data). Execution
+  home is split by constraint: generation is agent-side (kit CI cannot auth
+  to sibling repos; fetching sits behind an injectable seam, default stdlib
+  urllib → raw content); CI runs only the new no-network format/staleness
+  gate `checks/check_adopters_current.py` (static format findings strict,
+  staleness advisory-only — a required check never reds on wall-clock time
+  alone).
 - SuperBot-coordinator lane close-out + handoff
   (`docs/succession/close-out-2026-07-10-superbot-coordinator.md`):
   post-wind-down events (overnight superbot maintenance shift 6 PRs, the

@@ -86,6 +86,12 @@ MODULE_ORDER = (
     # After adopt.py on purpose: the engagement gate scans the ADOPT_PLAN
     # destinations and keys off adopt's UNRENDERED banner marker.
     "checks/check_engagement.py",
+    # After adopt.py: reuses its dist_version header parser (EAP §6.3
+    # currency scanner — tree truth vs heartbeat self-report).
+    "currency.py",
+    # After currency.py: imports its GENERATED marker/stamp constants so the
+    # generator and the CI-side format gate can never drift apart.
+    "checks/check_adopters_current.py",
     "upgrade.py",
     "cli.py",
 )

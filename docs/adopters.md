@@ -2,44 +2,63 @@
 
 > **Status:** `living-ledger` · **Sole writer: kit-lab** (this repo)
 >
-> Who runs which kit version — the substrate-coordinator's visibility surface
-> (inbox ORDER 003; manager research 2026-07-09). kit-lab is the fleet's
-> substrate coordinator but has **zero write access to adopter repos** (KF-2:
-> the lab never writes to consumers); this registry is therefore maintained
-> from *evidence relayed inward*: each adopter self-reports in its own
-> `control/status.md` `kit:` line (`kit: v<X.Y.Z> · check: green|red ·
-> engaged: yes|no` — planted by adopt from v1.3.0, documented in the planted
-> `control/README.md`), the manager relays those heartbeats plus adoption
-> facts as orders/inbox context, and direct reads happen only where a repo is
-> readable to a kit-lab session (e.g. a fleet review). Update a row whenever
-> fresher evidence arrives; `last-seen` is the date of the evidence, never a
-> guess.
+> **GENERATED — do not hand-edit** — regenerate with `python3 dist/bootstrap.py currency`
+> (agent-side: kit CI cannot auth to sibling repos, so CI validates
+> only this file's format + staleness, never refetches).
+> Generated: 2026-07-10T18:31:44Z · kit release: v1.7.0
+>
+> Who runs which kit version — the substrate-coordinator's
+> visibility surface (inbox ORDER 003; manager research 2026-07-09).
+> kit-lab is the fleet's substrate coordinator but has **zero write
+> access to adopter repos** (KF-2: the lab never writes to
+> consumers); this registry is generated from **read-only evidence**:
+> each repo's committed tree (the vendored `bootstrap.py` header —
+> the dist the repo *runs* — plus the `substrate.config.json`
+> `kit_version` pin) and its own heartbeat self-report (the `kit:
+> v<X.Y.Z> · check: green|red · engaged: yes|no` line planted by
+> adopt since v1.3.0). A self-report alone is a claim; the tree is
+> truth — disagreement is surfaced as a DRIFT row below, never
+> silently resolved.
 
 ## Registry
 
-| repo | kit_version | engaged | last-seen | evidence / notes |
-|---|---|---|---|---|
-| menno420/substrate-kit (kit-lab) | HEAD (consumer #0) | yes | 2026-07-09 | Self-adopted per founding plan §3.3; dogfoods every band pre-release. |
-| menno420/superbot-next | v1.6.0 | yes | 2026-07-09 | Upgrade PR [superbot-next#96](https://github.com/menno420/superbot-next/pull/96) (merged 9761db4): v1.2.0→v1.6.0, `check --strict` exit 0, 1124 tests green, six-field heartbeat live, CAPABILITIES.md planted fully rendered + hash-recorded. Earlier: rollout superbot-next#69; fleet review verdict DEGRADED→covered — required-check + workflow half remain (friction #38). |
-| menno420/websites | v1.6.0 | yes | 2026-07-09 | Upgrade PR [websites#45](https://github.com/menno420/websites/pull/45) (merged ab0995d): v1.2.0→v1.6.0, `check --strict` exit 0, 125 tests green, six-field ⚑ rewrite, CAPABILITIES.md replanted + seeded (4 repo-verified entries). Earlier: rollout websites#31; fleet review verdict OK-recovered; ⚑ owner still confirms the required check in Settings → Rules. |
-| menno420/superbot | v1.0.0 (pin-only) | no | 2026-07-09 | Deliberate stance: `substrate.config.json` pin + vendored dist only (superbot#1879/#1882); fleet review verdict OK-pin-only; the v1.2.0+ upgrade is an owner decision (⚑ carried in control/status.md). |
-| menno420/superbot-games | — (not yet relayed) | — | 2026-07-09 | **The two-lane adopter** (SHARED multi-Project repo, manager relay via inbox ORDER 004): per-lane heartbeats `control/status-mining.md` + `control/status-exploration.md` per its `control/README.md` multi-Project extension. The kit's configurable `heartbeat_files` (v1.4.0) exists for exactly this shape — its config should list both lane files. `kit_version`/`engaged` pending the first relayed per-lane `kit:` line. |
-| trading-strategy (planned) | — | — | — | Not yet created/adopted; PL-ruled third in the adoption order, "on a matured kit" (docs/program/rulings.md). Row activates at its adopt. |
-| game repos (coming) | — | — | — | Named by the manager (ORDER 003) as coming adopters; rows added when the repos exist and adopt. superbot-games (above) is the first to materialize. |
+| repo | tree (vendored dist) | config pin | self-report (`kit:` line) | engaged | verdict vs kit v1.7.0 |
+|---|---|---|---|---|---|
+| menno420/substrate-kit | v1.7.0 (dist/bootstrap.py) | v1.0.0 | v1.7.0 | yes | ⚠️ DRIFT · current |
+| menno420/superbot-next | v1.6.0 (bootstrap.py) | v1.6.0 | v1.6.0 | yes | stale (v1.6.0 < v1.7.0) |
+| menno420/websites | v1.6.0 (bootstrap.py) | v1.6.0 | v1.6.0 | yes | stale (v1.6.0 < v1.7.0) |
+| menno420/superbot | — | v1.0.0 | no heartbeat file | — | stale (v1.0.0 < v1.7.0) · pin-only (no vendored dist found) |
+| menno420/superbot-games | v1.2.0 (bootstrap.py) | v1.2.0 | status.md: no `kit:` line · status-mining.md: v1.2.0 · status-exploration.md: v1.2.0 | — | stale (v1.2.0 < v1.7.0) |
+| menno420/trading-strategy | v1.1.0 (bootstrap.py) | v1.1.0 | no `kit:` line | — | stale (v1.1.0 < v1.7.0) |
+| menno420/gba-homebrew | v1.6.0 (bootstrap.py) | v1.6.0 | v1.6.0 | yes | stale (v1.6.0 < v1.7.0) |
+| menno420/pokemon-mod-lab | — | — | no heartbeat file | — | not adopted / unknown |
+| menno420/venture-lab | v1.6.0 (bootstrap.py) | v1.6.0 | no `kit:` line | — | stale (v1.6.0 < v1.7.0) |
+| menno420/fleet-manager | v1.4.0 (bootstrap.py) | v1.4.0 | v1.4.0 | yes | stale (v1.4.0 < v1.7.0) |
+
+## Drift report
+
+Tree and self-report disagree below — reconcile at the SOURCE (the adopter's own heartbeat / pin), never by hand-editing this file:
+
+- **menno420/substrate-kit** — tree-internal: vendored dist says v1.7.0 but substrate.config.json pins v1.0.0
 
 ## Row protocol
 
-- **Columns:** `repo` (owner/name) · `kit_version` (the vendored dist the repo
-  *runs*, not the newest release) · `engaged` (the KL-7 post-adopt engagement
-  gate: yes/no) · `last-seen` (date of the evidence) · evidence/notes (PR
-  numbers, review verdicts, relayed heartbeat).
-- **One writer:** only kit-lab sessions edit this file (same one-writer rule
-  as the `control/` bus). Adopters never write here — their channel is their
-  own `control/status.md` `kit:` line.
-- **Staleness reads as dark**, not as wrong: an old `last-seen` means no fresh
-  evidence has been relayed, and a fleet-review pass (or the manager) should
-  refresh it.
-- **Releases point back here:** every release's notes carry the adopter
-  upgrade checklist (`src/build_release_json.py` appends it to `notes.md`),
-  whose last step is updating the adopter's own `kit:` status line — the loop
-  that keeps this registry fed.
+- **Columns:** `repo` (owner/name) · `tree` (the vendored dist the
+  repo *runs*, parsed from its stamped header — primary truth) ·
+  `config pin` (`substrate.config.json` `kit_version`, recorded by
+  adopt/upgrade — secondary) · `self-report` (the heartbeat `kit:`
+  line; per-lane on multi-Project repos) · `engaged` (the KL-7
+  post-adopt gate, as self-reported) · `verdict` (vs the kit's
+  current release; DRIFT when evidence disagrees).
+- **One writer:** only kit-lab sessions regenerate this file (same
+  one-writer rule as the `control/` bus). Adopters never write here
+  — their channel is their own `control/status.md` `kit:` line.
+- **Staleness reads as dark**, not as wrong: the `Generated:` stamp
+  above is the evidence date; rerun the scan to refresh.
+- **Roster:** `docs/fleet-repos.txt` (one `owner/repo` per line;
+  extra tokens name per-lane heartbeat files).
+- **Releases point back here:** every release's notes carry the
+  adopter upgrade checklist (`src/build_release_json.py` appends it
+  to `notes.md`), whose last step is updating the adopter's own
+  `kit:` status line — the loop that keeps the self-report column
+  honest.
