@@ -32,6 +32,7 @@ from engine.adopt import (
 )
 from engine.agents.agents import AGENTS, agent_document, agent_relpath
 from engine.checks.allowlist import apply_allowlist, load_allowlist
+from engine.checks.check_adopters_current import check_adopters_current
 from engine.checks.check_capability_xref import check_capability_xref
 from engine.checks.check_claims import check_claims
 from engine.checks.check_docs import Finding, run_doc_checks
@@ -44,6 +45,15 @@ from engine.checks.check_orientation_budget import check_orientation_budget
 from engine.checks.check_seam_authority import check_seam_authority
 from engine.checks.check_session_log import check_log, latest_session_log
 from engine.contextpack import generate_packs, load_pack_index
+from engine.currency import (
+    ADOPTERS_RELPATH,
+    ROSTER_RELPATH,
+    default_fetcher,
+    drift_report_lines,
+    parse_roster,
+    render_adopters,
+    scan_fleet,
+)
 from engine.economy.engine import economy_actuate, economy_check, issue_body
 from engine.economy.harvest import harvest_sources, parse_harvest_tables
 from engine.economy.simulator import calibration_recipe, default_calibration, run_search
@@ -726,6 +736,14 @@ def cmd_check(
     inbox_findings = (
         check_inbox_append(target, inbox_base) if inbox_base is not None else []
     )
+    # The adopter-registry format gate (EAP §6.3): docs/adopters.md is
+    # generated output (`bootstrap currency`, agent-side because CI cannot
+    # auth to sibling repos); CI validates only the committed file's shape.
+    # Static format findings ride the strict loop; the staleness nag is
+    # advisory-only, exactly like the heartbeat checker (a required check
+    # never reds on wall-clock time alone). Engages only when the registry
+    # exists — adopter repos add nothing here.
+    adopters_gate, adopters_advisories = check_adopters_current(target)
     if status_only:
         # --status-only: the fast lane's scoped gate (see docstring). Only the
         # control-lane checkers run — the heartbeat gate and, when CI passes a
@@ -743,6 +761,7 @@ def cmd_check(
         )
         doc_findings += _extra_check_findings(target, config) + status_gate
         doc_findings += inbox_findings
+        doc_findings += adopters_gate
     entries, allow_findings = load_allowlist(target, config.state_dir)
     doc_findings, suppressed = apply_allowlist(doc_findings, entries)
     doc_findings += allow_findings
@@ -848,6 +867,25 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=xref_advisories,
+        )
+    if adopters_advisories and not status_only:
+        # Same warn-only contract as the advisories above (EAP §6.3): a
+        # stale `Generated:` stamp is a rerun-the-scan nudge — CI cannot
+        # refetch (no auth to sibling repos), so time-based red here would
+        # be a bomb; surfaced + telemetry-recorded, never exit-affecting.
+        _emit(
+            f"check: {len(adopters_advisories)} adopter-registry advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in adopters_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=adopters_advisories,
         )
 
     log_missing: list[str] = []
@@ -1665,6 +1703,54 @@ def cmd_simulate(n: int, mode: str = "guided") -> int:
     return 0
 
 
+def cmd_currency(
+    target: Path,
+    *,
+    roster_file: Path | None = None,
+    dry_run: bool = False,
+    fetcher: Any = None,
+) -> int:
+    """Regenerate ``docs/adopters.md`` from live fleet evidence (EAP §6.3).
+
+    Agent-side by design (the execution-home split): this command fetches
+    each rostered repo's committed tree read-only (vendored bootstrap header
+    + config pin + heartbeat ``kit:`` line) over raw content, rewrites the
+    generated registry, and prints the version-spread + drift report. Kit CI
+    never runs this — it cannot auth to sibling repos; CI only validates the
+    committed file's format (``check_adopters_current``). ``fetcher`` is the
+    injectable seam the tests use; drift is surfaced, never resolved.
+    """
+    roster_path = roster_file or (target / ROSTER_RELPATH)
+    if not roster_path.is_file():
+        _emit(f"currency: no roster at {roster_path} — nothing to scan.")
+        return 1
+    roster = parse_roster(roster_path.read_text(encoding="utf-8"))
+    if not roster:
+        _emit(f"currency: roster {roster_path} lists no repos.")
+        return 1
+    fetch = fetcher or default_fetcher()
+    scans = scan_fleet(roster, fetch)
+    text = render_adopters(scans, KIT_VERSION)
+    out_path = target / ADOPTERS_RELPATH
+    if dry_run:
+        _emit(f"currency: dry run — would write {out_path}.")
+    else:
+        atomic_write_text(out_path, text)
+        _emit(f"currency: wrote {out_path} ({len(scans)} repo(s) scanned).")
+    for line in drift_report_lines(scans, KIT_VERSION):
+        _emit(f"  {line}")
+    drifting = [scan.repo for scan in scans if scan.drifts()]
+    if drifting:
+        _emit(
+            f"currency: DRIFT in {len(drifting)} repo(s): "
+            + ", ".join(drifting)
+            + " — tree vs self-report disagree; reconcile at the source.",
+        )
+    else:
+        _emit("currency: no drift — every self-report matches its tree.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Construct the bootstrap argument parser."""
     parser = argparse.ArgumentParser(prog="bootstrap", description="substrate-kit")
@@ -1865,6 +1951,27 @@ def build_parser() -> argparse.ArgumentParser:
     hook = sub.add_parser("hook", help="run a hook check (e.g. `hook pretooluse`)")
     hook.add_argument("event")
     hook.add_argument("--target", type=Path, default=Path.cwd())
+    currency = sub.add_parser(
+        "currency",
+        help=(
+            "regenerate docs/adopters.md from live fleet evidence "
+            "(agent-side: fetches sibling repos read-only; CI only "
+            "format-checks the committed output)"
+        ),
+    )
+    currency.add_argument("--target", type=Path, default=Path.cwd())
+    currency.add_argument(
+        "--roster",
+        type=Path,
+        default=None,
+        help=f"fleet roster file (default: <target>/{ROSTER_RELPATH})",
+    )
+    currency.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="scan + print the drift report without writing docs/adopters.md",
+    )
+
     check = sub.add_parser("check", help="run the doc + session-log hygiene checks")
     check.add_argument("--target", type=Path, default=Path.cwd())
     check.add_argument("--strict", action="store_true", help="exit 1 if any violation")
@@ -1934,6 +2041,12 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_hooks(args.target, args.build)
         if args.command == "hook":
             return cmd_hook(args.target, args.event)
+        if args.command == "currency":
+            return cmd_currency(
+                args.target,
+                roster_file=args.roster,
+                dry_run=args.dry_run,
+            )
         if args.command == "check":
             return cmd_check(
                 args.target,

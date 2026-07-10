@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from typing import Any, NamedTuple
+from typing import Callable
 from typing import NamedTuple
 import argparse
 import ast
@@ -39,6 +40,8 @@ import string
 import sys
 import tempfile
 import time
+import urllib.error
+import urllib.request
 import uuid
 
 # --- engine/lib/atomicio.py ---
@@ -9498,6 +9501,547 @@ def check_engagement(target: Path, config: Any) -> list[Finding]:
         )
     return findings
 
+# --- engine/currency.py ---
+"""Fleet kit-currency scanner — tree truth vs self-report, per adopter repo.
+
+Why + provenance: the EAP program review (menno420/superbot
+``docs/eap/eap-program-review-2026-07-10.md`` §6 item 3) found that nothing
+owns the fleet's kit-version spread: ``docs/adopters.md`` was a hand-written
+ledger fed by relayed heartbeats, so a stale or wrong row could sit
+indefinitely and a repo's *claim* about its kit version was never checked
+against what its tree actually vendors. This module makes the registry a
+GENERATED artifact fed by evidence, with two evidence classes kept
+deliberately distinct:
+
+- **Tree truth** — what the adopter repo's committed tree actually contains:
+  the vendored single-file bootstrap's stamped header (``bootstrap vX.Y.Z``
+  on line 1 — the dist the repo *runs*, adopt's plant at ``bootstrap.py``,
+  consumer #0's at ``dist/bootstrap.py``) and the ``kit_version`` pin that
+  ``adopt``/``upgrade`` record in ``substrate.config.json``.
+- **Self-report** — the ``kit: v<X.Y.Z> · check: green|red · engaged:
+  yes|no`` heartbeat line each adopter maintains in its own
+  ``control/status.md`` (planted by adopt since v1.3.0, inbox ORDER 003).
+
+A self-report alone is a claim; the tree is truth. Where the two disagree
+the row is a **DRIFT** row, surfaced loudly in the generated file and in the
+run report — never silently resolved to either side.
+
+Execution-home split (the constraint that shapes this module): kit CI cannot
+authenticate to sibling repos, so the *fetching* run (``bootstrap
+currency``) is agent-side only, while CI validates just the committed
+output's format + staleness (``checks/check_adopters_current.py``, no
+network). All parse / drift / render logic here is pure and unit-testable:
+the network sits behind an injectable fetcher (``fetch(repo, path) -> str |
+None``); the default fetcher is stdlib ``urllib`` against
+``raw.githubusercontent.com`` (honours the environment's proxy settings).
+
+Read-only by law: the scanner only ever *reads* sibling repos (KF-2 — the
+lab never writes to consumers); the one file it writes is this repo's
+``docs/adopters.md``.
+"""
+
+
+
+
+ADOPTERS_RELPATH = "docs/adopters.md"
+ROSTER_RELPATH = "docs/fleet-repos.txt"
+RAW_HOST = "https://raw.githubusercontent.com"
+DEFAULT_BRANCH = "main"
+FETCH_TIMEOUT_S = 30
+
+# The machine-readable proof that the file is generated output. The CI-side
+# format gate keys off this exact string; keep the two in lockstep (the
+# checker imports this constant).
+GENERATED_MARKER = "GENERATED — do not hand-edit"
+REGEN_COMMAND = "python3 dist/bootstrap.py currency"
+# The timestamp line the staleness advisory parses back out.
+GENERATED_STAMP_PREFIX = "> Generated:"
+
+# Vendored-dist candidates, in trust order: adopt plants ``bootstrap.py`` at
+# the repo root; the kit repo itself (consumer #0) keeps ``dist/bootstrap.py``
+# (same pair as ``upgrade.find_vendored_bootstrap``).
+VENDORED_RELPATHS = ("bootstrap.py", "dist/bootstrap.py")
+CONFIG_RELPATH = "substrate.config.json"
+DEFAULT_HEARTBEAT = "control/status.md"
+
+# The planted heartbeat convention (ORDER 003): `kit: v1.2.3 · check: green ·
+# engaged: yes`. Parsed leniently — real heartbeats decorate the line (the
+# kit's own says "v1.7.0 released · KIT_VERSION 1.7.0 · …"), so we take the
+# first version token after `kit:` and scan the rest of the line for the
+# check/engaged fields wherever they sit.
+_KIT_LINE_RE = re.compile(r"^kit:\s*(.*)$", re.MULTILINE)
+_VERSION_TOKEN_RE = re.compile(r"\bv(\d[\w.\-]*)")
+_CHECK_FIELD_RE = re.compile(r"\bcheck:\s*(green|red)\b")
+_ENGAGED_FIELD_RE = re.compile(r"\bengaged:\s*(yes|no)\b")
+_NUMERIC_RE = re.compile(r"\d+")
+
+Fetcher = Callable[[str, str], "str | None"]
+
+
+@dataclass
+class SelfReport:
+    """One heartbeat file's ``kit:`` line, parsed."""
+
+    heartbeat: str
+    version: str | None
+    check: str | None
+    engaged: str | None
+    found: bool  # the heartbeat file exists (even if it carries no kit: line)
+
+
+@dataclass
+class RepoCurrency:
+    """Everything the scan learned about one repo's kit state."""
+
+    repo: str
+    tree_version: str | None = None  # vendored bootstrap header (primary truth)
+    tree_source: str | None = None  # which vendored path carried it
+    config_pin: str | None = None  # substrate.config.json kit_version
+    reports: list[SelfReport] = field(default_factory=list)
+
+    @property
+    def adopted(self) -> bool:
+        """Any kit artifact at all? No artifact = not adopted, not an error."""
+        return bool(
+            self.tree_version
+            or self.config_pin
+            or any(r.version for r in self.reports),
+        )
+
+    @property
+    def effective_tree(self) -> str | None:
+        """The tree-truth version: vendored dist first, config pin second."""
+        return self.tree_version or self.config_pin
+
+    def drifts(self) -> list[str]:
+        """Human-readable drift lines (empty = tree and reports agree)."""
+        out: list[str] = []
+        if (
+            self.tree_version
+            and self.config_pin
+            and self.tree_version != self.config_pin
+        ):
+            out.append(
+                f"tree-internal: vendored dist says v{self.tree_version} but "
+                f"substrate.config.json pins v{self.config_pin}",
+            )
+        for report in self.reports:
+            if not report.version or not self.effective_tree:
+                continue
+            if report.version != self.effective_tree:
+                out.append(
+                    f"self-report vs tree: {report.heartbeat} claims "
+                    f"v{report.version} but the tree says "
+                    f"v{self.effective_tree}",
+                )
+        return out
+
+    def verdict(self, kit_version: str) -> str:
+        """One cell: current / stale / DRIFT / pin-only / not adopted."""
+        if not self.adopted:
+            return "not adopted / unknown"
+        parts: list[str] = []
+        if self.drifts():
+            parts.append("⚠️ DRIFT")
+        tree = self.effective_tree
+        if tree is None:
+            parts.append("no tree artifact (self-report only)")
+        elif _version_key(tree) < _version_key(kit_version):
+            parts.append(f"stale (v{tree} < v{kit_version})")
+        elif tree == kit_version:
+            parts.append("current")
+        else:
+            parts.append(f"ahead? (v{tree} vs kit v{kit_version})")
+        if self.tree_version is None and self.config_pin is not None:
+            parts.append("pin-only (no vendored dist found)")
+        return " · ".join(parts)
+
+
+def _version_key(version: str) -> tuple[int, ...]:
+    """Sortable key for a semver-ish string (non-numeric parts ignored)."""
+    return tuple(int(m) for m in _NUMERIC_RE.findall(version)) or (0,)
+
+
+def parse_kit_line(text: str) -> tuple[str | None, str | None, str | None]:
+    """Parse ``(version, check, engaged)`` from a heartbeat's ``kit:`` line.
+
+    Returns ``(None, None, None)`` when the file carries no ``kit:`` line at
+    all. Lenient by design: fields are scanned anywhere on the line, so a
+    decorated heartbeat (extra prose between fields) still parses.
+    """
+    match = _KIT_LINE_RE.search(text)
+    if match is None:
+        return (None, None, None)
+    line = match.group(1)
+    version = _VERSION_TOKEN_RE.search(line)
+    check = _CHECK_FIELD_RE.search(line)
+    engaged = _ENGAGED_FIELD_RE.search(line)
+    return (
+        version.group(1) if version else None,
+        check.group(1) if check else None,
+        engaged.group(1) if engaged else None,
+    )
+
+
+def parse_roster(text: str) -> list[tuple[str, list[str]]]:
+    """Parse the fleet roster: ``owner/repo [extra heartbeat paths...]``.
+
+    One repo per line; ``#`` starts a comment; extra whitespace-separated
+    tokens after the repo name are *additional* heartbeat files to read (the
+    multi-lane pattern — superbot-games keeps ``control/status-<lane>.md``
+    per lane; raw fetches cannot list directories, so lanes are declared
+    here as data instead of guessed).
+    """
+    out: list[tuple[str, list[str]]] = []
+    for raw_line in text.splitlines():
+        line = raw_line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        tokens = line.split()
+        out.append((tokens[0], tokens[1:]))
+    return out
+
+
+def default_fetcher(
+    host: str = RAW_HOST,
+    branch: str = DEFAULT_BRANCH,
+) -> Fetcher:
+    """Return a raw-content fetcher: 404 -> None, other failures raise.
+
+    The asymmetry is deliberate: a missing file is evidence ("not adopted"),
+    but a network/auth failure must never masquerade as one — a proxy outage
+    silently generating a "nobody adopted" registry would be worse than no
+    run at all.
+    """
+
+    def fetch(repo: str, path: str) -> str | None:
+        url = f"{host}/{repo}/{branch}/{path}"
+        try:
+            with urllib.request.urlopen(url, timeout=FETCH_TIMEOUT_S) as resp:  # noqa: S310
+                return resp.read().decode("utf-8", errors="replace")
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404:
+                return None
+            raise
+
+    return fetch
+
+
+def scan_repo(
+    repo: str,
+    fetch: Fetcher,
+    extra_heartbeats: list[str] | None = None,
+) -> RepoCurrency:
+    """Scan one repo's committed tree for kit artifacts + self-reports."""
+    result = RepoCurrency(repo=repo)
+    heartbeats = [DEFAULT_HEARTBEAT]
+    config_text = fetch(repo, CONFIG_RELPATH)
+    if config_text is not None:
+        try:
+            config = json.loads(config_text)
+        except ValueError:
+            config = {}
+        pin = config.get("kit_version")
+        result.config_pin = str(pin) if pin else None
+        declared = config.get("heartbeat_files") or []
+        if isinstance(declared, list) and declared:
+            heartbeats = [str(h) for h in declared]
+    for rel in VENDORED_RELPATHS:
+        dist_text = fetch(repo, rel)
+        if dist_text is not None:
+            result.tree_version = dist_version(dist_text)
+            result.tree_source = rel
+            break
+    for rel in extra_heartbeats or []:
+        if rel not in heartbeats:
+            heartbeats.append(rel)
+    for rel in heartbeats:
+        status_text = fetch(repo, rel)
+        if status_text is None:
+            result.reports.append(SelfReport(rel, None, None, None, found=False))
+            continue
+        version, check, engaged = parse_kit_line(status_text)
+        result.reports.append(SelfReport(rel, version, check, engaged, found=True))
+    return result
+
+
+def scan_fleet(
+    roster: list[tuple[str, list[str]]],
+    fetch: Fetcher,
+) -> list[RepoCurrency]:
+    """Scan every rostered repo, in roster order."""
+    return [scan_repo(repo, fetch, extras) for repo, extras in roster]
+
+
+def _report_cell(scan: RepoCurrency) -> str:
+    """Render the self-report column (per-lane when there are many)."""
+    cells: list[str] = []
+    for report in scan.reports:
+        if not report.found:
+            label = "no heartbeat file"
+        elif report.version is None:
+            label = "no `kit:` line"
+        else:
+            label = f"v{report.version}"
+        if len(scan.reports) > 1:
+            lane = report.heartbeat.rsplit("/", 1)[-1]
+            label = f"{lane}: {label}"
+        cells.append(label)
+    return " · ".join(cells) if cells else "—"
+
+
+def _engaged_cell(scan: RepoCurrency) -> str:
+    values = [r.engaged for r in scan.reports if r.engaged]
+    if not values:
+        return "—"
+    return " · ".join(values)
+
+
+def render_adopters(
+    scans: list[RepoCurrency],
+    kit_version: str,
+    now: datetime | None = None,
+) -> str:
+    """Render the generated ``docs/adopters.md`` text.
+
+    Keeps the ledger's provenance preamble (ORDER 003, KF-2) and its
+    ``living-ledger`` badge; adds the GENERATED marker + timestamp the
+    CI-side format gate validates.
+    """
+    stamp = (now or datetime.now(timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    lines: list[str] = [
+        "# Fleet adopter registry",
+        "",
+        "> **Status:** `living-ledger` · **Sole writer: kit-lab** (this repo)",
+        ">",
+        f"> **{GENERATED_MARKER}** — regenerate with `{REGEN_COMMAND}`",
+        "> (agent-side: kit CI cannot auth to sibling repos, so CI validates",
+        "> only this file's format + staleness, never refetches).",
+        f"{GENERATED_STAMP_PREFIX} {stamp} · kit release: v{kit_version}",
+        ">",
+        "> Who runs which kit version — the substrate-coordinator's",
+        "> visibility surface (inbox ORDER 003; manager research 2026-07-09).",
+        "> kit-lab is the fleet's substrate coordinator but has **zero write",
+        "> access to adopter repos** (KF-2: the lab never writes to",
+        "> consumers); this registry is generated from **read-only evidence**:",
+        "> each repo's committed tree (the vendored `bootstrap.py` header —",
+        "> the dist the repo *runs* — plus the `substrate.config.json`",
+        "> `kit_version` pin) and its own heartbeat self-report (the `kit:",
+        "> v<X.Y.Z> · check: green|red · engaged: yes|no` line planted by",
+        "> adopt since v1.3.0). A self-report alone is a claim; the tree is",
+        "> truth — disagreement is surfaced as a DRIFT row below, never",
+        "> silently resolved.",
+        "",
+        "## Registry",
+        "",
+        "| repo | tree (vendored dist) | config pin | self-report (`kit:` line)"
+        " | engaged | verdict vs kit v" + kit_version + " |",
+        "|---|---|---|---|---|---|",
+    ]
+    for scan in scans:
+        tree = (
+            f"v{scan.tree_version} ({scan.tree_source})"
+            if scan.tree_version
+            else "—"
+        )
+        pin = f"v{scan.config_pin}" if scan.config_pin else "—"
+        lines.append(
+            f"| {scan.repo} | {tree} | {pin} | {_report_cell(scan)} "
+            f"| {_engaged_cell(scan)} | {scan.verdict(kit_version)} |",
+        )
+    lines += ["", "## Drift report", ""]
+    drift_lines = [
+        f"- **{scan.repo}** — {drift}" for scan in scans for drift in scan.drifts()
+    ]
+    if drift_lines:
+        lines.append(
+            "Tree and self-report disagree below — reconcile at the SOURCE "
+            "(the adopter's own heartbeat / pin), never by hand-editing "
+            "this file:",
+        )
+        lines.append("")
+        lines += drift_lines
+    else:
+        lines.append("No drift: every self-report matches its repo's tree.")
+    lines += [
+        "",
+        "## Row protocol",
+        "",
+        "- **Columns:** `repo` (owner/name) · `tree` (the vendored dist the",
+        "  repo *runs*, parsed from its stamped header — primary truth) ·",
+        "  `config pin` (`substrate.config.json` `kit_version`, recorded by",
+        "  adopt/upgrade — secondary) · `self-report` (the heartbeat `kit:`",
+        "  line; per-lane on multi-Project repos) · `engaged` (the KL-7",
+        "  post-adopt gate, as self-reported) · `verdict` (vs the kit's",
+        "  current release; DRIFT when evidence disagrees).",
+        "- **One writer:** only kit-lab sessions regenerate this file (same",
+        "  one-writer rule as the `control/` bus). Adopters never write here",
+        "  — their channel is their own `control/status.md` `kit:` line.",
+        "- **Staleness reads as dark**, not as wrong: the `Generated:` stamp",
+        "  above is the evidence date; rerun the scan to refresh.",
+        "- **Roster:** `docs/fleet-repos.txt` (one `owner/repo` per line;",
+        "  extra tokens name per-lane heartbeat files).",
+        "- **Releases point back here:** every release's notes carry the",
+        "  adopter upgrade checklist (`src/build_release_json.py` appends it",
+        "  to `notes.md`), whose last step is updating the adopter's own",
+        "  `kit:` status line — the loop that keeps the self-report column",
+        "  honest.",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def drift_report_lines(scans: list[RepoCurrency], kit_version: str) -> list[str]:
+    """The run report the subcommand prints: spread + drifts + stale rows."""
+    out: list[str] = []
+    for scan in scans:
+        out.append(
+            f"{scan.repo}: tree={scan.effective_tree or '—'} "
+            f"pin={scan.config_pin or '—'} "
+            f"report={_report_cell(scan)} -> {scan.verdict(kit_version)}",
+        )
+        out.extend(f"  DRIFT: {drift}" for drift in scan.drifts())
+    return out
+
+# --- engine/checks/check_adopters_current.py ---
+"""Adopter-registry format gate — the CI half of the currency scanner.
+
+Why + provenance: EAP program review §6.3 (menno420/superbot
+``docs/eap/eap-program-review-2026-07-10.md``) made ``docs/adopters.md`` a
+GENERATED artifact (``engine/currency.py``), but kit CI cannot authenticate
+to sibling repos, so the network-fetching half can never run in CI. This
+checker is the half that CAN: it validates the *committed* registry's shape
+— generated marker present, parseable ``Generated:`` stamp, parseable
+registry table — with **no network**, so a hand-edit that breaks the
+generated contract (or a stray hand-written registry masquerading as one)
+reds the gate deterministically.
+
+Postures, split exactly like ``check_status_current`` (a required CI check
+never reds on wall-clock time alone):
+
+- **Gate findings** (strict loop, RED under ``check --strict``): static,
+  deterministic format states — ``adopters-not-generated`` (the file exists
+  but carries no GENERATED marker: hand-edited or pre-§6.3),
+  ``adopters-no-timestamp`` (no parseable ``> Generated:`` ISO-8601 stamp),
+  ``adopters-table-unparseable`` (no ``## Registry`` table with at least one
+  data row).
+- **Advisory findings** (warn-only, never exit-affecting):
+  ``adopters-stale`` — the stamp parses but is older than ``max_age_days``
+  (default 14, the config staleness horizon): rerun ``bootstrap currency``.
+
+Input-gated like every checker: engages only when ``docs/adopters.md``
+exists — adopter repos (which don't carry the registry; it is kit-lab's
+sole-writer surface) add nothing here. Unreadable files fail open. Stdlib
+only; imports its marker constants from ``engine/currency.py`` so the
+generator and the gate can never drift apart.
+"""
+
+
+
+
+DEFAULT_MAX_AGE_DAYS = 14
+
+_STAMP_FORMATS = ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%MZ", "%Y-%m-%d")
+
+
+def _parse_stamp(text: str) -> datetime | None:
+    """Parse the ``> Generated: <stamp> …`` line's timestamp, if any."""
+    for line in text.splitlines():
+        if not line.startswith(GENERATED_STAMP_PREFIX):
+            continue
+        token = line[len(GENERATED_STAMP_PREFIX) :].strip().split()
+        if not token:
+            return None
+        for fmt in _STAMP_FORMATS:
+            try:
+                return datetime.strptime(token[0], fmt).replace(tzinfo=timezone.utc)
+            except ValueError:
+                continue
+        return None
+    return None
+
+
+def _has_registry_table(text: str) -> bool:
+    """True when a ``## Registry`` table with >= 1 data row exists."""
+    lines = text.splitlines()
+    try:
+        start = next(
+            i for i, line in enumerate(lines) if line.strip() == "## Registry"
+        )
+    except StopIteration:
+        return False
+    rows = [
+        line
+        for line in lines[start:]
+        if line.startswith("|") and "---" not in line
+    ]
+    # Header row + at least one data row.
+    return len(rows) >= 2
+
+
+def check_adopters_current(
+    target: Path,
+    *,
+    now: datetime | None = None,
+    max_age_days: int = DEFAULT_MAX_AGE_DAYS,
+) -> tuple[list[Finding], list[Finding]]:
+    """Return ``(gate, advisory)`` findings for the adopter registry."""
+    path = target / ADOPTERS_RELPATH
+    if not path.is_file():
+        return [], []
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return [], []  # fail open — an unreadable file is not a verdict
+    gate: list[Finding] = []
+    advisory: list[Finding] = []
+    if GENERATED_MARKER not in text:
+        gate.append(
+            Finding(
+                ADOPTERS_RELPATH,
+                "adopters-not-generated",
+                "the adopter registry exists but carries no GENERATED "
+                "marker — it is generated output since EAP §6.3; regenerate "
+                "with `bootstrap currency` instead of hand-editing.",
+            ),
+        )
+        return gate, advisory
+    stamp = _parse_stamp(text)
+    if stamp is None:
+        gate.append(
+            Finding(
+                ADOPTERS_RELPATH,
+                "adopters-no-timestamp",
+                "no parseable `> Generated:` ISO-8601 stamp — the staleness "
+                "contract needs the evidence date; regenerate with "
+                "`bootstrap currency`.",
+            ),
+        )
+    if not _has_registry_table(text):
+        gate.append(
+            Finding(
+                ADOPTERS_RELPATH,
+                "adopters-table-unparseable",
+                "no `## Registry` table with at least one data row — the "
+                "registry's whole payload; regenerate with "
+                "`bootstrap currency`.",
+            ),
+        )
+    if stamp is not None:
+        current = now or datetime.now(timezone.utc)
+        if current - stamp > timedelta(days=max_age_days):
+            advisory.append(
+                Finding(
+                    ADOPTERS_RELPATH,
+                    "adopters-stale",
+                    f"generated {stamp.date().isoformat()} — older than "
+                    f"{max_age_days} days; the fleet's version spread may "
+                    "have moved. Rerun `bootstrap currency` (agent-side; "
+                    "CI cannot refetch).",
+                ),
+            )
+    return gate, advisory
+
 # --- engine/upgrade.py ---
 """The ``upgrade`` verb — move an install to this bootstrap's version (§4.3).
 
@@ -10729,6 +11273,14 @@ def cmd_check(
     inbox_findings = (
         check_inbox_append(target, inbox_base) if inbox_base is not None else []
     )
+    # The adopter-registry format gate (EAP §6.3): docs/adopters.md is
+    # generated output (`bootstrap currency`, agent-side because CI cannot
+    # auth to sibling repos); CI validates only the committed file's shape.
+    # Static format findings ride the strict loop; the staleness nag is
+    # advisory-only, exactly like the heartbeat checker (a required check
+    # never reds on wall-clock time alone). Engages only when the registry
+    # exists — adopter repos add nothing here.
+    adopters_gate, adopters_advisories = check_adopters_current(target)
     if status_only:
         # --status-only: the fast lane's scoped gate (see docstring). Only the
         # control-lane checkers run — the heartbeat gate and, when CI passes a
@@ -10746,6 +11298,7 @@ def cmd_check(
         )
         doc_findings += _extra_check_findings(target, config) + status_gate
         doc_findings += inbox_findings
+        doc_findings += adopters_gate
     entries, allow_findings = load_allowlist(target, config.state_dir)
     doc_findings, suppressed = apply_allowlist(doc_findings, entries)
     doc_findings += allow_findings
@@ -10851,6 +11404,25 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=xref_advisories,
+        )
+    if adopters_advisories and not status_only:
+        # Same warn-only contract as the advisories above (EAP §6.3): a
+        # stale `Generated:` stamp is a rerun-the-scan nudge — CI cannot
+        # refetch (no auth to sibling repos), so time-based red here would
+        # be a bomb; surfaced + telemetry-recorded, never exit-affecting.
+        _emit(
+            f"check: {len(adopters_advisories)} adopter-registry advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in adopters_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=adopters_advisories,
         )
 
     log_missing: list[str] = []
@@ -11668,6 +12240,54 @@ def cmd_simulate(n: int, mode: str = "guided") -> int:
     return 0
 
 
+def cmd_currency(
+    target: Path,
+    *,
+    roster_file: Path | None = None,
+    dry_run: bool = False,
+    fetcher: Any = None,
+) -> int:
+    """Regenerate ``docs/adopters.md`` from live fleet evidence (EAP §6.3).
+
+    Agent-side by design (the execution-home split): this command fetches
+    each rostered repo's committed tree read-only (vendored bootstrap header
+    + config pin + heartbeat ``kit:`` line) over raw content, rewrites the
+    generated registry, and prints the version-spread + drift report. Kit CI
+    never runs this — it cannot auth to sibling repos; CI only validates the
+    committed file's format (``check_adopters_current``). ``fetcher`` is the
+    injectable seam the tests use; drift is surfaced, never resolved.
+    """
+    roster_path = roster_file or (target / ROSTER_RELPATH)
+    if not roster_path.is_file():
+        _emit(f"currency: no roster at {roster_path} — nothing to scan.")
+        return 1
+    roster = parse_roster(roster_path.read_text(encoding="utf-8"))
+    if not roster:
+        _emit(f"currency: roster {roster_path} lists no repos.")
+        return 1
+    fetch = fetcher or default_fetcher()
+    scans = scan_fleet(roster, fetch)
+    text = render_adopters(scans, KIT_VERSION)
+    out_path = target / ADOPTERS_RELPATH
+    if dry_run:
+        _emit(f"currency: dry run — would write {out_path}.")
+    else:
+        atomic_write_text(out_path, text)
+        _emit(f"currency: wrote {out_path} ({len(scans)} repo(s) scanned).")
+    for line in drift_report_lines(scans, KIT_VERSION):
+        _emit(f"  {line}")
+    drifting = [scan.repo for scan in scans if scan.drifts()]
+    if drifting:
+        _emit(
+            f"currency: DRIFT in {len(drifting)} repo(s): "
+            + ", ".join(drifting)
+            + " — tree vs self-report disagree; reconcile at the source.",
+        )
+    else:
+        _emit("currency: no drift — every self-report matches its tree.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Construct the bootstrap argument parser."""
     parser = argparse.ArgumentParser(prog="bootstrap", description="substrate-kit")
@@ -11868,6 +12488,27 @@ def build_parser() -> argparse.ArgumentParser:
     hook = sub.add_parser("hook", help="run a hook check (e.g. `hook pretooluse`)")
     hook.add_argument("event")
     hook.add_argument("--target", type=Path, default=Path.cwd())
+    currency = sub.add_parser(
+        "currency",
+        help=(
+            "regenerate docs/adopters.md from live fleet evidence "
+            "(agent-side: fetches sibling repos read-only; CI only "
+            "format-checks the committed output)"
+        ),
+    )
+    currency.add_argument("--target", type=Path, default=Path.cwd())
+    currency.add_argument(
+        "--roster",
+        type=Path,
+        default=None,
+        help=f"fleet roster file (default: <target>/{ROSTER_RELPATH})",
+    )
+    currency.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="scan + print the drift report without writing docs/adopters.md",
+    )
+
     check = sub.add_parser("check", help="run the doc + session-log hygiene checks")
     check.add_argument("--target", type=Path, default=Path.cwd())
     check.add_argument("--strict", action="store_true", help="exit 1 if any violation")
@@ -11937,6 +12578,12 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_hooks(args.target, args.build)
         if args.command == "hook":
             return cmd_hook(args.target, args.event)
+        if args.command == "currency":
+            return cmd_currency(
+                args.target,
+                roster_file=args.roster,
+                dry_run=args.dry_run,
+            )
         if args.command == "check":
             return cmd_check(
                 args.target,
