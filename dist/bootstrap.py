@@ -9609,6 +9609,88 @@ def upgrade_report_text(
     return "\n".join(lines) + "\n"
 
 
+def newest_banked_archive(
+    root: Path,
+    config: Config,
+) -> tuple[Path | None, str | None]:
+    """Return ``(path, from_version)`` of the newest banked pre-upgrade dist.
+
+    The archive-first covenant banks the OLD dist under
+    ``<state_dir>/backup/bootstrap-<old-version>.py`` and records the exact one
+    the last upgrade banked in ``last-upgrade.json`` (``archived_dist`` +
+    ``from_version``). That marker names the newest banked pre-upgrade dist —
+    the templates the single-shot apply window closed over. Returns
+    ``(None, None)`` when no upgrade has banked one (nothing to apply post-hoc
+    from).
+    """
+    marker = root / config.state_dir / BACKUP_DIRNAME / LAST_UPGRADE_FILENAME
+    if not marker.is_file():
+        return None, None
+    try:
+        meta = json.loads(marker.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return None, None
+    archived_rel = meta.get("archived_dist")
+    if not archived_rel:
+        return None, None
+    archived = root / archived_rel
+    if not archived.is_file():
+        return None, None
+    return archived, meta.get("from_version")
+
+
+def run_apply_docs_posthoc(
+    root: Path,
+    config: Config,
+    backend: Any,
+) -> list[str]:
+    """Apply template improvements *after* the single-shot window has closed.
+
+    (Idea ``upgrade-apply-docs-single-shot-window``.) Once an upgrade replaced
+    the vendored dist, a bare re-run parses new==new templates and can never
+    yield a ``template-improved`` row again — the apply window was single-shot.
+    But the pre-upgrade dist was banked (archive-first), so its templates
+    survive on disk. Load them as ``old_templates`` and run the SAME
+    classify/apply the in-run path uses, so an operator who skipped
+    ``--apply-docs`` recovers the improvements WITHOUT a rollback. The covenant
+    is unchanged: only consumer-untouched kit-form docs are ever written
+    (consumer-edited docs stay diverged), hashes are re-recorded, and a re-run
+    is idempotent (everything already current). No archive banked yet → a clean,
+    actionable message and nothing written (never a crash, never an impossible
+    command).
+    """
+    report: list[str] = []
+    archived, from_version = newest_banked_archive(root, config)
+    if archived is None:
+        report.append(
+            "apply-docs: no banked pre-upgrade dist to apply from — post-hoc "
+            "--apply-docs needs the archive the last upgrade banked "
+            f"({config.state_dir}/{BACKUP_DIRNAME}/bootstrap-<old>.py, named by "
+            f"{LAST_UPGRADE_FILENAME}). Nothing applied.",
+        )
+        return report
+    old_templates = load_old_templates(archived.read_text(encoding="utf-8"))
+    rows = classify_planted_docs(root, config, backend, old_templates)
+    applied = apply_doc_improvements(root, config, backend, rows)
+    report += applied
+    if not applied:
+        report.append(
+            "apply-docs: no template-improved docs to apply — every planted "
+            "doc is already current or consumer-owned.",
+        )
+    report_rel = f"{config.state_dir}/{UPGRADE_REPORT_FILENAME}"
+    atomic_write_text(
+        root / report_rel,
+        upgrade_report_text(
+            from_version or config.kit_version or "unknown",
+            rows,
+            applied,
+        ),
+    )
+    report.append(f"report: {report_rel}")
+    return report
+
+
 def run_upgrade(
     root: Path,
     config: Config,
@@ -9624,6 +9706,20 @@ def run_upgrade(
 
     Raises :class:`UpgradeRefused` when release.json verification fails.
     """
+    # Post-hoc --apply-docs (idea upgrade-apply-docs-single-shot-window): when
+    # the vendored dist is ALREADY at the running version there is no pending
+    # transition, but a prior upgrade that skipped --apply-docs banked the
+    # pre-upgrade dist (archive-first covenant). Loading old_templates from that
+    # newest banked archive and running the SAME classify/apply the in-run path
+    # uses recovers the single-shot window without a rollback. Guarded by
+    # apply_docs so a bare same-version re-run keeps its existing no-op shape,
+    # and the in-run path (vendored OLDER than KIT_VERSION) is UNCHANGED.
+    posthoc_vendored = find_vendored_bootstrap(root)
+    if apply_docs and posthoc_vendored is not None:
+        vendored_text = posthoc_vendored.read_text(encoding="utf-8")
+        if dist_version(vendored_text) == KIT_VERSION:
+            return run_apply_docs_posthoc(root, config, backend)
+
     report: list[str] = []
 
     # (1) Self-verification (sha256 + version) when release.json is findable.
@@ -9698,18 +9794,17 @@ def run_upgrade(
         report.append(line)
     improved = [r for r in rows if r["class"] == CLASS_IMPROVED]
     if improved and not apply_docs:
-        # The apply window is THIS version transition only: once the vendored
-        # dist is the new one, a bare re-run parses the already-new templates
-        # and can never yield a template-improved row again (idea
-        # upgrade-apply-docs-single-shot-window). Name the recovery path that
-        # actually works rather than a bare "re-run with --apply-docs" no-op.
+        # A bare re-run parses the already-new vendored templates and can never
+        # yield a template-improved row again (idea
+        # upgrade-apply-docs-single-shot-window) — but the pre-upgrade dist was
+        # banked (archive-first), so a same-version `upgrade --apply-docs` now
+        # applies these POST-HOC from that archive. Name that working recovery
+        # (no rollback needed), never a bare "re-run to take them" no-op.
         report.append(
             f"note: {len(improved)} doc(s) have template improvements you "
-            "never edited — take them by re-running THIS upgrade with "
-            "--apply-docs before its inputs are cleaned up. The apply window "
-            "is this transition only: once it closes, the recovery is "
-            "`upgrade --rollback` then a re-run with --apply-docs (a bare "
-            "re-run now parses the already-new templates and finds nothing).",
+            "never edited — take them now by re-running with --apply-docs, or "
+            "any time later with `upgrade --apply-docs`: it applies them "
+            "post-hoc from the banked pre-upgrade archive (no rollback needed).",
         )
 
     # (5) Replace the vendored file with the running (new) one — only when the
