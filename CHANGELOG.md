@@ -17,6 +17,19 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **OWNER-ACTION ↔ CAPABILITIES cross-reference advisory**
+  (`check_capability_xref`, kit-lab queue item 8 — the #68 card idea):
+  `check` now cross-references every wall-shaped ⚑ OWNER-ACTION ask
+  (VERIFIED-NEEDED citing a 403 / access-denied / owner-only surface)
+  against the planted `docs/CAPABILITIES.md` ledger and warns, advisory-only
+  (never exit-affecting, the `check_claims` posture):
+  `owner-ask-wall-unrecorded` when the cited wall is nowhere in the ledger
+  (append it — THE DISCOVERY RULE step 4), and
+  `owner-ask-capability-resolved` when the ledger records the surface only
+  as verified-working (the wall may have fallen — re-verify or withdraw the
+  ask). Judgment-shaped asks (license/product rulings) are out of scope;
+  matching is coarse distinctive-token overlap by design. Rides both CI
+  lanes; every owner-ask becomes a capability-ledger contribution for free.
 - **B1 cold-start run 3 recorded (KF-8 threshold met — first legal trend
   statement)**: row 3 appended to `bench/results/cold-start/index.json` +
   committed run dir (`2026-07-10-run03`, seed 710301 northride, kit v1.6.0

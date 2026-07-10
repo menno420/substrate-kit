@@ -32,6 +32,7 @@ from engine.adopt import (
 )
 from engine.agents.agents import AGENTS, agent_document, agent_relpath
 from engine.checks.allowlist import apply_allowlist, load_allowlist
+from engine.checks.check_capability_xref import check_capability_xref
 from engine.checks.check_claims import check_claims
 from engine.checks.check_docs import Finding, run_doc_checks
 from engine.checks.check_engagement import check_engagement, scan_relpaths
@@ -707,6 +708,17 @@ def cmd_check(
         target,
         status_files=config.heartbeat_files,
     )
+    # OWNER-ACTION ↔ CAPABILITIES cross-reference (kit-lab queue item 8, the
+    # #68 card idea): advisory-only, like the ORDER 008 format nag it
+    # extends — a wall-shaped ask whose wall the capability ledger doesn't
+    # record (or records only as a working capability) nudges the session to
+    # close the discovery-rule loop, never reds a required check (see the
+    # checker docstring). Runs on both lanes: the asks live in the heartbeat
+    # files the fast lane already validates.
+    xref_advisories = check_capability_xref(
+        target,
+        status_files=config.heartbeat_files,
+    )
     # The inbox append-only gate (issue #36 report 2): a control/inbox.md
     # change must be pure-append vs the merge-base + ORDER-grammar shaped.
     # Rides the finding loop like every checker; engages only when CI handed
@@ -817,6 +829,25 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=claim_advisories,
+        )
+    if xref_advisories:
+        # Same warn-only contract as the advisories above (queue item 8):
+        # the ledger cross-reference is a coarse token-overlap nudge —
+        # surfaced + telemetry-recorded, never counted toward the exit code;
+        # a heuristic match can never be a verdict.
+        _emit(
+            f"check: {len(xref_advisories)} capability cross-reference "
+            "advisory warning(s) (never exit-affecting):",
+        )
+        for finding in xref_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=xref_advisories,
         )
 
     log_missing: list[str] = []
