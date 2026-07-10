@@ -22,6 +22,7 @@ from engine.adopt import (
     LIVE_CI_RELPATH,
     UNRENDERED_BANNER_FIRST_LINE,
     adopt,
+    archive_dist,
     ci_snippet,
     dist_version,
     doc_is_untouched,
@@ -534,6 +535,31 @@ def test_adopt_archives_the_running_dist(tmp_path, monkeypatch):
     assert archived.is_file()
     assert archived.read_text(encoding="utf-8") == fake.read_text(encoding="utf-8")
     assert f"archived: {config.state_dir}/backup/bootstrap-0.9.9.py" in lines
+
+
+def test_archive_dist_reports_already_banked_on_the_idempotent_path(tmp_path):
+    # The idempotent early return must never be silent (idea
+    # upgrade-archive-report-line-gap): an upgrade whose OLD dist was already
+    # banked would otherwise print no `archived:` line for it, leaving the
+    # report's only such line naming the NEW version — three field reads of the
+    # same doubt. The second archive still accounts for the old dist explicitly.
+    root = tmp_path / "repo"
+    config = Config()
+    dist_file = root / "bootstrap.py"
+    dist_file.parent.mkdir(parents=True, exist_ok=True)
+    dist_file.write_text(
+        '"""substrate-kit bootstrap v0.9.0 — GENERATED, DO NOT EDIT."""\n',
+        encoding="utf-8",
+    )
+    rel = f"{config.state_dir}/backup/bootstrap-0.9.0.py"
+
+    first: list[str] = []
+    archive_dist(root, config, dist_file, first)
+    assert first == [f"archived: {rel}"]
+
+    second: list[str] = []
+    archive_dist(root, config, dist_file, second)
+    assert second == [f"archived: {rel} (already banked)"]
 
 
 def test_dist_version_parses_the_header_stamp():

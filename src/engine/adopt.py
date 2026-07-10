@@ -141,6 +141,13 @@ def archive_dist(
     dest = root / config.state_dir / BACKUP_DIRNAME / f"bootstrap-{version}.py"
     rel = f"{config.state_dir}/{BACKUP_DIRNAME}/bootstrap-{version}.py"
     if dest.exists() and dest.read_text(encoding="utf-8") == text:
+        # Never silent on the idempotent path: an upgrade whose OLD dist was
+        # already banked (a prior adopt/check pass, or a re-run) must still
+        # account for it explicitly, or the report's only `archived:` line
+        # names the NEW version and readers conclude the old dist was never
+        # banked — the exact doubt the archive-first covenant exists to remove
+        # (field-reported three times, v1.6.0 rollout).
+        report.append(f"archived: {rel} (already banked)")
         return dest
     atomic_write_text(dest, text)
     report.append(f"archived: {rel}")
