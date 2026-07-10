@@ -98,3 +98,22 @@ def test_cold_smoke_walks_the_heartbeat_arc():
     # GREEN after the first real heartbeat overwrite.
     assert "expected RED while control/status.md is still the seed" in text
     assert re.search(r"updated: \$\(date -u \+%FT%TZ\)", text)
+
+
+def test_inbox_append_gate_runs_on_both_lanes_with_a_git_extracted_base():
+    # The inbox append-only gate (issue #36 report 2): control/inbox.md is
+    # append-only by protocol, but nothing enforced it (PR #34 merged in 19 s).
+    # The step must (1) exist, (2) run on BOTH lanes — no lane condition, an
+    # inbox edit can ride either — and (3) extract the merge-base blob in bash
+    # and hand it in via --inbox-base (the engine never shells out to git).
+    text = _ci_text()
+    step = "- name: Inbox append-only gate"
+    block = text.split(step, 1)
+    assert len(block) == 2, "CI misses the inbox append-only gate step"
+    body = block[1].split("- name:", 1)[0].split("- uses:", 1)[0]
+    # Unconditioned by the lane: the SKIP_IF guard must NOT appear in it.
+    assert SKIP_IF not in body
+    # git does the diff/extract; the engine only gets a file path.
+    assert "git merge-base" in body
+    assert "git show" in body
+    assert "check --strict --status-only --inbox-base" in body

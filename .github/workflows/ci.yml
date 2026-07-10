@@ -62,6 +62,37 @@ jobs:
         # session card (--status-only never touches the session-log seam).
         run: python3 dist/bootstrap.py check --strict --status-only
 
+      - name: Inbox append-only gate (control/inbox.md pure-append + ORDER grammar)
+        # control/inbox.md is one-writer/append-only by protocol
+        # (control/README.md), but nothing enforced it: PR #34 (an ORDER
+        # append) merged 19 s after open with zero validation — a session
+        # could rewrite or erase orders on a green control-only PR (fleet
+        # adoption review 2026-07-09, issue #36 report 2). This gate holds the
+        # PR red unless the control/inbox.md diff is PURE-APPEND vs the
+        # merge-base (the old bytes are a prefix of the new file) and the
+        # appended text is well-formed ORDER blocks. Runs on BOTH lanes (no
+        # lane condition): an inbox append rides the fast lane, but a mixed PR
+        # could smuggle an inbox edit through the full lane too. Stdlib-only
+        # system python3; git extracts the base blob here in bash because the
+        # engine never shells out (§3.2 subprocess ban) — the same split as
+        # the session-log gate. Self-skips when control/inbox.md is untouched.
+        run: |
+          if [ -n "${{ github.base_ref }}" ]; then
+            base="$(git merge-base "origin/${{ github.base_ref }}" HEAD)"
+            range="origin/${{ github.base_ref }}...HEAD"
+          else
+            base="${{ github.event.before }}"
+            range="${{ github.event.before }}..${{ github.sha }}"
+          fi
+          changed="$(git diff --name-only "$range" 2>/dev/null | grep -Fx 'control/inbox.md' || true)"
+          if [ -z "$changed" ]; then
+            echo "control/inbox.md not in diff — inbox append-only gate skipped."
+          else
+            basefile="$(mktemp)"
+            git show "$base:control/inbox.md" > "$basefile" 2>/dev/null || : > "$basefile"
+            python3 dist/bootstrap.py check --strict --status-only --inbox-base "$basefile"
+          fi
+
       - uses: actions/setup-python@v5
         if: steps.lane.outputs.control_only != 'true'
         with:
