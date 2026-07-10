@@ -1,0 +1,193 @@
+diff --git a/harborride/cli.py b/harborride/cli.py
+index 849ed90..8446e0b 100644
+--- a/harborride/cli.py
++++ b/harborride/cli.py
+@@ -1,27 +1,62 @@
+ """harborride — a tiny ride-log CLI.
+ 
+-Commands: note (add a record) · list · total · filter <category> · top.
++Commands: note (add a record) · list · total · filter <category> · top ·
++report.
+ """
+ 
+ import argparse
++import math
+ import sys
+ 
+ from harborride import ops, store
+ 
+ 
++def _category_type(value):
++    """argparse type: a non-blank category name, whitespace-trimmed."""
++    category = value.strip()
++    if not category:
++        raise argparse.ArgumentTypeError("category must not be empty")
++    return category
++
++
++def _distance_type(value):
++    """argparse type: a finite, non-negative distance."""
++    try:
++        distance = float(value)
++    except ValueError as exc:
++        raise argparse.ArgumentTypeError(f"invalid distance: {value!r}") from exc
++    if not math.isfinite(distance):
++        raise argparse.ArgumentTypeError("distance must be a finite number")
++    if distance < 0:
++        raise argparse.ArgumentTypeError("distance must not be negative")
++    return distance
++
++
++def _positive_int(value):
++    """argparse type: a positive integer."""
++    try:
++        parsed = int(value)
++    except ValueError as exc:
++        raise argparse.ArgumentTypeError(f"invalid limit: {value!r}") from exc
++    if parsed <= 0:
++        raise argparse.ArgumentTypeError("limit must be a positive integer")
++    return parsed
++
++
+ def main(argv=None):
+     parser = argparse.ArgumentParser(prog="harborride")
+     sub = parser.add_subparsers(dest="command", required=True)
+     add_p = sub.add_parser("note", help="add a ride record")
+-    add_p.add_argument("category")
+-    add_p.add_argument("distance", type=float)
++    add_p.add_argument("category", type=_category_type)
++    add_p.add_argument("distance", type=_distance_type)
+     add_p.add_argument("--note", default="")
+     sub.add_parser("list", help="list all records")
+     sub.add_parser("total", help="sum the distance field")
+     filter_p = sub.add_parser("filter", help="records in one category")
+-    filter_p.add_argument("category")
++    filter_p.add_argument("category", type=_category_type)
+     top_p = sub.add_parser("top", help="highest-distance categories")
+-    top_p.add_argument("--limit", type=int, default=3)
++    top_p.add_argument("--limit", type=_positive_int, default=3)
++    sub.add_parser("report", help="per-category counts and totals")
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -40,6 +75,10 @@ def main(argv=None):
+     elif args.command == "top":
+         for category, subtotal in ops.top_categories(records, args.limit):
+             print(f"{category}: {subtotal}")
++    elif args.command == "report":
++        for category, count, subtotal in ops.category_report(records):
++            print(f"{category}: {count} records, {subtotal}")
++        print(f"overall: {len(records)} records, {ops.total_distance(records)}")
+     return 0
+ 
+ 
+diff --git a/harborride/ops.py b/harborride/ops.py
+index bd82123..f6368fa 100644
+--- a/harborride/ops.py
++++ b/harborride/ops.py
+@@ -29,3 +29,18 @@ def top_categories(records, limit=3):
+         totals[r["category"]] = totals.get(r["category"], 0.0) + r["distance"]
+     ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
+     return ranked[:limit]
++
++
++def category_report(records):
++    """Return (category, count, total) triples, highest total first.
++
++    Ties break alphabetically by category for a stable order. Returns an
++    empty list when ``records`` is empty.
++    """
++    totals = {}
++    counts = {}
++    for r in records:
++        totals[r["category"]] = totals.get(r["category"], 0.0) + r["distance"]
++        counts[r["category"]] = counts.get(r["category"], 0) + 1
++    ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
++    return [(category, counts[category], total) for category, total in ranked]
+diff --git a/tests/test_harborride.py b/tests/test_harborride.py
+index ac362c6..92e9320 100644
+--- a/tests/test_harborride.py
++++ b/tests/test_harborride.py
+@@ -1,6 +1,10 @@
+ """Tests for harborride core operations."""
+ 
+-from harborride import ops
++import argparse
++
++import pytest
++
++from harborride import cli, ops
+ 
+ 
+ def _sample():
+@@ -37,3 +41,70 @@ def test_top_categories_ranked():
+ 
+ def test_top_categories_limit():
+     assert len(ops.top_categories(_sample(), limit=1)) == 1
++
++
++def test_category_report_counts_and_totals():
++    report = ops.category_report(_sample())
++    assert report == [("travel", 1, 30.0), ("food", 2, 20.0)]
++
++
++def test_category_report_sorted_by_total_desc():
++    report = ops.category_report(_sample())
++    totals = [subtotal for _, _, subtotal in report]
++    assert totals == sorted(totals, reverse=True)
++
++
++def test_category_report_empty_data():
++    assert ops.category_report([]) == []
++
++
++def test_category_report_ties_break_alphabetically():
++    records = []
++    ops.add_record(records, "b", 5.0)
++    ops.add_record(records, "a", 5.0)
++    report = ops.category_report(records)
++    assert [category for category, _, _ in report] == ["a", "b"]
++
++
++def test_category_type_accepts_and_trims():
++    assert cli._category_type("  food  ") == "food"
++
++
++def test_category_type_rejects_blank():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._category_type("   ")
++
++
++def test_distance_type_accepts_nonnegative():
++    assert cli._distance_type("12.5") == 12.5
++
++
++def test_distance_type_rejects_negative():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._distance_type("-1")
++
++
++def test_distance_type_rejects_non_finite():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._distance_type("nan")
++
++
++def test_distance_type_rejects_non_numeric():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._distance_type("abc")
++
++
++def test_positive_int_accepts_positive():
++    assert cli._positive_int("3") == 3
++
++
++def test_positive_int_rejects_zero_and_negative():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._positive_int("0")
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._positive_int("-2")
++
++
++def test_positive_int_rejects_non_numeric():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._positive_int("abc")

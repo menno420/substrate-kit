@@ -1,0 +1,207 @@
+diff --git a/README.md b/README.md
+index 42fbc3d..236b343 100644
+--- a/README.md
++++ b/README.md
+@@ -4,4 +4,9 @@ A tiny ride-log CLI: `note` records with a category and
+ distance, then `list`, `total`, `filter <category>` (case-insensitive),
+ `top`, and `report` them.
+ 
++Use `budget <category> <amount>` to set a per-category spending budget
++(stored in `budgets.json`, next to `rides.json`). `report` shows each
++category's budget alongside its total and flags any category whose total
++exceeds its budget with `OVER BUDGET`.
++
+ Run the tests with `python3 -m pytest tests/`.
+diff --git a/harborride/cli.py b/harborride/cli.py
+index 6908a5e..c986e2a 100644
+--- a/harborride/cli.py
++++ b/harborride/cli.py
+@@ -1,7 +1,7 @@
+ """harborride — a tiny ride-log CLI.
+ 
+ Commands: note (add a record) · list · total · filter <category> · top ·
+-report.
++report · budget <category> <amount>.
+ """
+ 
+ import argparse
+@@ -43,6 +43,19 @@ def _limit_arg(value):
+     return limit
+ 
+ 
++def _budget_arg(value):
++    """Validate a budget argument: a finite, non-negative number."""
++    try:
++        amount = float(value)
++    except ValueError:
++        raise argparse.ArgumentTypeError(f"invalid budget: {value!r}")
++    if not math.isfinite(amount):
++        raise argparse.ArgumentTypeError("budget must be a finite number")
++    if amount < 0:
++        raise argparse.ArgumentTypeError("budget must not be negative")
++    return amount
++
++
+ def main(argv=None):
+     parser = argparse.ArgumentParser(prog="harborride")
+     sub = parser.add_subparsers(dest="command", required=True)
+@@ -57,6 +70,9 @@ def main(argv=None):
+     top_p = sub.add_parser("top", help="highest-distance categories")
+     top_p.add_argument("--limit", type=_limit_arg, default=3)
+     sub.add_parser("report", help="per-category summary")
++    budget_p = sub.add_parser("budget", help="set a category's spending budget")
++    budget_p.add_argument("category", type=_category_arg)
++    budget_p.add_argument("amount", type=_budget_arg)
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -76,9 +92,21 @@ def main(argv=None):
+         for category, subtotal in ops.top_categories(records, args.limit):
+             print(f"{category}: {subtotal}")
+     elif args.command == "report":
++        budgets = store.load_budgets()
+         for category, count, subtotal in ops.category_report(records):
+-            print(f"{category}: {count} records, {subtotal}")
++            line = f"{category}: {count} records, {subtotal}"
++            budget = budgets.get(category)
++            if budget is not None:
++                line += f", budget {budget}"
++                if ops.is_over_budget(subtotal, budget):
++                    line += " — OVER BUDGET"
++            print(line)
+         print(f"overall: {len(records)} records, {ops.total_distance(records)}")
++    elif args.command == "budget":
++        budgets = store.load_budgets()
++        amount = ops.set_budget(budgets, args.category, args.amount)
++        store.save_budgets(budgets)
++        print(f"budget set: {args.category} = {amount}")
+     return 0
+ 
+ 
+diff --git a/harborride/ops.py b/harborride/ops.py
+index 6e7c2ad..11f88ff 100644
+--- a/harborride/ops.py
++++ b/harborride/ops.py
+@@ -43,3 +43,18 @@ def category_report(records):
+         stats[r["category"]] = (count + 1, total + r["distance"])
+     ranked = sorted(stats.items(), key=lambda kv: (-kv[1][1], kv[0]))
+     return [(category, count, total) for category, (count, total) in ranked]
++
++
++def set_budget(budgets, category, amount):
++    """Set the spending budget for a category and return the amount."""
++    budgets[category] = float(amount)
++    return budgets[category]
++
++
++def is_over_budget(total, budget):
++    """Return True when a category's total exceeds its budget.
++
++    A ``budget`` of ``None`` (no budget set for the category) is never
++    considered over budget.
++    """
++    return budget is not None and total > budget
+diff --git a/harborride/store.py b/harborride/store.py
+index 284639d..8ad5364 100644
+--- a/harborride/store.py
++++ b/harborride/store.py
+@@ -4,6 +4,7 @@ import json
+ from pathlib import Path
+ 
+ DEFAULT_PATH = Path("rides.json")
++DEFAULT_BUDGETS_PATH = Path("budgets.json")
+ 
+ 
+ def load_records(path=DEFAULT_PATH):
+@@ -17,3 +18,16 @@ def load_records(path=DEFAULT_PATH):
+ def save_records(records, path=DEFAULT_PATH):
+     """Write the ride records back to disk."""
+     Path(path).write_text(json.dumps(records, indent=2), encoding="utf-8")
++
++
++def load_budgets(path=DEFAULT_BUDGETS_PATH):
++    """Return the stored category budgets (empty dict when no file)."""
++    path = Path(path)
++    if not path.exists():
++        return {}
++    return json.loads(path.read_text(encoding="utf-8"))
++
++
++def save_budgets(budgets, path=DEFAULT_BUDGETS_PATH):
++    """Write the category budgets back to disk."""
++    Path(path).write_text(json.dumps(budgets, indent=2), encoding="utf-8")
+diff --git a/tests/test_harborride.py b/tests/test_harborride.py
+index 4d07ef7..5195dde 100644
+--- a/tests/test_harborride.py
++++ b/tests/test_harborride.py
+@@ -4,7 +4,7 @@ import argparse
+ 
+ import pytest
+ 
+-from harborride import cli, ops
++from harborride import cli, ops, store
+ 
+ 
+ def _sample():
+@@ -94,3 +94,61 @@ def test_limit_arg_rejects_zero():
+ 
+ def test_limit_arg_accepts_positive_value():
+     assert cli._limit_arg("2") == 2
++
++
++def test_budget_arg_rejects_negative():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._budget_arg("-1")
++
++
++def test_budget_arg_rejects_non_finite():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._budget_arg("nan")
++
++
++def test_budget_arg_rejects_non_numeric():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._budget_arg("abc")
++
++
++def test_budget_arg_accepts_valid_value():
++    assert cli._budget_arg("15") == 15.0
++
++
++def test_set_budget_stores_and_returns_amount():
++    budgets = {}
++    assert ops.set_budget(budgets, "food", 15) == 15.0
++    assert budgets["food"] == 15.0
++
++
++def test_set_budget_overwrites_existing():
++    budgets = {"food": 10.0}
++    ops.set_budget(budgets, "food", 25)
++    assert budgets["food"] == 25.0
++
++
++def test_is_over_budget_true_when_total_exceeds():
++    assert ops.is_over_budget(20.0, 15.0) is True
++
++
++def test_is_over_budget_false_when_within():
++    assert ops.is_over_budget(10.0, 15.0) is False
++
++
++def test_is_over_budget_false_when_equal():
++    assert ops.is_over_budget(15.0, 15.0) is False
++
++
++def test_is_over_budget_false_when_no_budget_set():
++    assert ops.is_over_budget(1000.0, None) is False
++
++
++def test_budgets_round_trip(tmp_path):
++    path = tmp_path / "budgets.json"
++    store.save_budgets({"food": 15.0}, path=path)
++    assert store.load_budgets(path=path) == {"food": 15.0}
++
++
++def test_load_budgets_missing_file_returns_empty_dict(tmp_path):
++    path = tmp_path / "missing-budgets.json"
++    assert store.load_budgets(path=path) == {}
