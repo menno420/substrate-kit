@@ -1,10 +1,10 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 92
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-10
+outcome: shipped
 ---
 
 # Upgrade report shows only the NEW dist's `archived:` line — third report, priority bumped (2026-07-09)
