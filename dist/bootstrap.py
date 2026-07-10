@@ -2191,15 +2191,21 @@ only; unreadable files fail open.
 
 
 
-# The six REQUIRED field labels (ORDER 008). VERIFIED-NEEDED is the band's
-# heart — the attempted-or-exact-wall proof that kills assumption-based asks.
+# The six REQUIRED field labels (ORDER 008), canonical spelling first.
+# VERIFIED-NEEDED is the band's heart — the attempted-or-exact-wall proof
+# that kills assumption-based asks. The canonical labels match the shipped
+# templates and control/README.md § OWNER-ACTION format exactly (checker and
+# templates agree). Two fields also accept a shorthand spelling adopters
+# write inline — WHY:/VERIFIED-WHEN: — because accepting an alternate only
+# ever *withholds* this advisory nag (never adds one), so it stays
+# backward-compatible and never newly reddens a valid ledger.
 OWNER_ACTION_FIELDS = (
-    "WHAT:",
-    "WHERE:",
-    "HOW:",
-    "WHY-IT-MATTERS:",
-    "UNBLOCKS:",
-    "VERIFIED-NEEDED:",
+    ("WHAT:",),
+    ("WHERE:",),
+    ("HOW:",),
+    ("WHY-IT-MATTERS:", "WHY:"),
+    ("UNBLOCKS:",),
+    ("VERIFIED-NEEDED:", "VERIFIED-WHEN:"),
 )
 
 NEEDS_OWNER_TOKEN = "⚑ needs-owner"
@@ -2252,7 +2258,11 @@ def check_owner_actions(
         value = _needs_owner_value(text)
         if value is None or value.lower().startswith("none") or not value:
             continue
-        missing = [f.rstrip(":") for f in OWNER_ACTION_FIELDS if f not in text]
+        missing = [
+            alts[0].rstrip(":")
+            for alts in OWNER_ACTION_FIELDS
+            if not any(alt in text for alt in alts)
+        ]
         if missing:
             findings.append(
                 Finding(
