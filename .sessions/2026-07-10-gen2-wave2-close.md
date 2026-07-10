@@ -1,6 +1,6 @@
 # 2026-07-10 — gen-2 wave-2 session close: release-readiness note + full session ledger
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** claude-opus-4-8 · high · gen-2 wave-2 close — status-ledger
   overwrite + release-readiness assessment (no release cut)
@@ -64,4 +64,19 @@ is applied to this card's structure up front.
 
 ## Outcome
 
-_(to be completed at the closing commit — check --strict output pasted below)_
+Shipped the wave-2 close in one control-lane PR (`control/status.md` +
+this card only; no src → no dist regen; `control/inbox.md` and `bench/`
+untouched). Release-readiness ASSESSED, release NOT cut: v1.7.0 is warranted
+(~12 accumulated [Unreleased] entries since v1.6.0) but not prepared
+(KIT_VERSION still 1.6.0) → queued as ⚑ OWNER-ACTION 12 (owner one-click
+workflow_dispatch) plus an agent-available prep-bump PR under `next`. The
+status ledger records this lane's 12 verified merged PRs, orders 001–009 done,
+no order ≥010, and twelve six-field ⚑ owner-actions (adds "automatically
+update branches" + the release one-click; the ten prior items carried).
+
+Verification: `python3 dist/bootstrap.py check --strict` → exit 0:
+
+```
+check: session log .sessions/2026-07-10-gen2-wave2-close.md complete.
+check: all checks passed.
+```
