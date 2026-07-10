@@ -79,6 +79,30 @@ credential is missing:
 
 Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
 
+- 2026-07-10 · wall+recipe · **parallel file-mutating subagents race in a
+  shared clone.** Two Agent workers mutating files ran in parallel in the SAME
+  checkout; their git ops interleaved and one worker's `git add -A` swept the
+  other's uncommitted files into the wrong commit/PR (content was correct but
+  attribution muddled — per-workstream PRs became impossible). · realized
+  failure (venture-lab adopter, kit v1.6.0). · **RECIPE: parallel
+  file-mutating subagents MUST each use an isolated git worktree (spawn into a
+  scratchpad worktree, never the shared checkout) OR be serialized. Only
+  READ-ONLY parallel workers are safe in a shared clone; never `git add -A`
+  from a worker sharing a checkout with another writer** (stage only your own
+  paths). The worktree-per-worker convention is already in the gen-2
+  succession pack (`docs/gen2/custom-instructions-proposal.md`,
+  `feedback-for-gen2-blueprint.md`); this entry pins the failure mode on the
+  adopter-facing surface.
+- 2026-07-10 · wall+recipe · **fast-CI auto-merge arm race.** On a repo whose
+  required checks finish in ~5 s, a direct `enable_pr_auto_merge` never binds —
+  the PR flips `pending`→`clean` before the arm attempt and GitHub returns
+  "already in clean status … you can merge directly". · realized (venture-lab
+  adopter, ~5 s CI gate). · **RECIPE: for sub-~10 s CI, fall back to REST
+  merge-on-green (poll checks, then merge on conclusion), or add a deliberate
+  small delay / a second slower gate job so a `pending` window exists to arm
+  into.** Not a concern for the kit's own `auto-merge-enabler.yml` (it reacts
+  to the PR-open event, not to a caller catching `pending`). See
+  `docs/operations/auto-merge-guards.md` § Operational notes.
 - 2026-07-10 · wall+recipe · the agent auto-mode permission classifier DENIES
   direct self-merge calls — `mcp__github__merge_pull_request` and
   `mcp__github__enable_pr_auto_merge` are both refused as "Merge Without
