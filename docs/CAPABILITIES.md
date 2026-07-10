@@ -79,6 +79,19 @@ credential is missing:
 
 Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
 
+- 2026-07-10 · wall+recipe · **armed auto-merge does NOT fire on a PR whose
+  branch is `behind` main** — "Require branches to be up to date" currently
+  behaves as ON for the required checks. · live-hit (night-cap session, PR
+  #107): all 3 required checks SUCCESS by 05:05:48Z with auto-merge armed,
+  yet the PR sat unmerged 10+ min; `pull_request_read` showed
+  `mergeable_state: "behind"` (two sibling PRs #105/#108 had advanced main
+  after the branch was cut). · **RECIPE: on a stall with green checks, check
+  `mergeable_state` FIRST (before rerunning jobs); if `behind`, `git merge
+  origin/main` into the branch and push — CI re-runs and the still-armed
+  auto-merge fires on the new head** (#107 merged on the next pass, ~2 min).
+  Root fix is the OWNER-ACTION 2 toggle review (leave "Require branches to
+  be up to date" OFF) — until then every fast-lane PR racing a sibling merge
+  pays one update round-trip.
 - 2026-07-10 · wall+recipe · **parallel file-mutating subagents race in a
   shared clone.** Two Agent workers mutating files ran in parallel in the SAME
   checkout; their git ops interleaved and one worker's `git add -A` swept the

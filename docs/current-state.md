@@ -148,7 +148,8 @@
   (guard probe n/a again on the fully-ENGAGED arm + the new last-card
   gate gap).
 - **B1's THIRD FIRING is RECORDED — VERDICT: FAIL (strict F-5, advisory
-  per KF-5; disputed pending OWNER-ACTION 3)** (run `2026-07-10-run03`,
+  per KF-5; disputed pending the F-5 ruling — OWNER-ACTION 3 at
+  record-time, OWNER-ACTION 1 since the #88 renumbering)** (run `2026-07-10-run03`,
   seed 710301 northride, kit v1.6.0 ENGAGED, judge claude-fable-5; row 3
   of `bench/results/cold-start/index.json` + committed run dir, PR #85).
   Run-2's shape, sharper: **M1 to OFF on all pairs** (2004/2521/721 vs
@@ -404,16 +405,29 @@ still renders from superbot's committed `console.json`. Exact steps:
 on the next touch and never accretes here; adopted from the groomed-ideas-1
 ⟲ review, implemented at the run close-out.)*
 
-**→ Gen-2 boot:** a fresh gen-2 session starts from
-[`docs/gen2/next-boot.md`](gen2/next-boot.md) (the wind-down succession
-pack; queue truth in [`docs/gen2/queue-state.md`](gen2/queue-state.md)).
+**→ Post-overnight-run state (2026-07-10 night-cap):** the gen-2 boot AND
+the overnight queue run are DONE — 9 of 12 agent-queue items landed
+2026-07-10 (~00:30–05:00Z; per-item PR numbers reconciled in
+[`docs/gen2/queue-state.md`](gen2/queue-state.md)). **Agent-reachable
+work is now: queue dry** — T5 guard-probe redesign awaits a daytime
+`do-not-automerge` PR (pin path); everything else remaining is
+owner-gated (the F-5 A/B ruling is the HOT one — it gates 2 of 3 recorded
+bench verdicts + the trend headline; then P10/P4/P5/P8/P11-or-P13, all
+six-field structured as OWNER-ACTION 1–10 in `control/status.md`).
 
 ### Owner gates — each with its one-line unblock
 
-1. **👤 Bless the bench rubric → merge PR #17** (plan §5.0;
-   `do-not-automerge`, CI-green, card complete): review `bench/rubric/*` on
-   the PR and merge it — or contest on the thread. **Unblocks the B1
-   baseline firing** (and the kit-lab console lane's first real data).
+*(Stale gate "bless the rubric → merge #17" REMOVED at the night-cap
+reconcile — the owner blessed and merged #17 himself 2026-07-09, D-0005,
+as this ledger's own Stability-baseline section already recorded; #26 and
+#49 likewise owner-merged ~2026-07-10T00:08–00:12Z.)*
+
+1. **👤 Rubric F-5 A/B wording ruling — HOT** (OWNER-ACTION 1 in
+   `control/status.md`; `docs/ideas/rubric-f5-none-regressing-wording-2026-07-09.md`):
+   one letter decides whether the recorded run-2/run-3 strict FAILs stand
+   or flip to PASS — the benchmark's 1-PASS/2-FAIL headline and the first
+   KF-8 trend statement both hang on it. **Unblocks run-4 landing under a
+   ruled reading + honest KF-5 release notes.**
 2. **👤 Ratify or veto PL-010 (#22)** — the `feature build` task-class
    ruling (PL-004 amendment). ⚑ **PR #22 MERGED mechanically, NOT by
    owner review**: despite its `do-not-automerge` label, the enabler
@@ -446,20 +460,15 @@ pack; queue truth in [`docs/gen2/queue-state.md`](gen2/queue-state.md)).
 
 ### Agent queue — in order, as the gates open
 
-1. **Upgrade-UX fixes from the v1.6.0 rollout field findings** *(the
-   consumer-upgrades item is DONE — superbot-next#96 + websites#45 merged
-   2026-07-09, both ENGAGED on v1.6.0; see Recently shipped + the registry.
-   superbot stays owner-gated pin-only ⚑; superbot-games two-lane
-   `heartbeat_files` note carries until it adopts)*: four B4 ideas filed
-   2026-07-09, all ordinary-lane with guard recipes in the files —
-   `--apply-docs` post-hoc apply against the banked archived dist
-   (`upgrade-apply-docs-single-shot-window-…`), hash-record on byte-match
-   so rollback+rerun stops losing provenance
-   (`upgrade-rollback-loses-doc-hash-records-…`), the idempotent-archive
-   `(already banked)` report line (third field report — priority bumped;
-   `upgrade-archive-report-line-gap-…`), and the release.json placement
-   line in the adopter checklist
-   (`upgrade-checklist-release-json-placement-…`).
+1. ✅ *(moved to Recently shipped at the night-cap reconcile)*
+   **Upgrade-UX fixes — DONE, kit PR #92** (merged 2026-07-10 via the
+   #98-lane adoption): three of the four ideas shipped whole; the 4th
+   (`--apply-docs`) shipped its interim-hint slice — the full
+   post-hoc-apply-against-the-banked-dist mechanism idea stays `open` in
+   `docs/ideas/upgrade-apply-docs-single-shot-window-2026-07-09.md` and
+   is now the queue's next ordinary-lane increment. superbot stays
+   owner-gated pin-only ⚑; superbot-games two-lane `heartbeat_files` note
+   carries until it adopts (`adopt --lane` now exists for it, PR #103).
 2. **Run-2/run-3 bench follow-ups** *(B1 run-3 itself is DONE — fired
    2026-07-10 after the owner merged #49, recorded as row 3 with the first
    legal KF-8 trend, PR #85; the three ordinary-lane follow-ups —
@@ -482,6 +491,27 @@ pack; queue truth in [`docs/gen2/queue-state.md`](gen2/queue-state.md)).
 
 ## Recently shipped (newest first)
 
+- **#108 — planted-gate template sentinel fixes (visiting gba-homebrew
+  Track B lane; claim #105)**: no-card PRs and born-red ADDED cards now
+  gate advisory via explicitly named absent sentinels instead of the
+  mtime fallback latching onto an unrelated in-progress card — two
+  adopter-found defects fixed live (gba-homebrew PRs #2/#3, validated
+  across its #3–#14).
+- **The 2026-07-10 overnight gen-2 run — 9 queue items in one night**
+  (full lane ledger in `.sessions/2026-07-10-gen2-final-close.md`; PR
+  numbers verified at the night-cap reconcile): **#84** walking-skeleton
+  breadcrumb · **#85** B1 run-3 recorded (row 3, first KF-8 trend,
+  strict-F-5 FAIL disputed pending the ruling) · **#86** engagement-gate
+  comment-leniency fix · **#87** inbox append-only + ORDER-grammar
+  checker (+ **#89** writer-identity honest note) · **#90** claim-aware
+  checker · **#91** telemetry write-at-card-commit + backfill · **#92**
+  four upgrade-UX fixes (adopted + merged via the #98 lane) · **#95**
+  run-2 follow-ups (below) · **#98** OWNER-ACTION ↔ CAPABILITIES xref
+  advisory · **#99** adopter-findings batch (owner-action token
+  shorthand, fast-CI arm-race + worktree recipes) · **#103** `adopt
+  --lane` (lane-aware adoption, the G1 double-adoption fix). Suite 722 →
+  813 over the night; closes/claims: #80/#81/#88/#93/#94/#96/#97/#100/
+  #101/#102/#104.
 - **#95 — run-2 ordinary-lane follow-ups (queue item 3)**: (a)
   `run_ab.py prepare` walks the ON-arm RED→ENGAGED→GREEN arc itself and
   writes `manifest.json` even on smoke failure (`smoke_failed`) — no more

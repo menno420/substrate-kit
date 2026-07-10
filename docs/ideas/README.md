@@ -49,6 +49,13 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- [Plain-adopt lane-drift advisory — nudge `--lane` in lane-shaped repos](plain-adopt-lane-drift-advisory-2026-07-10.md)
+  — state: captured; origin: lab (the `adopt --lane` session's card-only 💡,
+  filed by the 2026-07-10 night-cap groom: a plain `adopt` into a repo whose
+  `heartbeat_files` already names lanes plants an undeclared singular
+  heartbeat — the last hand-edit path into the bus); next: a groomed-ideas
+  increment ships the advisory + tests (quick-win, ordinary lane, engine
+  change → dist byte-pin).
 - [`adopt --wire-enforcement` plants a pytest step when tests/ exists](adopt-plants-pytest-gate-step-2026-07-10.md)
   — state: captured; origin: consumer (superbot-games ran gen-1 with a
   tests-blind gate — 73 tests never in CI, fixed consumer-side in games#16;
