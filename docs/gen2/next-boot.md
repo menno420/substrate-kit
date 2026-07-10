@@ -39,8 +39,13 @@
 - **Adopter v1.7.0 upgrades belong to consumer lanes (KF-2)** — the lab
   never writes to consumer repos; do not "helpfully" open upgrade PRs on
   websites/trading-strategy/games from here.
-- **B1 run-5 should WAIT for the F-5 ruling** (⚑ OWNER-ACTION 1, HOT — it
-  decides how runs 2–3 read and with them the trend headline).
+- **B1 run-5 hold CLEARED 2026-07-10 — the F-5 ruling is DELIVERED:
+  Reading A (strict)**, via inbox ORDER 011 (owner delegation Q-0262.1;
+  ⚑ OWNER-ACTION 1 RESOLVED). Runs 2–3 stand as un-caveated FAILs; the
+  family headline is **1 PASS / 3 FAIL**; the B-bench queue is unblocked
+  and run-5 is free to fire (scored under Reading A only — no more
+  dual-scoring). *(Superseded text: "B1 run-5 should WAIT for the F-5
+  ruling".)*
 - **The coordinator hourly wake routine is ARMED and RECURRING** (trigger
   `trig_01FnqnAQjLU2T8d16iHwWQ2h`, cron `0 * * * *`, bound to the kit-lab
   coordinator session — ORDER 010 RECORD in `control/status.md`), so the
@@ -53,6 +58,12 @@
   12:54Z" line the #122 heartbeat recorded from a coordinator relay — two
   observed fires post-date the alleged stop. If you read a NOT-ARMED
   claim anywhere, re-verify with `list_triggers` before believing it.
+  **[SUPERSEDED 2026-07-10T~15:53Z — routine cutover:** the hourly
+  trigger `trig_01FnqnAQjLU2T8d16iHwWQ2h` was DELETED (bound to a retired
+  session) and replaced by `trig_016EfUawz6KxEYqUM6f1BqDw` "substrate-kit
+  2-hourly standing wake", cron `0 */2 * * *`, bound to the live
+  coordinator session. Full record: `control/status.md` § ROUTINE
+  STATE.**]**
 
 ## 1. First-10-minutes read order (this exact sequence)
 
@@ -208,8 +219,9 @@ until then).
 - **KF-5**: every release states the benchmark outcome; **KF-8**: no trend
   claim below 3 rows — the threshold was MET 2026-07-10 (run-3 recorded
   via PR #85, family at 3 rows, first trend statement on record in
-  `control/status.md` + CHANGELOG; both run-2 and run-3 strict-F-5 FAILs
-  stay DISPUTED pending the owner's F-5 A/B ruling).
+  `control/status.md` + CHANGELOG; the run-2/run-3 strict-F-5 FAILs were
+  RULED 2026-07-10 — **Reading A**, ORDER 011 — and stand un-caveated;
+  family headline at 4 rows: **1 PASS / 3 FAIL**).
 - **Recorder ≠ judge**: bench rows are the independent judge's verbatim
   verdict, even when unflattering (run-2's strict FAIL is the precedent).
 - **One writer per file** on the control bus; never edit `control/inbox.md`.
