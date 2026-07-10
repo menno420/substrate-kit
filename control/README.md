@@ -15,6 +15,12 @@
 writer of its own `status.md`. Two writers never touch the same file, so there are no merge
 conflicts. Everything is append-only / overwrite-own — forward-only git.
 
+**Enforced vs. convention.** The append-only + ORDER-grammar half of the `inbox.md` rule is now
+CI-enforced — `check_inbox_append` (shipped in #87) rejects any control-lane PR whose `inbox.md`
+diff is not a pure append of well-formed ORDER blocks. Writer IDENTITY cannot be enforced in-repo
+on a single-account program (every commit authenticates as the same account), so *who* appends
+to `inbox.md` remains convention, not a machine-checked guarantee.
+
 ## Multi-Project repos — per-lane heartbeats (optional extension)
 A SHARED repo can host several Projects ("lanes") — the live example is superbot-games with a
 mining lane and an exploration lane. The one-writer rule scales by **splitting the heartbeat,
