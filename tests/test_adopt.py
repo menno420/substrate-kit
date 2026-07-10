@@ -18,11 +18,14 @@ pytest.importorskip("engine.hooks.settings")
 
 from engine.adopt import (
     ADOPT_PLAN,
+    AUTOMERGE_CARVEOUT_LABEL,
+    AUTOMERGE_ENABLER_RELPATH,
     DOC_HASHES_STATE_KEY,
     LIVE_CI_RELPATH,
     UNRENDERED_BANNER_FIRST_LINE,
     adopt,
     archive_dist,
+    automerge_enabler_workflow,
     ci_snippet,
     dist_version,
     doc_is_untouched,
@@ -892,6 +895,157 @@ def test_adopt_gate_regen_banks_and_reports_carveouts(tmp_path):
     assert not list(
         (root2 / Config().state_dir / "backup").glob("substrate-gate.pre-regen-*.yml")
     )
+
+
+# ---------------------------------------------------------------------------
+# Auto-merge enabler planted by the kit (EAP program review §6.10)
+# ---------------------------------------------------------------------------
+
+
+def test_automerge_enabler_workflow_shape():
+    text = automerge_enabler_workflow()
+    # A real live workflow, not a commented example.
+    assert "\nname: auto-merge-enabler\n" in text
+    assert "on:\n" in text and "jobs:\n" in text
+    # Arms only agent branches (default claude/*), same-repo PRs, non-draft.
+    assert "startsWith(github.head_ref, 'claude/')" in text
+    assert (
+        "github.event.pull_request.head.repo.full_name == github.repository"
+        in text
+    )
+    assert "github.event.pull_request.draft == false" in text
+    # The refuse-to-arm guard counts required CONTEXTS on the base branch
+    # (the KL-0/KL-1 instant-merge footgun).
+    assert "rules/branches/${{ github.base_ref }}" in text
+    assert "required_status_checks" in text
+    # The label carve-out: job-level skip AND the fresh API re-read race
+    # guard both travel into the planted file.
+    assert (
+        "!contains(github.event.pull_request.labels.*.name, "
+        f"'{AUTOMERGE_CARVEOUT_LABEL}')" in text
+    )
+    assert f"Re-check the {AUTOMERGE_CARVEOUT_LABEL} label FRESH" in text
+    # `synchronize` re-arms after a branch update (the behind-stall fix).
+    assert "types: [opened, reopened, ready_for_review, synchronize]" in text
+    # Kit ownership is declared in the file itself, routing host edits away.
+    assert "KIT-OWNED" in text
+    assert "SEPARATE workflow" in text
+
+
+def test_automerge_enabler_workflow_parameterization():
+    # Custom patterns render as prefix/exact matches; the context name
+    # threads into the log lines.
+    text = automerge_enabler_workflow(
+        ["bot/*", "release-please"], required_context="quality"
+    )
+    assert "startsWith(github.head_ref, 'bot/')" in text
+    assert "github.head_ref == 'release-please'" in text
+    assert "startsWith(github.head_ref, 'claude/')" not in text
+    assert "'quality' is green" in text
+    # Fallback-on-empty (the heartbeat_files doctrine): [] / blank / a bare
+    # "*" must not silently widen arming to every branch.
+    for degenerate in ([], [""], ["*"], ["  "]):
+        text = automerge_enabler_workflow(degenerate)
+        assert "startsWith(github.head_ref, 'claude/')" in text
+
+
+def test_adopt_stages_the_enabler_and_never_installs_it_by_default(tmp_path):
+    root, config, lines = _adopt_into(tmp_path)
+    # Staged always, right next to the gate (the one-copy install).
+    staged = root / config.state_dir / "ci" / "auto-merge-enabler.yml"
+    assert staged.is_file()
+    assert staged.read_text(encoding="utf-8") == automerge_enabler_workflow()
+    # Safety doctrine unchanged: a default adopt never creates live CI —
+    # and without a live enabler there is no repo-settings checklist.
+    assert not (root / AUTOMERGE_ENABLER_RELPATH).exists()
+    assert not any("repo-settings checklist" in line for line in lines)
+
+
+def test_wire_enforcement_plants_live_enabler_and_repo_settings_checklist(
+    tmp_path,
+):
+    root = tmp_path / "repo"
+    config = Config()
+    backend = _make_backend(root, config)
+    lines = adopt(
+        root, config, backend, kit_root=tmp_path / "kit", wire_enforcement=True
+    )
+    workflow = root / AUTOMERGE_ENABLER_RELPATH
+    assert workflow.is_file()
+    assert workflow.read_text(encoding="utf-8") == automerge_enabler_workflow()
+    assert f"planted: {AUTOMERGE_ENABLER_RELPATH}" in lines
+    # The §6.10 second half: the one-time owner-UI checklist rides the
+    # adopt report (a planted workflow cannot flip repo settings — the
+    # trading-strategy Allow-auto-merge-OFF boundary).
+    assert any("repo-settings checklist" in line for line in lines)
+    assert any('"Allow auto-merge" = ON' in line for line in lines)
+    assert any("'substrate-gate' status check" in line for line in lines)
+
+
+def test_default_adopt_regenerates_an_existing_live_enabler(tmp_path):
+    # Existence is the opt-in signal (the gate's exact lifecycle): a
+    # hand-forked enabler at the kit path falls under kit ownership on the
+    # next adopt/upgrade pass — parameterized from the host's own config.
+    root = tmp_path / "repo"
+    config = Config()
+    config.automerge = {
+        "branch_patterns": ["agent/*"],
+        "required_context": "quality",
+    }
+    backend = _make_backend(root, config)
+    workflow = root / AUTOMERGE_ENABLER_RELPATH
+    workflow.parent.mkdir(parents=True)
+    workflow.write_text(
+        "# hand-forked enabler\nname: auto-merge-enabler\n", encoding="utf-8"
+    )
+    lines = adopt(root, config, backend, kit_root=tmp_path / "kit")
+    expected = automerge_enabler_workflow(["agent/*"], required_context="quality")
+    assert workflow.read_text(encoding="utf-8") == expected
+    assert any(
+        line.startswith(f"regenerated: {AUTOMERGE_ENABLER_RELPATH}")
+        for line in lines
+    )
+    # Idempotent second pass: already current -> kept, byte-identical.
+    lines2 = adopt(root, config, backend, kit_root=tmp_path / "kit")
+    assert workflow.read_text(encoding="utf-8") == expected
+    assert (
+        f"kept: {AUTOMERGE_ENABLER_RELPATH} (kit-owned, already current)"
+        in lines2
+    )
+
+
+def test_adopt_enabler_regen_banks_and_reports_carveouts(tmp_path):
+    # The #137 carve-out protection applies to the enabler identically: a
+    # host-added job inside the kit-owned file is banked + reported, never
+    # silently dropped — and the regen still restores kit form.
+    root = tmp_path / "repo"
+    config = Config()
+    backend = _make_backend(root, config)
+    workflow = root / AUTOMERGE_ENABLER_RELPATH
+    workflow.parent.mkdir(parents=True)
+    hand_edited = automerge_enabler_workflow() + (
+        "  notify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - name: host notifier\n"
+        "        run: echo merged\n"
+    )
+    workflow.write_text(hand_edited, encoding="utf-8")
+    lines = adopt(root, config, backend, kit_root=tmp_path / "kit")
+    assert workflow.read_text(encoding="utf-8") == automerge_enabler_workflow()
+    assert any(
+        line.startswith(
+            f"carve-out: {AUTOMERGE_ENABLER_RELPATH} — host-added job 'notify'"
+        )
+        for line in lines
+    )
+    banked = list(
+        (root / config.state_dir / "backup").glob(
+            "auto-merge-enabler.pre-regen-*.yml"
+        )
+    )
+    assert len(banked) == 1
+    assert banked[0].read_text(encoding="utf-8") == hand_edited
 
 
 # ---------------------------------------------------------------------------

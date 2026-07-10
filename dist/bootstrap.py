@@ -185,6 +185,29 @@ control fast lane and land on main fast. Legacy locations
 DEFAULT_CLAIMS_DIR = "control/claims"
 
 
+def _default_automerge() -> dict:
+    """Return the auto-merge-enabler knobs (EAP program review §6.10).
+
+    Parameterizes the kit-owned planted ``.github/workflows/
+    auto-merge-enabler.yml`` (see ``adopt.automerge_enabler_workflow``):
+
+    - ``branch_patterns`` — head-branch patterns the enabler arms on. A
+      trailing ``*`` is a prefix match (``claude/*`` → every ``claude/…``
+      head); anything else matches exactly. An empty list falls back to the
+      default at the consumer (the ``heartbeat_files`` doctrine: a
+      misconfiguration must not silently disable — or widen — the arming).
+    - ``required_context`` — the required status-check context the arming
+      message names (default ``substrate-gate``, the planted gate's job).
+      Informational only: the workflow's refuse-to-arm guard counts the
+      base branch's required contexts generically via the rules API, so a
+      wrong name here mislabels a log line, never the guard.
+    """
+    return {
+        "branch_patterns": ["claude/*"],
+        "required_context": "substrate-gate",
+    }
+
+
 def _default_badge_tokens() -> list[str]:
     """Return the default Status-badge taxonomy the doc checker accepts."""
     return [
@@ -259,6 +282,8 @@ class Config:
     # docs/owner/claims/) pins that path here; the pinned dir is then
     # canonical for that host and the legacy-location nudge never fires on it.
     claims_dir: str = DEFAULT_CLAIMS_DIR
+    # Auto-merge-enabler knobs (EAP §6.10 — see _default_automerge above).
+    automerge: dict = field(default_factory=_default_automerge)
 
     def to_json(self) -> str:
         """Serialise the config to indented, key-sorted JSON."""
@@ -9723,6 +9748,306 @@ def gate_carveouts(live_text: str, expected_text: str) -> list[str]:
     return lines
 
 
+AUTOMERGE_ENABLER_RELPATH = ".github/workflows/auto-merge-enabler.yml"
+
+# The advisory routing label the fleet's enabler/disarm pair honors: a PR
+# carrying it is never armed (kit doctrine — see
+# docs/operations/auto-merge-guards.md guards 1–2). A constant, not config
+# (house-style D-7): the label is program-wide vocabulary, and a per-repo
+# rename would silently split the fleet's shared review convention.
+AUTOMERGE_CARVEOUT_LABEL = "do-not-automerge"
+
+DEFAULT_AUTOMERGE_BRANCH_PATTERNS = ("claude/*",)
+DEFAULT_AUTOMERGE_REQUIRED_CONTEXT = "substrate-gate"
+
+
+def _automerge_branch_expr(branch_patterns: list[str] | None) -> str:
+    """Render the workflow-expression term matching the arming branches.
+
+    A trailing ``*`` is a prefix match (``claude/*`` →
+    ``startsWith(github.head_ref, 'claude/')``); anything else matches the
+    head ref exactly. Empty/blank patterns fall back to the default —
+    the ``heartbeat_files`` doctrine: a stray ``[]`` (or a pattern list of
+    empty strings) must not silently widen arming to EVERY branch.
+    """
+    terms: list[str] = []
+    for raw in branch_patterns or []:
+        pattern = str(raw).strip().replace("'", "")
+        if not pattern or pattern == "*":
+            # A bare "*" would arm every PR on the repo — refuse the
+            # footgun and let the fallback keep the agent-branch default.
+            continue
+        if pattern.endswith("*"):
+            terms.append(f"startsWith(github.head_ref, '{pattern[:-1]}')")
+        else:
+            terms.append(f"github.head_ref == '{pattern}'")
+    if not terms:
+        return _automerge_branch_expr(list(DEFAULT_AUTOMERGE_BRANCH_PATTERNS))
+    return " || ".join(terms)
+
+
+def automerge_enabler_workflow(
+    branch_patterns: list[str] | None = None,
+    required_context: str = DEFAULT_AUTOMERGE_REQUIRED_CONTEXT,
+) -> str:
+    """Return the LIVE auto-merge-enabler workflow (EAP program review §6.10).
+
+    The superbot Q-0123 pattern, generalized from this repo's own
+    ``.github/workflows/auto-merge-enabler.yml``: arm GitHub-native
+    auto-merge on agent PRs the moment they open, so a born-red session PR
+    merges itself the instant the required check goes green — the session
+    just flips its card; GitHub does the gated merge. Adopters previously
+    hand-forked this workflow or lacked it; it now plants and regenerates
+    exactly like :func:`live_ci_workflow` (staged always, installed live by
+    ``adopt --wire-enforcement``, kit-owned once it exists — see
+    :func:`adopt` step 6b).
+
+    Safety shape carried from the origin workflow, in firing order:
+
+    - **Same-repo guard** — never runs for fork PRs (a fork's token could
+      not arm anyway; the guard keeps the failure silent instead of noisy).
+    - **Branch patterns** (``branch_patterns``, config
+      ``automerge.branch_patterns``) — only agent branches arm.
+    - **Refuse-to-arm guard** (the KL-0/KL-1 footgun): with NO required
+      status-check CONTEXTS on the base branch, arming merges the PR
+      INSTANTLY — the workflow counts the base branch's required contexts
+      via the rules API and refuses to arm on zero. Contexts, not rules:
+      a rule with an empty context list armed-and-merged kit PR #7.
+    - **Label carve-out** (:data:`AUTOMERGE_CARVEOUT_LABEL`): a labelled PR
+      is never armed — checked at the job level AND re-read FRESH from the
+      API after a grace beat (the kit #22 stale-payload label race; the
+      label is advisory routing, the required check is the enforcement —
+      docs/operations/auto-merge-guards.md).
+
+    ``required_context`` (config ``automerge.required_context``) is
+    informational — it names the gate in the log lines so an adopter reading
+    the run knows WHICH check must go green / become required; the guard
+    itself counts contexts generically.
+    """
+    branch_expr = _automerge_branch_expr(
+        list(branch_patterns) if branch_patterns is not None else None,
+    )
+    context = (required_context or DEFAULT_AUTOMERGE_REQUIRED_CONTEXT).replace("'", "")
+    return (
+        "# substrate-kit auto-merge enabler (LIVE — installed by\n"
+        "# `bootstrap.py adopt --wire-enforcement`).\n"
+        "# KIT-OWNED: adopt/upgrade regenerates this file in place, so\n"
+        "# upstream enabler fixes land here on every `bootstrap.py upgrade` —\n"
+        "# hand edits are OVERWRITTEN. Put host-specific customizations in a\n"
+        "# SEPARATE workflow file, never in this one.\n"
+        "#\n"
+        "# Arms GitHub-native auto-merge on agent PRs at open, so a born-red\n"
+        "# session PR merges itself the moment the required check goes green.\n"
+        "# INERT until two one-time repo settings exist (owner UI — see the\n"
+        "# adopt report's repo-settings checklist):\n"
+        '#   1. Settings → General → Pull Requests → "Allow auto-merge" = ON.\n'
+        f"#   2. A ruleset on the default branch REQUIRING the '{context}'\n"
+        "#      status check.\n"
+        "# With NO required check, arming merges a PR INSTANTLY — the\n"
+        "# refuse-to-arm guard below counts required contexts and refuses on\n"
+        "# zero rather than inverting the gate.\n"
+        "#\n"
+        f"# CARVE-OUT: label `{AUTOMERGE_CARVEOUT_LABEL}` = never armed\n"
+        "# (job-level check + a fresh API re-read to defeat the stale-payload\n"
+        "# label race). The label is advisory routing; the required check\n"
+        "# going red is the enforcement.\n"
+        "name: auto-merge-enabler\n"
+        "on:\n"
+        "  pull_request:\n"
+        "    # `synchronize` (every push to the PR head) re-arms: arming is\n"
+        "    # idempotent and never merges anything itself — the merge stays\n"
+        "    # gated by the required check. This narrows the green-behind\n"
+        "    # stall: a fix-push or `git merge origin/<base>` re-arms on the\n"
+        "    # up-to-date head.\n"
+        "    types: [opened, reopened, ready_for_review, synchronize]\n"
+        "permissions:\n"
+        "  contents: write\n"
+        "  pull-requests: write\n"
+        "concurrency:\n"
+        "  group: auto-merge-enabler-${{ github.event.pull_request.number }}\n"
+        "  cancel-in-progress: false\n"
+        "jobs:\n"
+        "  enable-auto-merge:\n"
+        "    if: >-\n"
+        "      github.event.pull_request.head.repo.full_name == github.repository &&\n"
+        "      github.event.pull_request.draft == false &&\n"
+        f"      ({branch_expr}) &&\n"
+        "      !contains(github.event.pull_request.labels.*.name, "
+        f"'{AUTOMERGE_CARVEOUT_LABEL}')\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - name: Refuse to arm unless the base branch requires status "
+        "CONTEXTS\n"
+        "        id: rules\n"
+        "        env:\n"
+        "          GH_TOKEN: ${{ secrets.ROUTINE_PAT || secrets.GITHUB_TOKEN }}\n"
+        "        run: |\n"
+        "          # Count required check CONTEXTS, not rules: a\n"
+        "          # required_status_checks RULE with an empty context list\n"
+        "          # still lets an armed PR merge with nothing to wait for.\n"
+        "          contexts=\"$(gh api "
+        '"repos/$GITHUB_REPOSITORY/rules/branches/${{ github.base_ref }}" \\\n'
+        "            --jq '[.[] | select(.type == \"required_status_checks\")\n"
+        "                   | .parameters.required_status_checks // [] | "
+        ".[].context]')\"\n"
+        "          count=\"$(printf '%s' \"$contexts\" | python3 -c "
+        "'import json,sys; print(len(json.load(sys.stdin)))')\"\n"
+        '          echo "required contexts ($count): $contexts"\n'
+        '          echo "required=$count" >> "$GITHUB_OUTPUT"\n'
+        '          if [ "$count" = "0" ]; then\n'
+        '            echo "::warning::the base branch requires no status-check '
+        "CONTEXTS — arming would merge instantly. Refusing to arm; make "
+        f"'{context}' a required check first (see the adopt repo-settings "
+        'checklist)."\n'
+        "          fi\n"
+        f"      - name: Re-check the {AUTOMERGE_CARVEOUT_LABEL} label FRESH "
+        "(stale-payload race guard)\n"
+        "        id: label\n"
+        "        if: steps.rules.outputs.required != '0'\n"
+        "        env:\n"
+        "          GH_TOKEN: ${{ secrets.ROUTINE_PAT || secrets.GITHUB_TOKEN }}\n"
+        "          PR: ${{ github.event.pull_request.number }}\n"
+        "        run: |\n"
+        "          # The event payload snapshots labels at PR-open time; an\n"
+        "          # MCP-created PR gets its label in a SECOND call right\n"
+        "          # after create. Wait a grace beat, then re-read labels\n"
+        "          # from the API and refuse to arm if the label is present\n"
+        "          # NOW (the kit #22 incident class).\n"
+        "          sleep 15\n"
+        "          labels=\"$(gh api "
+        '"repos/$GITHUB_REPOSITORY/issues/$PR/labels" '
+        "--jq '[.[].name] | join(\",\")')\"\n"
+        '          echo "labels on re-read: $labels"\n'
+        '          case ",$labels," in\n'
+        f"            *,{AUTOMERGE_CARVEOUT_LABEL},*)\n"
+        f'              echo "{AUTOMERGE_CARVEOUT_LABEL} present on re-read '
+        '— refusing to arm."\n'
+        '              echo "skip=1" >> "$GITHUB_OUTPUT" ;;\n'
+        "            *)\n"
+        '              echo "skip=0" >> "$GITHUB_OUTPUT" ;;\n'
+        "          esac\n"
+        "      - name: Enable native auto-merge (squash)\n"
+        "        if: steps.rules.outputs.required != '0' && "
+        "steps.label.outputs.skip == '0'\n"
+        "        env:\n"
+        "          # Prefer a PAT so the eventual merge attributes to a real\n"
+        "          # user; GITHUB_TOKEN is the fallback.\n"
+        "          GH_TOKEN: ${{ secrets.ROUTINE_PAT || secrets.GITHUB_TOKEN }}\n"
+        "          PR: ${{ github.event.pull_request.number }}\n"
+        "        run: |\n"
+        '          if gh pr merge --auto --squash "$PR" --repo '
+        '"$GITHUB_REPOSITORY"; then\n'
+        f'            echo "Auto-merge enabled for PR #$PR — it merges when '
+        f"'{context}' is green.\"\n"
+        "          else\n"
+        '            echo "::warning::Could not enable auto-merge for PR #$PR. '
+        "Confirm: (1) 'Allow auto-merge' is ON, (2) the base branch requires "
+        f"the '{context}' check, (3) the token has Pull requests + Contents "
+        'write. On a repo shape where GitHub structurally refuses the arm '
+        "(born-red required checks with no pending window, or PR-required-"
+        "but-no-CI), REST merge-on-green is the landing path instead — see "
+        'docs/operations/auto-merge-guards.md."\n'
+        "          fi\n"
+    )
+
+
+def _regen_kit_owned_workflow(
+    root: Path,
+    config: Config,
+    relpath: str,
+    expected_text: str,
+    report: list[str],
+    *,
+    noun: str,
+    install_when_absent: bool,
+) -> None:
+    """Plant/regenerate one kit-owned live workflow (adopt step 6b shape).
+
+    The shared mechanism behind :data:`LIVE_CI_RELPATH` and
+    :data:`AUTOMERGE_ENABLER_RELPATH` (EAP program review §6.1 + §6.10):
+    an absent file is planted only when ``install_when_absent`` (the
+    ``--wire-enforcement`` opt-in — the kit never installs live CI
+    silently); once the file EXISTS it is kit-owned — regenerated in place
+    on every adopt/upgrade pass, with the #137 carve-out protection: host
+    additions are detected (:func:`gate_carveouts`), the full pre-regen copy
+    is banked content-hash-named under ``<state_dir>/backup/``, and each
+    carve-out is reported (upgrade surfaces them in ``upgrade-report.md``).
+    """
+    live_path = root / relpath
+    if live_path.is_file():
+        live_text = live_path.read_text(encoding="utf-8")
+        if live_text == expected_text:
+            report.append(f"kept: {relpath} (kit-owned, already current)")
+            return
+        carveouts = gate_carveouts(live_text, expected_text)
+        if carveouts:
+            digest = hashlib.sha256(live_text.encode("utf-8")).hexdigest()[:8]
+            stem = relpath.rsplit("/", 1)[-1]
+            stem = stem[: -len(".yml")] if stem.endswith(".yml") else stem
+            bank_rel = (
+                f"{config.state_dir}/{BACKUP_DIRNAME}/"
+                f"{stem}.pre-regen-{digest}.yml"
+            )
+            atomic_write_text(root / bank_rel, live_text)
+            for line in carveouts:
+                report.append(f"carve-out: {relpath} — {line}")
+            report.append(
+                f"carve-out: full pre-regen {noun} banked at {bank_rel} — "
+                "host additions were NOT carried into the regenerated "
+                f"kit-owned {noun}; move them into a separate workflow file "
+                "(e.g. .github/workflows/host-ci.yml) and commit that "
+                "before shipping this upgrade/adopt PR.",
+            )
+        atomic_write_text(live_path, expected_text)
+        report.append(
+            f"regenerated: {relpath} (kit-owned — template@new; "
+            "hand edits are overwritten, host carve-outs belong in a "
+            "separate workflow)",
+        )
+    elif install_when_absent:
+        _adopt_plant(live_path, relpath, expected_text, report)
+
+
+def _automerge_params(config: Config) -> tuple[list[str], str]:
+    """Return the enabler's (branch_patterns, required_context) from config.
+
+    Fallback-on-empty at the consumer (the ``heartbeat_files`` doctrine): a
+    stray ``{}``/``[]``/``""`` in ``substrate.config.json`` → ``automerge``
+    must not silently widen arming or blank the context name.
+    """
+    knobs = config.automerge if isinstance(config.automerge, dict) else {}
+    patterns = knobs.get("branch_patterns") or list(
+        DEFAULT_AUTOMERGE_BRANCH_PATTERNS,
+    )
+    context = str(
+        knobs.get("required_context") or DEFAULT_AUTOMERGE_REQUIRED_CONTEXT,
+    )
+    return [str(p) for p in patterns], context
+
+
+def _repo_settings_checklist(required_context: str) -> list[str]:
+    """Return the one-time repo-settings checklist (EAP §6.10, second half).
+
+    Adopt prints it whenever the live enabler is present: these are the
+    owner-UI toggles a planted workflow CANNOT set for itself — verified
+    live on the fleet (trading-strategy's "Allow auto-merge" is OFF, so its
+    enabler cannot arm anything until the owner flips it; a workflow has no
+    path to repo settings).
+    """
+    return [
+        "repo-settings checklist (one-time, owner UI — the planted "
+        "workflows are inert until these are set):",
+        '  1. Settings → General → Pull Requests → "Allow auto-merge" = ON '
+        "(a workflow cannot flip repo settings).",
+        f"  2. Require the '{required_context}' status check on the default "
+        "branch (Settings → Rules) — with NO required check, arming "
+        "auto-merge merges a PR instantly.",
+        '  3. Optional: "Automatically delete head branches" + auto-update '
+        "of PR branches (closes the merged-branch clutter and the "
+        "green-behind stall classes).",
+    ]
+
+
 def adopt(
     root: Path,
     config: Config,
@@ -9882,6 +10207,18 @@ def adopt(
         gate_text,
         report,
     )
+    # The auto-merge enabler stages right next to the gate (EAP §6.10): the
+    # two are halves of one pattern — the gate holds a born-red PR red, the
+    # enabler arms the merge that fires when the card flips green.
+    enabler_patterns, enabler_context = _automerge_params(config)
+    enabler_text = automerge_enabler_workflow(enabler_patterns, enabler_context)
+    enabler_rel = f"{config.state_dir}/ci/auto-merge-enabler.yml"
+    _adopt_stage(
+        state_base / "ci" / "auto-merge-enabler.yml",
+        enabler_rel,
+        enabler_text,
+        report,
+    )
 
     # (6) Explicit host opt-in: live .claude/ (still never overwrites).
     if include_claude:
@@ -9913,51 +10250,42 @@ def adopt(
     # opt-in signal after the first install. Hand edits are overwritten by
     # design — the generated header declares it and routes host carve-outs
     # to a separate workflow file.
-    live_gate = root / LIVE_CI_RELPATH
-    if live_gate.is_file():
-        live_text = live_gate.read_text(encoding="utf-8")
-        if live_text == gate_text:
-            report.append(f"kept: {LIVE_CI_RELPATH} (kit-owned, already current)")
-        else:
-            # Carve-out protection (superbot-games PR #16 class): a host that
-            # hand-added jobs/steps INSIDE the kit-owned gate — e.g. its only
-            # pytest job — must never lose them to a silent regen. Detect the
-            # additions, bank the full pre-regen copy under <state_dir>/backup/
-            # (content-hash-named, so successive regens never clobber an
-            # earlier bank), and report each carve-out explicitly (upgrade
-            # surfaces them in upgrade-report.md). The regen itself still
-            # happens — the gate stays kit-owned; the host relocates the
-            # banked additions into a separate workflow file.
-            carveouts = gate_carveouts(live_text, gate_text)
-            if carveouts:
-                digest = hashlib.sha256(live_text.encode("utf-8")).hexdigest()[:8]
-                bank_rel = (
-                    f"{config.state_dir}/{BACKUP_DIRNAME}/"
-                    f"substrate-gate.pre-regen-{digest}.yml"
-                )
-                atomic_write_text(root / bank_rel, live_text)
-                for line in carveouts:
-                    report.append(f"carve-out: {LIVE_CI_RELPATH} — {line}")
-                report.append(
-                    f"carve-out: full pre-regen gate banked at {bank_rel} — "
-                    "host additions were NOT carried into the regenerated "
-                    "kit-owned gate; move them into a separate workflow file "
-                    "(e.g. .github/workflows/host-ci.yml) and commit that "
-                    "before shipping this upgrade/adopt PR.",
-                )
-            atomic_write_text(live_gate, gate_text)
-            report.append(
-                f"regenerated: {LIVE_CI_RELPATH} (kit-owned — template@new; "
-                "hand edits are overwritten, host carve-outs belong in a "
-                "separate workflow)",
-            )
-    elif wire_enforcement:
-        _adopt_plant(
-            live_gate,
-            LIVE_CI_RELPATH,
-            gate_text,
-            report,
-        )
+    # Carve-out protection (superbot-games PR #16 class, shipped PR #137):
+    # a host that hand-added jobs/steps INSIDE a kit-owned workflow — e.g.
+    # its only pytest job — must never lose them to a silent regen. The
+    # shared helper detects the additions, banks the full pre-regen copy
+    # under <state_dir>/backup/ (content-hash-named, so successive regens
+    # never clobber an earlier bank), and reports each carve-out explicitly
+    # (upgrade surfaces them in upgrade-report.md). The regen itself still
+    # happens — the workflow stays kit-owned; the host relocates the banked
+    # additions into a separate workflow file.
+    _regen_kit_owned_workflow(
+        root,
+        config,
+        LIVE_CI_RELPATH,
+        gate_text,
+        report,
+        noun="gate",
+        install_when_absent=wire_enforcement,
+    )
+    # The auto-merge enabler (EAP §6.10) follows the gate's exact lifecycle:
+    # created only by --wire-enforcement, kit-owned once it exists (a
+    # hand-forked copy at the same path falls under kit ownership on the
+    # next adopt/upgrade pass — the point of the shared basename).
+    _regen_kit_owned_workflow(
+        root,
+        config,
+        AUTOMERGE_ENABLER_RELPATH,
+        enabler_text,
+        report,
+        noun="enabler",
+        install_when_absent=wire_enforcement,
+    )
+    if (root / AUTOMERGE_ENABLER_RELPATH).is_file():
+        # The §6.10 second half: the enabler is inert until two owner-UI
+        # repo settings exist — say so in the adopt output itself, every
+        # pass (the checklist is idempotent guidance, not a nag).
+        report.extend(_repo_settings_checklist(enabler_context))
 
     # (6b2) Lane-aware adopt: declare the just-planted lane heartbeat so the
     # status gate validates it (config mutated in place — cmd_adopt's

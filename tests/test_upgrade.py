@@ -432,6 +432,49 @@ def test_upgrade_pristine_gate_regen_stays_clean(tmp_path):
     assert "Gate carve-outs" not in report_text
 
 
+def test_upgrade_enabler_regen_surfaces_carveouts_in_the_report(tmp_path):
+    # EAP §6.10: the auto-merge enabler is kit-owned via the SAME mechanism
+    # as the gate — an upgrade regenerates a hand-forked enabler in place,
+    # reports host additions as carve-outs in upgrade-report.md, and banks
+    # the full pre-regen copy.
+    from engine.adopt import AUTOMERGE_ENABLER_RELPATH, automerge_enabler_workflow
+
+    root, config, backend = _adopted(tmp_path)
+    enabler = root / AUTOMERGE_ENABLER_RELPATH
+    enabler.parent.mkdir(parents=True)
+    hand_edited = automerge_enabler_workflow() + (
+        "  notify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - name: host notifier\n"
+        "        run: echo merged\n"
+    )
+    enabler.write_text(hand_edited, encoding="utf-8")
+    _fake_old_dist(root)
+    running = _fake_new_dist(tmp_path)
+    lines = run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    assert enabler.read_text(encoding="utf-8") == automerge_enabler_workflow()
+    assert any("host-added job 'notify'" in line for line in lines)
+    banked = list(
+        (root / config.state_dir / BACKUP_DIRNAME).glob(
+            "auto-merge-enabler.pre-regen-*.yml",
+        )
+    )
+    assert len(banked) == 1
+    assert banked[0].read_text(encoding="utf-8") == hand_edited
+    report_text = (root / config.state_dir / "upgrade-report.md").read_text(
+        encoding="utf-8",
+    )
+    assert "Gate carve-outs" in report_text
+    assert "host-added job 'notify'" in report_text
+
+
 def test_improved_note_names_the_posthoc_recovery_path(tmp_path, monkeypatch):
     # The apply window is single-shot (idea
     # upgrade-apply-docs-single-shot-window): after the transition a bare

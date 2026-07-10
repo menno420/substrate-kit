@@ -126,6 +126,29 @@ control fast lane and land on main fast. Legacy locations
 DEFAULT_CLAIMS_DIR = "control/claims"
 
 
+def _default_automerge() -> dict:
+    """Return the auto-merge-enabler knobs (EAP program review §6.10).
+
+    Parameterizes the kit-owned planted ``.github/workflows/
+    auto-merge-enabler.yml`` (see ``adopt.automerge_enabler_workflow``):
+
+    - ``branch_patterns`` — head-branch patterns the enabler arms on. A
+      trailing ``*`` is a prefix match (``claude/*`` → every ``claude/…``
+      head); anything else matches exactly. An empty list falls back to the
+      default at the consumer (the ``heartbeat_files`` doctrine: a
+      misconfiguration must not silently disable — or widen — the arming).
+    - ``required_context`` — the required status-check context the arming
+      message names (default ``substrate-gate``, the planted gate's job).
+      Informational only: the workflow's refuse-to-arm guard counts the
+      base branch's required contexts generically via the rules API, so a
+      wrong name here mislabels a log line, never the guard.
+    """
+    return {
+        "branch_patterns": ["claude/*"],
+        "required_context": "substrate-gate",
+    }
+
+
 def _default_badge_tokens() -> list[str]:
     """Return the default Status-badge taxonomy the doc checker accepts."""
     return [
@@ -200,6 +223,8 @@ class Config:
     # docs/owner/claims/) pins that path here; the pinned dir is then
     # canonical for that host and the legacy-location nudge never fires on it.
     claims_dir: str = DEFAULT_CLAIMS_DIR
+    # Auto-merge-enabler knobs (EAP §6.10 — see _default_automerge above).
+    automerge: dict = field(default_factory=_default_automerge)
 
     def to_json(self) -> str:
         """Serialise the config to indented, key-sorted JSON."""

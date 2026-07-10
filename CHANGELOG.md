@@ -17,6 +17,38 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Auto-merge enabler workflow planted by the kit + repo-settings one-time
+  checklist in adopt** (EAP program review 2026-07-10 §6.10 — adopters
+  hand-forked this repo's `.github/workflows/auto-merge-enabler.yml` or
+  lacked it entirely). `engine.adopt.automerge_enabler_workflow()` generates
+  the enabler (the superbot Q-0123 pattern: arm GitHub-native auto-merge on
+  agent PRs at open, `synchronize` re-arm, same-repo fork guard, the
+  refuse-to-arm guard counting the base branch's required status CONTEXTS
+  via the rules API, and the `do-not-automerge` carve-out — job-level skip
+  plus the fresh-API-re-read stale-payload race guard). Lifecycle mirrors
+  `substrate-gate.yml` exactly (§6.1 mechanism): **staged always** at
+  `<state_dir>/ci/auto-merge-enabler.yml`, **installed live** at
+  `.github/workflows/auto-merge-enabler.yml` only by
+  `adopt --wire-enforcement`, and **kit-owned once it exists** — every
+  adopt/upgrade regenerates it in place with the #137 carve-out protection
+  (host additions detected, pre-regen copy banked content-hash-named under
+  `<state_dir>/backup/`, carve-outs reported and surfaced in
+  `upgrade-report.md`); the gate and enabler now share one
+  `_regen_kit_owned_workflow` mechanism. Parameterized via
+  `substrate.config.json` → `automerge` (`branch_patterns`, default
+  `["claude/*"]`, trailing-`*` prefix match, fallback-on-empty so a
+  misconfiguration never widens arming; `required_context`, default
+  `substrate-gate`, informational). Adopt additionally prints the
+  **repo-settings one-time checklist** whenever the live enabler is present
+  ("Allow auto-merge" ON · required check on the default branch · optional
+  auto-delete/auto-update branches — owner-UI toggles a workflow cannot
+  set). Known adopter boundaries documented in
+  `docs/operations/auto-merge-guards.md` § "The kit-planted enabler":
+  trading-strategy's "Allow auto-merge" is OFF (standing owner item);
+  fleet-manager's R21 wall (GitHub structurally refuses the arm on
+  born-red/no-CI shapes — REST merge-on-green is that shape's landing
+  path).
+
 - **Control-plane grammar centralized in one kit-owned constants module —
   `src/engine/grammar.py`** (EAP program review 2026-07-10 §6.8 — the
   ORDER/OWNER-ACTION grammar lived implicitly in the control templates while
