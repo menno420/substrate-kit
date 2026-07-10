@@ -44,6 +44,7 @@ from engine.checks.check_status_current import check_status_current
 from engine.checks.check_orientation_budget import check_orientation_budget
 from engine.checks.check_seam_authority import check_seam_authority
 from engine.checks.check_session_log import check_log, latest_session_log
+from engine.checks.check_setup_script import check_setup_script
 from engine.contextpack import generate_packs, load_pack_index
 from engine.currency import (
     ADOPTERS_RELPATH,
@@ -733,6 +734,12 @@ def cmd_check(
         target,
         status_files=config.heartbeat_files,
     )
+    # Setup-script contract (EAP §6.5): advisory-only, like every nudge
+    # above — the planted scripts/env-setup.sh is host-owned after adopt,
+    # so contract drift (fatal posture / missing exit 0 / secret literal)
+    # migrates by nag, never a required-check red. Full lane only: the hook
+    # is not control-lane traffic (emitted below with the adopters block).
+    setup_advisories = check_setup_script(target)
     # The inbox append-only gate (issue #36 report 2): a control/inbox.md
     # change must be pure-append vs the merge-base + ORDER-grammar shaped.
     # Rides the finding loop like every checker; engages only when CI handed
@@ -872,6 +879,26 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=xref_advisories,
+        )
+    if setup_advisories and not status_only:
+        # Same warn-only contract as the advisories above (EAP §6.5): the
+        # setup-script hook is host-owned after planting — a contract nudge
+        # (fatal posture, missing exit 0, secret-shaped literal) is surfaced
+        # + telemetry-recorded, never counted toward the exit code, so no
+        # adopter's hand-rolled script can red a required check on upgrade.
+        _emit(
+            f"check: {len(setup_advisories)} setup-script contract advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in setup_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=setup_advisories,
         )
     if adopters_advisories and not status_only:
         # Same warn-only contract as the advisories above (EAP §6.3): a

@@ -85,6 +85,18 @@ ADOPT_PLAN: list[tuple[str, str]] = [
     # homes (docs/owner/claims/, root claims/). Shared across lanes like
     # inbox.md/README.md — a --lane adopt never re-plants it.
     ("control-claims-README.md.tmpl", "control/claims/README.md"),
+    # The setup-script contract hook (EAP program review §6.5): every fleet
+    # environment's archetype setup shim prefers a repo's own
+    # scripts/env-setup.sh (fleet-manager environments/templates/
+    # setup-universal.sh), so the kit plants the contract-conformant hook —
+    # always exit 0, defensive posture, no secret values, guarded installs.
+    # Slot-free by design: a shell file must never carry the markdown
+    # UNRENDERED banner, and shell `$var` syntax must never read as an
+    # interview slot (tests pin both). Root-level on purpose (a hook the
+    # environment shim executes, not documentation): _adopt_dest's docs_root
+    # remap never applies. check_setup_script is the enforcer half
+    # (advisory-only); skip-if-exists keeps every hand-rolled script.
+    ("env-setup.sh.tmpl", "scripts/env-setup.sh"),
 ]
 
 # State key holding {planted relpath: sha256 hex} for every doc the kit last
