@@ -202,7 +202,25 @@ def classify_planted_docs(
                 template_name,
                 context,
             )
-        if doc_is_untouched(backend, rel, current):
+        untouched = doc_is_untouched(backend, rel, current)
+        if not untouched and _normalize_dates(new_render) == _normalize_dates(
+            current,
+        ):
+            # Self-heal a lost hash record (companion idea
+            # upgrade-rollback-loses-doc-hash-records): `upgrade --rollback`
+            # restores the pre-upgrade state.json, discarding every
+            # planted_doc_hashes entry the upgrade's adopt pass recorded — so
+            # on a re-run a doc the kit itself wrote carries no hash and would
+            # classify diverged, taking it out of --apply-docs' reach. A
+            # byte-match against the NEW template render (date-normalized)
+            # *proves* the doc is untouched kit-form; recording the hash
+            # recovers a lost record from ground truth, not a provenance lie. A
+            # doc a consumer actually edited never byte-matches and stays
+            # honestly diverged; and a byte-match to the new render only ever
+            # yields `unchanged`, so nothing is auto-applied that would not be.
+            record_doc_hash(backend, rel, current)
+            untouched = True
+        if untouched:
             if _normalize_dates(new_render) == _normalize_dates(current):
                 row["class"] = CLASS_UNCHANGED
                 row["note"] = "template identical across versions"
@@ -388,9 +406,18 @@ def run_upgrade(
         report.append(line)
     improved = [r for r in rows if r["class"] == CLASS_IMPROVED]
     if improved and not apply_docs:
+        # The apply window is THIS version transition only: once the vendored
+        # dist is the new one, a bare re-run parses the already-new templates
+        # and can never yield a template-improved row again (idea
+        # upgrade-apply-docs-single-shot-window). Name the recovery path that
+        # actually works rather than a bare "re-run with --apply-docs" no-op.
         report.append(
             f"note: {len(improved)} doc(s) have template improvements you "
-            "never edited — re-run with --apply-docs to take them.",
+            "never edited — take them by re-running THIS upgrade with "
+            "--apply-docs before its inputs are cleaned up. The apply window "
+            "is this transition only: once it closes, the recovery is "
+            "`upgrade --rollback` then a re-run with --apply-docs (a bare "
+            "re-run now parses the already-new templates and finds nothing).",
         )
 
     # (5) Replace the vendored file with the running (new) one — only when the

@@ -63,28 +63,11 @@ story, the frontmatter keeps the score.
   — state: captured; origin: lab (v1.6.0 fleet rollout — observed on both
   consumer upgrade runs, superbot-next#96 + websites#45: post-run, the
   improved-docs classification can never recur, so the report's "re-run with
-  --apply-docs" hint is a no-op); next: a groomed-ideas increment ships
-  post-hoc apply against the banked archived dist (guard recipe in the
+  --apply-docs" hint is a no-op); the **interim hint correction shipped
+  kit PR #92** (the note now names the `--rollback` + re-run recovery); next:
+  a groomed-ideas increment still owes the full post-hoc apply against the
+  banked archived dist — recovery *without* rollback (guard recipe in the
   file); ordinary lane, engine fix → dist byte-pin.
-- [`upgrade --rollback` + re-run loses the adopt-pass doc-hash records](upgrade-rollback-loses-doc-hash-records-2026-07-09.md)
-  — state: captured; origin: lab (v1.6.0 fleet rollout — the rollback
-  recovery path restores pre-upgrade state.json, discarding
-  `planted_doc_hashes`, so kit-written docs re-classify consumer-diverged);
-  next: a groomed-ideas increment records the hash when a kept doc
-  byte-matches the new template render (guard recipe in the file); ordinary
-  lane, engine fix → dist byte-pin.
-- [Upgrade report shows only the NEW dist's `archived:` line](upgrade-archive-report-line-gap-2026-07-09.md)
-  — state: captured; origin: lab (**third field report** of the same
-  confusion — seen again on superbot-next#96 + websites#45; cosmetic but
-  priority-bumped on repetition); next: a groomed-ideas increment makes the
-  idempotent `archive_dist` path print `(already banked)` instead of
-  silence (guard recipe in the file); one-liner, engine fix → dist byte-pin.
-- [Upgrade checklist: place `release.json` next to `bootstrap.py.new`](upgrade-checklist-release-json-placement-2026-07-09.md)
-  — state: captured; origin: lab (v1.6.0 fleet rollout — the checklist never
-  mentions `release.json`, and without the adjacent file the sha256
-  self-verification silently skips); next: a groomed-ideas increment adds
-  the checklist line (+ optionally a "verification skipped" report note);
-  ordinary lane, `src/build_release_json.py` + release-notes test.
 - [Rubric F-5 wording: "none regressing" vs the 7k-budget yardstick](rubric-f5-none-regressing-wording-2026-07-09.md)
   — state: captured; origin: lab (B1 run `2026-07-09-run02` — the first
   clean M1 measurement made two readings of the pinned F-5 text produce
@@ -138,6 +121,23 @@ story, the frontmatter keeps the score.
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [Upgrade report shows only the NEW dist's `archived:` line](upgrade-archive-report-line-gap-2026-07-09.md)
+  — **shipped** kit PR #92 (2026-07-10, gen-2 upgrade-UX batch): the
+  idempotent `archive_dist` early return prints
+  `archived: <rel> (already banked)` instead of silence, so an upgrade whose
+  OLD dist was already banked still accounts for it explicitly (third field
+  report of the same confusion). Window closes 2026-08-09.
+- [`upgrade --rollback` + re-run loses the adopt-pass doc-hash records](upgrade-rollback-loses-doc-hash-records-2026-07-09.md)
+  — **shipped** kit PR #92 (2026-07-10, gen-2 upgrade-UX batch): self-heal in
+  `classify_planted_docs` — a doc that byte-matches the new template render is
+  provably kit-form, so its hash is recovered from ground truth; a rollback +
+  re-run round-trip regains the hash coverage the first run achieved (consumer
+  edits never byte-match and stay diverged). Window closes 2026-08-09.
+- [Upgrade checklist: place `release.json` next to `bootstrap.py.new`](upgrade-checklist-release-json-placement-2026-07-09.md)
+  — **shipped** kit PR #92 (2026-07-10, gen-2 upgrade-UX batch): the
+  `ADOPTER_CHECKLIST` step 1 names `release.json` beside `bootstrap.py.new`
+  and the silent-skip consequence when it is absent (the "report says so"
+  second line already shipped). Window closes 2026-08-09.
 - [run_ab prepare vs the P0 engagement gate](run-ab-prepare-engagement-arc-2026-07-09.md)
   — **shipped** kit PR #95 (2026-07-10, run-2 follow-ups): `cmd_prepare`
   walks the ON-arm RED→ENGAGED→GREEN arc itself (deterministic seed-derived

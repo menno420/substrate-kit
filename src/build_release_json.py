@@ -62,9 +62,14 @@ _META_RE = re.compile(
 ADOPTER_CHECKLIST = """\
 ## Adopter upgrade checklist
 
-1. **Run the upgrade**: download `bootstrap.py` from this release next to
-   your vendored copy as `bootstrap.py.new`, then
-   `python3 bootstrap.py.new upgrade` (archive-first; `--rollback` undoes).
+1. **Run the upgrade**: download `bootstrap.py` **and `release.json`** from
+   this release next to your vendored copy (as `bootstrap.py.new` and
+   `release.json`), then `python3 bootstrap.py.new upgrade` (archive-first;
+   `--rollback` undoes). The upgrade verifies `bootstrap.py.new`'s sha256 +
+   version against the adjacent `release.json` and self-cleans both
+   afterwards — **without `release.json` sitting beside it the verification
+   silently skips** (the report says so, but you lose the tamper/corruption
+   check).
 2. **Verify the gate**: `python3 bootstrap.py check --strict` → green on
    your tree (fix findings before shipping the upgrade PR).
 3. **Verify engagement**: the post-adopt engagement gate stays green — no

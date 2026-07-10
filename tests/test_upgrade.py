@@ -11,7 +11,12 @@ import pytest
 
 pytest.importorskip("engine.hooks.settings")
 
-from engine.adopt import BACKUP_DIRNAME, DOC_HASHES_STATE_KEY, adopt
+from engine.adopt import (
+    BACKUP_DIRNAME,
+    DOC_HASHES_STATE_KEY,
+    adopt,
+    doc_is_untouched,
+)
 from engine.lib.config import KIT_VERSION, Config, load_config
 from engine.lib.state import JsonStateBackend, default_state
 from engine.render import load_templates
@@ -187,13 +192,60 @@ def test_both_moved_is_diverged_with_a_template_delta(tmp_path):
     assert "New guidance paragraph." in row["diff"]
 
 
-def test_no_recorded_hashes_means_everything_diverges(tmp_path):
-    # Pre-1.0 installs have no recorded hashes: honest and safe — nothing is
-    # ever auto-applied.
+def test_no_recorded_hashes_and_no_byte_match_stays_diverged(tmp_path):
+    # No recorded hashes AND no byte-match to any known template render →
+    # honestly diverged, nothing auto-applied. Self-heal (idea
+    # upgrade-rollback-loses-doc-hash-records) only recovers a hash when the
+    # doc byte-matches a render, so a doc matching nothing on record stays
+    # diverged.
     root, config, backend = _adopted(tmp_path)
     backend.set(DOC_HASHES_STATE_KEY, {})
-    rows = classify_planted_docs(root, config, backend, None)
+    # Diverge every NEW template render from what is on disk so no byte-match
+    # can self-heal a hash back.
+    new_templates = {
+        name: text + "\nan unmatched new paragraph\n"
+        for name, text in load_templates().items()
+    }
+    rows = classify_planted_docs(root, config, backend, None, new_templates)
+    assert rows
     assert {r["class"] for r in rows} == {CLASS_DIVERGED}
+
+
+def test_self_heal_recovers_a_lost_hash_on_new_template_byte_match(tmp_path):
+    # `upgrade --rollback` restores the pre-upgrade state.json, discarding the
+    # adopt-pass planted_doc_hashes; on the re-run a kit-written doc would carry
+    # no hash and classify diverged, out of --apply-docs' reach (idea
+    # upgrade-rollback-loses-doc-hash-records). A byte-match to the NEW template
+    # render proves the doc is untouched kit-form, so classify records the hash
+    # from ground truth and the doc reads unchanged — restoring the hash
+    # coverage the first run achieved.
+    root, config, backend = _adopted(tmp_path)
+    # Simulate the rollback wiping every recorded hash.
+    backend.set(DOC_HASHES_STATE_KEY, {})
+    rows = classify_planted_docs(root, config, backend, load_templates())
+    assert rows
+    assert {r["class"] for r in rows} == {CLASS_UNCHANGED}
+    # The hash coverage is back: every kept kit-form doc is untouched again.
+    for row in rows:
+        rel = row["relpath"]
+        text = (root / rel).read_text(encoding="utf-8")
+        assert doc_is_untouched(backend, rel, text), rel
+    # A consumer-edited doc still never self-heals (it does not byte-match):
+    # with no hashes and no old templates on record it stays honestly diverged.
+    edited = root / "docs" / "architecture.md"
+    edited.write_text(
+        edited.read_text(encoding="utf-8") + "\nconsumer note\n",
+        encoding="utf-8",
+    )
+    backend.set(DOC_HASHES_STATE_KEY, {})
+    rows_edited = classify_planted_docs(root, config, backend, None)
+    by_rel = {r["relpath"]: r for r in rows_edited}
+    assert by_rel["docs/architecture.md"]["class"] == CLASS_DIVERGED
+    assert not doc_is_untouched(
+        backend,
+        "docs/architecture.md",
+        edited.read_text(encoding="utf-8"),
+    )
 
 
 def test_apply_docs_touches_only_the_improved_untouched_class(tmp_path):
@@ -271,6 +323,34 @@ def test_run_upgrade_archives_replaces_and_reports(tmp_path):
     assert report.is_file()
     assert f"v0.9.0 → v{KIT_VERSION}" in report.read_text(encoding="utf-8")
     assert any("sha256 verification skipped" in line for line in lines)
+
+
+def test_improved_note_names_the_real_recovery_path(tmp_path, monkeypatch):
+    # The apply window is single-shot (idea
+    # upgrade-apply-docs-single-shot-window): after the transition a bare
+    # `upgrade --apply-docs` re-run parses the already-new templates and finds
+    # nothing, so the skipped-apply note must point at the recovery that
+    # actually works (rollback + re-run), never a bare "re-run with
+    # --apply-docs to take them" no-op.
+    root, config, backend = _adopted(tmp_path)
+    _fake_old_dist(root, {"architecture.md.tmpl": "old ${project_name}"})
+    running = _fake_new_dist(tmp_path)
+    # Make the NEW architecture template improve on the planted (untouched)
+    # doc so classify yields a template-improved row and the note fires.
+    improved = dict(load_templates())
+    improved["architecture.md.tmpl"] += "\nNew guidance paragraph.\n"
+    monkeypatch.setattr("engine.upgrade.load_templates", lambda: improved)
+    lines = run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+        apply_docs=False,
+    )
+    note = next(line for line in lines if "template improvements you" in line)
+    assert "--rollback" in note
+    assert "re-run with --apply-docs to take them" not in note
 
 
 def test_run_upgrade_verifies_release_json_when_present(tmp_path):
