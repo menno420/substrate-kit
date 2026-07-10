@@ -24,7 +24,7 @@ THIS LANE — merged PRs across the gen-2 waves this session (verified against m
 - #113 — v1.7.0 (MINOR) release-prep bump: version + CHANGELOG + dist re-pin (93c7bdb) — the prep half that made tonight's dispatch pass its refuse-to-release guard
 Sibling lanes the same window (NOT this lane's — for context only): #85 (B1 run-3), #93/#94/#95/#96/#97/#98 (run-2 follow-ups, pr92-adopt, capability-xref), #102/#103 (adopt --lane), #105/#108 (visiting gba-homebrew Track B), #107/#109/#110 (night-cap docs-reconcile). Queue truth reconciled in docs/gen2/queue-state.md.
 
-orders: acked=001,002,003,004,005,006,007,008,009 done=001,002,003,004,005,006,007,008,009 — standing-default + coordinator-relayed queue fully executed
+orders: acked=001,002,003,004,005,006,007,008,009 done=001,002,003,004,005,006,007,008,009 — standing-default + coordinator-relayed queue fully executed · claimed-by: B1-run-4 kit-lab-gen2 2026-07-10T09:18:06Z
 PING-ACK ORDER 009 · discovered 2026-07-09T18:07:30Z · via mid-session inbox check (ack landed on main 18:12Z via #65, before resuming, per the order)
 
 NO new order ≥010 — inbox ends at ORDER 009 (headers read `status: new` because only the manager flips them; diff the inbox against this orders line — the gen-2 rule). No unexecuted order exists. control/inbox.md untouched this close.
