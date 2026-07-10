@@ -120,22 +120,19 @@
   `docs/ideas/` (`score-m1-mutation-artifacts` ·
   `t5-headless-guard-surface` · `model-line-checker-false-red`).
 - **B1's SECOND FIRING is RECORDED — VERDICT: FAIL (strict F-5, advisory
-  per KF-5; RULED 2026-07-10: Reading A per ORDER 011 — the FAIL stands
-  un-caveated)** (run `2026-07-09-run02`, judge claude-opus-4-8; row 2 + run
+  per KF-5; RULED Reading A, ORDER 011 — un-caveated)** (run
+  `2026-07-09-run02`, judge claude-opus-4-8; row 2 + run
   dir, PR #44). First **clean** M1 (the #40-fixed scorer): **M1
   regressed** — OFF wins T2/T4, T5 near-tie — while ON wins M2 + M3,
   in-budget (max 2,272), zero unrecoverable errors. Judge's shape:
-  continuity + write-back wins at bounded orientation cost; the judge's
-  "purposive Reading B would PASS" observation is retired by the ruling
-  (`bench/results/cold-start/f5-ruling-order-011.md`). Run-2
+  continuity + write-back wins at bounded orientation cost. Run-2
   follow-ups filed in `docs/ideas/`: the F-5 wording owner brief
-  (`rubric-f5-none-regressing-wording`, pin path), the make_seed
-  `yield`-keyword bug (run-2's seed deviated 424242 → 424243 by rule),
+  (since RULED — Reading A, ORDER 011), the make_seed
+  `yield`-keyword bug,
   the prepare-engagement arc + `render --live` CLAUDE.md gap, and run-2
   evidence on `t5-headless-guard-surface` (incl. the last-card gate gap).
 - **B1's THIRD FIRING is RECORDED — VERDICT: FAIL (strict F-5, advisory
-  per KF-5; RULED 2026-07-10: Reading A per ORDER 011 — the FAIL stands
-  un-caveated)** (run `2026-07-10-run03`,
+  per KF-5; RULED Reading A, ORDER 011 — un-caveated)** (run `2026-07-10-run03`,
   seed 710301 northride, kit v1.6.0 ENGAGED, judge claude-fable-5; row 3
   of `bench/results/cold-start/index.json` + committed run dir, PR #85).
   Run-2's shape, sharper: **M1 to OFF on all pairs**, **ON wins M2**
@@ -143,20 +140,18 @@
   **and M3** (durable write-back twice), max ON footprint 2,521 ≪ 7k,
   zero unrecoverable errors. Family-first: a genuine **session-time
   guard fire** (ON-T4 mid-session `check --strict` red → repaired →
-  green). Deviations verbatim in the run dir: T5 guard probe n/a
-  headless (third run); spawn harness ignored model orders — **judge =
-  arm model (claude-fable-5 everywhere)**. **First legal KF-8
+  green). Deviations verbatim in the run dir: T5 probe n/a
+  headless; spawn harness ignored model orders — **judge =
+  arm model**. **First legal KF-8
   trend statement (3 rows):** the benefit is consistent in KIND — ON
   wins M2 + M3 every run, always in-budget, zero unrecoverable errors —
   while scripted M1 goes to OFF in every *clean* measurement (runs 2–3),
-  so the strict headline was 1 PASS / 2 FAIL at 3 rows. Trend caveats at
-  the time: both FAILs hung on the then-disputed "none regressing"
-  wording — **retired 2026-07-10 by the Reading-A ruling (ORDER 011)**;
-  version/seed/judge confounds mean the trend is the repeated
-  per-measure pattern, not the raw numbers.
+  so the strict headline was 1 PASS / 2 FAIL at 3 rows (the wording
+  dispute since retired by the Reading-A ruling); version/seed/judge
+  confounds mean the trend is the repeated per-measure pattern, not the
+  raw numbers.
 - **B1's FOURTH FIRING is RECORDED — VERDICT: FAIL under BOTH F-5
-  readings** (dual-scored while OWNER-ACTION 1 was still unruled —
-  immaterial this run, and the Reading-A ruling has since landed;
+  readings** (dual-scored pre-ruling — immaterial, both readings agree;
   `2026-07-10-run04`, seed 710402 harborride, kit v1.7.0, judge
   claude-opus-4-8 / arms claude-sonnet-5, transcript-verified; row 4 +
   run dir, PR #116). **First 0-of-3 run:** M1 to OFF on T2/T4 (ON wins
@@ -169,22 +164,16 @@
   reproduce. Deviations verbatim in the run dir. **KF-8 trend at 4
   rows:** the "ON wins M2+M3 every run" consistency is **broken**;
   in-budget + zero-unrecoverable still hold every run; headline
-  **1 PASS / 3 FAIL** (run 1 PASS; runs 2, 3, 4 FAIL — un-caveated
-  under the Reading-A ruling, ORDER 011); confounds: 4 kit versions,
+  **1 PASS / 3 FAIL**, un-caveated under the Reading-A ruling
+  (ORDER 011); confounds: 4 kit versions,
   fresh seeds, judge drift, run-4 alone Sonnet-arms + live hooks.
 - **The F-5 RULING is DELIVERED — Reading A (strict), 2026-07-10**
-  (inbox ORDER 011, P0 — owner delegation Q-0262.1 via the superbot
-  router; family annotation
-  `bench/results/cold-start/f5-ruling-order-011.md`). Runs 2–3 are
-  re-scored under Reading A: both recorded strict-FAIL verdicts stand
-  **un-caveated** (the "Reading B would PASS" caveats are retired; the
-  immutable rows/run dirs are superseded by the annotation file, never
-  edited — append-only law). Cold-start family headline, no dual-reading
-  caveat: **1 PASS / 3 FAIL**. Honest-negative headlines are the fleet's
-  credibility asset — that is the why behind A. The "B1 run-5 WAITS for
-  the F-5 ruling" hold is CLEARED (`docs/gen2/next-boot.md`) — the
-  B-bench queue is unblocked (no bench fired by the ruling slice
-  itself). OWNER-ACTION 1 is RESOLVED in `control/status.md`.
+  (ORDER 011, owner delegation Q-0262.1;
+  `bench/results/cold-start/f5-ruling-order-011.md`, PR #128). Runs 2–3
+  stand as **un-caveated FAILs** (immutable rows superseded, never
+  edited); headline **1 PASS / 3 FAIL** — honest-negative
+  headlines are the fleet's credibility asset. The run-5 WAIT hold is
+  CLEARED; OWNER-ACTION 1 RESOLVED.
 - **KL-7 (the adopt-engage gate) is DONE** (owner-directed P0 off the
   independent fleet review, superbot `docs/eap/fleet-review-2026-07-09.md`
   §4; D-0006; PR #25): both fresh adopters had stranded identically —
@@ -423,23 +412,20 @@ on the next touch and never accretes here; adopted from the groomed-ideas-1
 
 **→ Post-overnight (2026-07-10 night-cap):** gen-2 boot + overnight run
 DONE — 9 of 12 queue items landed (~00:30–05:00Z; PR numbers reconciled in
-[`docs/gen2/queue-state.md`](gen2/queue-state.md)). **Queue update
-(2026-07-10, ORDER 011): the F-5 ruling is DELIVERED (Reading A) — the
-B-bench queue is UNBLOCKED and B1 run-5 is free to fire.** T5 still
-awaits a daytime `do-not-automerge` PR (pin path); the rest is owner-gated
-(P10/P4/P5/P8/P11-or-P13 — the ⚑ OWNER-ACTION list in
-`control/status.md`; item 1, the F-5 ruling, is RESOLVED).
+[`docs/gen2/queue-state.md`](gen2/queue-state.md)). **ORDER 011: the
+F-5 ruling is DELIVERED (Reading A) — B1 run-5 free
+to fire.** T5 still awaits a daytime `do-not-automerge` PR (pin path);
+the rest is owner-gated (P10/P4/P5/P8/P11-or-P13 — OWNER-ACTION 2–12 in
+`control/status.md`).
 
 ### Owner gates — each with its one-line unblock
 
 *(Stale #17 rubric-bless gate removed — owner merged it 2026-07-09,
 D-0005; #26/#49 owner-merged 2026-07-10.)*
 
-1. ✅ **Rubric F-5 A/B wording ruling — RESOLVED 2026-07-10: Reading A**
-   (inbox ORDER 011, owner delegation Q-0262.1;
-   `bench/results/cold-start/f5-ruling-order-011.md`): the run-2/run-3
-   strict FAILs stand un-caveated; family headline **1 PASS / 3 FAIL**;
-   B-benches unpaused (run-5 free to fire).
+1. ✅ **Rubric F-5 ruling — RESOLVED 2026-07-10: Reading A** (ORDER 011,
+   Q-0262.1): runs 2–3 stand as un-caveated FAILs; headline
+   **1 PASS / 3 FAIL**; B-benches unpaused.
 2. **👤 Ratify or veto PL-010 (#22)** — the `feature build` task-class
    ruling. ⚑ **#22 merged mechanically, not by review** (label-race
    incident — timeline in the #22 comment; fresh-label guard deployed).
@@ -480,9 +466,8 @@ D-0005; #26/#49 owner-merged 2026-07-10.)*
    Model-line false-red `_adopt_sessions_readme`/checker-message fix —
    shipped in PR #95, see Recently shipped)*: what remains is the T5
    guard-surface shape choice (⚑ pin path → `do-not-automerge`); the
-   rubric F-5 wording ruling is **DELIVERED — Reading A** (ORDER 011,
-   2026-07-10; `rubric-f5-none-regressing-wording-2026-07-09.md` is
-   resolved, runs 2–3 stand as un-caveated FAILs).
+   F-5 wording ruling is **DELIVERED — Reading A** (ORDER 011,
+   2026-07-10).
 3. **Remaining KL-6 blocked pieces, as gates open**: kit-lab console lane
    real data (needs #17 **and** P11-or-P13 — until then the lane stays
    declared-with-contract, never fake rows); B2/B3/B4 sweeps in the loop
@@ -505,7 +490,7 @@ D-0005; #26/#49 owner-merged 2026-07-10.)*
   (full lane ledger in `.sessions/2026-07-10-gen2-final-close.md`; PR
   numbers verified at the night-cap reconcile): **#84** walking-skeleton
   breadcrumb · **#85** B1 run-3 recorded (row 3, first KF-8 trend,
-  strict-F-5 FAIL, then disputed — since RULED Reading A, ORDER 011) ·
+  strict-F-5 FAIL, since RULED Reading A) ·
   **#86** engagement-gate
   comment-leniency fix · **#87** inbox append-only + ORDER-grammar
   checker (+ **#89** writer-identity honest note) · **#90** claim-aware

@@ -9,6 +9,8 @@ outcome: shipped
 
 # Rubric F-5 wording: "none regressing" vs the 7k-budget-as-M1-yardstick intent (2026-07-09)
 
+> **Status:** `ideas`
+>
 > **RULED 2026-07-10 — Reading A (the strict, pinned letter).** Delivered by
 > inbox **ORDER 011** (P0, owner delegation Q-0262.1, superbot router; ruling
 > record shipped by PR #128). This is fix option 3 below — "the strict text
@@ -17,8 +19,6 @@ outcome: shipped
 > B-benches unpaused. Record:
 > `bench/results/cold-start/f5-ruling-order-011.md`. The brief below is
 > preserved as written (historical).
-
-> **Status:** `ideas`
 >
 > **State:** captured (B1 record session, run `2026-07-09-run02`). This is
 > a **decision brief for the OWNER** — `bench/rubric/` is a PIN PATH
