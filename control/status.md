@@ -1,6 +1,6 @@
 # substrate-kit · status
-updated: 2026-07-10T02:03:31Z
-phase: gen-1 WIND-DOWN COMPLETE — ready for archive + a fresh gen-2 session. Succession pack live at docs/gen2/ (boot: docs/gen2/next-boot.md, queue truth: docs/gen2/queue-state.md, capstone retro: docs/retro/project-review-2026-07-09-gen1-winddown.md; shipped as PR #74). v1.6.0 fleet rollout complete (#75: both active adopters ENGAGED on v1.6.0 — superbot-next#96, websites#45). Inbox drained (001–009 done); owner queue = the 11 OWNER-ACTION items below (all verified-current at wind-down). Gen-2 boots from docs/gen2/next-boot.md.
+updated: 2026-07-10T02:06:10Z
+phase: gen-2 kit-lab session BOOTED (2026-07-10) — walking skeleton proven (claim PR #80: branch → PR → fast-lane CI → auto-merge, merged in ~28s); B1 run-3 claimed (orders line below) and next, unblocked by the owner-ratified merges of #26 (PL-011) + #49 (seed fix).
 health: green
 kit: v1.6.0 · check: green · engaged: yes
 last-shipped: #74 — gen-1 wind-down deliverables (succession pack docs/gen2/ + capstone retro docs/retro/project-review-2026-07-09-gen1-winddown.md + 4 upgrade-UX idea files + queue-state truth); #75 — fleet rollout v1.6.0 complete (both adopters ENGAGED, registry updated); this PR — wind-down-complete marker (control-only)
