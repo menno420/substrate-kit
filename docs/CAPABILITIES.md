@@ -61,6 +61,11 @@ credential is missing:
   MCP-tools-only.
 - **Environment / routine / Project creation**: owner-click actions in the
   console — queue them under `⚑ needs-owner`, never wait silently.
+  **CORRECTED 2026-07-10 for ROUTINES** — routine creation is agent-side via
+  `create_trigger` on the `claude-code-remote` MCP server (see the append-log
+  entry below; coordinator-lane record, trigger
+  `trig_01FnqnAQjLU2T8d16iHwWQ2h`). Environment and Project creation remain
+  unverified-as-agent-side; attempt before flagging (THE DISCOVERY RULE).
 - **Self-merge classifier**: sessions can be refused merging owner-gated PRs
   while their other capabilities work — and the boundary differs by session
   kind (a child session was refused where a coordinator was not). Record
@@ -79,6 +84,24 @@ credential is missing:
 
 Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
 
+- 2026-07-10 · capability · **routine (scheduled-wake) creation is
+  AGENT-SIDE — correcting the "routine creation = owner clicks" wall above
+  for routines.** A Project session can arm its own recurring wake via the
+  MCP tool `create_trigger` on the `claude-code-remote` MCP server (the
+  scheduling surface available to Project sessions): name "kit-lab gen2
+  hourly wake" · cron_expression `0 * * * *` · a one-line wake prompt.
+  Recurring cron was supported directly — no `send_later` re-arm chain
+  needed. · evidence (COORDINATOR-LANE RECORD, 2026-07-10 — transcribed by
+  the ORDER 010 build session, not re-verified from its surface): trigger
+  `trig_01FnqnAQjLU2T8d16iHwWQ2h`, enabled=true, created
+  2026-07-10T01:56:06Z, bound to the kit-lab coordinator session
+  (persistent_session_id `session_01Gb1Dq9vgeNkTyBPvvPqTrj`); first fire
+  received 2026-07-10T02:02Z, ~10 consecutive hourly fires observed through
+  12:26Z with no refusal/error. · scope caveat: verified for a
+  bind-to-existing-session cron routine; fresh-session-per-fire scheduling
+  with console options (model class, branch-push, auto-fix) is UNVERIFIED —
+  attempt `create_trigger` first before flagging a schedule as owner-only
+  (ORDER 008 / THE DISCOVERY RULE).
 - 2026-07-10 · capability+recipe · **release-cutting is AGENT-SIDE on this
   repo — correcting the earlier "release = owner action" assumption.**
   `release.yml` accepts `workflow_dispatch` with input `version=X.Y.Z` (no
