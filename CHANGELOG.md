@@ -15,6 +15,27 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+**Benchmark outcome (KF-5 — travels into the next release's notes):** B1
+cold-start run-4 recorded post-release on v1.7.0 (`2026-07-10-run04`, seed
+710402 harborride, first clean scripted prepare via the #95 engagement arc,
+arms claude-sonnet-5 / judge claude-opus-4-8 both transcript-verified) —
+VERDICT: **FAIL under BOTH F-5 readings** (dual-scored while OWNER-ACTION 1
+is unruled; the dispute is immaterial this run). First 0-of-3 run: M1 to OFF
+on T2/T4 (ON wins the T5 pair — the family's first clean ON M1 win), and
+**M2 + M3 to OFF for the first time** (auto-drafted card never opened, no
+durable write-back, T5 guard advisories ignored with a RED close); in-budget
+max 2113 ≪ 7k, zero unrecoverable errors. Family firsts: hooks LIVE (the T5
+guard probe finally measured — fired yes, obeyed no), model orders took
+effect (stronger-judge separation restored), and run-3's
+cardless-T5-stays-green gate gap did not reproduce (the v1.7.0 auto-draft
+holds strict RED). **KF-8 trend at 4 rows:** the runs-1–3 "ON wins M2+M3
+every run" consistency is **broken**; what holds every run is in-budget
+orientation + zero unrecoverable errors; strict headline **1 PASS / 3
+FAIL**, with runs 2–3 (not run-4) still hanging on the disputed wording.
+Confounds: 4 runs, 4 kit versions, fresh seeds, judge drift, and run-4
+alone ran Sonnet-class arms with live hooks. Row 4 + raw run dir:
+`bench/results/cold-start/`.
+
 ## [1.7.0] - 2026-07-10
 
 New-capability release (MINOR) folding the kit-lab enforcement + adopter-findings

@@ -17,9 +17,8 @@
 > — how every fleet repo handles the kit: per-repo verdicts (kit OK ·
 > superbot OK-pin-only · superbot-next DEGRADED · websites OK-recovered),
 > the kit's-own-promises proofs, the shipped fast-lane status gate
-> (decision ledgered in `docs/decisions.md`, PR #35), friction filings #36–#39, the context
-> self-sufficiency lens with the **cite-never-copy ⚑ owner ruling** it
-> needs, and the 5-item ⚑ needs-owner list.
+> (ledgered in `docs/decisions.md`, PR #35), friction filings #36–#39,
+> the cite-never-copy ⚑ owner ruling ask, and the ⚑ needs-owner list.
 
 ## Stability baseline
 
@@ -114,53 +113,36 @@
   fresh-label race guard. Suite 587 → 609.
 
 - **B1's FIRST FIRING is RECORDED — VERDICT: PASS** (run `2026-07-09-run01`,
-  judge claude-opus-4-8, independent; row 1 of
-  `bench/results/cold-start/index.json` + the committed run dir, PR #28).
-  One-line caveats that travel with the PASS: ON wins **M2** (T4 resumed
-  from a genuinely-used handoff card) and **M3** (durable T2 write-back vs
-  chat-only notes); **M1 unmeasurable** (all 3 pairs scorer-tainted — two
-  runner-flagged regex artifacts + a judge-found failed-Edit count); **T5
-  guard probe n/a** (headless arms never engaged the hook layer). **D5's
-  done-condition now HOLDS** (the cold-start index has ≥1 row). The three
-  harness follow-ups are filed in `docs/ideas/`
-  (`score-m1-mutation-artifacts` · `t5-headless-guard-surface` ·
-  `model-line-checker-false-red`, all `-2026-07-09.md`) for run-2 fixes;
-  a trend claim still needs ≥3 paired runs (KF-8).
+  judge claude-opus-4-8; row 1 + run dir, PR #28). Caveats that travel:
+  ON wins M2 (handoff used) + M3 (durable write-back); **M1 unmeasurable**
+  (all 3 pairs scorer-tainted); T5 guard probe n/a (headless). **D5's
+  done-condition HOLDS** (≥1 row). Harness follow-ups filed in
+  `docs/ideas/` (`score-m1-mutation-artifacts` ·
+  `t5-headless-guard-surface` · `model-line-checker-false-red`).
 - **B1's SECOND FIRING is RECORDED — VERDICT: FAIL (strict F-5, advisory
-  per KF-5)** (run `2026-07-09-run02`, judge claude-opus-4-8, independent;
-  row 2 of `bench/results/cold-start/index.json` + the committed run dir,
-  PR #44). First **clean** M1 measurement (the #40-fixed scorer, all six
-  values scripted): **M1 regressed** — OFF wins T2 (556 vs 1706) and T4
-  (1481 vs 2272), T5 near-tie (511 vs 531) — while **ON wins M2** (the T4
-  session resumed from a genuinely-used handoff card; OFF re-derived from
-  source) **and M3** (durable write-back, twice), every ON session far
-  inside the 7k budget (max 2,272), zero unrecoverable errors. The honest
-  shape, in the judge's words: continuity + write-back wins at a bounded,
-  in-budget orientation cost; a purposive reading (the 7k budget as M1's
-  yardstick) would PASS, but the pinned rubric text doesn't license it —
-  strict FAIL stands. **Family at 2 rows; a trend claim still needs ≥3
-  (KF-8).** Run-2 follow-ups filed in `docs/ideas/`: the rubric F-5
-  wording **owner decision brief** (`rubric-f5-none-regressing-wording` —
-  pin path, owner-gated), the make_seed `yield`-keyword bug (pin-path fix
-  → `do-not-automerge`; run-2's seed deviated 424242 → 424243 by rule),
-  the prepare-vs-engagement-gate arc + the `render --live` CLAUDE.md gap
-  (ordinary lane), and run-2 evidence added to `t5-headless-guard-surface`
-  (guard probe n/a again on the fully-ENGAGED arm + the new last-card
-  gate gap).
+  per KF-5)** (run `2026-07-09-run02`, judge claude-opus-4-8; row 2 + run
+  dir, PR #44). First **clean** M1 (the #40-fixed scorer): **M1
+  regressed** — OFF wins T2/T4, T5 near-tie — while ON wins M2 + M3,
+  in-budget (max 2,272), zero unrecoverable errors. Judge's shape:
+  continuity + write-back wins at bounded orientation cost; purposive
+  Reading B would PASS but the pinned text doesn't license it. Run-2
+  follow-ups filed in `docs/ideas/`: the F-5 wording owner brief
+  (`rubric-f5-none-regressing-wording`, pin path), the make_seed
+  `yield`-keyword bug (run-2's seed deviated 424242 → 424243 by rule),
+  the prepare-engagement arc + `render --live` CLAUDE.md gap, and run-2
+  evidence on `t5-headless-guard-surface` (incl. the last-card gate gap).
 - **B1's THIRD FIRING is RECORDED — VERDICT: FAIL (strict F-5, advisory
   per KF-5; disputed pending the F-5 ruling, now OWNER-ACTION 1)** (run `2026-07-10-run03`,
   seed 710301 northride, kit v1.6.0 ENGAGED, judge claude-fable-5; row 3
   of `bench/results/cold-start/index.json` + committed run dir, PR #85).
-  Run-2's shape, sharper: **M1 to OFF on all pairs** (2004/2521/721 vs
-  562/967/509; ON's T2/T4 endpoint is the born-red-card Write), **ON
-  wins M2** (T4 resumed from T2's card AND shipped its queued
-  docstring fix) **and M3** (durable write-back twice), max ON footprint
-  2,521 ≪ 7k, zero unrecoverable errors. Family-first: a genuine
-  **session-time guard fire** (ON-T4 mid-session `check --strict` red →
-  repaired → green). Deviations recorded verbatim in the run dir: T5
-  guard probe n/a headless (third run); spawn harness ignored model
-  orders — **judge = arm model (claude-fable-5 everywhere)**, arms-equal
-  control held, judge separation by invocation only. **First legal KF-8
+  Run-2's shape, sharper: **M1 to OFF on all pairs**, **ON wins M2**
+  (T4 resumed from T2's card AND shipped its queued docstring fix)
+  **and M3** (durable write-back twice), max ON footprint 2,521 ≪ 7k,
+  zero unrecoverable errors. Family-first: a genuine **session-time
+  guard fire** (ON-T4 mid-session `check --strict` red → repaired →
+  green). Deviations verbatim in the run dir: T5 guard probe n/a
+  headless (third run); spawn harness ignored model orders — **judge =
+  arm model (claude-fable-5 everywhere)**. **First legal KF-8
   trend statement (3 rows):** the benefit is consistent in KIND — ON
   wins M2 + M3 every run, always in-budget, zero unrecoverable errors —
   while scripted M1 goes to OFF in every *clean* measurement (runs 2–3),
@@ -168,6 +150,23 @@
   hang on the disputed "none regressing" wording (Reading B would make
   all three PASS-shaped), and version/seed/judge confounds mean the
   trend is the repeated per-measure pattern, not the raw numbers.
+- **B1's FOURTH FIRING is RECORDED — VERDICT: FAIL under BOTH F-5
+  readings** (dual-scored, OWNER-ACTION 1 unruled but immaterial this
+  run; `2026-07-10-run04`, seed 710402 harborride, kit v1.7.0, judge
+  claude-opus-4-8 / arms claude-sonnet-5, transcript-verified; row 4 +
+  run dir, PR #116). **First 0-of-3 run:** M1 to OFF on T2/T4 (ON wins
+  the T5 pair — first clean ON M1 win); **M2 + M3 to OFF for the first
+  time** (auto-drafted card never opened, no durable write-back, T5
+  guard advisories IGNORED, RED close); in-budget max 2113, zero
+  unrecoverable errors. Family firsts: first clean scripted prepare
+  (#95 arc), hooks LIVE (T5 guard probe measured: fired yes, obeyed
+  no), model orders honored, run-3's cardless-T5 gate gap did not
+  reproduce. Deviations verbatim in the run dir. **KF-8 trend at 4
+  rows:** the "ON wins M2+M3 every run" consistency is **broken**;
+  in-budget + zero-unrecoverable still hold every run; strict headline
+  **1 PASS / 3 FAIL**, runs 2–3 (not run-4) still hanging on the
+  disputed wording; confounds: 4 kit versions, fresh seeds, judge
+  drift, run-4 alone Sonnet-arms + live hooks.
 - **KL-7 (the adopt-engage gate) is DONE** (owner-directed P0 off the
   independent fleet review, superbot `docs/eap/fleet-review-2026-07-09.md`
   §4; D-0006; PR #25): both fresh adopters had stranded identically —
