@@ -1,6 +1,6 @@
 # 2026-07-10 — gen-2 session close: status.md + capabilities merge-wall recipe
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** claude-opus-4-8 · high · gen-2 kit-lab deliberate session-close write
 
