@@ -1,6 +1,6 @@
 # 2026-07-10 — gen-2: adopter findings batch (owner-action tokens + fast-CI arm-race + parallel-worker worktree)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** claude-opus-4-8 · high · gen-2 kit-lab deliberate adopter-findings session
 
@@ -49,3 +49,23 @@ adopter (fresh kit v1.6.0 adopter), bundled into ONE PR.
 - Full suite → 781 passed; ruff clean.
 
 Card flips to `complete` in the last commit.
+
+## 💡 Session idea
+
+The three findings share one root: an adopter's honest usage diverges from the
+kit's canonical form in low-stakes ways (shorthand tokens, fast CI, shared
+clones), and the kit should meet that usage where it's safe (accept the
+shorthand) and name the failure where it isn't (worktrees, REST fallback).
+Worth a periodic "adopter-divergence sweep": grep the checker token sets against
+the shipped templates each release so checker<->template drift is caught by a
+test, not an adopter.
+
+## Previous-session review
+
+Previous-session review: the prior gen-2 session-close (`2026-07-10-gen2-session-close.md`)
+left `docs/CAPABILITIES.md` as the durable adopter-facing walls/recipes surface and
+confirmed the enabler-lands-READY-PRs recipe (#84/#86/#87). This session builds on
+that surface directly — both new append-log entries (fast-CI arm race, parallel-worker
+race) sit above that same self-merge recipe, and the PR is again opened READY for the
+enabler to land. No regressions in the prior session's writes.
+
