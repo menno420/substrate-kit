@@ -55,6 +55,9 @@ MODULE_ORDER = (
     # After check_status_current.py: reuses its heartbeat_relpaths + path
     # constants (ORDER 007 order-claim hygiene advisory).
     "checks/check_claims.py",
+    # After check_status_current.py: reuses its heartbeat_relpaths + path
+    # constants (queue item 8 OWNER-ACTION ↔ CAPABILITIES cross-reference).
+    "checks/check_capability_xref.py",
     "ledger.py",
     "loop/kpis.py",
     "loop/reflections.py",
