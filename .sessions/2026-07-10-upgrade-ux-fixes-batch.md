@@ -1,6 +1,6 @@
 # 2026-07-10 — gen-2: four upgrade-UX fixes (v1.6.0 rollout)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** claude-opus-4-8 · high · gen-2 kit-side upgrade-UX batch (one
   PR bundling four ordinary-lane fixes filed live during the v1.6.0 fleet
@@ -75,4 +75,17 @@ rollout.
 
 ## Outcome
 
-*(filled at close-out — see the final commit.)*
+Shipped three of the four fixes fully — idempotent-archive report line,
+release.json checklist line, and the rollback hash self-heal — each with the
+guard its idea file prescribes, and marked their idea files `promoted` /
+`outcome: shipped` in this PR (README moved Backlog → Shipped). The fourth
+(`--apply-docs` single-shot window) ships only its **interim** slice: the report
+hint now names the working recovery path (`--rollback` then re-run), while the
+idea's full post-hoc-apply mechanism is larger than this bundle and stays
+`open` for a groomed-ideas increment.
+
+Verification: `python3 dist/bootstrap.py check --strict` green; full suite
+773 → 777 passing (4 new guard tests); `ruff check` clean; `dist/bootstrap.py`
+regenerated from the engine changes. No pin path touched; `bench/` and the
+`control/` heartbeat/inbox left alone.
+
