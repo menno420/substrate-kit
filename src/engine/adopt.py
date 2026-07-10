@@ -266,9 +266,21 @@ def _adopt_stage(path: Path, relpath: str, text: str, report: list[str]) -> None
 
 
 def _adopt_sessions_readme(markers: list[dict[str, str]]) -> str:
-    """Compose the one-paragraph ``.sessions/README.md`` (born-red convention)."""
-    labels = ", ".join(m.get("label", "") for m in markers if m.get("label"))
-    labels = labels or "(no markers configured)"
+    """Compose the one-paragraph ``.sessions/README.md`` (born-red convention).
+
+    Each marker renders as ``label (`needle`)`` — the exact byte-form the
+    session-log checker scans for, not just its human name. Labels alone were
+    the run-1 ON-arm false-red (idea model-line-checker-false-red-2026-07-09):
+    a cold session that read this README learned "Model line" but had no way
+    to learn the ``📊 Model:`` needle, wrote a reasonable ``> **Model:**``
+    line, and stayed red against a card that visibly carried a Model line.
+    """
+    pairs = ", ".join(
+        f"{m['label']} (`{m['needle']}`)" if m.get("needle") else m["label"]
+        for m in markers
+        if m.get("label")
+    )
+    pairs = pairs or "(no markers configured)"
     return (
         "# Session logs\n\n"
         "Per-session logs live here as `<date>-<slug>.md`, newest first. "
@@ -277,7 +289,8 @@ def _adopt_sessions_readme(markers: list[dict[str, str]]) -> str:
         "parallel sessions, then flip it to `complete` as the deliberate LAST "
         "step once the close-out is written — a half-done session never reads "
         "as finished. Before it counts as complete, a log must carry these "
-        f"markers: {labels}.\n\n"
+        "markers, each written with its exact backticked byte-form: "
+        f"{pairs}.\n\n"
         "If the card is missing at session end, the kit **auto-drafts** one "
         "from evidence (files touched, git HEAD movement, the verify "
         "command); an in-progress card missing its close-out gets the "

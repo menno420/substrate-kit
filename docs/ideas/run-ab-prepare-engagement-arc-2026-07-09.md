@@ -1,19 +1,19 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 95
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-10
+outcome: shipped
 ---
 
 # run_ab prepare vs the P0 engagement gate: prepare should drive (or knowingly script) the RED→ENGAGED→GREEN arc (2026-07-09)
 
 > **Status:** `ideas`
 >
-> **State:** captured (B1 record session, run `2026-07-09-run02`).
-> `bench/run_ab.py` is **NOT** a pin path — this is an **ordinary-lane
-> fix** (no `do-not-automerge` needed).
+> **State:** captured (B1 record session, run `2026-07-09-run02`) →
+> promoted → **shipped** (kit PR #95, 2026-07-10, run-2 follow-ups
+> session). `bench/run_ab.py` is **NOT** a pin path — ordinary lane.
 
 ## The gap (found live, run-2 prepare)
 

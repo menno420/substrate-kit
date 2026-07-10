@@ -97,18 +97,6 @@ story, the frontmatter keeps the score.
   seed; runner deviated to 424243 by rule, manifest `runner_notes`);
   next: fix + prepare-runs-the-seed-suite smoke (guard recipe in the
   file); ⚑ `bench/seeds/` is a PIN PATH → the fix rides `do-not-automerge`.
-- [run_ab prepare vs the P0 engagement gate](run-ab-prepare-engagement-arc-2026-07-09.md)
-  — state: captured; origin: lab (run-2 prepare — the post-run-1 KL-7
-  gate holds a bare adopt born-red, so prepare's smoke fails by design
-  and the runner hand-engaged the ON arm + hand-wrote the manifest);
-  next: a groomed-ideas increment scripts the RED→ENGAGED→GREEN arc into
-  `cmd_prepare` (ordinary lane — `run_ab.py` is NOT pin-path).
-- [Engine gap: `render --live` cannot fill `.claude/CLAUDE.md`](render-live-claude-md-gap-2026-07-09.md)
-  — state: captured; origin: lab (run-2 prepare — `check_engagement`
-  flags the file's unrendered banner while the render verb skips it; the
-  KL-7 checklist can't be completed by its own commands); next: a
-  groomed-ideas increment makes `render --live` cover it (or documents
-  the exemption) + a zero-findings smoke leg; engine fix, dist byte-pin.
 - [`bootstrap heartbeat` — a mechanical status.md writer](heartbeat-verb-2026-07-09.md)
   — state: captured; origin: lab (band KL-8 — the moment the heartbeat
   became enforced, its hand-formatted timestamp became the weakest link;
@@ -144,19 +132,31 @@ story, the frontmatter keeps the score.
   `kit:` heartbeat line + docs/adopters.md); the board-cell rendering then
   travels to menno420/websites as a parse+badge increment (guard recipe in
   the file).
-- [ON-arm "missing: Model line" persistent red — needle vs card format](model-line-checker-false-red-2026-07-09.md)
-  — state: captured; origin: lab (B1 run 2026-07-09-run01 — judge-flagged
-  PL-006 material); **investigated 2026-07-09 (PR #40):** resolved to the
-  arm-authoring-gap side, traced to the planted `.sessions/README.md`
-  listing marker labels without their needle byte-forms
-  (`_adopt_sessions_readme()`); separate from the harvest-shadowing bug PR
-  #40 fixed; next: plant `label (needle)` pairs + a needle-naming checker
-  message (guard recipe in the file).
 
 ## Shipped (survive window open)
 
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
+
+- [run_ab prepare vs the P0 engagement gate](run-ab-prepare-engagement-arc-2026-07-09.md)
+  — **shipped** kit PR #95 (2026-07-10, run-2 follow-ups): `cmd_prepare`
+  walks the ON-arm RED→ENGAGED→GREEN arc itself (deterministic seed-derived
+  answers, `render --live`, staged-gate install, first card, seed
+  heartbeat), asserts `check --strict` exit 0, and writes `manifest.json`
+  on the failure path too (`smoke_failed`); an e2e test pins the green arc.
+  Window closes 2026-08-09.
+- [Engine gap: `render --live` cannot fill `.claude/CLAUDE.md`](render-live-claude-md-gap-2026-07-09.md)
+  — **shipped** kit PR #95 (2026-07-10, fix shape (a)): `render --live`
+  iterates the engagement gate's own `scan_relpaths()` scope, so the render
+  verb and the gate can never disagree about whose job a planted file is;
+  test pins zero `unrendered-*` findings across ALL gate-scoped files after
+  the arc. Window closes 2026-08-09.
+- [ON-arm "missing: Model line" persistent red — needle vs card format](model-line-checker-false-red-2026-07-09.md)
+  — **shipped** kit PR #95 (2026-07-10, both remaining halves after the
+  PR #40 investigation): the planted `.sessions/README.md` renders
+  ``label (`needle`)`` byte-form pairs, and a checker miss reports as
+  ``label (expected `needle`)`` — a red now names the exact form instead of
+  contradicting the visible card. Window closes 2026-08-09.
 
 - [score_m1: mutation-regex + failed-tool-event artifacts](score-m1-mutation-artifacts-2026-07-09.md)
   — **shipped** kit PR #40 (2026-07-09, run-2 harness prep): read-only fd

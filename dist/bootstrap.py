@@ -1440,8 +1440,24 @@ missing markers rather than printing.
 
 
 
+def _marker_miss(marker: Mapping[str, str]) -> str:
+    """Name one missed marker: its label AND the exact byte-form expected.
+
+    ``Model line (expected `📊 Model:`)`` instead of a bare ``Model line`` —
+    the run-1 ON-arm false-red lesson (idea
+    model-line-checker-false-red-2026-07-09): a card visibly carrying a
+    ``> **Model:**`` line red as "missing: Model line" tells the agent
+    nothing about WHICH byte-form the needle scan wanted. A red must name
+    the expected form, never contradict what the agent can see on the card.
+    """
+    label = marker.get("label", "?") or "?"
+    needle = marker.get("needle", "")
+    return f"{label} (expected `{needle}`)" if needle else label
+
+
 def missing_markers(text: str, markers: Sequence[Mapping[str, str]]) -> list[str]:
-    """Return the labels of markers whose needle is absent from ``text``.
+    """Return, for each marker whose needle is absent from ``text``, its
+    label plus the expected byte-form (see :func:`_marker_miss`).
 
     Tolerant of partial host-config entries: a marker without a ``needle`` is
     skipped (nothing to search for) rather than raising, and a missing
@@ -1449,7 +1465,7 @@ def missing_markers(text: str, markers: Sequence[Mapping[str, str]]) -> list[str
     """
     lower = text.lower()
     return [
-        m.get("label", "?")
+        _marker_miss(m)
         for m in markers
         if m.get("needle") and m.get("needle", "").lower() not in lower
     ]
@@ -1522,7 +1538,7 @@ def check_log(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
-        return [m["label"] for m in markers]
+        return [_marker_miss(m) for m in markers]
     missing = missing_markers(text, markers)
     fills = unresolved_fill_count(text)
     if fills:
@@ -4271,10 +4287,13 @@ def ensure_draft(root: Path, config: Config, backend: Any) -> list[str]:
         if not status_in_progress(text):
             return []  # completed card — consumer-owned, never touched
         missing = check_log(card, config.session_markers)
-        missing_labels = {m for m in missing if not m.startswith("a completed Status")}
-        if not missing_labels:
+        missing_misses = {m for m in missing if not m.startswith("a completed Status")}
+        if not missing_misses:
             return []  # close-out already written; only the status flip remains
-        markers = [m for m in config.session_markers if m.get("label") in missing_labels]
+        # check_log reports each miss as "label (expected `needle`)" — map it
+        # back to the configured marker via the same formatter so the drafted
+        # stand-ins can never drift from what the checker said was missing.
+        markers = [m for m in config.session_markers if _marker_miss(m) in missing_misses]
         section = draft_close_out(evidence, markers)
         atomic_write_text(card, text.rstrip("\n") + "\n\n" + section)
         return [
@@ -8395,9 +8414,21 @@ def _adopt_stage(path: Path, relpath: str, text: str, report: list[str]) -> None
 
 
 def _adopt_sessions_readme(markers: list[dict[str, str]]) -> str:
-    """Compose the one-paragraph ``.sessions/README.md`` (born-red convention)."""
-    labels = ", ".join(m.get("label", "") for m in markers if m.get("label"))
-    labels = labels or "(no markers configured)"
+    """Compose the one-paragraph ``.sessions/README.md`` (born-red convention).
+
+    Each marker renders as ``label (`needle`)`` — the exact byte-form the
+    session-log checker scans for, not just its human name. Labels alone were
+    the run-1 ON-arm false-red (idea model-line-checker-false-red-2026-07-09):
+    a cold session that read this README learned "Model line" but had no way
+    to learn the ``📊 Model:`` needle, wrote a reasonable ``> **Model:**``
+    line, and stayed red against a card that visibly carried a Model line.
+    """
+    pairs = ", ".join(
+        f"{m['label']} (`{m['needle']}`)" if m.get("needle") else m["label"]
+        for m in markers
+        if m.get("label")
+    )
+    pairs = pairs or "(no markers configured)"
     return (
         "# Session logs\n\n"
         "Per-session logs live here as `<date>-<slug>.md`, newest first. "
@@ -8406,7 +8437,8 @@ def _adopt_sessions_readme(markers: list[dict[str, str]]) -> str:
         "parallel sessions, then flip it to `complete` as the deliberate LAST "
         "step once the close-out is written — a half-done session never reads "
         "as finished. Before it counts as complete, a log must carry these "
-        f"markers: {labels}.\n\n"
+        "markers, each written with its exact backticked byte-form: "
+        f"{pairs}.\n\n"
         "If the card is missing at session end, the kit **auto-drafts** one "
         "from evidence (files touched, git HEAD movement, the verify "
         "command); an in-progress card missing its close-out gets the "
@@ -8816,8 +8848,16 @@ def _adoption_evidence(config: Any, state: dict) -> bool:
     return bool(config.kit_version) or bool(state.get("kit_version"))
 
 
-def _scan_relpaths(config: Any) -> list[str]:
-    """Return the planted relpaths the unrendered scan covers."""
+def scan_relpaths(config: Any) -> list[str]:
+    """Return the planted relpaths the unrendered scan covers.
+
+    Public on purpose: ``render --live`` iterates this SAME list, so the
+    render verb and the engagement gate can never disagree about whose job a
+    planted file is. The run-2 gap (idea render-live-claude-md-gap-2026-07-09)
+    was exactly that disagreement — the gate counted ``.claude/CLAUDE.md``'s
+    unrendered banner/slots as strict-RED while the render path skipped the
+    file, stranding every fresh adopter mid-checklist.
+    """
     relpaths = [_adopt_dest(plan_rel, config) for _, plan_rel in ADOPT_PLAN]
     relpaths.extend(EXTRA_SCAN_RELPATHS)
     return relpaths
@@ -8831,7 +8871,7 @@ def _unrendered_findings(
 ) -> list[Finding]:
     """Scan the planted docs for the UNRENDERED banner / leftover ``${...}``."""
     findings: list[Finding] = []
-    for rel in _scan_relpaths(config):
+    for rel in scan_relpaths(config):
         path = target / rel
         if not path.is_file():
             continue
@@ -9605,10 +9645,17 @@ def _render_live(target: Path, context: dict[str, str], backend: Any) -> int:
     while preserving every hand edit around them. Returns the leftover count.
     Every rewrite re-records the doc's sha256 (the §4.3 "kit last wrote this"
     provenance the upgrade diff keys on).
+
+    The render set is :func:`engine.checks.check_engagement.scan_relpaths` —
+    the SAME list the engagement gate scans — so the two surfaces can never
+    disagree about whose job a planted file is. They used to: ``render
+    --live`` iterated only the ``ADOPT_PLAN`` docs while the gate also
+    counted ``.claude/CLAUDE.md``, so an ``--include-claude`` adopter's
+    checklist could not reach GREEN by its own named commands (run-2 finding,
+    idea render-live-claude-md-gap-2026-07-09).
     """
     leftover_total = 0
-    for _, plan_rel in ADOPT_PLAN:
-        rel = _adopt_dest(plan_rel, load_config(target))
+    for rel in scan_relpaths(load_config(target)):
         path = target / rel
         if not path.exists():
             continue

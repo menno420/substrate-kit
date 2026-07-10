@@ -146,6 +146,84 @@ def test_prepare_seed_suite_smoke_aborts_on_red_seed(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# run_ab prepare — the ON-arm engagement arc (RED→ENGAGED→GREEN, KL-7)
+# ---------------------------------------------------------------------------
+
+
+def test_seed_answers_are_deterministic_and_seed_derived():
+    a = run_ab._seed_answers(710301, "northride")
+    b = run_ab._seed_answers(710301, "northride")
+    assert a == b  # byte-reproducible across runs — no ad-hoc runner answers
+    assert set(a) == set(run_ab.ENGAGE_SLOTS)
+    assert a["project_name"] == "northride"
+    assert a["integration_mode"] == "guided"
+    # Generic answers clear every substance floor (max min_len in the bank
+    # is 20) and carry the seed for provenance.
+    assert all(len(v) >= 6 for v in a.values())
+    assert "seed-710301" in a["ownership_model"]
+
+
+def test_prepare_walks_the_engagement_arc_to_green(tmp_path):
+    # Idea run-ab-prepare-engagement-arc-2026-07-09 done-when: prepare on the
+    # current kit produces an ON arm that passes its own smoke
+    # (check --strict exit 0) with ZERO manual runner steps, manifest written.
+    run_id = "2026-07-15-run01"
+    rc = run_ab.main(
+        ["prepare", "--run-id", run_id, "--seed", "3", "--tasks", "T2", "--out", str(tmp_path)]
+    )
+    assert rc == 0
+    run_dir = tmp_path / run_id
+    manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert "smoke_failed" not in manifest
+    assert "check --strict exit=0" in manifest["smoke"]
+    on_repo = run_dir / "on" / "repo"
+    # The arc engaged the arm: rendered working agreement (the run-2
+    # render-live gap), a complete first card, a real heartbeat.
+    claude_md = (on_repo / ".claude" / "CLAUDE.md").read_text(encoding="utf-8")
+    assert "${" not in claude_md
+    assert not claude_md.startswith("> ⚠️ **UNRENDERED SLOTS BELOW")
+    assert list((on_repo / ".sessions").glob("*-adoption.md"))
+    assert "updated: " in (on_repo / "control" / "status.md").read_text(encoding="utf-8")
+    # …and an independent re-run of the arm's own gate agrees it is GREEN.
+    result = subprocess.run(
+        [sys.executable, "bootstrap.py", "check", "--strict"],
+        cwd=on_repo,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_prepare_writes_manifest_with_smoke_failed_marker(tmp_path, monkeypatch):
+    # The failure path leaves evidence: manifest.json with smoke_failed
+    # instead of nothing (run-2's hand-written-manifest lesson).
+    def boom(on_repo, run_id, seed, project):
+        raise SystemExit("SMOKE FAILED — simulated arc failure")
+
+    monkeypatch.setattr(run_ab, "_engage_on_arm", boom)
+    with pytest.raises(SystemExit, match="simulated arc failure"):
+        run_ab.main(
+            [
+                "prepare",
+                "--run-id",
+                "2026-07-15-run02",
+                "--seed",
+                "3",
+                "--tasks",
+                "T2",
+                "--out",
+                str(tmp_path),
+            ]
+        )
+    manifest = json.loads(
+        (tmp_path / "2026-07-15-run02" / "manifest.json").read_text(encoding="utf-8")
+    )
+    assert manifest["smoke_failed"] is True
+    assert manifest["run_id"] == "2026-07-15-run02"
+    assert manifest["seed"] == 3
+
+
+# ---------------------------------------------------------------------------
 # score_m1 — words before the first mutating action
 # ---------------------------------------------------------------------------
 
