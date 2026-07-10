@@ -594,12 +594,36 @@ def test_live_ci_workflow_selects_the_card_from_the_diff():
     assert "--session-log" in text
     assert "git diff --name-only" in text
     assert "'.sessions/*.md'" in text
-    # No card in the diff -> the argument is omitted (the engine falls back).
-    assert '${card:+--session-log "$card"}' in text
+    # No card in the diff -> an explicitly named ABSENT sentinel (advisory per
+    # the engine contract), never the bare mtime fallback: on a fresh checkout
+    # the fallback latches onto the mid-session in-progress card and reds
+    # every unrelated PR (adopter live-fire, gba-homebrew PR #3, 2026-07-10).
+    assert "--session-log .sessions/__no-card-in-diff__.md" in text
+    assert '${card:+--session-log "$card"}' not in text
     # A custom sessions_dir threads through, README excluded from selection.
     custom = live_ci_workflow(sessions_dir="journal")
     assert "'journal/*.md'" in custom
     assert ":!journal/README.md" in custom
+    assert "--session-log journal/__no-card-in-diff__.md" in custom
+    assert "--session-log journal/__born-red-card-added__.md" in custom
+
+
+def test_live_ci_workflow_gates_added_cards_advisory_but_locks_modified_ones():
+    text = live_ci_workflow()
+    # A card ADDED by the PR is a born-red heartbeat (first-commit conventions
+    # REQUIRE an in-progress card at birth); under --strict the locked door
+    # reds ANY incomplete card, so a heartbeat could never merge green
+    # (adopter live-fire: gba-homebrew PR #2). Added cards gate advisory via
+    # the absent sentinel; modified cards (close-out flips) keep the full
+    # --require-session-log locked door.
+    assert "--diff-filter=A" in text
+    assert "--session-log .sessions/__born-red-card-added__.md" in text
+    assert '[ "$card" != "$added" ]' in text
+    # The locked door still exists — on the modified-card branch only.
+    assert 'check --strict --require-session-log --session-log "$card"' in text
+    # The interpreter threads through all three branches.
+    custom = live_ci_workflow("python3.10")
+    assert custom.count("python3.10 bootstrap.py check --strict") == 3
 
 
 def test_sessions_readme_carries_the_guard_recipe_convention(tmp_path):
