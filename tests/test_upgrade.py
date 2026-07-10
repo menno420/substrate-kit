@@ -15,6 +15,7 @@ from engine.adopt import (
     BACKUP_DIRNAME,
     DOC_HASHES_STATE_KEY,
     adopt,
+    dist_version,
     doc_is_untouched,
 )
 from engine.lib.config import KIT_VERSION, Config, load_config
@@ -30,6 +31,8 @@ from engine.upgrade import (
     classify_planted_docs,
     find_vendored_bootstrap,
     load_old_templates,
+    newest_banked_archive,
+    run_apply_docs_posthoc,
     run_rollback,
     run_upgrade,
     verify_against_release_json,
@@ -325,13 +328,14 @@ def test_run_upgrade_archives_replaces_and_reports(tmp_path):
     assert any("sha256 verification skipped" in line for line in lines)
 
 
-def test_improved_note_names_the_real_recovery_path(tmp_path, monkeypatch):
+def test_improved_note_names_the_posthoc_recovery_path(tmp_path, monkeypatch):
     # The apply window is single-shot (idea
     # upgrade-apply-docs-single-shot-window): after the transition a bare
-    # `upgrade --apply-docs` re-run parses the already-new templates and finds
-    # nothing, so the skipped-apply note must point at the recovery that
-    # actually works (rollback + re-run), never a bare "re-run with
-    # --apply-docs to take them" no-op.
+    # re-run parses the already-new vendored templates and finds nothing. Now
+    # that the full post-hoc mechanism exists, the skipped-apply note must name
+    # THAT working recovery (`upgrade --apply-docs` applies post-hoc from the
+    # banked archive, no rollback) — never the interim rollback dance and never
+    # a bare "re-run with --apply-docs to take them" no-op.
     root, config, backend = _adopted(tmp_path)
     _fake_old_dist(root, {"architecture.md.tmpl": "old ${project_name}"})
     running = _fake_new_dist(tmp_path)
@@ -349,7 +353,8 @@ def test_improved_note_names_the_real_recovery_path(tmp_path, monkeypatch):
         apply_docs=False,
     )
     note = next(line for line in lines if "template improvements you" in line)
-    assert "--rollback" in note
+    assert "post-hoc" in note
+    assert "--rollback" not in note  # the interim recovery is gone
     assert "re-run with --apply-docs to take them" not in note
 
 
@@ -397,6 +402,141 @@ def test_rollback_without_marker_is_a_noop(tmp_path):
     root, config, _ = _adopted(tmp_path)
     lines = run_rollback(root, config)
     assert any("nothing to roll back" in line for line in lines)
+
+
+# ---------------------------------------------------------------------------
+# Post-hoc --apply-docs: recover the single-shot window from the banked archive
+# (idea upgrade-apply-docs-single-shot-window — the full mechanism)
+# ---------------------------------------------------------------------------
+
+
+def _skipped_apply_upgrade(tmp_path, monkeypatch, *, extra_improved=()):
+    """Drive an in-run upgrade that SKIPS --apply-docs, leaving the window
+    closed: the vendored dist is now the new one, the pre-upgrade dist is
+    banked, and the template-improved docs are still their old render on disk.
+    Returns (root, config, backend) ready for a post-hoc apply."""
+    root, config, backend = _adopted(tmp_path)
+    # The banked OLD dist carries exactly the templates that planted the docs,
+    # so post-hoc old_templates == what is on disk (untouched kit-form).
+    _fake_old_dist(root, dict(load_templates()))
+    config.kit_version = "0.9.0"
+    running = _fake_new_dist(tmp_path)
+    # The NEW kit templates improve one (or more) untouched planted docs.
+    improved = dict(load_templates())
+    improved["architecture.md.tmpl"] += "\nNew guidance paragraph.\n"
+    for name in extra_improved:
+        improved[name] += "\nNew guidance paragraph.\n"
+    monkeypatch.setattr("engine.upgrade.load_templates", lambda: improved)
+    run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+        apply_docs=False,
+    )
+    # The window is closed: vendored is the new dist, the improvement unapplied.
+    vendored = root / "bootstrap.py"
+    assert dist_version(vendored.read_text(encoding="utf-8")) == KIT_VERSION
+    arch = root / "docs" / "architecture.md"
+    assert "New guidance paragraph." not in arch.read_text(encoding="utf-8")
+    return root, config, backend
+
+
+def test_newest_banked_archive_names_the_last_upgrades_dist(tmp_path, monkeypatch):
+    root, config, backend = _skipped_apply_upgrade(tmp_path, monkeypatch)
+    archived, from_version = newest_banked_archive(root, config)
+    assert archived is not None
+    assert archived.name == "bootstrap-0.9.0.py"
+    assert from_version == "0.9.0"
+
+
+def test_posthoc_apply_recovers_a_skipped_improvement(tmp_path, monkeypatch):
+    # The done-when: an operator who skipped --apply-docs on the upgrade recovers
+    # the same planted-doc coverage a rollback + re-run would — WITHOUT rollback.
+    root, config, backend = _skipped_apply_upgrade(tmp_path, monkeypatch)
+    lines = run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=root / "bootstrap.py",  # the now-new vendored file
+        apply_docs=True,
+    )
+    arch = root / "docs" / "architecture.md"
+    assert "New guidance paragraph." in arch.read_text(encoding="utf-8")
+    assert any("applied: docs/architecture.md" in line for line in lines)
+    # The applied doc is untouched kit-form again (hash re-recorded).
+    assert doc_is_untouched(
+        backend,
+        "docs/architecture.md",
+        arch.read_text(encoding="utf-8"),
+    )
+    # A report was written naming the recovered transition.
+    report = root / config.state_dir / "upgrade-report.md"
+    assert report.is_file()
+    assert f"v0.9.0 → v{KIT_VERSION}" in report.read_text(encoding="utf-8")
+
+
+def test_posthoc_apply_without_a_banked_archive_reports_cleanly(tmp_path):
+    # No upgrade has banked anything yet: post-hoc --apply-docs must not crash
+    # and must not recommend an impossible command — just say what is missing.
+    root, config, backend = _adopted(tmp_path)
+    vendored = root / "bootstrap.py"
+    vendored.write_text(
+        f'"""substrate-kit bootstrap v{KIT_VERSION} — GENERATED."""\n',
+        encoding="utf-8",
+    )
+    arch = root / "docs" / "architecture.md"
+    before = arch.read_text(encoding="utf-8")
+    lines = run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=vendored,
+        apply_docs=True,
+    )
+    assert any("no banked pre-upgrade dist" in line for line in lines)
+    assert not any("--rollback" in line for line in lines)
+    # Nothing was written to any doc.
+    assert arch.read_text(encoding="utf-8") == before
+
+
+def test_posthoc_apply_leaves_a_consumer_edited_doc_diverged(tmp_path, monkeypatch):
+    # A doc the consumer edited after the window closed stays consumer-owned:
+    # post-hoc apply touches only the untouched improved class.
+    root, config, backend = _skipped_apply_upgrade(
+        tmp_path,
+        monkeypatch,
+        extra_improved=("ownership.md.tmpl",),
+    )
+    arch = root / "docs" / "architecture.md"
+    consumer_text = arch.read_text(encoding="utf-8") + "\nconsumer note\n"
+    arch.write_text(consumer_text, encoding="utf-8")
+    run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=root / "bootstrap.py",
+        apply_docs=True,
+    )
+    # The consumer-edited doc is untouched by apply…
+    assert arch.read_text(encoding="utf-8") == consumer_text
+    # …but the still-untouched improved doc took the improvement.
+    own = root / "docs" / "ownership.md"
+    assert "New guidance paragraph." in own.read_text(encoding="utf-8")
+
+
+def test_posthoc_apply_is_idempotent(tmp_path, monkeypatch):
+    root, config, backend = _skipped_apply_upgrade(tmp_path, monkeypatch)
+    first = run_apply_docs_posthoc(root, config, backend)
+    assert any("applied: docs/architecture.md" in line for line in first)
+    # A second post-hoc apply finds everything already current — nothing written.
+    second = run_apply_docs_posthoc(root, config, backend)
+    assert not any(line.startswith("applied:") for line in second)
+    assert any("no template-improved docs to apply" in line for line in second)
 
 
 # ---------------------------------------------------------------------------

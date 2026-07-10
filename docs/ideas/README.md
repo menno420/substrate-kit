@@ -66,15 +66,6 @@ story, the frontmatter keeps the score.
   — state: captured; origin: lab (the #76 wind-down addendum merged unindexed
   despite self-flagging the follow-up; reconciled only at gen-2 boot, #78);
   next: mirror check_idea_index.py over docs/retro/, wire into kit-quality.
-- [`--apply-docs` is a single-shot window — misleading "re-run" hint](upgrade-apply-docs-single-shot-window-2026-07-09.md)
-  — state: captured; origin: lab (v1.6.0 fleet rollout — observed on both
-  consumer upgrade runs, superbot-next#96 + websites#45: post-run, the
-  improved-docs classification can never recur, so the report's "re-run with
-  --apply-docs" hint is a no-op); the **interim hint correction shipped
-  kit PR #92** (the note now names the `--rollback` + re-run recovery); next:
-  a groomed-ideas increment still owes the full post-hoc apply against the
-  banked archived dist — recovery *without* rollback (guard recipe in the
-  file); ordinary lane, engine fix → dist byte-pin.
 - [Rubric F-5 wording: "none regressing" vs the 7k-budget yardstick](rubric-f5-none-regressing-wording-2026-07-09.md)
   — state: captured; origin: lab (B1 run `2026-07-09-run02` — the first
   clean M1 measurement made two readings of the pinned F-5 text produce
@@ -128,6 +119,16 @@ story, the frontmatter keeps the score.
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [`--apply-docs` is a single-shot window — post-hoc apply from the banked archive](upgrade-apply-docs-single-shot-window-2026-07-09.md)
+  — **shipped** kit PR #106 (2026-07-10, full mechanism): the interim hint
+  correction shipped in #92; this PR builds the real post-hoc path. A
+  same-version `upgrade --apply-docs` loads `old_templates` from the newest
+  banked archived pre-upgrade dist (`newest_banked_archive` /
+  `run_apply_docs_posthoc`) and runs the same classify/apply the in-run path
+  uses — the operator who skipped `--apply-docs` recovers the improvements
+  *without* a rollback, and the report note names that working path (the interim
+  `--rollback` recovery removed, so no line recommends an impossible command).
+  Window closes 2026-08-09.
 - [Upgrade report shows only the NEW dist's `archived:` line](upgrade-archive-report-line-gap-2026-07-09.md)
   — **shipped** kit PR #92 (2026-07-10, gen-2 upgrade-UX batch): the
   idempotent `archive_dist` early return prints

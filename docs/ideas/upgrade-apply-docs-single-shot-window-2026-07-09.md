@@ -1,10 +1,10 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 106
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-10
+outcome: shipped
 ---
 
 # `--apply-docs` is a single-shot window — the "re-run with --apply-docs" hint is misleading (2026-07-09)
@@ -59,3 +59,20 @@ improved doc actually updates.
 An operator who skipped `--apply-docs` on the upgrade run can still take the
 template improvements afterwards without a rollback, and no report line
 recommends a command that cannot work.
+
+## Shipped
+
+**Full mechanism — kit PR #106 (2026-07-10).** The interim hint correction
+shipped in #92 (the note named the `--rollback` + re-run recovery); this PR
+builds the real post-hoc path. A same-version `upgrade --apply-docs` (vendored
+version == running `KIT_VERSION`) now routes to `run_apply_docs_posthoc`, which
+loads `old_templates` from the newest banked archived pre-upgrade dist
+(`newest_banked_archive`, read from `last-upgrade.json`) and runs the SAME
+`classify_planted_docs`/`apply_doc_improvements` the in-run path uses — no
+rollback. The report note now names that working path; the interim `--rollback`
+recovery is removed, so no report line recommends a command that cannot work.
+The covenant is unchanged (only consumer-untouched kit-form docs are written,
+consumer-edited stay diverged, hashes re-record, idempotent), and the in-run
+`--apply-docs` behavior is UNCHANGED (the branch is guarded by `apply_docs` AND
+vendored == `KIT_VERSION`, which the in-run OLD-dist case never hits). No banked
+archive → a clean, actionable message. Guard tests in `tests/test_upgrade.py`.
