@@ -696,3 +696,157 @@ def test_live_ci_workflow_fast_lane_still_gates_the_heartbeat():
     assert len(step) == 2, "planted gate misses the fast-lane status step"
     body = step[1].split("- name:", 1)[0]
     assert "if: steps.lane.outputs.control_only == 'true'" in body
+
+
+# ---------------------------------------------------------------------------
+# Lane-aware adopt (`adopt --lane` — queue item 11, the G1 double-adoption fix)
+# ---------------------------------------------------------------------------
+
+
+def _adopt_with_lane(tmp_path, lane, *, root=None, config=None, backend=None):
+    root = root or tmp_path / "repo"
+    config = config or Config()
+    backend = backend or _make_backend(root, config)
+    lines = adopt(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        lane=lane,
+    )
+    return root, config, backend, lines
+
+
+def test_adopt_lane_plants_lane_heartbeat_not_the_singular(tmp_path):
+    root, config, _, lines = _adopt_with_lane(tmp_path, "mining")
+    # The heartbeat is the ONE per-Project file on the bus: it plants
+    # parametrized, and the singular control/status.md is never created.
+    assert (root / "control" / "status-mining.md").is_file()
+    assert "planted: control/status-mining.md" in lines
+    assert not (root / "control" / "status.md").exists()
+    # The shared bus still plants (single inbox, single README).
+    assert (root / "control" / "inbox.md").is_file()
+    assert (root / "control" / "README.md").is_file()
+    # Lane-shaped from the start: the lane REPLACES the untouched default —
+    # the gate must not hold strict RED on a singular file no Project owns.
+    assert config.heartbeat_files == ["control/status-mining.md"]
+    # Persisted, not just in-memory (the checker reads the config from disk).
+    assert load_config(root).heartbeat_files == ["control/status-mining.md"]
+
+
+def test_adopt_lane_joins_an_existing_install(tmp_path):
+    # A second Project joining an adopted repo: its heartbeat is ADDED, the
+    # first Project's files (singular heartbeat included) are never touched.
+    root, config, _ = _adopt_into(tmp_path)
+    backend = JsonStateBackend(root / config.state_dir / "state.json")
+    _, config, _, lines = _adopt_with_lane(
+        tmp_path, "exploration", root=root, config=config, backend=backend
+    )
+    assert (root / "control" / "status-exploration.md").is_file()
+    assert "planted: control/status-exploration.md" in lines
+    assert "kept: control/inbox.md" in lines
+    assert "kept: control/README.md" in lines
+    assert config.heartbeat_files == [
+        "control/status.md",
+        "control/status-exploration.md",
+    ]
+    assert load_config(root).heartbeat_files == config.heartbeat_files
+
+
+def test_adopt_lane_is_idempotent(tmp_path):
+    root, config, backend, _ = _adopt_with_lane(tmp_path, "mining")
+    seed = root / "control" / "status-mining.md"
+    seed.write_text("# mine\nupdated: 2026-07-10T00:00:00Z\n", encoding="utf-8")
+    _, config, _, lines = _adopt_with_lane(
+        tmp_path, "mining", root=root, config=config, backend=backend
+    )
+    # Re-adopt keeps the lane's own heartbeat and never duplicates the entry.
+    assert seed.read_text(encoding="utf-8").startswith("# mine")
+    assert "kept: control/status-mining.md" in lines
+    assert config.heartbeat_files == ["control/status-mining.md"]
+    assert (
+        "lane: mining — heartbeat already declared (control/status-mining.md)"
+        in lines
+    )
+
+
+def test_adopt_lane_never_drops_a_sibling_lane(tmp_path):
+    # Two lanes adopting in sequence into one shared repo: the second lane
+    # APPENDS to heartbeat_files — splitting the heartbeat, never sharing or
+    # clobbering it (the superbot-games shape, end-to-end via --lane).
+    root, config, backend, _ = _adopt_with_lane(tmp_path, "mining")
+    _, config, _, _ = _adopt_with_lane(
+        tmp_path, "exploration", root=root, config=config, backend=backend
+    )
+    assert config.heartbeat_files == [
+        "control/status-mining.md",
+        "control/status-exploration.md",
+    ]
+    assert load_config(root).heartbeat_files == config.heartbeat_files
+    assert (root / "control" / "status-mining.md").is_file()
+    assert (root / "control" / "status-exploration.md").is_file()
+
+
+def test_adopt_lane_records_doc_hash_under_the_lane_relpath(tmp_path):
+    root, _, backend, _ = _adopt_with_lane(tmp_path, "mining")
+    rel = "control/status-mining.md"
+    text = (root / rel).read_text(encoding="utf-8")
+    assert doc_is_untouched(backend, rel, text)
+    hashes = backend.get(DOC_HASHES_STATE_KEY)
+    # Provenance follows what was actually written: no phantom hash for the
+    # never-planted singular heartbeat.
+    assert "control/status.md" not in hashes
+
+
+def test_adopt_lane_seed_is_a_real_seed(tmp_path):
+    from engine.checks.check_status_current import parse_heartbeat
+
+    root, _, _, _ = _adopt_with_lane(tmp_path, "mining")
+    seed = (root / "control" / "status-mining.md").read_text(encoding="utf-8")
+    # Same honest-seed contract as the singular file: no parseable heartbeat
+    # until the lane writes a real one; check gates strict RED until then.
+    assert parse_heartbeat(seed) is None
+    assert "SOLE writer" in seed
+
+
+@pytest.mark.parametrize(
+    "bad",
+    ["../evil", "a/b", "", ".hidden", "sp ace", "-lead", "dot.dot"],
+)
+def test_adopt_lane_refuses_unsafe_names(tmp_path, bad):
+    root = tmp_path / "repo"
+    config = Config()
+    backend = _make_backend(root, config)
+    with pytest.raises(ValueError):
+        adopt(root, config, backend, kit_root=tmp_path / "kit", lane=bad)
+    # Refused BEFORE any write: nothing planted.
+    assert not (root / "control").exists()
+    assert config.heartbeat_files == ["control/status.md"]
+
+
+def test_cmd_adopt_lane_end_to_end_and_refusal(tmp_path, capsys):
+    from engine.cli import cmd_adopt
+
+    root = tmp_path / "repo"
+    assert cmd_adopt(root, include_claude=False, lane="mining") == 0
+    out = capsys.readouterr().out
+    assert "planted: control/status-mining.md" in out
+    # The engagement checklist gates the LANE heartbeat (config read in the
+    # same pass — the adopt output already points at the lane's seed).
+    assert "status-no-heartbeat" in out
+    assert "control/status-mining.md" in out
+    assert load_config(root).heartbeat_files == ["control/status-mining.md"]
+    # An unsafe lane name refuses loudly with the CLI's refusal exit code.
+    assert cmd_adopt(tmp_path / "other", include_claude=False, lane="../up") == 2
+    out = capsys.readouterr().out
+    assert "adopt: REFUSED" in out
+    assert "invalid lane name" in out
+
+
+def test_planted_readme_documents_the_one_command_lane_shape(tmp_path):
+    # The planted contract advertises the scaffold, not just the convention:
+    # a second Project reads ONE command instead of three hand-edits.
+    root, _, _ = _adopt_into(tmp_path)
+    readme = (root / "control" / "README.md").read_text(encoding="utf-8")
+    assert "adopt --lane <name>" in readme
+    assert "control/status-<name>.md" in readme
