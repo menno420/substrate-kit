@@ -2727,14 +2727,17 @@ CAPABILITIES_RELPATH = "docs/CAPABILITIES.md"
 # README.md § OWNER-ACTION format). The id token is free-form (`1`, `10`).
 _OWNER_ACTION_RE = re.compile(r"^⚑ OWNER-ACTION\s+(\S+)[ \t]*(.*)$", re.MULTILINE)
 
-# The six ORDER 008 field labels — used to bound the VERIFIED-NEEDED value.
-_FIELD_LABELS = (
+# The ORDER 008 field labels, canonical + the shorthand spellings
+# check_owner_actions accepts (#99 token alignment: WHY:/VERIFIED-WHEN:).
+# _VERIFIED_LABELS locate the wall-evidence field; the rest bound its value.
+_VERIFIED_LABELS = ("VERIFIED-NEEDED:", "VERIFIED-WHEN:")
+_BOUNDARY_LABELS = (
     "WHAT:",
     "WHERE:",
     "HOW:",
     "WHY-IT-MATTERS:",
+    "WHY:",
     "UNBLOCKS:",
-    "VERIFIED-NEEDED:",
 )
 
 # Wall-shaped evidence markers (lowercase substring match on VERIFIED-NEEDED):
@@ -2831,16 +2834,22 @@ def _owner_action_blocks(text: str) -> list[tuple[str, str, str]]:
 def _verified_needed(block: str) -> str | None:
     """Return a block's VERIFIED-NEEDED value, or None when the field is absent.
 
-    The value runs from the label to the next field label or the block's end
-    (VERIFIED-NEEDED is last in the template order, but a reordered block
-    still parses).
+    Accepts the canonical label and the VERIFIED-WHEN: shorthand (the #99
+    token set check_owner_actions accepts). The value runs from the label to
+    the next field label or the block's end (VERIFIED-NEEDED is last in the
+    template order, but a reordered block still parses).
     """
-    idx = block.find("VERIFIED-NEEDED:")
+    idx = -1
+    label_len = 0
+    for label in _VERIFIED_LABELS:
+        pos = block.find(label)
+        if pos != -1 and (idx == -1 or pos < idx):
+            idx, label_len = pos, len(label)
     if idx == -1:
         return None
-    value = block[idx + len("VERIFIED-NEEDED:") :]
+    value = block[idx + label_len :]
     cut = len(value)
-    for label in _FIELD_LABELS[:-1]:
+    for label in _BOUNDARY_LABELS:
         pos = value.find(label)
         if pos != -1:
             cut = min(cut, pos)

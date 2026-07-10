@@ -253,3 +253,23 @@ def test_cmd_check_quiet_when_xref_clean(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "owner-ask-wall-unrecorded" not in out
     assert "owner-ask-capability-resolved" not in out
+
+def test_verified_when_shorthand_also_parses(tmp_path):
+    # #99 token alignment: check_owner_actions accepts VERIFIED-WHEN: as a
+    # shorthand — the cross-reference reads the same token set.
+    ask = (
+        "⚑ OWNER-ACTION 3 — do a thing\n"
+        "WHAT: One plain sentence.\n"
+        "WHY: it matters.\n"
+        "VERIFIED-WHEN: direct api.github.com HTTP is 403-blocked through "
+        "the proxy; rulesets owner-only.\n"
+    )
+    _write(tmp_path, STATUS_RELPATH, _status(ask))
+    _write(
+        tmp_path,
+        CAPABILITIES_RELPATH,
+        _ledger(walls="- **Branch deletion**: refused everywhere.\n"),
+    )
+    findings = check_capability_xref(tmp_path)
+    assert [f.kind for f in findings] == ["owner-ask-wall-unrecorded"]
+    assert "OWNER-ACTION 3" in findings[0].message
