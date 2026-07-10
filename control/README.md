@@ -35,6 +35,10 @@ never by sharing it**:
   when unset: `["control/status.md"]`); the status checker gates each listed file independently,
   and the Stop hook's overwrite reminder clears when any lane's heartbeat is fresh. An empty
   list falls back to the default — misconfiguration never silently disables the gate.
+- **One command, not hand-edits** — a Project joining a SHARED repo runs
+  `bootstrap adopt --lane <name>`: it plants `control/status-<name>.md` (skip-if-exists),
+  declares it in `heartbeat_files`, and leaves `inbox.md`/`README.md` single — a second lane
+  never re-plants the first Project's files (the double-adoption fix; shipped by queue item 11).
 (This repo is single-lane; the extension is documented here because this file is the local copy
 of the planted contract. Shipped v1.4.0, inbox ORDER 004.)
 

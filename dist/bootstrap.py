@@ -8582,6 +8582,77 @@ def doc_is_untouched(backend: Any, relpath: str, current_text: str) -> bool:
 
 BACKUP_DIRNAME = "backup"
 
+# Lane names become path components (`control/status-<lane>.md`) and config
+# entries, so the charset is deliberately tight: no separators, no dots, no
+# spaces — nothing that could escape control/ or read ambiguously in a list.
+_LANE_NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
+
+SINGLE_HEARTBEAT_RELPATH = "control/status.md"
+
+
+def lane_status_relpath(lane: str) -> str:
+    """Return the per-lane heartbeat relpath (`control/status-<lane>.md`)."""
+    return f"control/status-{lane}.md"
+
+
+def validate_lane_name(lane: str) -> str:
+    """Return ``lane`` unchanged, or raise ``ValueError`` for an unsafe name.
+
+    Runs before any write: a lane name is interpolated into a planted path
+    and into ``heartbeat_files``, so a bad one must refuse the whole adopt,
+    never plant-then-apologize.
+    """
+    if not _LANE_NAME_RE.fullmatch(lane):
+        raise ValueError(
+            f"invalid lane name {lane!r} — use letters/digits/hyphen/underscore "
+            "(it becomes control/status-<lane>.md)",
+        )
+    return lane
+
+
+def _register_lane_heartbeat(
+    root: Path,
+    config: Config,
+    lane: str,
+    report: list[str],
+) -> bool:
+    """Register the lane's heartbeat in ``config.heartbeat_files`` (in place).
+
+    Returns True when the config changed (the caller persists it). Rules,
+    all idempotent:
+
+    - already listed → nothing to do (re-adopt safe);
+    - the list is still the untouched default (``control/status.md``) and the
+      singular file does NOT exist on disk (a lane-shaped repo from the
+      start — the ``--lane`` adopt never planted it) → the lane file
+      *replaces* the default entry, because the status gate treats every
+      listed heartbeat as mandatory and must not hold strict RED on a
+      singular file no Project owns;
+    - otherwise (a first Project already beats on ``control/status.md``, or
+      a custom list names sibling lanes) → *append*, never dropping another
+      lane's declared heartbeat (one-writer-per-file scales by splitting).
+
+    An empty configured list means "the default" at every consumer
+    (misconfiguration never silently disables the gate), so it is expanded
+    to the default before the rules above apply.
+    """
+    lane_rel = lane_status_relpath(lane)
+    files = list(config.heartbeat_files) or [SINGLE_HEARTBEAT_RELPATH]
+    if lane_rel in files:
+        report.append(f"lane: {lane} — heartbeat already declared ({lane_rel})")
+        return False
+    if files == [SINGLE_HEARTBEAT_RELPATH] and not (
+        root / SINGLE_HEARTBEAT_RELPATH
+    ).exists():
+        files = [lane_rel]
+    else:
+        files.append(lane_rel)
+    config.heartbeat_files = files
+    report.append(
+        f"lane: {lane} — heartbeat_files now {files} (substrate.config.json)",
+    )
+    return True
+
 _DIST_VERSION_RE = re.compile(r"bootstrap v(\d[^\s]*)")
 
 
@@ -8848,8 +8919,22 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
     arbitrary in CI (the kit's own CI once carried a git-mtime-restore shim for
     exactly this). The workflow instead derives the card from what the PR/push
     diff touches under ``sessions_dir`` and passes it via
-    ``check --session-log``; when the diff names no card the argument is
-    simply omitted and the engine's mtime fallback applies (fail-open).
+    ``check --session-log``. When the diff names **no card** the step passes
+    an explicitly named, nonexistent sentinel **without**
+    ``--require-session-log`` — per the engine contract an explicitly named
+    absent card is ADVISORY. (The previous behaviour — omitting the argument —
+    was NOT fail-open in CI: the engine's newest-by-mtime fallback latched
+    onto the mid-session in-progress card and redded every unrelated PR;
+    adopter live-fire, gba-homebrew PR #3, 2026-07-10.) A card **ADDED** by
+    the PR (a born-red heartbeat: first-commit-carries-an-in-progress-card
+    conventions make in-progress the REQUIRED state at birth) also gates
+    advisory via the absent sentinel, because under ``--strict`` the engine
+    reds ANY existing-but-incomplete card — the locked door could never pass
+    a heartbeat (adopter live-fire: gba-homebrew PR #2 merged red on exactly
+    this). A card **MODIFIED** by the PR (every session close-out flips one)
+    keeps the full ``--require-session-log`` locked door, so a close-out that
+    forgot to flip ``complete`` still reds. Both fixes validated live across
+    gba-homebrew PRs #3–#14.
 
     **Control fast lane (KL-8):** a diff touching only ``control/**`` (a
     status heartbeat, a manager inbox append) short-circuits the job GREEN
@@ -8926,8 +9011,24 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         "        if: steps.lane.outputs.control_only != 'true'\n"
         "        # Gate on the session card THIS PR/push touches (CI flattens\n"
         "        # mtimes, so the engine's newest-by-mtime guess is unreliable\n"
-        "        # here). No card in the diff -> no --session-log argument ->\n"
-        "        # the engine's mtime fallback (fail-open).\n"
+        "        # here). No card in the diff -> pass an explicitly named,\n"
+        "        # nonexistent sentinel WITHOUT --require-session-log: per the\n"
+        "        # engine's contract an explicit absent card is ADVISORY,\n"
+        "        # while the bare mtime fallback latches onto the mid-session\n"
+        "        # in-progress card and reds every unrelated PR (adopter\n"
+        "        # live-fire, gba-homebrew PR #3, 2026-07-10 — the omitted\n"
+        "        # argument was never fail-open in CI). Second live-fire case:\n"
+        "        # a heartbeat PR that ADDS the born-red card (first-commit\n"
+        "        # conventions REQUIRE an in-progress card at birth) can never\n"
+        "        # satisfy the locked door — gba-homebrew PR #2 merged red on\n"
+        "        # exactly this. So: a card ADDED by the PR gates ADVISORY via\n"
+        "        # the absent sentinel (under --strict the engine reds ANY\n"
+        "        # existing-but-incomplete card, required or not — born-red is\n"
+        "        # the REQUIRED state at birth, so a heartbeat must not be\n"
+        "        # judged on completeness); a card MODIFIED by the PR (every\n"
+        "        # session close-out flips one) keeps the full locked-door\n"
+        "        # gate, so a close-out that forgot to flip `complete` still\n"
+        "        # reds.\n"
         "        run: |\n"
         '          if [ -n "${{ github.base_ref }}" ]; then\n'
         '            range="origin/${{ github.base_ref }}...HEAD"\n'
@@ -8937,9 +9038,22 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         '          card="$(git diff --name-only --diff-filter=d "$range" -- '
         f"'{sessions_dir}/*.md' ':!{sessions_dir}/README.md' 2>/dev/null "
         '| tail -1)"\n'
-        '          echo "session gate card: ${card:-<none - mtime fallback>}"\n'
-        f"          {interpreter} bootstrap.py check --strict --require-session-log"
-        ' ${card:+--session-log "$card"}\n'
+        '          added="$(git diff --name-only --diff-filter=A "$range" -- '
+        f"'{sessions_dir}/*.md' ':!{sessions_dir}/README.md' 2>/dev/null "
+        '| tail -1)"\n'
+        '          echo "session gate card: ${card:-<none - advisory sentinel>}"\n'
+        '          if [ -n "$card" ] && [ "$card" != "$added" ]; then\n'
+        f"            {interpreter} bootstrap.py check --strict --require-session-log"
+        ' --session-log "$card"\n'
+        "          elif [ -n \"$card\" ]; then\n"
+        '            echo "card $card is newly ADDED by this PR (born-red heartbeat)'
+        ' — advisory sentinel gate"\n'
+        f"            {interpreter} bootstrap.py check --strict --session-log "
+        f"{sessions_dir}/__born-red-card-added__.md\n"
+        "          else\n"
+        f"            {interpreter} bootstrap.py check --strict --session-log "
+        f"{sessions_dir}/__no-card-in-diff__.md\n"
+        "          fi\n"
     )
 
 
@@ -8951,6 +9065,7 @@ def adopt(
     kit_root: Path,
     include_claude: bool = False,
     wire_enforcement: bool = False,
+    lane: str | None = None,
 ) -> list[str]:
     """Adopt the substrate workflow into ``root``; return the report lines.
 
@@ -8975,9 +9090,22 @@ def adopt(
     executable CI/hooks silently (the deliberate safety default), but a host —
     or the rebuild's K0 session — flips this on to reproduce the enforcement
     this repo's discipline actually runs on.
+
+    ``lane`` makes the adopt **lane-aware** (the self-review G1 fix for
+    double-adoption in SHARED repos): the seeded heartbeat plants as
+    ``control/status-<lane>.md`` instead of the singular ``control/status.md``
+    and is declared in ``config.heartbeat_files`` (see
+    :func:`_register_lane_heartbeat` for the replace-vs-append rules), while
+    ``control/inbox.md`` and ``control/README.md`` stay single — the
+    manager-owned bus is shared, the heartbeat never is. A second Project
+    adopting into an already-adopted repo passes ``--lane`` and joins
+    (every shared file skip-if-exists kept, only its own heartbeat added)
+    instead of re-planting the first Project's files by hand.
     """
     include_claude = include_claude or wire_enforcement
     assert_safe_target(root, kit_root)
+    if lane is not None:
+        validate_lane_name(lane)
     templates = load_templates()
     report: list[str] = []
 
@@ -9000,6 +9128,11 @@ def adopt(
     # is planted under the loud UNRENDERED banner (visible, never inert).
     for template_name, plan_rel in ADOPT_PLAN:
         rel = _adopt_dest(plan_rel, config)
+        if lane is not None and template_name == "control-status.md.tmpl":
+            # Lane-aware adopt: the heartbeat is the ONE per-Project file on
+            # the bus — parametrize its dest; a --lane adopt never creates
+            # (nor touches) the singular control/status.md.
+            rel = lane_status_relpath(lane)
         text = render(templates[template_name], context)
         if template_name == "decisions.md.tmpl":
             # The example D-0001 records THIS adoption — stamp the real date so
@@ -9100,10 +9233,19 @@ def adopt(
             report,
         )
 
+    # (6b2) Lane-aware adopt: declare the just-planted lane heartbeat so the
+    # status gate validates it (config mutated in place — cmd_adopt's
+    # engagement checklist reads the same object).
+    config_dirty = False
+    if lane is not None:
+        config_dirty = _register_lane_heartbeat(root, config, lane, report)
+
     # (6c) The install self-identifies (§4.1): record the kit version in the
     # config file (a declared dataclass field — survives load→save) and state.
     if config.kit_version != KIT_VERSION:
         config.kit_version = KIT_VERSION
+        config_dirty = True
+    if config_dirty:
         save_config(root, config)
     backend.set("kit_version", KIT_VERSION)
     report.append(f"recorded: kit_version {KIT_VERSION}")
@@ -11089,27 +11231,36 @@ def cmd_adopt(
     target: Path,
     include_claude: bool,
     wire_enforcement: bool = False,
+    lane: str | None = None,
 ) -> int:
     """Adopt the workflow into ``target``: init, plant the docs, stage the packs.
 
     The one-step flow: ``init`` runs first (idempotent — config + state), so a
     bare directory with nothing but the bootstrap file becomes a fully
     substrate-governed project in this single command. ``wire_enforcement``
-    additionally turns on the live nag hook + the CI locked door.
+    additionally turns on the live nag hook + the CI locked door. ``lane``
+    is the SHARED-repo shape (multi-Project cohabitation): this Project's
+    heartbeat plants as ``control/status-<lane>.md`` and is declared in
+    ``heartbeat_files``; the rest of the bus is shared, never re-planted.
     """
     rc = cmd_init(target)
     if rc != 0:
         return rc
     config = load_config(target)
     backend = JsonStateBackend(_state_path(target, config))
-    lines = adopt(
-        target,
-        config,
-        backend,
-        kit_root=_kit_root(),
-        include_claude=include_claude,
-        wire_enforcement=wire_enforcement,
-    )
+    try:
+        lines = adopt(
+            target,
+            config,
+            backend,
+            kit_root=_kit_root(),
+            include_claude=include_claude,
+            wire_enforcement=wire_enforcement,
+            lane=lane,
+        )
+    except ValueError as exc:
+        _emit(f"adopt: REFUSED — {exc}")
+        return 2
     for line in lines:
         _emit(f"adopt: {line}")
     # KL-7 — the adopter is told, in the adopt output itself, exactly what the
@@ -11523,6 +11674,16 @@ def build_parser() -> argparse.ArgumentParser:
             "the session journal is written"
         ),
     )
+    adopt_p.add_argument(
+        "--lane",
+        metavar="NAME",
+        default=None,
+        help=(
+            "adopt as a named lane in a SHARED multi-Project repo: plant "
+            "control/status-NAME.md as this Project's heartbeat (declared in "
+            "heartbeat_files) and share the rest of the control/ bus"
+        ),
+    )
     adopt_p.add_argument("--target", type=Path, default=Path.cwd())
     upgrade_p = sub.add_parser(
         "upgrade",
@@ -11784,6 +11945,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.target,
                 args.include_claude,
                 wire_enforcement=args.wire_enforcement,
+                lane=args.lane,
             )
         if args.command == "upgrade":
             return cmd_upgrade(
@@ -11831,7 +11993,7 @@ _TEMPLATES = {
     'ai-project-workflow.md.tmpl': "# ${project_name} — AI project workflow\n\n> **Status:** `reference`\n>\n> Generated by substrate-kit. The multi-agent pipeline: how ideas become work\n> and how sessions run. **NOT SOURCE OF TRUTH** — the binding contracts win.\n\n## Idea lifecycle\n\n```\ncaptured -> classified -> planned -> built -> verified\n```\n\nEvery idea ends implemented, planned, in discussion, or explicitly rejected —\nnever orphaned. Backlog + routing: `docs/ideas/README.md`.\n\n## Session workflow\n\n```\norient -> claim -> born-red card -> build -> verify -> close\n```\n\n1. **Orient** — working agreement, current state, task-specific reading route.\n2. **Claim** — declare your lane so parallel sessions don't collide.\n3. **Born-red card** — open the session record first, marked in-progress, so\n   the work is visible while it is still incomplete.\n4. **Build** — the goal, end-to-end.\n5. **Verify** — run `${verify_command}` before shipping.\n6. **Close** — flip the card complete; log the session, groom one idea, hand\n   off.\n\n## Handoff template\n\n(What the next session needs, four lines: state of the work · what is\nverified · what is still open · the first next step.)\n\n## Adoption pace\n\nCurrent substrate-workflow adoption: **${integration_mode}**.\n",
     'architecture.md.tmpl': '# ${project_name} — architecture\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. Layering, invariants, and decomposition rules.\n> **NOT SOURCE OF TRUTH** for code — source files always win.\n\n## Layers & import rules\n\n${architecture_layers}\n\n| Layer | May import | Must NOT import |\n|---|---|---|\n| (one row per layer, expanded from the summary above) | | |\n\n## Invariants\n\n(The rules that must survive every refactor — write each one as a testable\nstatement, and name the check that enforces it where one exists.)\n\n## Namespace protection — two mechanisms, both required\n\nTwo separate mechanisms guard the namespace, and they catch different\nfailure classes:\n\n1. **A registry for runtime string identities** — event names, command\n   names, settings keys, and any other string that selects behavior at\n   runtime. Collisions here are invisible to static analysis.\n2. **A static AST pass for Python symbol shadowing** — a later top-level\n   `def` / `class` with the same name silently shadows the earlier one, and\n   no import fails.\n\nNeither mechanism subsumes the other. The registry cannot see symbol\nshadowing; the AST pass cannot see string-keyed dispatch. Do not delete one\nbelieving the other covers it.\n\n## Verifying a change\n\n```\n${verify_command}\n```\n',
     'collaboration-model.md.tmpl': "# ${project_name} — collaboration model\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. How the owner and agents work together. **NOT\n> SOURCE OF TRUTH** for code — source files always win.\n\n## The model\n\n- **Goal first.** The owner designs and directs; agents build. Each session\n  achieves its goal end-to-end — not the smallest safe slice.\n- **Session prompts are guidance, not orders.** Weigh every prompt (and every\n  cross-agent report) against source and the binding docs before acting; a\n  prompt is one input, never a command list.\n- **Approved plan = execute.** Once a plan is approved, finish it in the same\n  session, with the planning context still loaded — code, verify, ship —\n  without re-confirming.\n\n## Act vs. ask\n\n- **Act** on contained, reversible, verifiable changes — including a\n  root-cause fix discovered mid-task (that is expected, not scope creep).\n- **Ask** when the change is irreversible (data loss / external publish),\n  large and cross-cutting (architectural), or the goal itself is genuinely\n  ambiguous.\n\n## Routing work to the owner\n\nThe owner is the scarcest resource in the program. An ask reaches the owner\nonly when the agent has **attempted the action itself** or can name the\n**exact wall** (error text, permission denial) proving only the owner can do\nit — assumption-based asks are banned. Every ask uses the OWNER-ACTION\nformat — WHAT / WHERE / HOW / WHY-IT-MATTERS / UNBLOCKS / VERIFIED-NEEDED\n(canonical: `control/README.md`) — phrased so a non-technical owner can act\ndirectly: one plain sentence, an exact click path, paste-ready text.\nWithdraw asks that have gone stale; fewer, clearer asks beat complete lists.\n\n## Friction → guard\n\nAnything that interrupts a session's workflow — a stale file, a checker that\nlied, a footgun — is converted into the **cheapest enforcing prevention**\nbefore the session ends: checker / CI / test first, then hook, then written\nrule. Enforce, don't exhort.\n\n## Guiding questions\n\nDuring exploratory / brainstorming work, surface the single most useful\nquestion about the owner's idea that the agent genuinely cannot derive\nitself — rare and selective, never during routine execution, and only when\nthe answer would actually matter and be actionable. A big or vague idea\nearns a dedicated research pass or its own session before being answered\nfrom memory alone.\n\n## Program law\n\nThis model's program-wide form, and the rulings that bind every repo in the\nprogram, live canonically in the substrate-kit repo at\n`docs/program/rulings.md` (the [PL-NNN] register — e.g. PL-001\ndecide-and-flag, PL-002 never-wait, PL-007 enforce-don't-exhort) and\n`docs/program/collaboration-model.md`\n(https://github.com/menno420/substrate-kit/tree/main/docs/program).\n**Cite PL-IDs — never copy ruling bodies into this repo.**\n\n## Drift & staleness\n\n- When a doc and a source file disagree: ${drift_resolution}\n- Staleness review cadence: ${staleness_review}\n",
-    'control-README.md.tmpl': '# Fleet coordination protocol — `control/`\n\n> **Status:** `binding`\n>\n> Local copy for ${project_name}. Canonical spec: `menno420/superbot` →\n> `docs/planning/fleet-coordination-protocol-2026-07-09.md` (§1). Projects cannot talk to each\n> other directly — committed git files are the only shared medium; this directory is the bus.\n\n## The two files\n\n- `control/inbox.md` — ORDERS to this Project. **One writer: the manager** (appends via the\n  GitHub Contents API). Never edit this file.\n- `control/status.md` — STATE from this Project. **One writer: this Project** (overwrite it each\n  session).\n\n## The one rule that keeps it conflict-free\n\n**One writer per file.** The manager is the sole writer of `inbox.md`; this Project is the sole\nwriter of its own `status.md`. Two writers never touch the same file, so there are no merge\nconflicts. Everything is append-only / overwrite-own — forward-only git.\n\n## Multi-Project repos — per-lane heartbeats (optional extension)\n\nA SHARED repo can host several Projects ("lanes" — e.g. a mining lane and an exploration lane\ncohabiting one game repo). The one-writer rule scales by **splitting the heartbeat, never by\nsharing it**:\n\n- **One status file per lane** — `control/status-<lane>.md` (e.g. `control/status-mining.md` +\n  `control/status-exploration.md`). Each lane is the sole writer of its own file and overwrites\n  it as its session\'s deliberate LAST step; no lane ever edits another lane\'s heartbeat.\n- **`control/inbox.md` stays single** — the manager remains its one writer; a lane-specific\n  order names its lane in `do:`.\n- **Declare every lane heartbeat to the kit** — `substrate.config.json` →\n  `"heartbeat_files": ["control/status-mining.md", "control/status-exploration.md"]` (default\n  when unset: `["control/status.md"]`). The status checker then gates each listed file\n  independently (missing / heartbeat-less lane = strict RED; per-lane staleness warns), and the\n  Stop hook\'s overwrite reminder clears when any lane\'s heartbeat is fresh (it cannot know which\n  lane a session belongs to). An empty list falls back to the default — misconfiguration never\n  silently disables the gate.\n\n## Per-session ritual (every session, and every routine wake)\n\n- **FIRST:** git pull (a stale clone reads stale orders); read `control/inbox.md`; execute any\n  order whose status is `new`, in priority order (P0 before P1) — **claim it first** (see\n  "Claiming an order" below). An order\'s `do:` is a pointer to\n  a committed doc — read it. If an order is ambiguous or you disagree, do NOT guess: write it in\n  your status under `⚑ needs-owner` and proceed with the rest.\n- **LAST (deliberate final step):** overwrite `control/status.md` — updated timestamp, current\n  phase, health (green / red-by-design+why / broken+what), last-shipped PR, blockers, orders\n  acked/done, `⚑ needs-owner`. You report order progress ONLY here; never edit `inbox.md`\n  (the manager owns it — one writer per file).\n\nThe kit enforces this loop: `check` flags a missing or heartbeat-less `status.md`\n(strict = red), warns when the heartbeat goes stale, and the Stop hook reminds you when\n`status.md` was not overwritten this session.\n\n## Claiming an order — one executor per order (claim FIRST, build second)\n\nAn order\'s `status: new` is visible to every session that wakes, so two readers can both\nbelieve they are its executor — a realized failure, not a theoretical one (substrate-kit\nPRs #50/#51: two lanes independently executed the same ORDER 005 the same day, and a whole\nsession\'s work had to be reconciled as twins). The manager only flips `new→done` after\nseeing the status report; the claim covers the gap in between.\n\nBefore executing any `new` order:\n\n1. **Re-read the bus at origin/main HEAD** — `control/inbox.md` AND every sibling status\n   file (`control/status*.md`). If another lane\'s status already claims the order\n   (`claimed-by:` naming its id) or reports it in `done=`, stand down and pick other work.\n2. **Claim FIRST, on your own status file\'s orders line** — append\n   `claimed-by: <order-ids> <lane-or-session> <ISO8601>` — and land it on **main** BEFORE\n   any build work (a control-only fast-lane PR, or a direct commit where your rules allow\n   one). A claim that exists only on a branch is invisible; only main counts.\n3. **Re-read once more after the claim merges** — two claims can race in flight; the\n   tiebreak is the earliest claim merged to main. The loser withdraws its claim line in\n   its next status overwrite and stands down.\n4. **Claims expire** — a claim with no visible build activity (no open PR, no fresh\n   heartbeat referencing the order) after ~24h may be treated as abandoned and re-claimed;\n   note the takeover in your status `notes:`. A dead lane must never deadlock an order.\n\nWith an active claim the `orders:` line reads e.g.:\n`orders: acked=001-008 done=001-006 claimed-by: 007+008 coordinator-lane 2026-07-09T18:38Z`\n— the executor drops the `claimed-by:` annotation in the overwrite that moves those ids\ninto `done=`. One writer per file is preserved: you only ever claim on your OWN status.\n(Shipped by inbox ORDER 007 — the root-cause fix for the twin-execution failure; the\nritual was live-proven manually on this repo\'s own orders before graduating here.)\n\n## `status.md` format (what you write every session — your heartbeat)\n\n```markdown\n# <project> · status\nupdated: <ISO8601>            # heartbeat — stale = the manager treats the Project as dark\nphase: <what I\'m doing right now, one line>\nhealth: green | red-by-design (<why>) | broken (<what>)\nkit: v<X.Y.Z> · check: green|red · engaged: yes|no   # kit self-report — see below\nlast-shipped: #<PR> — <one line>\nblockers: <what\'s stopping me, or `none`>\norders: acked=<ids> done=<ids> [claimed-by: <ids> <lane-or-session> <ISO8601>]\n⚑ needs-owner: <a decision/action only the owner can give, or `none`>\nnotes: <anything the manager should know>\n```\n\nThe `kit:` line is the **substrate-coordinator visibility** channel (kit-lab reads it via the\nmanager relay — zero write access to this repo): `v<X.Y.Z>` = the vendored kit version this\nrepo actually runs (update it in the same session as every `bootstrap upgrade`); `check:` =\nthe latest `check --strict` verdict on this tree; `engaged:` = the post-adopt engagement gate\n(`yes` once no UNRENDERED banner/slot remains, live CI runs the gate, and the session loop\nhas engaged).\n\n## ⚑ needs-owner — the OWNER-ACTION item format (quality contract)\n\nThe owner is the scarcest resource in the program: every ask routed to the owner costs\nattention, and an unclear or unnecessary ask stalls your own lane on top of burning his.\n**Before routing ANYTHING to the owner, try it yourself or cite the exact wall** — an\nassumption-based ask ("agents probably can\'t do X") is banned; the bar is the capability\nledger (`docs/CAPABILITIES.md`) plus one real attempt with the captured error.\n\nEvery ⚑ needs-owner item carries ALL of these REQUIRED fields — inline on the item, or as a\nstructured block the item links to:\n\n```markdown\n⚑ OWNER-ACTION\nWHAT: <one plain sentence, zero jargon — the thing the owner does>\nWHERE: <exact click path or URL>\nHOW: <paste-ready text/values where applicable, or "click only">\nWHY-IT-MATTERS: <one sentence, in product terms>\nUNBLOCKS: <what starts moving the moment it\'s done>\nVERIFIED-NEEDED: <the attempt you made + the exact error/wall proving only the owner can do\nthis — never an assumption>\n```\n\nHygiene: **expire or withdraw stale asks every session** (an answered or obsolete ask left in\nthe list is drift), and **fewer, clearer asks beat complete lists**. `check` warns — advisory,\nnever exit-affecting — when a non-`none` ⚑ needs-owner list lacks these fields.\n\n## `inbox.md` order format (manager-written, append-only)\n\n```markdown\n## ORDER <nnn> · <ISO8601> · status: new     # manager flips new→done after seeing status done=\npriority: P0 | P1 | P2\ndo: <pointer to a committed doc/section + the ask, kept short>\nwhy: <one line>\ndone-when: <acceptance test>\n```\n\n## CI + auto-merge notes (learned live, 2026-07-09)\n\n- **Heartbeat commits ride a fast lane, not a `paths-ignore`.** A control-only diff (only\n  `control/**` files changed) must still *report* every required status check, or GitHub treats\n  the missing contexts as pending and auto-merge jams forever. The kit\'s planted\n  `substrate-gate.yml` therefore short-circuits GREEN inside the job on control-only diffs\n  instead of skipping the workflow — copy that pattern (an in-job early exit) into any other\n  heavy suite rather than adding `paths-ignore: [control/**]` to a workflow whose check is\n  required.\n- **API-authored PRs may not trigger CI.** A PR created purely through an app/integration token\n  (e.g. the GitHub Contents API + a REST PR create) can sit with **zero check runs** — required\n  checks then never report and the PR cannot auto-merge. The manager\'s canonical write path is\n  therefore a **direct Contents-API commit to the default branch of `inbox.md`** (it is the sole\n  writer, so no PR is needed). When this Project ships control changes by PR, push the branch\n  over git (a real `git push` triggers `pull_request`/`push` events) before or after creating\n  the PR, and verify the PR shows check runs before relying on auto-merge.\n',
+    'control-README.md.tmpl': '# Fleet coordination protocol — `control/`\n\n> **Status:** `binding`\n>\n> Local copy for ${project_name}. Canonical spec: `menno420/superbot` →\n> `docs/planning/fleet-coordination-protocol-2026-07-09.md` (§1). Projects cannot talk to each\n> other directly — committed git files are the only shared medium; this directory is the bus.\n\n## The two files\n\n- `control/inbox.md` — ORDERS to this Project. **One writer: the manager** (appends via the\n  GitHub Contents API). Never edit this file.\n- `control/status.md` — STATE from this Project. **One writer: this Project** (overwrite it each\n  session).\n\n## The one rule that keeps it conflict-free\n\n**One writer per file.** The manager is the sole writer of `inbox.md`; this Project is the sole\nwriter of its own `status.md`. Two writers never touch the same file, so there are no merge\nconflicts. Everything is append-only / overwrite-own — forward-only git.\n\n## Multi-Project repos — per-lane heartbeats (optional extension)\n\nA SHARED repo can host several Projects ("lanes" — e.g. a mining lane and an exploration lane\ncohabiting one game repo). The one-writer rule scales by **splitting the heartbeat, never by\nsharing it**:\n\n- **One status file per lane** — `control/status-<lane>.md` (e.g. `control/status-mining.md` +\n  `control/status-exploration.md`). Each lane is the sole writer of its own file and overwrites\n  it as its session\'s deliberate LAST step; no lane ever edits another lane\'s heartbeat.\n- **`control/inbox.md` stays single** — the manager remains its one writer; a lane-specific\n  order names its lane in `do:`.\n- **Declare every lane heartbeat to the kit** — `substrate.config.json` →\n  `"heartbeat_files": ["control/status-mining.md", "control/status-exploration.md"]` (default\n  when unset: `["control/status.md"]`). The status checker then gates each listed file\n  independently (missing / heartbeat-less lane = strict RED; per-lane staleness warns), and the\n  Stop hook\'s overwrite reminder clears when any lane\'s heartbeat is fresh (it cannot know which\n  lane a session belongs to). An empty list falls back to the default — misconfiguration never\n  silently disables the gate.\n- **One command, not hand-edits** — a Project joining a SHARED repo runs\n  `bootstrap adopt --lane <name>`: it plants `control/status-<name>.md` (skip-if-exists),\n  declares it in `heartbeat_files`, and leaves `inbox.md`/`README.md` single — a second lane\n  never re-plants the first Project\'s files (the double-adoption fix).\n\n## Per-session ritual (every session, and every routine wake)\n\n- **FIRST:** git pull (a stale clone reads stale orders); read `control/inbox.md`; execute any\n  order whose status is `new`, in priority order (P0 before P1) — **claim it first** (see\n  "Claiming an order" below). An order\'s `do:` is a pointer to\n  a committed doc — read it. If an order is ambiguous or you disagree, do NOT guess: write it in\n  your status under `⚑ needs-owner` and proceed with the rest.\n- **LAST (deliberate final step):** overwrite `control/status.md` — updated timestamp, current\n  phase, health (green / red-by-design+why / broken+what), last-shipped PR, blockers, orders\n  acked/done, `⚑ needs-owner`. You report order progress ONLY here; never edit `inbox.md`\n  (the manager owns it — one writer per file).\n\nThe kit enforces this loop: `check` flags a missing or heartbeat-less `status.md`\n(strict = red), warns when the heartbeat goes stale, and the Stop hook reminds you when\n`status.md` was not overwritten this session.\n\n## Claiming an order — one executor per order (claim FIRST, build second)\n\nAn order\'s `status: new` is visible to every session that wakes, so two readers can both\nbelieve they are its executor — a realized failure, not a theoretical one (substrate-kit\nPRs #50/#51: two lanes independently executed the same ORDER 005 the same day, and a whole\nsession\'s work had to be reconciled as twins). The manager only flips `new→done` after\nseeing the status report; the claim covers the gap in between.\n\nBefore executing any `new` order:\n\n1. **Re-read the bus at origin/main HEAD** — `control/inbox.md` AND every sibling status\n   file (`control/status*.md`). If another lane\'s status already claims the order\n   (`claimed-by:` naming its id) or reports it in `done=`, stand down and pick other work.\n2. **Claim FIRST, on your own status file\'s orders line** — append\n   `claimed-by: <order-ids> <lane-or-session> <ISO8601>` — and land it on **main** BEFORE\n   any build work (a control-only fast-lane PR, or a direct commit where your rules allow\n   one). A claim that exists only on a branch is invisible; only main counts.\n3. **Re-read once more after the claim merges** — two claims can race in flight; the\n   tiebreak is the earliest claim merged to main. The loser withdraws its claim line in\n   its next status overwrite and stands down.\n4. **Claims expire** — a claim with no visible build activity (no open PR, no fresh\n   heartbeat referencing the order) after ~24h may be treated as abandoned and re-claimed;\n   note the takeover in your status `notes:`. A dead lane must never deadlock an order.\n\nWith an active claim the `orders:` line reads e.g.:\n`orders: acked=001-008 done=001-006 claimed-by: 007+008 coordinator-lane 2026-07-09T18:38Z`\n— the executor drops the `claimed-by:` annotation in the overwrite that moves those ids\ninto `done=`. One writer per file is preserved: you only ever claim on your OWN status.\n(Shipped by inbox ORDER 007 — the root-cause fix for the twin-execution failure; the\nritual was live-proven manually on this repo\'s own orders before graduating here.)\n\n## `status.md` format (what you write every session — your heartbeat)\n\n```markdown\n# <project> · status\nupdated: <ISO8601>            # heartbeat — stale = the manager treats the Project as dark\nphase: <what I\'m doing right now, one line>\nhealth: green | red-by-design (<why>) | broken (<what>)\nkit: v<X.Y.Z> · check: green|red · engaged: yes|no   # kit self-report — see below\nlast-shipped: #<PR> — <one line>\nblockers: <what\'s stopping me, or `none`>\norders: acked=<ids> done=<ids> [claimed-by: <ids> <lane-or-session> <ISO8601>]\n⚑ needs-owner: <a decision/action only the owner can give, or `none`>\nnotes: <anything the manager should know>\n```\n\nThe `kit:` line is the **substrate-coordinator visibility** channel (kit-lab reads it via the\nmanager relay — zero write access to this repo): `v<X.Y.Z>` = the vendored kit version this\nrepo actually runs (update it in the same session as every `bootstrap upgrade`); `check:` =\nthe latest `check --strict` verdict on this tree; `engaged:` = the post-adopt engagement gate\n(`yes` once no UNRENDERED banner/slot remains, live CI runs the gate, and the session loop\nhas engaged).\n\n## ⚑ needs-owner — the OWNER-ACTION item format (quality contract)\n\nThe owner is the scarcest resource in the program: every ask routed to the owner costs\nattention, and an unclear or unnecessary ask stalls your own lane on top of burning his.\n**Before routing ANYTHING to the owner, try it yourself or cite the exact wall** — an\nassumption-based ask ("agents probably can\'t do X") is banned; the bar is the capability\nledger (`docs/CAPABILITIES.md`) plus one real attempt with the captured error.\n\nEvery ⚑ needs-owner item carries ALL of these REQUIRED fields — inline on the item, or as a\nstructured block the item links to:\n\n```markdown\n⚑ OWNER-ACTION\nWHAT: <one plain sentence, zero jargon — the thing the owner does>\nWHERE: <exact click path or URL>\nHOW: <paste-ready text/values where applicable, or "click only">\nWHY-IT-MATTERS: <one sentence, in product terms>\nUNBLOCKS: <what starts moving the moment it\'s done>\nVERIFIED-NEEDED: <the attempt you made + the exact error/wall proving only the owner can do\nthis — never an assumption>\n```\n\nHygiene: **expire or withdraw stale asks every session** (an answered or obsolete ask left in\nthe list is drift), and **fewer, clearer asks beat complete lists**. `check` warns — advisory,\nnever exit-affecting — when a non-`none` ⚑ needs-owner list lacks these fields.\n\n## `inbox.md` order format (manager-written, append-only)\n\n```markdown\n## ORDER <nnn> · <ISO8601> · status: new     # manager flips new→done after seeing status done=\npriority: P0 | P1 | P2\ndo: <pointer to a committed doc/section + the ask, kept short>\nwhy: <one line>\ndone-when: <acceptance test>\n```\n\n## CI + auto-merge notes (learned live, 2026-07-09)\n\n- **Heartbeat commits ride a fast lane, not a `paths-ignore`.** A control-only diff (only\n  `control/**` files changed) must still *report* every required status check, or GitHub treats\n  the missing contexts as pending and auto-merge jams forever. The kit\'s planted\n  `substrate-gate.yml` therefore short-circuits GREEN inside the job on control-only diffs\n  instead of skipping the workflow — copy that pattern (an in-job early exit) into any other\n  heavy suite rather than adding `paths-ignore: [control/**]` to a workflow whose check is\n  required.\n- **API-authored PRs may not trigger CI.** A PR created purely through an app/integration token\n  (e.g. the GitHub Contents API + a REST PR create) can sit with **zero check runs** — required\n  checks then never report and the PR cannot auto-merge. The manager\'s canonical write path is\n  therefore a **direct Contents-API commit to the default branch of `inbox.md`** (it is the sole\n  writer, so no PR is needed). When this Project ships control changes by PR, push the branch\n  over git (a real `git push` triggers `pull_request`/`push` events) before or after creating\n  the PR, and verify the PR shows check runs before relying on auto-merge.\n',
     'control-inbox.md.tmpl': '# ${project_name} · inbox\n\n> ORDERS to this Project. **ONE writer: the manager** — never edit this file. Report order\n> progress in `control/status.md` (`orders: acked=… done=…`). Protocol: `control/README.md`.\n\n*(no orders yet — the manager appends `## ORDER 001 · <ISO8601> · status: new` blocks here)*\n',
     'control-status.md.tmpl': '# ${project_name} · status\nupdated: (seeded at adopt — no real heartbeat yet: overwrite this whole file at your first session close)\nphase: adopted — first session not yet run\nhealth: green\nkit: v${kit_version} · check: red · engaged: no\nlast-shipped: none\nblockers: none\norders: acked= done=\n⚑ needs-owner: none\nnotes: seeded skeleton planted by substrate-kit adopt. This Project is the SOLE writer of this\nfile — overwrite it (never append) as the deliberate LAST step of every session, per\n`control/README.md`. `check` holds strict RED until the first real heartbeat replaces this seed.\nThe `kit:` line is your kit self-report (substrate-coordinator visibility): keep the version in\nsync with your vendored kit on every upgrade, `check:` = your last `check --strict` verdict,\n`engaged:` = the post-adopt engagement gate (yes once `check` reports ENGAGED/green live CI).\n',
     'current-state.md.tmpl': '# ${project_name} — Current State\n\n> **Status:** `living-ledger`\n>\n> Generated by substrate-kit. **Living status ledger.** Source code and merged\n> work always win over this file. Read it second (right after the working\n> agreement) and keep it current as the project moves.\n\n## Stability baseline\n\n(Describe the accepted-stable baseline once established — what is known-good and\nshould not be re-audited without a reported regression.)\n\n## In flight\n\n(Verify against live source control — this section is a dated snapshot.)\n\n## Recently shipped (newest first)\n\n(Merged work only, newest first.)\n\n## Review rhythm\n\n${review_ritual}\n',

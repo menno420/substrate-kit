@@ -1271,27 +1271,36 @@ def cmd_adopt(
     target: Path,
     include_claude: bool,
     wire_enforcement: bool = False,
+    lane: str | None = None,
 ) -> int:
     """Adopt the workflow into ``target``: init, plant the docs, stage the packs.
 
     The one-step flow: ``init`` runs first (idempotent — config + state), so a
     bare directory with nothing but the bootstrap file becomes a fully
     substrate-governed project in this single command. ``wire_enforcement``
-    additionally turns on the live nag hook + the CI locked door.
+    additionally turns on the live nag hook + the CI locked door. ``lane``
+    is the SHARED-repo shape (multi-Project cohabitation): this Project's
+    heartbeat plants as ``control/status-<lane>.md`` and is declared in
+    ``heartbeat_files``; the rest of the bus is shared, never re-planted.
     """
     rc = cmd_init(target)
     if rc != 0:
         return rc
     config = load_config(target)
     backend = JsonStateBackend(_state_path(target, config))
-    lines = adopt(
-        target,
-        config,
-        backend,
-        kit_root=_kit_root(),
-        include_claude=include_claude,
-        wire_enforcement=wire_enforcement,
-    )
+    try:
+        lines = adopt(
+            target,
+            config,
+            backend,
+            kit_root=_kit_root(),
+            include_claude=include_claude,
+            wire_enforcement=wire_enforcement,
+            lane=lane,
+        )
+    except ValueError as exc:
+        _emit(f"adopt: REFUSED — {exc}")
+        return 2
     for line in lines:
         _emit(f"adopt: {line}")
     # KL-7 — the adopter is told, in the adopt output itself, exactly what the
@@ -1705,6 +1714,16 @@ def build_parser() -> argparse.ArgumentParser:
             "the session journal is written"
         ),
     )
+    adopt_p.add_argument(
+        "--lane",
+        metavar="NAME",
+        default=None,
+        help=(
+            "adopt as a named lane in a SHARED multi-Project repo: plant "
+            "control/status-NAME.md as this Project's heartbeat (declared in "
+            "heartbeat_files) and share the rest of the control/ bus"
+        ),
+    )
     adopt_p.add_argument("--target", type=Path, default=Path.cwd())
     upgrade_p = sub.add_parser(
         "upgrade",
@@ -1966,6 +1985,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.target,
                 args.include_claude,
                 wire_enforcement=args.wire_enforcement,
+                lane=args.lane,
             )
         if args.command == "upgrade":
             return cmd_upgrade(

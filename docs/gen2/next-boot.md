@@ -20,14 +20,17 @@
 3. **`control/inbox.md`** — any `new` order outranks your plans. Note:
    headers stay `status: new` until the MANAGER flips them — diff the inbox
    against status `done=`, never re-execute on `new` alone.
-4. **`control/status.md`** — the last heartbeat: phase, blockers, the 11 ⚑
-   OWNER-ACTION items. You are its sole writer; overwrite it as your
-   deliberate LAST act.
+4. **`control/status.md`** — the last heartbeat: phase, blockers, the ⚑
+   OWNER-ACTION items (renumbered to 1–10 after the owner's 2026-07-10
+   #26/#49 clicks resolved the original items 1–2). You are its sole
+   writer; overwrite it as your deliberate LAST act.
 5. **`docs/CAPABILITIES.md`** — verified walls + THE DISCOVERY RULE.
    Probing a documented wall twice is a bug; declaring an unverified wall
    is a worse one.
 6. **`docs/gen2/queue-state.md`** — done / in-flight / next for the whole
-   program, committed at wind-down. Treat as handoff truth; live GitHub
+   program, committed at wind-down and **reconciled 2026-07-10 (night-cap
+   pass)**: 9 of 12 agent-queue items done with verified PR numbers; the
+   remainder carry their exact gates. Treat as handoff truth; live GitHub
    wins as time passes.
 7. **`docs/current-state.md`** — the living ledger (stability baseline,
    incident ledger, owner gates). Read the **Field notes — incident
@@ -83,7 +86,8 @@ until then).
   ```
 
   GraphQL `deleteRef` is not enabled; the GitHub MCP has no delete-branch
-  (and no create-release) tool. Owner cleans branches (⚑ OWNER-ACTION 9).
+  (and no create-release) tool. Owner cleans branches (⚑ OWNER-ACTION 7
+  in the renumbered `control/status.md` list).
 - **Owner-gated merges are refused on relayed consent** — the auto-mode
   permission classifier denied #17's merge until the owner typed
   "merge 17" live in-session, and denied a worker-spawn containing
@@ -140,7 +144,8 @@ until then).
   ```
 
   The tested defensive script is [setup.sh](setup.sh) (owner pastes it —
-  ⚑ OWNER-ACTION 11). Also: a fresh container has NO pytest
+  ⚑ OWNER-ACTION 9 in the renumbered `control/status.md` list). Also: a
+  fresh container has NO pytest
   (`/usr/local/bin/python3: No module named pytest`) — `pip install
   pytest ruff` before running the suite.
 
@@ -152,7 +157,10 @@ until then).
   (`scripts/check_bench_integrity.py`). `bench/results/` is append-only,
   history immutable.
 - **KF-5**: every release states the benchmark outcome; **KF-8**: no trend
-  claim below 3 rows (family is at 2 — run-3 is the threshold run).
+  claim below 3 rows — the threshold was MET 2026-07-10 (run-3 recorded
+  via PR #85, family at 3 rows, first trend statement on record in
+  `control/status.md` + CHANGELOG; both run-2 and run-3 strict-F-5 FAILs
+  stay DISPUTED pending the owner's F-5 A/B ruling).
 - **Recorder ≠ judge**: bench rows are the independent judge's verbatim
   verdict, even when unflattering (run-2's strict FAIL is the precedent).
 - **One writer per file** on the control bus; never edit `control/inbox.md`.

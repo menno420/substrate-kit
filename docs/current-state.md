@@ -148,7 +148,7 @@
   (guard probe n/a again on the fully-ENGAGED arm + the new last-card
   gate gap).
 - **B1's THIRD FIRING is RECORDED — VERDICT: FAIL (strict F-5, advisory
-  per KF-5; disputed pending OWNER-ACTION 3)** (run `2026-07-10-run03`,
+  per KF-5; disputed pending the F-5 ruling, now OWNER-ACTION 1)** (run `2026-07-10-run03`,
   seed 710301 northride, kit v1.6.0 ENGAGED, judge claude-fable-5; row 3
   of `bench/results/cold-start/index.json` + committed run dir, PR #85).
   Run-2's shape, sharper: **M1 to OFF on all pairs** (2004/2521/721 vs
@@ -404,26 +404,28 @@ still renders from superbot's committed `console.json`. Exact steps:
 on the next touch and never accretes here; adopted from the groomed-ideas-1
 ⟲ review, implemented at the run close-out.)*
 
-**→ Gen-2 boot:** a fresh gen-2 session starts from
-[`docs/gen2/next-boot.md`](gen2/next-boot.md) (the wind-down succession
-pack; queue truth in [`docs/gen2/queue-state.md`](gen2/queue-state.md)).
+**→ Post-overnight (2026-07-10 night-cap):** gen-2 boot + overnight run
+DONE — 9 of 12 queue items landed (~00:30–05:00Z; PR numbers reconciled in
+[`docs/gen2/queue-state.md`](gen2/queue-state.md)). **Queue dry**: T5
+awaits a daytime `do-not-automerge` PR (pin path); the rest is owner-gated
+(F-5 ruling HOT, then P10/P4/P5/P8/P11-or-P13 — OWNER-ACTION 1–10 in
+`control/status.md`).
 
 ### Owner gates — each with its one-line unblock
 
-1. **👤 Bless the bench rubric → merge PR #17** (plan §5.0;
-   `do-not-automerge`, CI-green, card complete): review `bench/rubric/*` on
-   the PR and merge it — or contest on the thread. **Unblocks the B1
-   baseline firing** (and the kit-lab console lane's first real data).
+*(Stale #17 rubric-bless gate removed — owner merged it 2026-07-09,
+D-0005; #26/#49 owner-merged 2026-07-10.)*
+
+1. **👤 Rubric F-5 A/B wording ruling — HOT** (OWNER-ACTION 1;
+   `docs/ideas/rubric-f5-none-regressing-wording-2026-07-09.md`): one
+   letter decides whether the run-2/run-3 strict FAILs stand or flip —
+   the bench headline + first KF-8 trend hang on it. **Unblocks run-4
+   under a ruled reading + honest KF-5 release notes.**
 2. **👤 Ratify or veto PL-010 (#22)** — the `feature build` task-class
-   ruling (PL-004 amendment). ⚑ **PR #22 MERGED mechanically, NOT by
-   owner review**: despite its `do-not-automerge` label, the enabler
-   armed auto-merge off the stale PR-open event payload after a ~12-min
-   runner-queue lag (full timeline in the incident comment on #22; the
-   fresh-label re-read guard is now deployed on main). **PL-010 is live
-   on main** — owner *reaction* replaces the merge-as-ratification gate:
-   a 👍 or silence ratifies; to veto, say so and a revert PR restores
-   the 8-class taxonomy (nothing has consumed the new class except the
-   authoring session's own telemetry row).
+   ruling. ⚑ **#22 merged mechanically, not by review** (label-race
+   incident — timeline in the #22 comment; fresh-label guard deployed).
+   **PL-010 is live**: a 👍 or silence ratifies; a veto gets a revert PR
+   restoring the 8-class taxonomy.
 3. **👤 P4 — arm the kit-lab loop**: Console → Schedules → paste the prompt
    from `docs/operations/lab-loop.md` § Arming verbatim (cron `0 6 * * *`
    UTC · fresh session per fire · Sonnet-class). **Unblocks D3** (≥3
@@ -446,20 +448,12 @@ pack; queue truth in [`docs/gen2/queue-state.md`](gen2/queue-state.md)).
 
 ### Agent queue — in order, as the gates open
 
-1. **Upgrade-UX fixes from the v1.6.0 rollout field findings** *(the
-   consumer-upgrades item is DONE — superbot-next#96 + websites#45 merged
-   2026-07-09, both ENGAGED on v1.6.0; see Recently shipped + the registry.
-   superbot stays owner-gated pin-only ⚑; superbot-games two-lane
-   `heartbeat_files` note carries until it adopts)*: four B4 ideas filed
-   2026-07-09, all ordinary-lane with guard recipes in the files —
-   `--apply-docs` post-hoc apply against the banked archived dist
-   (`upgrade-apply-docs-single-shot-window-…`), hash-record on byte-match
-   so rollback+rerun stops losing provenance
-   (`upgrade-rollback-loses-doc-hash-records-…`), the idempotent-archive
-   `(already banked)` report line (third field report — priority bumped;
-   `upgrade-archive-report-line-gap-…`), and the release.json placement
-   line in the adopter checklist
-   (`upgrade-checklist-release-json-placement-…`).
+1. ✅ **Upgrade-UX fixes — DONE, kit PR #92** (2026-07-10, adopted by the
+   #98 lane): three of four ideas shipped whole; the 4th (`--apply-docs`)
+   shipped its interim-hint slice — the full post-hoc-apply mechanism
+   idea stays `open` and is the next ordinary-lane increment. superbot
+   stays owner-gated pin-only ⚑; superbot-games gets `adopt --lane`
+   (PR #103) when it adopts.
 2. **Run-2/run-3 bench follow-ups** *(B1 run-3 itself is DONE — fired
    2026-07-10 after the owner merged #49, recorded as row 3 with the first
    legal KF-8 trend, PR #85; the three ordinary-lane follow-ups —
@@ -482,30 +476,40 @@ pack; queue truth in [`docs/gen2/queue-state.md`](gen2/queue-state.md)).
 
 ## Recently shipped (newest first)
 
-- **#95 — run-2 ordinary-lane follow-ups (queue item 3)**: (a)
-  `run_ab.py prepare` walks the ON-arm RED→ENGAGED→GREEN arc itself and
-  writes `manifest.json` even on smoke failure (`smoke_failed`) — no more
-  hand-engaged arms (runs 2–3 both paid this); (b) `render --live`
-  iterates the engagement gate's own `scan_relpaths()`
-  (`.claude/CLAUDE.md` included); (c) planted `.sessions/README.md`
-  carries marker byte-forms and checker misses name the expected form.
-  Suite 776 green, dist byte-pinned; the three idea files → shipped.
+- **#108 — planted-gate template sentinel fixes (visiting gba-homebrew
+  Track B lane; claim #105)**: no-card PRs and born-red ADDED cards now
+  gate advisory via explicitly named absent sentinels instead of the
+  mtime fallback latching onto an unrelated in-progress card — two
+  adopter-found defects fixed live (gba-homebrew PRs #2/#3, validated
+  across its #3–#14).
+- **The 2026-07-10 overnight gen-2 run — 9 queue items in one night**
+  (full lane ledger in `.sessions/2026-07-10-gen2-final-close.md`; PR
+  numbers verified at the night-cap reconcile): **#84** walking-skeleton
+  breadcrumb · **#85** B1 run-3 recorded (row 3, first KF-8 trend,
+  strict-F-5 FAIL disputed pending the ruling) · **#86** engagement-gate
+  comment-leniency fix · **#87** inbox append-only + ORDER-grammar
+  checker (+ **#89** writer-identity honest note) · **#90** claim-aware
+  checker · **#91** telemetry write-at-card-commit + backfill · **#92**
+  four upgrade-UX fixes (adopted + merged via the #98 lane) · **#98**
+  OWNER-ACTION ↔ CAPABILITIES xref advisory · **#99** adopter-findings batch (owner-action token
+  shorthand, fast-CI arm-race + worktree recipes) · **#103** `adopt
+  --lane` (lane-aware adoption, the G1 double-adoption fix) · **#95**
+  run-2 follow-ups (`prepare` walks the ON-arm arc itself + `smoke_failed`
+  manifests; `render --live` iterates the gate's own `scan_relpaths()`;
+  planted `.sessions/README.md` carries marker byte-forms, checker misses
+  name the expected form — three idea files → shipped). Suite 722 → 813
+  over the night; closes/claims:
+  #80/#81/#88/#93/#94/#96/#97/#100/#101/#102/#104. Per-PR detail:
+  CHANGELOG `[Unreleased]` (backfilled at the night-cap).
 - **#75 — fleet rollout v1.6.0 wrap-up (kit-side, docs-only)**: the
   **v1.6.0 fleet rollout is COMPLETE — every active adopter is ENGAGED on
-  v1.6.0**. superbot-next#96 (merged 9761db4): v1.2.0→v1.6.0, upgrade
-  report 7 consumer-edited / 2 diverged / 1 missing→planted / 3
-  template-improved applied / 6 unchanged, `from_version` honest, inputs
-  self-cleaned, CAPABILITIES.md planted fully rendered + hash-recorded,
-  six-field heartbeat live, `check --strict` exit 0, 1124 tests green.
-  websites#45 (merged ab0995d): v1.2.0→v1.6.0, 13 kept / 5 diverged
-  hand-merged / 1 template-improved applied, CAPABILITIES.md replanted +
-  seeded with 4 repo-verified entries, six-field ⚑ rewrite, `check
-  --strict` exit 0, 125 tests green. Registry rows updated in
-  [`docs/adopters.md`](adopters.md); four upgrade-UX ideas filed (agent
-  queue item 1). **Manager relay item ⚑:** websites' inbox ORDER 005 is
-  genuinely unexecuted (`/queue` 404s live — websites#44 shipped only the
-  P0 ping-ack for their ORDER 006); it needs a scoped websites session,
-  relayed via the manager. superbot stays v1.0.0 pin-only (owner ⚑).
+  v1.6.0** (superbot-next#96 merged 9761db4, websites#45 merged ab0995d;
+  both `check --strict` exit 0, per-repo upgrade detail in the registry
+  rows, [`docs/adopters.md`](adopters.md)); four upgrade-UX ideas filed
+  (shipped as #92). **Manager relay item ⚑:** websites' inbox ORDER 005
+  is genuinely unexecuted (`/queue` 404s live) — needs a scoped websites
+  session, relayed via the manager. superbot stays v1.0.0 pin-only
+  (owner ⚑).
 - **#68 — ORDER 008: owner-action quality band**: OWNER-ACTION item
   format (WHAT / WHERE / HOW / WHY-IT-MATTERS / UNBLOCKS /
   VERIFIED-NEEDED — attempted-or-exact-wall; assumption-based asks
