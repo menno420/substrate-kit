@@ -3172,6 +3172,176 @@ def check_capability_xref(
                 )
     return findings
 
+# --- engine/checks/check_setup_script.py ---
+"""Setup-script contract checker — the enforcer half of EAP §6.5.
+
+Why + provenance: the fleet ran six divergent hand-rolled environment setup
+scripts, and a contract-violating one is a *silent session killer* — a script
+that exits non-zero at provisioning kills the session before the worker can
+even report (two trading-strategy sessions died exactly this way; the
+substrate-kit PR #47 casualty is the same class). The fleet-manager archetype
+material (``environments/archetypes.md`` + ``templates/setup-universal.sh``)
+distilled the survivorship rules into ONE contract for the per-repo
+``scripts/env-setup.sh`` hook every archetype shim prefers, and the kit now
+plants that hook from ``env-setup.sh.tmpl`` (EAP program review 2026-07-10
+§6.5). This module is the **enforcer half of the writer/enforcer pair**: the
+planted template must pass this checker byte-for-byte (a test pins the
+agreement), and a host's later edits are nudged back onto the contract.
+
+What it flags (ALL **advisory** — a nudge, never a locked door, the same
+posture as the claims/owner-action/staleness warnings):
+
+- ``setup-fatal-posture`` — the script arms a fatal shell mode (``set -e`` /
+  ``set -o errexit``): any failing step then aborts provisioning and kills
+  the session with no signal. The contract is ``set +e`` + per-step guards.
+- ``setup-no-exit0`` — the last effective (non-comment, non-blank) line is
+  not an unconditional ``exit 0``: the script's own tail status leaks into
+  the shim and a benign install hiccup reads as a provisioning failure.
+- ``setup-secret-value`` — a secret-named variable (``*TOKEN*`` / ``*KEY*``
+  / ``*SECRET*`` / ``*PASSWORD*`` …) is assigned a literal value. Names and
+  placeholders are fine (referencing ``"$GITHUB_TOKEN"`` or documenting
+  ``FOO_TOKEN=<SET-IN-CLAUDE-AI>``); a real value in a committed file is
+  the one hard "never" the environment registry carries.
+
+Posture is **advisory-only, never exit-affecting**: the script is host-owned
+after planting, contract drift migrates by nag (the §6.4 compat guarantee —
+no adopter's existing hand-rolled script can red a required check on
+upgrade). Input-gated on the script existing — the plant itself is adopt's
+job, so a repo without the hook gets no missing-file nag here. The path is
+the fleet contract's fixed location (:data:`SETUP_SCRIPT_RELPATH` — the
+archetype shims hardcode it, so it is deliberately house-style constant, not
+config; a diverging host forks the constant, D-7). Pure stdlib, no
+``subprocess`` (§3.2); unreadable files fail open (no verdict).
+"""
+
+
+
+
+# The fleet contract's fixed location: every archetype setup shim runs
+# `bash scripts/env-setup.sh` when it exists (fleet-manager
+# environments/templates/setup-universal.sh). House-style constant on
+# purpose (D-7): the shims hardcode this path, so a config knob here could
+# only produce a hook the shims never call.
+SETUP_SCRIPT_RELPATH = "scripts/env-setup.sh"
+
+# Variable-name fragments that read as credentials. Deliberately coarse —
+# the finding is advisory and a committed secret is worth a false nag.
+_SECRET_NAME_RE = re.compile(
+    r"(TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|PRIVATE_?KEY|ACCESS_?KEY|CREDENTIAL)",
+    re.IGNORECASE,
+)
+
+# `NAME=value` / `export NAME=value` at line start (shell assignment shape).
+_ASSIGN_RE = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$")
+
+# `set -e` posture: a `set` line whose short-option token carries `e`
+# (`-e`, `-eu`, `-euo`), or the long form `set -o errexit`.
+_SET_LINE_RE = re.compile(r"^\s*set\s+(.+)$")
+
+
+def _effective_lines(text: str) -> list[str]:
+    """Return the script's non-blank, non-comment lines, stripped."""
+    lines: list[str] = []
+    for raw in text.split("\n"):
+        stripped = raw.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        lines.append(stripped)
+    return lines
+
+
+def _arms_fatal_posture(line: str) -> bool:
+    """True when ``line`` is a ``set`` command arming errexit."""
+    match = _SET_LINE_RE.match(line)
+    if match is None:
+        return False
+    tokens = match.group(1).split()
+    if "-o" in tokens and "errexit" in tokens:
+        return True
+    return any(
+        token.startswith("-") and not token.startswith("--") and "e" in token[1:]
+        for token in tokens
+        if token not in {"-o"}
+    )
+
+
+def _is_secret_literal(value: str) -> bool:
+    """True when an assignment's right-hand side looks like a real value.
+
+    Fine (not flagged): empty, a ``$``-reference (``"$GITHUB_TOKEN"``), a
+    ``<PLACEHOLDER>``, or a pure option-ish token starting with ``-``.
+    """
+    stripped = value.strip().strip("\"'").strip()
+    if not stripped:
+        return False
+    if stripped.startswith(("$", "<", "-")):
+        return False
+    return True
+
+
+def check_setup_script(target: Path) -> list[Finding]:
+    """Return advisory findings for ``scripts/env-setup.sh`` contract drift.
+
+    Engages only when the script exists (adopt plants it; absence is not a
+    finding). Advisory by contract — callers must never count these toward
+    an exit code. Fail-open on unreadable files.
+    """
+    path = target / SETUP_SCRIPT_RELPATH
+    if not path.is_file():
+        return []
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return []  # fail open — an unreadable file is not a verdict
+    findings: list[Finding] = []
+    effective = _effective_lines(text)
+
+    for line in effective:
+        if _arms_fatal_posture(line):
+            findings.append(
+                Finding(
+                    SETUP_SCRIPT_RELPATH,
+                    "setup-fatal-posture",
+                    f"`{line}` arms fatal shell posture — a failing step "
+                    "then kills the session at provisioning with no signal "
+                    "(the two-dead-sessions class). The contract is `set "
+                    "+e` with every install step guarded (env-setup.sh "
+                    "header, EAP §6.5).",
+                ),
+            )
+
+    if not effective or not re.fullmatch(r"exit\s+0", effective[-1]):
+        findings.append(
+            Finding(
+                SETUP_SCRIPT_RELPATH,
+                "setup-no-exit0",
+                "the last effective line is not an unconditional `exit 0` — "
+                "the script's tail status leaks to the environment shim and "
+                "a benign hiccup reads as a provisioning failure. End the "
+                "script with `exit 0` (contract rule 1, EAP §6.5).",
+            ),
+        )
+
+    for line in effective:
+        assign = _ASSIGN_RE.match(line)
+        if assign is None:
+            continue
+        name, value = assign.group(1), assign.group(2)
+        if _SECRET_NAME_RE.search(name) and _is_secret_literal(value):
+            findings.append(
+                Finding(
+                    SETUP_SCRIPT_RELPATH,
+                    "setup-secret-value",
+                    f"`{name}=…` assigns a literal to a secret-named "
+                    "variable — committed setup scripts carry NAMES and "
+                    "placeholders only; real values live in the "
+                    "environment panel (contract rule 2, EAP §6.5). "
+                    "Reference the variable (`\"$NAME\"`) or use a "
+                    "`<PLACEHOLDER>`.",
+                ),
+            )
+    return findings
+
 # --- engine/ledger.py ---
 """Decision ledger — the ``[D-NNNN]`` provenance-separated rulebook (Lane B6).
 
@@ -8745,6 +8915,18 @@ ADOPT_PLAN: list[tuple[str, str]] = [
     # homes (docs/owner/claims/, root claims/). Shared across lanes like
     # inbox.md/README.md — a --lane adopt never re-plants it.
     ("control-claims-README.md.tmpl", "control/claims/README.md"),
+    # The setup-script contract hook (EAP program review §6.5): every fleet
+    # environment's archetype setup shim prefers a repo's own
+    # scripts/env-setup.sh (fleet-manager environments/templates/
+    # setup-universal.sh), so the kit plants the contract-conformant hook —
+    # always exit 0, defensive posture, no secret values, guarded installs.
+    # Slot-free by design: a shell file must never carry the markdown
+    # UNRENDERED banner, and shell `$var` syntax must never read as an
+    # interview slot (tests pin both). Root-level on purpose (a hook the
+    # environment shim executes, not documentation): _adopt_dest's docs_root
+    # remap never applies. check_setup_script is the enforcer half
+    # (advisory-only); skip-if-exists keeps every hand-rolled script.
+    ("env-setup.sh.tmpl", "scripts/env-setup.sh"),
 ]
 
 # State key holding {planted relpath: sha256 hex} for every doc the kit last
@@ -9725,7 +9907,17 @@ def scan_relpaths(config: Any) -> list[str]:
     unrendered banner/slots as strict-RED while the render path skipped the
     file, stranding every fresh adopter mid-checklist.
     """
-    relpaths = [_adopt_dest(plan_rel, config) for _, plan_rel in ADOPT_PLAN]
+    relpaths = [
+        _adopt_dest(plan_rel, config)
+        for _, plan_rel in ADOPT_PLAN
+        # Shell plants are excluded from the unrendered/render-live surface
+        # (EAP §6.5): shell `${VAR}` syntax is not an interview slot — a
+        # host's hand-rolled scripts/env-setup.sh would false-red as
+        # `unrendered-slot`, and `render --live` must never rewrite an
+        # executable hook. The kit's own env-setup.sh.tmpl is slot-free by
+        # contract (a test pins it), so nothing real is skipped.
+        if not plan_rel.endswith(".sh")
+    ]
     relpaths.extend(EXTRA_SCAN_RELPATHS)
     return relpaths
 
@@ -11654,6 +11846,12 @@ def cmd_check(
         target,
         status_files=config.heartbeat_files,
     )
+    # Setup-script contract (EAP §6.5): advisory-only, like every nudge
+    # above — the planted scripts/env-setup.sh is host-owned after adopt,
+    # so contract drift (fatal posture / missing exit 0 / secret literal)
+    # migrates by nag, never a required-check red. Full lane only: the hook
+    # is not control-lane traffic (emitted below with the adopters block).
+    setup_advisories = check_setup_script(target)
     # The inbox append-only gate (issue #36 report 2): a control/inbox.md
     # change must be pure-append vs the merge-base + ORDER-grammar shaped.
     # Rides the finding loop like every checker; engages only when CI handed
@@ -11793,6 +11991,26 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=xref_advisories,
+        )
+    if setup_advisories and not status_only:
+        # Same warn-only contract as the advisories above (EAP §6.5): the
+        # setup-script hook is host-owned after planting — a contract nudge
+        # (fatal posture, missing exit 0, secret-shaped literal) is surfaced
+        # + telemetry-recorded, never counted toward the exit code, so no
+        # adopter's hand-rolled script can red a required check on upgrade.
+        _emit(
+            f"check: {len(setup_advisories)} setup-script contract advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in setup_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=setup_advisories,
         )
     if adopters_advisories and not status_only:
         # Same warn-only contract as the advisories above (EAP §6.3): a
@@ -13078,6 +13296,7 @@ _TEMPLATES = {
     'control-status.md.tmpl': '# ${project_name} · status\nupdated: (seeded at adopt — no real heartbeat yet: overwrite this whole file at your first session close)\nphase: adopted — first session not yet run\nhealth: green\nkit: v${kit_version} · check: red · engaged: no\nlast-shipped: none\nblockers: none\norders: acked= done=\n⚑ needs-owner: none\nnotes: seeded skeleton planted by substrate-kit adopt. This Project is the SOLE writer of this\nfile — overwrite it (never append) as the deliberate LAST step of every session, per\n`control/README.md`. `check` holds strict RED until the first real heartbeat replaces this seed.\nThe `kit:` line is your kit self-report (substrate-coordinator visibility): keep the version in\nsync with your vendored kit on every upgrade, `check:` = your last `check --strict` verdict,\n`engaged:` = the post-adopt engagement gate (yes once `check` reports ENGAGED/green live CI).\n',
     'current-state.md.tmpl': '# ${project_name} — Current State\n\n> **Status:** `living-ledger`\n>\n> Generated by substrate-kit. **Living status ledger.** Source code and merged\n> work always win over this file. Read it second (right after the working\n> agreement) and keep it current as the project moves.\n\n## Stability baseline\n\n(Describe the accepted-stable baseline once established — what is known-good and\nshould not be re-audited without a reported regression.)\n\n## In flight\n\n(Verify against live source control — this section is a dated snapshot.)\n\n## Recently shipped (newest first)\n\n(Merged work only, newest first.)\n\n## Review rhythm\n\n${review_ritual}\n',
     'decisions.md.tmpl': '# ${project_name} — decisions\n\n> **Status:** `living-ledger`\n>\n> Generated by substrate-kit. Append-only decision ledger — entries are\n> superseded, never deleted. Rule docs cite entries as bare [D-NNNN] ids;\n> this file holds the provenance so rules never narrate it inline.\n\n<!-- Grammar: ## [D-NNNN] <title> / - status: decided|superseded|retired / - date: YYYY-MM-DD / - supersedes: D-NNNN (opt) / - superseded-by: D-NNNN (opt) / - verdict: <one line> / - why: <2-3 lines> / - provenance: <ref> -->\n\n## [D-0001] Adopt the substrate-kit workflow\n\n- status: decided\n- date:\n- verdict: ${project_name} runs on the substrate-kit agent workflow.\n- why: A repo-resident working agreement, decision ledger, and session\n  discipline let agents work correctly with little steering; adopting the\n  kit starts ${project_name} governed instead of accreting rules ad hoc.\n- provenance: substrate-kit adoption interview\n',
+    'env-setup.sh.tmpl': '#!/usr/bin/env bash\n# scripts/env-setup.sh — this repo\'s environment setup hook (kit-planted).\n#\n# THE SETUP-SCRIPT CONTRACT (EAP program review 2026-07-10 §6.5; rendered\n# from the fleet-manager archetype material — environments/archetypes.md +\n# templates/setup-universal.sh, the shim every archetype script derives\n# from). Every fleet environment\'s setup shim prefers THIS file when it\n# exists, so repo-specific setup lives here — one durable per-repo hook\n# instead of divergent hand-rolled environment scripts. Four rules, paid\n# for in dead sessions across 4+ lanes:\n#\n#   1. ALWAYS exit 0. A failing setup script = dead session, no signal —\n#      the worker never even reports. Worst case is a session with missing\n#      deps that can still report and self-repair; that beats no session.\n#   2. NO SECRET VALUES — ever. Variable NAMES may be referenced; real\n#      values live only in the environment panel (owner-side). If it is\n#      not a name or a placeholder, it does not go in this file.\n#   3. Defensive posture: set +e (no -e / -u / pipefail), and every\n#      install step guarded by an existence check — one missing manifest\n#      must never block the rest.\n#   4. Run from the repo root: the environment shim invokes this as\n#      `cd <repo> && bash scripts/env-setup.sh`.\n#\n# HOST-OWNED after planting: add repo-specific steps (interpreter pins,\n# extra manifests, toolchains) in the marked section below, keeping the\n# contract. The kit\'s `check` validates the contract (advisory-only):\n# no fatal shell posture, no secret-shaped literals, and an unconditional\n# `exit 0` as the last effective line.\n\nset +e\n\nlog() { echo "[env-setup] $*"; }\n\nPY=python3\n\n# Guarded dependency installs — each manifest only if present, never fatal.\nfor req in requirements.txt requirements-dev.txt; do\n  if [ -f "$req" ]; then\n    log "$PY -m pip install -r $req"\n    "$PY" -m pip install --quiet -r "$req" \\\n      || log "$req install failed (non-fatal, continuing)"\n  fi\ndone\n\nif [ -f pyproject.toml ]; then\n  log "$PY -m pip install -e . (pyproject.toml present)"\n  "$PY" -m pip install --quiet -e . \\\n    || log "editable install failed (non-fatal, continuing)"\nfi\n\n# --- repo-specific steps go below (keep every step guarded + non-fatal) ----\n\n# Contract rule 1 — the single most important line. Do not "improve" this.\nlog "env-setup complete (defensive: always exit 0)"\nexit 0\n',
     'helper-policy.md.tmpl': '# ${project_name} — helper policy\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. When to create / move / promote a helper —\n> read this **before** adding a utility function anywhere. **NOT SOURCE OF\n> TRUTH** for code — source files always win.\n\n## Rules\n\n1. **One source of truth.** A behavior lives in exactly one function. Never\n   copy a helper into a second module "for convenience" — import it, or move\n   it (rule 2).\n2. **Shared helpers live below both consumers.** A helper needed by two\n   layers goes in the shared layer *below* both — never in either consumer\n   layer, and never duplicated into each.\n3. **Exact-name guard.** Before defining a new function, grep for\n   `def <exact_name>` in the target module and its siblings (plus the 1–2\n   nearest concept synonyms). A later same-name `def` silently shadows the\n   earlier one — no import fails, no warning fires.\n4. **Promote on second use.** The moment a private helper is wanted by a\n   second module, promote it to the shared layer — don\'t copy it.\n\n## Where helpers go in ${project_name}\n\n(Hand-filled: the concrete shared-layer path(s) for this repo, lowest layer\nfirst, with one line on what belongs in each.)\n',
     'ideas-README.md.tmpl': '# ${project_name} — idea backlog & lifecycle\n\n> **Status:** `ideas`\n>\n> Generated by substrate-kit. Capture ideas here so they live in the repo, not in\n> chat. Nothing here is approved until it graduates. A **conveyor, not a graveyard**:\n> every idea ends implemented, on a roadmap, in discussion, or explicitly rejected.\n\n## Lifecycle\n\n```\n(1) INTAKE   capture the idea (raw -> captured)\n(2) MAP      name the owning area, rough size, rough risk\n(3) ROUTE    -> quick-win | structured plan | discuss-first (question router)\n(4) GROOM    pull one routable idea forward each session\n(5) OUTCOME  implemented | on a roadmap | in discussion | rejected\n```\n\n## Frontmatter — the idea-outcome record\n\nEvery idea file in this directory (README excepted) opens with a flat\nYAML-subset frontmatter block — the machine-readable outcome record\n("ideas that ship and survive"), so a sweep can score the backlog without\nparsing prose:\n\n```\n---\nstate: captured | routed | promoted | historical\norigin: lab | owner | consumer:<owner>/<repo>\nshipped_pr: null | <PR number in shipped_repo>\nshipped_repo: null | <owner>/<repo>\nmerged_date: null | YYYY-MM-DD\noutcome: open | shipped | survived | reverted | rejected\n---\n```\n\nConventions: `shipped`/`survived`/`reverted` require all three ship fields;\n`open`/`rejected` keep them null; `survived` means the merge is ≥ 30 days old\nwith no revert; name files `<slug>-YYYY-MM-DD.md` (the generation-date cohort\nkey) and link every file from this README. The prose keeps the story, the\nfrontmatter keeps the score.\n\n## Backlog\n\n(Captured ideas, each with a state and a next destination — none left at `raw`.)\n',
     'owner-profile.md.tmpl': "# ${project_name} — owner working profile\n\n> **Status:** `owner-guidance`\n>\n> Generated by substrate-kit. Captures the owner's **working style** so\n> agents collaborate well — never personal data. The person is not shipped\n> with the kit.\n\n## How the owner works\n\n${owner_profile}\n\n## Review ritual\n\n${review_ritual}\n\n## Privacy note\n\nThis doc records working style only: communication preferences, review\ncadence, decision boundaries, autonomy expectations. No contact details, no\npersonal history, nothing that identifies the person beyond their role on\n${project_name}. When in doubt, leave it out.\n",

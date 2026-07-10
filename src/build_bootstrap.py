@@ -58,6 +58,9 @@ MODULE_ORDER = (
     # After check_status_current.py: reuses its heartbeat_relpaths + path
     # constants (queue item 8 OWNER-ACTION ↔ CAPABILITIES cross-reference).
     "checks/check_capability_xref.py",
+    # Only needs check_docs.Finding, defined above (EAP §6.5 setup-script
+    # contract enforcer — the writer half is env-setup.sh.tmpl).
+    "checks/check_setup_script.py",
     "ledger.py",
     "loop/kpis.py",
     "loop/reflections.py",

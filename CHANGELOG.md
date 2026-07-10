@@ -17,6 +17,29 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Setup-script contract: `scripts/env-setup.sh` planted on adopt +
+  `check_setup_script` enforcer** (EAP program review 2026-07-10 §6.5 — the
+  fleet ran six divergent hand-rolled environment setup scripts; the
+  contract-violating ones killed sessions at provisioning). Every fleet
+  archetype setup shim (fleet-manager
+  `environments/templates/setup-universal.sh`) prefers a repo's own
+  `scripts/env-setup.sh`; the kit now plants that hook from the new
+  `env-setup.sh.tmpl` (in `ADOPT_PLAN`, skip-if-exists — a hand-rolled
+  script is never clobbered; upgrades replant it when missing). The template
+  encodes the archetype contract: **always `exit 0` · defensive `set +e`
+  posture · no secret values · guarded installs**, is slot-free by design (a
+  shell file never carries the markdown UNRENDERED banner, and shell `$var`
+  never reads as an interview slot), and leaves a marked host-owned section
+  for repo-specific steps. The new `check_setup_script` checker is the
+  enforcer half of the writer/enforcer pair (a test pins that the planted
+  template passes it): `setup-fatal-posture` (`set -e` / `set -o errexit`),
+  `setup-no-exit0` (last effective line isn't `exit 0`),
+  `setup-secret-value` (literal assigned to a secret-named variable) — all
+  **advisory-only, never exit-affecting**, and input-gated on the script
+  existing, so no adopter's existing script can red a gate on upgrade.
+  Shell plants are excluded from the engagement gate's unrendered scan and
+  from `render --live` (shell `${VAR}` is not an interview slot; an
+  executable hook is never rewritten in place).
 - **One kit-owned claims convention + `check_claims` unified on it** (EAP
   program review 2026-07-10 §6.4 — the fleet ran four forked claim mechanisms
   while the checker validated a fifth). The convention has two surfaces:

@@ -82,7 +82,17 @@ def scan_relpaths(config: Any) -> list[str]:
     unrendered banner/slots as strict-RED while the render path skipped the
     file, stranding every fresh adopter mid-checklist.
     """
-    relpaths = [_adopt_dest(plan_rel, config) for _, plan_rel in ADOPT_PLAN]
+    relpaths = [
+        _adopt_dest(plan_rel, config)
+        for _, plan_rel in ADOPT_PLAN
+        # Shell plants are excluded from the unrendered/render-live surface
+        # (EAP §6.5): shell `${VAR}` syntax is not an interview slot — a
+        # host's hand-rolled scripts/env-setup.sh would false-red as
+        # `unrendered-slot`, and `render --live` must never rewrite an
+        # executable hook. The kit's own env-setup.sh.tmpl is slot-free by
+        # contract (a test pins it), so nothing real is skipped.
+        if not plan_rel.endswith(".sh")
+    ]
     relpaths.extend(EXTRA_SCAN_RELPATHS)
     return relpaths
 
