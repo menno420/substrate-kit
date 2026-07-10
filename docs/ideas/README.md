@@ -49,6 +49,16 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- [`adopt --wire-enforcement` plants a pytest step when tests/ exists](adopt-plants-pytest-gate-step-2026-07-10.md)
+  — state: captured; origin: consumer (superbot-games ran gen-1 with a
+  tests-blind gate — 73 tests never in CI, fixed consumer-side in games#16;
+  the kit generalizes the fix so every adopter's suite ships with its
+  runner); next: template addition behind the control fast lane; ordinary
+  lane, engine change → dist byte-pin.
+- [Retro/docs reachability checker — no unindexed retro file](retro-docs-reachability-checker-2026-07-10.md)
+  — state: captured; origin: lab (the #76 wind-down addendum merged unindexed
+  despite self-flagging the follow-up; reconciled only at gen-2 boot, #78);
+  next: mirror check_idea_index.py over docs/retro/, wire into kit-quality.
 - [`--apply-docs` is a single-shot window — misleading "re-run" hint](upgrade-apply-docs-single-shot-window-2026-07-09.md)
   — state: captured; origin: lab (v1.6.0 fleet rollout — observed on both
   consumer upgrade runs, superbot-next#96 + websites#45: post-run, the
