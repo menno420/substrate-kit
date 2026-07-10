@@ -119,6 +119,8 @@ orders: acked=<ids> done=<ids> [claimed-by: <ids> <lane-or-session> <ISO8601>]
 notes: <anything the manager should know>
 ```
 
+Grammar source of truth: the tokens, field lists, and regexes of this format are kit-owned constants in the kit's `src/engine/grammar.py` (EAP §6.8) — the SAME module the `check` enforcers consume, so writer and enforcer cannot drift; agreement is pinned by the kit's `tests/test_grammar.py`.
+
 ## ⚑ needs-owner — the OWNER-ACTION item format (quality contract)
 
 The owner is the scarcest resource in the program: every ask routed to the owner costs
@@ -146,6 +148,8 @@ the list is drift), and **fewer, clearer asks beat complete lists**. `check` war
 never exit-affecting — when a non-`none` ⚑ needs-owner list lacks these fields.
 (Shipped by inbox ORDER 008, owner directive 2026-07-09.)
 
+Grammar source of truth: the tokens, field lists, and regexes of this format are kit-owned constants in the kit's `src/engine/grammar.py` (EAP §6.8) — the SAME module the `check` enforcers consume, so writer and enforcer cannot drift; agreement is pinned by the kit's `tests/test_grammar.py`.
+
 ## `inbox.md` order format (manager-written, append-only)
 ```markdown
 ## ORDER <nnn> · <ISO8601> · status: new     # manager flips new→done after seeing status done=
@@ -154,3 +158,5 @@ do: <pointer to a committed doc/section + the ask, kept short>
 why: <one line>
 done-when: <acceptance test>
 ```
+
+Grammar source of truth: the tokens, field lists, and regexes of this format are kit-owned constants in the kit's `src/engine/grammar.py` (EAP §6.8) — the SAME module the `check` enforcers consume, so writer and enforcer cannot drift; agreement is pinned by the kit's `tests/test_grammar.py`.

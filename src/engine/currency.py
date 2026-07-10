@@ -48,6 +48,16 @@ from typing import Callable
 
 from engine.adopt import dist_version
 
+# The `kit:` self-report line grammar is kit-owned with ONE home —
+# engine.grammar (EAP §6.8): the writer templates and this parser consume
+# the same constants, so they cannot drift apart. Shape notes live there.
+from engine.grammar import (
+    KIT_CHECK_FIELD_RE,
+    KIT_ENGAGED_FIELD_RE,
+    KIT_LINE_RE,
+    KIT_VERSION_TOKEN_RE,
+)
+
 ADOPTERS_RELPATH = "docs/adopters.md"
 ROSTER_RELPATH = "docs/fleet-repos.txt"
 RAW_HOST = "https://raw.githubusercontent.com"
@@ -69,15 +79,6 @@ VENDORED_RELPATHS = ("bootstrap.py", "dist/bootstrap.py")
 CONFIG_RELPATH = "substrate.config.json"
 DEFAULT_HEARTBEAT = "control/status.md"
 
-# The planted heartbeat convention (ORDER 003): `kit: v1.2.3 · check: green ·
-# engaged: yes`. Parsed leniently — real heartbeats decorate the line (the
-# kit's own says "v1.7.0 released · KIT_VERSION 1.7.0 · …"), so we take the
-# first version token after `kit:` and scan the rest of the line for the
-# check/engaged fields wherever they sit.
-_KIT_LINE_RE = re.compile(r"^kit:\s*(.*)$", re.MULTILINE)
-_VERSION_TOKEN_RE = re.compile(r"\bv(\d[\w.\-]*)")
-_CHECK_FIELD_RE = re.compile(r"\bcheck:\s*(green|red)\b")
-_ENGAGED_FIELD_RE = re.compile(r"\bengaged:\s*(yes|no)\b")
 _NUMERIC_RE = re.compile(r"\d+")
 
 Fetcher = Callable[[str, str], "str | None"]
@@ -174,13 +175,13 @@ def parse_kit_line(text: str) -> tuple[str | None, str | None, str | None]:
     all. Lenient by design: fields are scanned anywhere on the line, so a
     decorated heartbeat (extra prose between fields) still parses.
     """
-    match = _KIT_LINE_RE.search(text)
+    match = KIT_LINE_RE.search(text)
     if match is None:
         return (None, None, None)
     line = match.group(1)
-    version = _VERSION_TOKEN_RE.search(line)
-    check = _CHECK_FIELD_RE.search(line)
-    engaged = _ENGAGED_FIELD_RE.search(line)
+    version = KIT_VERSION_TOKEN_RE.search(line)
+    check = KIT_CHECK_FIELD_RE.search(line)
+    engaged = KIT_ENGAGED_FIELD_RE.search(line)
     return (
         version.group(1) if version else None,
         check.group(1) if check else None,

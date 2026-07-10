@@ -46,24 +46,13 @@ from engine.checks.check_status_current import (
     heartbeat_relpaths,
 )
 
-# The six REQUIRED field labels (ORDER 008), canonical spelling first.
-# VERIFIED-NEEDED is the band's heart — the attempted-or-exact-wall proof
-# that kills assumption-based asks. The canonical labels match the shipped
-# templates and control/README.md § OWNER-ACTION format exactly (checker and
-# templates agree). Two fields also accept a shorthand spelling adopters
-# write inline — WHY:/VERIFIED-WHEN: — because accepting an alternate only
-# ever *withholds* this advisory nag (never adds one), so it stays
-# backward-compatible and never newly reddens a valid ledger.
-OWNER_ACTION_FIELDS = (
-    ("WHAT:",),
-    ("WHERE:",),
-    ("HOW:",),
-    ("WHY-IT-MATTERS:", "WHY:"),
-    ("UNBLOCKS:",),
-    ("VERIFIED-NEEDED:", "VERIFIED-WHEN:"),
-)
-
-NEEDS_OWNER_TOKEN = "⚑ needs-owner"
+# The six REQUIRED field labels (ORDER 008) + the ⚑ needs-owner token are
+# kit-owned grammar with ONE home — engine.grammar (EAP §6.8): the writer
+# templates and this enforcer consume the same constants, so they cannot
+# drift apart. Field semantics (canonical-first spelling, the lenient
+# WHY:/VERIFIED-WHEN: alternates) are documented there. Re-exported here
+# unchanged for existing importers.
+from engine.grammar import NEEDS_OWNER_TOKEN, OWNER_ACTION_FIELDS
 
 
 def _needs_owner_value(text: str) -> str | None:

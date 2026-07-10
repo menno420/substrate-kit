@@ -31,21 +31,21 @@ judge, so ``check`` stays meaningful on a tree with no inbox change.
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 from engine.checks.check_docs import Finding
 from engine.checks.check_status_current import INBOX_RELPATH  # "control/inbox.md"
 
-# The ORDER header grammar (control/README.md "inbox.md order format"):
-#   ## ORDER <nnn> · <ISO8601> · status: <state>     [# optional manager note]
-# The `·` is U+00B7 (the protocol's separator). A trailing `#` note is allowed
-# (the README's own example carries one), so the value is the first token.
-_ORDER_HEADER_PREFIX = "## ORDER "
-_ORDER_HEADER_RE = re.compile(r"^## ORDER \S+ · .+ · status: \S+")
-
-# Every ORDER block carries these fields (control/README.md order format).
-_REQUIRED_FIELDS = ("priority:", "do:", "why:", "done-when:")
+# The ORDER grammar (header shape + required body fields) is kit-owned with
+# ONE home — engine.grammar (EAP §6.8): writer templates and this enforcer
+# consume the same constants, so they cannot drift apart. The shapes are
+# documented there. (No import aliases: the dist builder drops intra-package
+# imports whole, so the canonical names must be the ones used.)
+from engine.grammar import (
+    ORDER_HEADER_PREFIX,
+    ORDER_HEADER_RE,
+    ORDER_REQUIRED_FIELDS,
+)
 
 
 def _order_grammar_findings(appended: str) -> list[Finding]:
@@ -59,7 +59,7 @@ def _order_grammar_findings(appended: str) -> list[Finding]:
     validated for a well-formed header and the four required fields.
     """
     lines = appended.splitlines()
-    header_idxs = [i for i, ln in enumerate(lines) if ln.startswith(_ORDER_HEADER_PREFIX)]
+    header_idxs = [i for i, ln in enumerate(lines) if ln.startswith(ORDER_HEADER_PREFIX)]
     findings: list[Finding] = []
 
     preamble_end = header_idxs[0] if header_idxs else len(lines)
@@ -87,7 +87,7 @@ def _order_grammar_findings(appended: str) -> list[Finding]:
 def _validate_block(block: list[str]) -> list[Finding]:
     """Return findings for one ORDER block (header line through its body)."""
     header = block[0]
-    if not _ORDER_HEADER_RE.match(header):
+    if not ORDER_HEADER_RE.match(header):
         return [
             Finding(
                 INBOX_RELPATH,
@@ -99,7 +99,7 @@ def _validate_block(block: list[str]) -> list[Finding]:
         ]
     missing = [
         field
-        for field in _REQUIRED_FIELDS
+        for field in ORDER_REQUIRED_FIELDS
         if not any(ln.lstrip().startswith(field) for ln in block[1:])
     ]
     if missing:
