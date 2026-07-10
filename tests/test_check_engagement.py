@@ -155,6 +155,30 @@ def test_enforcement_accepts_any_workflow_running_strict_check(tmp_path):
     assert "enforcement-unwired" not in kinds
 
 
+def test_enforcement_ignores_comment_only_mentions(tmp_path):
+    # A workflow whose ONLY mention of the command is inside a `#` comment is
+    # a dead door — it must RED as enforcement-unwired, not clear the gate
+    # (fleet-review §c1 comment-leniency: issue #36 report 1).
+    root = tmp_path / "repo"
+    config, backend = _adopt_bare(root, tmp_path / "kit")
+    wf = root / ".github" / "workflows" / "ci.yml"
+    wf.parent.mkdir(parents=True)
+    wf.write_text(
+        "# TODO someday run check --strict here\n"
+        "jobs:\n  build:\n    steps:\n      - run: echo hi  # not check --strict\n",
+        encoding="utf-8",
+    )
+    kinds = {f.kind for f in check_engagement(root, config)}
+    assert "enforcement-unwired" in kinds
+    # Uncommenting the command wires a real door — no false-negative regression.
+    wf.write_text(
+        "jobs:\n  build:\n    steps:\n      - run: python3 bootstrap.py check --strict\n",
+        encoding="utf-8",
+    )
+    kinds = {f.kind for f in check_engagement(root, config)}
+    assert "enforcement-unwired" not in kinds
+
+
 def test_session_loop_engages_via_count_or_card(tmp_path):
     root = tmp_path / "repo"
     config, backend = _adopt_bare(root, tmp_path / "kit")
