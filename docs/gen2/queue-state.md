@@ -153,3 +153,32 @@ worktree recipe) · the session-close/status ledger PRs #88/#93/#96/#100/
 #101/#104 · and post-run, the visiting gba-homebrew Track B lane's
 gate-template sentinel fixes (claim #105, build #108 — no-card PRs and
 born-red ADDED cards now gate advisory via explicit absent sentinels).
+
+## Next-run resume points (2026-07-10 · gen-2 owner close-out)
+
+*Where to pick up. The DONE/NEXT sections above are the durable audit; this is
+the current live delta on top of them. Live GitHub + `control/status.md` win over
+this as time passes.*
+
+- **Release prep — DONE.** `v1.7.0` shipped (cut AGENT-SIDE via `release.yml`
+  `workflow_dispatch`, 2026-07-10; run 29074386841 success), tag `v1.7.0` live at
+  `93c7bdb` with all three assets. This supersedes the "7 releases … v1.6.0" line
+  in DONE above as the current latest release. Also since the #109/#106
+  reconciles: **B1 run-4 recorded** (PR #116, `a3616db` — first ruling-INDEPENDENT
+  FAIL, family at 4 rows) and **inbox advanced to ORDER 010** (self-arm wake
+  routine; `done=010` via PR #120). `control/status.md` carries the full ledger.
+- **Remaining agent-available items** (no new descriptions — see the Agent-queue
+  numbers above): **#4 T5 guard-probe redesign** (gate: pin path — must ride a
+  daytime `do-not-automerge` PR the owner one-clicks; run-4 partially resolved the
+  "headless arms never engage the hook layer" gap — re-scope first), **#9
+  legacy-alias job delete** (gate: post-P10, owner-gated on OWNER-ACTION 2's
+  required-check swap), **#12 P6 console move + loop B2/B3/B4 sweeps** (gate:
+  owner-gated on OWNER-ACTION 4 + 6). All three are gated; the agent-reachable
+  BUILD queue is otherwise dry.
+- **ROUTINE STATE: NOT ARMED.** The coordinator heartbeat timer that had been
+  arming hourly wakes (trigger `trig_01FnqnAQjLU2T8d16iHwWQ2h`, ~10 fires through
+  12:26Z — see the `control/status.md` ORDER 010 RECORD) was EXTERNALLY STOPPED
+  (coordinator relay 2026-07-10T12:54Z), and no `send_later` exists on the
+  coordinator surface to re-arm (see `docs/retro/coordinator-session-2026-07-10.md`
+  § 1). **Next wake is owner-initiated or a new session** — nothing fires this
+  Project on its own clock right now.
