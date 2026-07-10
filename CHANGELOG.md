@@ -42,6 +42,28 @@ workflow refuses to publish a version that has no section in this file.
   (whole-life summary, exact-error friction ledger, first-person close)
   and the lane heartbeat flipped to wind-down-complete.
 
+### Fixed
+
+- **Run-2 ordinary-lane follow-ups (kit PR #95)** — the three engine/harness
+  gaps the B1 record sessions filed as idea files:
+  - `bench/run_ab.py prepare` no longer fails by design on ON arms: it walks
+    the KL-7 RED→ENGAGED→GREEN arc itself (deterministic seed-derived
+    interview answers, `render --live`, staged-gate install, first session
+    card, seed heartbeat), asserts `check --strict` exit 0, and writes
+    `manifest.json` on the failure path too (`smoke_failed` marker) so an
+    aborted prepare leaves evidence.
+  - `render --live` now covers `.claude/CLAUDE.md` (and every other
+    engagement-gate-scoped planted file): the render set is the gate's own
+    `scan_relpaths()`, so the two surfaces can never again disagree about
+    whose job a planted file is and the KL-7 checklist completes by its own
+    named commands.
+  - Session-marker misses name the expected byte-form: the planted
+    `.sessions/README.md` renders ``label (`needle`)`` pairs (a cold session
+    can learn the `📊 Model:` form from inside the repo) and the session-log
+    checker reports ``Model line (expected `📊 Model:`)`` instead of a bare
+    label that contradicts the visible card. (Distinct from the
+    `parse_model_line` harvest-shadowing fix in PR #40.)
+
 ## [1.6.0] - 2026-07-09
 
 New-capability release (MINOR) covering two coordination-protocol bands

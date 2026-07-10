@@ -1,10 +1,10 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 95
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-10
+outcome: shipped
 ---
 
 # ON-arm "missing: Model line" persistent red — needle vs card format (2026-07-09)
@@ -13,7 +13,11 @@ outcome: open
 >
 > **State:** captured (B1 record session, run 2026-07-09-run01 — the judge
 > flagged it as PL-006 material: "a red that contradicts visible evidence
-> is exactly the 'bug in the check' class", report §5.5 item 3).
+> is exactly the 'bug in the check' class", report §5.5 item 3) →
+> investigated (PR #40) → **shipped** (kit PR #95, 2026-07-10: both
+> remaining halves — planted `label (needle)` pairs in
+> `_adopt_sessions_readme()` + misses report as ``label (expected
+> `needle`)``).
 
 ## The finding
 

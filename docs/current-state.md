@@ -460,19 +460,16 @@ pack; queue truth in [`docs/gen2/queue-state.md`](gen2/queue-state.md)).
    `upgrade-archive-report-line-gap-…`), and the release.json placement
    line in the adopter checklist
    (`upgrade-checklist-release-json-placement-…`).
-2. **B1 run-3 — AFTER the run-2 seed/harness follow-ups land** *(blocked
-   on 👤 owner: PR #49 merge (pin-path seed fix) + the rubric F-5 ruling;
-   run-2
-   is DONE — fired on the fixed scorer and recorded, strict-F-5 FAIL
-   advisory, PR #44; family at 2 rows, KF-8 needs ≥3 for any trend)*:
-   land the make_seed `yield`-keyword fix + prepare-runs-seed-tests
-   smoke (⚑ pin path → `do-not-automerge`), the prepare engagement-arc
-   scripting + `render --live` CLAUDE.md gap (ordinary lane), the T5
-   guard-surface shape choice (pin path), and the Model-line false-red
-   `_adopt_sessions_readme` fix (guard recipes in the idea files); the
-   rubric F-5 wording ⚑ owner decision
-   (`rubric-f5-none-regressing-wording-2026-07-09.md`) should be ruled
-   before run-3 is judged so the verdict lands under the ruled reading.
+2. **Run-2/run-3 bench follow-ups** *(B1 run-3 itself is DONE — fired
+   2026-07-10 after the owner merged #49, recorded as row 3 with the first
+   legal KF-8 trend, PR #85; the three ordinary-lane follow-ups —
+   prepare engagement-arc scripting, `render --live` CLAUDE.md gap,
+   Model-line false-red `_adopt_sessions_readme`/checker-message fix —
+   shipped in PR #95, see Recently shipped)*: what remains is the T5
+   guard-surface shape choice (⚑ pin path → `do-not-automerge`) and the
+   rubric F-5 wording ⚑ owner ruling
+   (`rubric-f5-none-regressing-wording-2026-07-09.md`), now HOT — it
+   gates the meaning of 2 of 3 recorded verdicts before run-4.
 3. **Remaining KL-6 blocked pieces, as gates open**: kit-lab console lane
    real data (needs #17 **and** P11-or-P13 — until then the lane stays
    declared-with-contract, never fake rows); B2/B3/B4 sweeps in the loop
@@ -485,6 +482,14 @@ pack; queue truth in [`docs/gen2/queue-state.md`](gen2/queue-state.md)).
 
 ## Recently shipped (newest first)
 
+- **#95 — run-2 ordinary-lane follow-ups (queue item 3)**: (a)
+  `run_ab.py prepare` walks the ON-arm RED→ENGAGED→GREEN arc itself and
+  writes `manifest.json` even on smoke failure (`smoke_failed`) — no more
+  hand-engaged arms (runs 2–3 both paid this); (b) `render --live`
+  iterates the engagement gate's own `scan_relpaths()`
+  (`.claude/CLAUDE.md` included); (c) planted `.sessions/README.md`
+  carries marker byte-forms and checker misses name the expected form.
+  Suite 776 green, dist byte-pinned; the three idea files → shipped.
 - **#75 — fleet rollout v1.6.0 wrap-up (kit-side, docs-only)**: the
   **v1.6.0 fleet rollout is COMPLETE — every active adopter is ENGAGED on
   v1.6.0**. superbot-next#96 (merged 9761db4): v1.2.0→v1.6.0, upgrade
