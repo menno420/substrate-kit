@@ -491,7 +491,20 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
     (the gba-homebrew live-fire fix had to be hand-forked precisely because
     no such ownership existed). Hand edits are overwritten; the generated
     header says so and routes host customizations to a separate workflow
-    file.
+    file. Host additions the regen would drop are detected, banked, and
+    reported as carve-outs (see :func:`gate_carveouts` — the
+    superbot-games #16 hand-added-pytest-job class).
+
+    **Inbox append-only gate (issue #36 report 2, wired v1.7.1):** the gate
+    runs the ``check --strict --status-only --inbox-base`` pure-append +
+    ORDER-grammar validation whenever a PR touches ``control/inbox.md`` — on
+    BOTH lanes (an inbox append rides the fast lane; a mixed PR could smuggle
+    an inbox edit through the full lane). git extracts the merge-base blob in
+    bash because the engine never shells out (§3.2); the step self-skips when
+    the inbox is untouched, so repos without the control protocol never pay
+    it. Before v1.7.1 the generated gate never wired ``--inbox-base``, so
+    inbox pure-append enforcement was LATENT on every adopter (the v1.7.0
+    distribution-wave finding).
     """
     return (
         "# substrate-kit enforcement gate (LIVE — installed by "
@@ -549,6 +562,38 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         "        # (no setup-python): the lane stays fast, and heartbeat PRs\n"
         "        # still need no session card.\n"
         "        run: python3 bootstrap.py check --strict --status-only\n"
+        "      - name: inbox append-only gate (control/inbox.md pure-append + "
+        "ORDER grammar)\n"
+        "        # control/inbox.md is one-writer/append-only by protocol\n"
+        "        # (control/README.md): without this step a green control-only\n"
+        "        # PR could rewrite or erase orders. Holds the PR red unless\n"
+        "        # the inbox diff is PURE-APPEND vs the merge-base and the\n"
+        "        # appended text is well-formed ORDER blocks. Runs on BOTH\n"
+        "        # lanes (no lane condition): an inbox append rides the fast\n"
+        "        # lane, but a mixed PR could smuggle an inbox edit through\n"
+        "        # the full lane too. Stdlib-only system python3; git extracts\n"
+        "        # the base blob here in bash because the engine never shells\n"
+        "        # out. Self-skips when control/inbox.md is untouched.\n"
+        "        run: |\n"
+        '          if [ -n "${{ github.base_ref }}" ]; then\n'
+        '            base="$(git merge-base "origin/${{ github.base_ref }}" HEAD)"\n'
+        '            range="origin/${{ github.base_ref }}...HEAD"\n'
+        "          else\n"
+        '            base="${{ github.event.before }}"\n'
+        '            range="${{ github.event.before }}..${{ github.sha }}"\n'
+        "          fi\n"
+        '          changed="$(git diff --name-only "$range" 2>/dev/null '
+        "| grep -Fx 'control/inbox.md' || true)\"\n"
+        '          if [ -z "$changed" ]; then\n'
+        '            echo "control/inbox.md not in diff — inbox append-only '
+        'gate skipped."\n'
+        "          else\n"
+        '            basefile="$(mktemp)"\n'
+        '            git show "$base:control/inbox.md" > "$basefile" '
+        "2>/dev/null || : > \"$basefile\"\n"
+        "            python3 bootstrap.py check --strict --status-only "
+        '--inbox-base "$basefile"\n'
+        "          fi\n"
         "      - uses: actions/setup-python@v5\n"
         "        if: steps.lane.outputs.control_only != 'true'\n"
         "        with:\n"
@@ -603,6 +648,79 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
     )
 
 
+def _workflow_outline(text: str) -> dict[str, list[str]]:
+    """Best-effort outline of a GitHub-Actions workflow: job id -> step labels.
+
+    Line-based on purpose (the engine is stdlib-only — no YAML parser): job
+    ids are the two-space-indented ``<id>:`` keys under a top-level ``jobs:``
+    block; step labels are the ``- name:`` / ``- uses:`` list entries inside
+    a job. Deeper-indented content (``run: |`` script bodies, ``with:``
+    blocks) is ignored. Good enough to *detect* host additions — and the
+    caller banks the full pre-regen file besides, so a parse miss can only
+    under-report, never lose content.
+    """
+    jobs: dict[str, list[str]] = {}
+    in_jobs = False
+    current: str | None = None
+    for raw in text.split("\n"):
+        line = raw.rstrip()
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        indent = len(line) - len(line.lstrip(" "))
+        if indent == 0:
+            in_jobs = stripped == "jobs:"
+            current = None
+            continue
+        if not in_jobs:
+            continue
+        if (
+            indent == 2
+            and stripped.endswith(":")
+            and not stripped.startswith("-")
+        ):
+            current = stripped[:-1]
+            jobs[current] = []
+            continue
+        if current is None:
+            continue
+        match = re.match(r"-\s+(name|uses):\s*(.+)$", stripped)
+        if match is not None and indent <= 8:
+            label = match.group(2).strip()
+            if match.group(1) == "uses":
+                label = f"uses: {label}"
+            jobs[current].append(label)
+    return jobs
+
+
+def gate_carveouts(live_text: str, expected_text: str) -> list[str]:
+    """Describe host additions in a live gate vs the kit-generated one.
+
+    Returns one human-readable line per host-added job and per host-added
+    step inside a kit job (superbot-games PR #16 hand-added its ONLY pytest
+    CI job inside the kit-owned gate — a plain regen would have silently
+    deleted the repo's whole test gate). Removals and edits of kit content
+    are NOT reported here: the regen restores those by design; only content
+    that exists in the live file and nowhere in the kit template is a
+    carve-out. Empty list = nothing host-added detected.
+    """
+    live_jobs = _workflow_outline(live_text)
+    expected_jobs = _workflow_outline(expected_text)
+    expected_steps_all = {
+        step for steps in expected_jobs.values() for step in steps
+    }
+    lines: list[str] = []
+    for job, steps in live_jobs.items():
+        if job not in expected_jobs:
+            detail = "; ".join(steps) if steps else "no named steps"
+            lines.append(f"host-added job '{job}' ({detail})")
+            continue
+        for step in steps:
+            if step not in expected_steps_all:
+                lines.append(f"host-added step '{step}' in job '{job}'")
+    return lines
+
+
 def adopt(
     root: Path,
     config: Config,
@@ -612,6 +730,7 @@ def adopt(
     include_claude: bool = False,
     wire_enforcement: bool = False,
     lane: str | None = None,
+    archive_running: bool = True,
 ) -> list[str]:
     """Adopt the substrate workflow into ``root``; return the report lines.
 
@@ -665,10 +784,18 @@ def adopt(
     # (0c) Bank the running dist under <state_dir>/backup/ (§4.3): a future
     # upgrade's doc diff needs the OLD templates to still exist, so the
     # archive is written before anything could ever overwrite the file.
-    dist_file = Path(bootstrap_path)
-    if not dist_file.is_absolute():
-        dist_file = root / bootstrap_path
-    archive_dist(root, config, dist_file, report)
+    # ``archive_running=False`` is the upgrade path's carve-out: by the time
+    # upgrade re-runs adopt (its step 6) the vendored file has already been
+    # replaced with the NEW dist, so archiving here banked a spurious
+    # ``bootstrap-<new>.py`` next to the correct old-dist archive (field-
+    # reproduced on fleet-manager #35, superbot-games #22, trading-strategy
+    # #38 — harmless, ``last-upgrade.json`` named the right one, but wrong).
+    # Upgrade archives the OLD dist itself, archive-first, before the replace.
+    if archive_running:
+        dist_file = Path(bootstrap_path)
+        if not dist_file.is_absolute():
+            dist_file = root / bootstrap_path
+        archive_dist(root, config, dist_file, report)
     context = build_context(backend.data)
     # The live integration mode is state, not a slot — render it truthfully.
     context.setdefault("integration_mode", str(backend.get("mode", "guided")))
@@ -786,9 +913,36 @@ def adopt(
     # to a separate workflow file.
     live_gate = root / LIVE_CI_RELPATH
     if live_gate.is_file():
-        if live_gate.read_text(encoding="utf-8") == gate_text:
+        live_text = live_gate.read_text(encoding="utf-8")
+        if live_text == gate_text:
             report.append(f"kept: {LIVE_CI_RELPATH} (kit-owned, already current)")
         else:
+            # Carve-out protection (superbot-games PR #16 class): a host that
+            # hand-added jobs/steps INSIDE the kit-owned gate — e.g. its only
+            # pytest job — must never lose them to a silent regen. Detect the
+            # additions, bank the full pre-regen copy under <state_dir>/backup/
+            # (content-hash-named, so successive regens never clobber an
+            # earlier bank), and report each carve-out explicitly (upgrade
+            # surfaces them in upgrade-report.md). The regen itself still
+            # happens — the gate stays kit-owned; the host relocates the
+            # banked additions into a separate workflow file.
+            carveouts = gate_carveouts(live_text, gate_text)
+            if carveouts:
+                digest = hashlib.sha256(live_text.encode("utf-8")).hexdigest()[:8]
+                bank_rel = (
+                    f"{config.state_dir}/{BACKUP_DIRNAME}/"
+                    f"substrate-gate.pre-regen-{digest}.yml"
+                )
+                atomic_write_text(root / bank_rel, live_text)
+                for line in carveouts:
+                    report.append(f"carve-out: {LIVE_CI_RELPATH} — {line}")
+                report.append(
+                    f"carve-out: full pre-regen gate banked at {bank_rel} — "
+                    "host additions were NOT carried into the regenerated "
+                    "kit-owned gate; move them into a separate workflow file "
+                    "(e.g. .github/workflows/host-ci.yml) and commit that "
+                    "before shipping this upgrade/adopt PR.",
+                )
             atomic_write_text(live_gate, gate_text)
             report.append(
                 f"regenerated: {LIVE_CI_RELPATH} (kit-owned — template@new; "
