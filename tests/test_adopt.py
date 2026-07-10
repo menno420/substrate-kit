@@ -765,6 +765,115 @@ def test_live_ci_workflow_fast_lane_still_gates_the_heartbeat():
     assert "if: steps.lane.outputs.control_only == 'true'" in body
 
 
+def test_live_ci_workflow_wires_the_inbox_base_gate():
+    # The v1.7.0 distribution-wave finding: the generated gate never wired
+    # --inbox-base, so inbox pure-append enforcement (issue #36 report 2)
+    # was LATENT on every adopter — only the kit's own ci.yml ran it. The
+    # planted gate must (1) carry the step, (2) run it on BOTH lanes (no
+    # lane condition — an inbox append rides the fast lane, a mixed PR the
+    # full one), (3) extract the merge-base blob in bash and hand it in via
+    # --inbox-base (the engine never shells out to git), (4) self-skip when
+    # the inbox is untouched.
+    text = live_ci_workflow()
+    step = text.split("- name: inbox append-only gate", 1)
+    assert len(step) == 2, "planted gate misses the inbox append-only step"
+    body = step[1].split("- uses: actions/setup-python@v5", 1)[0]
+    assert "if: steps.lane.outputs" not in body  # both lanes
+    assert "git merge-base" in body
+    assert "git show" in body
+    assert "control/inbox.md not in diff" in body  # self-skip
+    assert (
+        'python3 bootstrap.py check --strict --status-only '
+        '--inbox-base "$basefile"' in body
+    )
+
+
+def test_gate_carveouts_detects_host_added_job_and_step():
+    from engine.adopt import gate_carveouts
+
+    expected = live_ci_workflow()
+    # Identical gate: nothing host-added.
+    assert gate_carveouts(expected, expected) == []
+    # A host-added step inside a kit job (and kit steps are never flagged).
+    live = expected.replace(
+        "      - uses: actions/setup-python@v5\n",
+        "      - name: host coverage upload\n"
+        "        run: echo host step\n"
+        "      - uses: actions/setup-python@v5\n",
+    )
+    assert gate_carveouts(live, expected) == [
+        "host-added step 'host coverage upload' in job 'substrate-gate'",
+    ]
+    # A whole host-added job (the superbot-games #16 shape: the repo's ONLY
+    # pytest job hand-added inside the kit-owned gate).
+    live = expected + (
+        "  pytest:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - uses: actions/checkout@v4\n"
+        "      - name: host test suite\n"
+        "        run: python3 -m pytest tests/ -q\n"
+    )
+    (line,) = gate_carveouts(live, expected)
+    assert line.startswith("host-added job 'pytest'")
+    assert "host test suite" in line
+    # Kit content the host merely edited/removed is NOT a carve-out (the
+    # regen restores it by design).
+    stale = expected.replace(
+        "      - uses: actions/setup-python@v5\n"
+        "        if: steps.lane.outputs.control_only != 'true'\n"
+        "        with:\n"
+        '          python-version: "3.x"\n',
+        "",
+    )
+    assert gate_carveouts(stale, expected) == []
+
+
+def test_adopt_gate_regen_banks_and_reports_carveouts(tmp_path):
+    # The regen path itself (adopt step 6b): a live gate carrying a
+    # host-added job is still regenerated to kit form, but the additions are
+    # reported as carve-outs and the FULL pre-regen copy is banked under
+    # <state_dir>/backup/ — never a silent drop (superbot-games #16 class).
+    root = tmp_path / "repo"
+    config = Config()
+    backend = _make_backend(root, config)
+    workflow = root / LIVE_CI_RELPATH
+    workflow.parent.mkdir(parents=True)
+    hand_edited = live_ci_workflow() + (
+        "  pytest:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - name: host test suite\n"
+        "        run: python3 -m pytest tests/ -q\n"
+    )
+    workflow.write_text(hand_edited, encoding="utf-8")
+    lines = adopt(root, config, backend, kit_root=tmp_path / "kit")
+    assert workflow.read_text(encoding="utf-8") == live_ci_workflow()
+    assert any(
+        line.startswith(f"carve-out: {LIVE_CI_RELPATH} — host-added job 'pytest'")
+        for line in lines
+    )
+    banked = list(
+        (root / config.state_dir / "backup").glob("substrate-gate.pre-regen-*.yml")
+    )
+    assert len(banked) == 1
+    assert banked[0].read_text(encoding="utf-8") == hand_edited
+    # And a stale-but-addition-free gate regens CLEAN: no carve-out lines,
+    # no banked copy beyond the one above (fresh root to prove zero).
+    root2 = tmp_path / "repo2"
+    backend2 = _make_backend(root2, Config())
+    workflow2 = root2 / LIVE_CI_RELPATH
+    workflow2.parent.mkdir(parents=True)
+    workflow2.write_text(
+        "# stale hand-forked gate\nname: substrate-gate\n", encoding="utf-8"
+    )
+    lines2 = adopt(root2, Config(), backend2, kit_root=tmp_path / "kit")
+    assert not any(line.startswith("carve-out:") for line in lines2)
+    assert not list(
+        (root2 / Config().state_dir / "backup").glob("substrate-gate.pre-regen-*.yml")
+    )
+
+
 # ---------------------------------------------------------------------------
 # Lane-aware adopt (`adopt --lane` — queue item 11, the G1 double-adoption fix)
 # ---------------------------------------------------------------------------

@@ -71,7 +71,14 @@ ADOPTER_CHECKLIST = """\
    silently skips** (the report says so, but you lose the tamper/corruption
    check).
 2. **Verify the gate**: `python3 bootstrap.py check --strict` → green on
-   your tree (fix findings before shipping the upgrade PR).
+   your tree (fix findings before shipping the upgrade PR). The installed
+   `.github/workflows/substrate-gate.yml` is **kit-owned**: the upgrade
+   regenerates it in place and hand edits are overwritten. Anything you
+   hand-added inside it (a job, a step) is detected as a **carve-out** —
+   listed in `.substrate/upgrade-report.md` with the full pre-regen copy
+   banked under `.substrate/backup/` — never silently dropped. Move banked
+   carve-outs into a separate workflow file (e.g.
+   `.github/workflows/host-ci.yml`) before shipping the upgrade PR.
 3. **Verify engagement**: the post-adopt engagement gate stays green — no
    UNRENDERED banner/slot, live CI runs the gate, session loop engaged.
 4. **Update your `kit:` status line**: in your `control/status.md`, set

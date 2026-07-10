@@ -15,6 +15,47 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`bootstrap upgrade` no longer banks a spurious copy of the NEW dist**
+  (the v1.7.1-payload fix; field-reproduced on the v1.7.0 distribution wave:
+  fleet-manager #35, superbot-games #22, trading-strategy #38). Upgrade's
+  step-6 adopt pass re-archived the vendored file AFTER the replace, so
+  `.substrate/backup/` gained `bootstrap-<new>.py` next to the correct
+  old-dist archive — harmless (`last-upgrade.json` named the right archive)
+  but wrong. `adopt()` now takes `archive_running` (default `True`;
+  behavior of a standalone adopt unchanged) and the upgrade flow passes
+  `False`: an upgrade banks EXACTLY ONE dist — the pre-upgrade one.
+  Regression test: an upgrade run archives exactly one `bootstrap-*.py`,
+  named for and byte-equal to the OLD dist.
+- **The generated `substrate-gate.yml` now wires `--inbox-base`** — the
+  inbox append-only gate (pure-append + ORDER-grammar validation of
+  `control/inbox.md` vs the merge-base, issue #36 report 2) was LATENT on
+  every adopter: only the kit's own `ci.yml` ran it; the planted gate never
+  passed `--inbox-base` (the v1.7.0 distribution-wave finding). The gate
+  template now carries the step — both lanes, self-skipping when the inbox
+  is untouched, merge-base blob extracted by git in bash (the engine never
+  shells out), stdlib-only system `python3`. Adopters inherit it on their
+  next upgrade via the kit-owned gate regeneration.
+
+### Added
+
+- **Gate-refresh carve-out protection** (the superbot-games #16 lesson: a
+  host hand-added its ONLY pytest CI job inside the kit-owned
+  `substrate-gate.yml`; a plain regen would have silently deleted the
+  repo's whole test gate). The kit-owned gate regeneration (adopt step 6b /
+  every upgrade) now outlines the live workflow against the generated one
+  (`gate_carveouts()`, stdlib line-based — best-effort detection, and the
+  full pre-regen copy is banked regardless so a parse miss can only
+  under-report, never lose content): host-added jobs/steps are reported as
+  explicit `carve-out:` lines, surfaced in their own ⚠️ section of
+  `.substrate/upgrade-report.md`, and the complete pre-regen gate is banked
+  content-hash-named under `.substrate/backup/substrate-gate.pre-regen-*.yml`
+  — never a silent drop. The adopter upgrade checklist (release notes)
+  documents the rule: move banked carve-outs into a separate workflow file
+  before shipping the upgrade PR. A pristine or merely-stale gate regens
+  clean, with no warnings.
+
 ### Changed
 
 - **`.github/workflows/substrate-gate.yml` is now KIT-OWNED** (EAP program

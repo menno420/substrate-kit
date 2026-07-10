@@ -328,6 +328,110 @@ def test_run_upgrade_archives_replaces_and_reports(tmp_path):
     assert any("sha256 verification skipped" in line for line in lines)
 
 
+def test_upgrade_banks_only_the_pre_upgrade_dist(tmp_path):
+    # Regression for the spurious-backup field bug (fleet-manager #35,
+    # superbot-games #22, trading-strategy #38): upgrade's step-6 adopt pass
+    # re-archived the vendored file AFTER the replace, banking a copy of the
+    # NEW dist (`bootstrap-<new>.py`) next to the correct old-dist archive.
+    # Harmless (last-upgrade.json named the right one) but wrong: an upgrade
+    # run must bank EXACTLY ONE dist — the pre-upgrade one, under the OLD
+    # version's name, byte-equal to the old vendored file.
+    root, config, backend = _adopted(tmp_path)
+    old = _fake_old_dist(root)
+    old_text = old.read_text(encoding="utf-8")
+    running = _fake_new_dist(tmp_path)
+    config.kit_version = "0.9.0"
+    run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    backup = root / config.state_dir / BACKUP_DIRNAME
+    banked = sorted(p.name for p in backup.glob("bootstrap-*.py"))
+    assert banked == ["bootstrap-0.9.0.py"]
+    assert (backup / "bootstrap-0.9.0.py").read_text(encoding="utf-8") == old_text
+    assert not (backup / f"bootstrap-{KIT_VERSION}.py").exists()
+
+
+def test_upgrade_gate_regen_surfaces_carveouts_in_the_report(tmp_path):
+    # The superbot-games #16 class: the repo's ONLY pytest CI job was
+    # hand-added INSIDE the kit-owned substrate-gate.yml; a plain regen
+    # would have silently deleted the repo's whole test gate. Upgrade must
+    # (1) still regenerate the gate to kit form (kit-owned), (2) report the
+    # host additions as carve-outs in upgrade-report.md, and (3) bank the
+    # full pre-regen copy — never a silent drop.
+    from engine.adopt import LIVE_CI_RELPATH, live_ci_workflow
+
+    root, config, backend = _adopted(tmp_path)
+    gate = root / LIVE_CI_RELPATH
+    gate.parent.mkdir(parents=True)
+    hand_edited = live_ci_workflow() + (
+        "  pytest:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - name: host test suite\n"
+        "        run: python3 -m pytest tests/ -q\n"
+    )
+    gate.write_text(hand_edited, encoding="utf-8")
+    _fake_old_dist(root)
+    running = _fake_new_dist(tmp_path)
+    lines = run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    assert gate.read_text(encoding="utf-8") == live_ci_workflow()
+    assert any("host-added job 'pytest'" in line for line in lines)
+    banked = list(
+        (root / config.state_dir / BACKUP_DIRNAME).glob(
+            "substrate-gate.pre-regen-*.yml",
+        )
+    )
+    assert len(banked) == 1
+    assert banked[0].read_text(encoding="utf-8") == hand_edited
+    report_text = (root / config.state_dir / "upgrade-report.md").read_text(
+        encoding="utf-8",
+    )
+    assert "Gate carve-outs" in report_text
+    assert "host-added job 'pytest'" in report_text
+
+
+def test_upgrade_pristine_gate_regen_stays_clean(tmp_path):
+    # The other half of the carve-out contract: a pristine (already-current)
+    # gate is kept, with NO carve-out warnings, NO banked pre-regen copy,
+    # and NO carve-out section in the report.
+    from engine.adopt import LIVE_CI_RELPATH, live_ci_workflow
+
+    root, config, backend = _adopted(tmp_path)
+    gate = root / LIVE_CI_RELPATH
+    gate.parent.mkdir(parents=True)
+    gate.write_text(live_ci_workflow(), encoding="utf-8")
+    _fake_old_dist(root)
+    running = _fake_new_dist(tmp_path)
+    lines = run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    assert gate.read_text(encoding="utf-8") == live_ci_workflow()
+    assert not any(line.startswith("carve-out:") for line in lines)
+    assert not list(
+        (root / config.state_dir / BACKUP_DIRNAME).glob(
+            "substrate-gate.pre-regen-*.yml",
+        )
+    )
+    report_text = (root / config.state_dir / "upgrade-report.md").read_text(
+        encoding="utf-8",
+    )
+    assert "Gate carve-outs" not in report_text
+
+
 def test_improved_note_names_the_posthoc_recovery_path(tmp_path, monkeypatch):
     # The apply window is single-shot (idea
     # upgrade-apply-docs-single-shot-window): after the transition a bare

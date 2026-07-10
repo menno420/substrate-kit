@@ -288,8 +288,17 @@ def upgrade_report_text(
     old_version: str,
     rows: list[dict[str, str]],
     applied: list[str],
+    carveouts: list[str] | None = None,
 ) -> str:
-    """Compose ``<state_dir>/upgrade-report.md``."""
+    """Compose ``<state_dir>/upgrade-report.md``.
+
+    ``carveouts`` — the ``carve-out:`` lines adopt's kit-owned gate regen
+    emitted (host-added jobs/steps the regen could not keep; the full
+    pre-regen gate is banked under ``<state_dir>/backup/``). They get their
+    own loud section: the report file is the upgrade PR's body evidence, and
+    a host whose only CI job lived inside the kit gate (superbot-games #16)
+    must see the relocation instruction there, not only in stdout.
+    """
     counts: dict[str, int] = {}
     for row in rows:
         counts[row["class"]] = counts.get(row["class"], 0) + 1
@@ -306,6 +315,14 @@ def upgrade_report_text(
         "|---|---|---|",
     ]
     lines += [f"| {r['relpath']} | {r['class']} | {r['note']} |" for r in rows]
+    if carveouts:
+        lines += [
+            "",
+            "## ⚠️ Gate carve-outs (host additions the kit-owned regen "
+            "could not keep)",
+            "",
+        ]
+        lines += [f"- {line}" for line in carveouts]
     if applied:
         lines += ["", "## Applied (--apply-docs)", ""]
         lines += [f"- {line}" for line in applied]
@@ -533,7 +550,27 @@ def run_upgrade(
 
     # (6) Staged regeneration: adopt is idempotent — staged artifacts always
     # regenerate, planted docs skip-if-exist, kit_version records new.
-    report += adopt(root, config, backend, kit_root=kit_root)
+    # ``archive_running=False``: the archive-first covenant was honored in
+    # step (2) with the OLD dist; by now the vendored file IS the new dist,
+    # and adopt's own banking pass would archive a spurious
+    # ``bootstrap-<new>.py`` next to it (field-reproduced on fleet-manager
+    # #35, superbot-games #22, trading-strategy #38). An upgrade banks
+    # exactly one dist: the pre-upgrade one.
+    adopt_lines = adopt(
+        root,
+        config,
+        backend,
+        kit_root=kit_root,
+        archive_running=False,
+    )
+    report += adopt_lines
+    # Gate carve-outs (superbot-games #16 class): adopt's kit-owned gate
+    # regen reports host additions it could not keep as ``carve-out:`` lines
+    # — surface them in upgrade-report.md too (the report is the upgrade PR's
+    # body evidence; a stdout-only warning is too easy to lose).
+    gate_carveout_lines = [
+        line for line in adopt_lines if line.startswith("carve-out:")
+    ]
 
     # (6b) KL-3: the 📊 Model needle joins session_markers at upgrade time —
     # a consumer's gate only tightens when it upgrades, never mid-version
@@ -561,7 +598,7 @@ def run_upgrade(
     report_rel = f"{config.state_dir}/{UPGRADE_REPORT_FILENAME}"
     atomic_write_text(
         root / report_rel,
-        upgrade_report_text(old_version, rows, applied),
+        upgrade_report_text(old_version, rows, applied, gate_carveout_lines),
     )
     report.append(f"report: {report_rel}")
 
