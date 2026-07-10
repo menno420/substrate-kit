@@ -1,6 +1,6 @@
 # 2026-07-10 — gen-2: close issue #36 — README writer-identity honesty note
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** claude-opus-4-8 · high · gen-2 kit-lab issue-#36 close (report-2 second half)
 
