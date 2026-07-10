@@ -57,6 +57,27 @@ workflow refuses to publish a version that has no section in this file.
   deviation: judge = arm model, claude-fable-5 everywhere, spawn-harness
   model overrides ignored). Per KF-5 the next release's notes must state
   this outcome.
+- **`control/inbox.md` append-only + ORDER-grammar enforcement**
+  (`check_inbox_append`, kit PR #87 — friction issue #36 report 2): the
+  order bus's append-only law was convention-only (any session could
+  rewrite or erase ORDERs on a green control-only PR — #34 merged 19 s
+  after open with nothing checking). `check --inbox-base <file>` now
+  verifies an inbox change is PURE-APPEND vs the merge-base (the base
+  file's bytes are a prefix of the new file) and that the appended text
+  follows the ORDER-block grammar; CI extracts the merge-base blob and
+  hands the path in (the engine never shells out, §3.2), running on BOTH
+  lanes. Writer IDENTITY stays deliberately unenforced — on a
+  single-account program it is not enforceable in-repo, recorded honestly
+  in `control/README.md` (kit PR #89) rather than pretended at.
+- **Claim-aware checker** (`check_claims`, kit PR #90 — queue item 7, the
+  #69 card idea): the ORDER 007 order-claim convention shipped doc-only,
+  enforced by nothing. `check` now scans every configured heartbeat's
+  `orders:` line for `claimed-by:` annotations and flags, advisory-only
+  (never exit-affecting): `claims-duplicate` — two DISTINCT heartbeat
+  files claim the same order id (the realized #50/#51 twin-execution
+  race; the tiebreak stays a human call) — and `claims-stale` — a live
+  claim for an id already in some lane's `done=`, or older than the
+  convention's ~24h abandonment horizon.
 - **SuperBot-coordinator lane wind-down succession pack** (docs-only,
   suffixed per the multi-lane rule): `docs/succession/` (new, with README
   index) carrying the gen-2 next-boot guide (read order, queue state,
@@ -70,6 +91,47 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Fixed
 
+- **Engagement gate comment-leniency** (`check_engagement`, kit PR #86 —
+  friction issue #36 report 1): `_enforcement_wired` substring-matched
+  `check --strict` across whole workflow files, so a workflow whose only
+  mention sat inside a `#` comment falsely cleared the gate — a repo
+  looked ENGAGED with a dead door. `#`-prefixed comment content is now
+  stripped per line before the needle test (still forgiving of
+  hand-rolled gates, immune to comments); a known-bad fixture must red as
+  `enforcement-unwired`, a genuinely-wired workflow still passes.
+- **Telemetry undercount — model-usage rows now written at card-commit**
+  (`reconcile_model_usage`, kit PR #91 — queue item 6): the PL-004 feed
+  recorded 10 rows against 42 eligible cards because the harvest ran only
+  at `session-close` and only over the newest card by mtime — any card
+  committed while a newer one existed was silently dropped.
+  `session-close` now also sweeps EVERY complete card carrying a valid
+  `📊 Model:` line and appends the missing rows — idempotent (dedupe by
+  session slug), append-only, fail-open; the backfill landed the ~3-of-4
+  dropped sessions in the same PR.
+- **Four upgrade-UX fixes from the v1.6.0 fleet rollout** (kit PR #92 —
+  queue item 10; stranded READY+green when its authoring session lost the
+  auto-merge arm race, adopted and merged by the #98 lane): the
+  idempotent `archive_dist` early-return now prints `archived: <rel>
+  (already banked)` instead of silence; `classify_planted_docs`
+  self-heals doc-hash records lost to `--rollback` + re-run (a doc that
+  byte-matches the new template render is provably kit-form); the
+  `ADOPTER_CHECKLIST` names `release.json` beside `bootstrap.py.new` and
+  the silent-skip consequence when absent; and the `--apply-docs` hint
+  names the real `--rollback` + re-run recovery instead of a no-op
+  "re-run" (interim slice — the full post-hoc apply mechanism idea stays
+  open).
+- **Adopter-findings batch** (kit PR #99, venture-lab field reports): the
+  `owner-action-fields` checker now also accepts the WHY /
+  VERIFIED-WHEN shorthand alongside the canonical WHY-IT-MATTERS /
+  VERIFIED-NEEDED tokens (backward-compatible — an accepted alternate
+  only withholds the advisory nag; tests pin checker↔template token
+  agreement); plus two wall+recipe appends to `docs/CAPABILITIES.md` (and
+  `docs/operations/auto-merge-guards.md` § Operational notes): the
+  fast-CI auto-merge arm race (sub-~10 s CI flips `pending`→`clean`
+  before `enable_pr_auto_merge` binds — fall back to REST merge-on-green
+  or a deliberate pending window) and the parallel file-mutating
+  subagents race in a shared clone (isolated worktree per writer OR
+  serialize; never `git add -A` from a shared checkout).
 - **Planted substrate-gate template: no-card and born-red-heartbeat PRs no
   longer red on an unrelated card** (`live_ci_workflow()` in
   `src/engine/adopt.py` — two adopter-found defects, both hit and fixed live
