@@ -49,6 +49,14 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- [Dispatch race: briefs need an explicit re-verify-then-stand-down clause](dispatch-race-reverify-clause-2026-07-10.md)
+  — state: captured; origin: coordinator-lane (the #106 unstall dispatch
+  lost a 6-second race to a sibling's branch-update; the dispatched session
+  re-verified at HEAD and stood down with zero writes — the race event lived
+  only in the coordinator chat until the 2026-07-10 close-out filed it);
+  next: bake the "re-verify at origin/main HEAD first; stand down if already
+  taken" clause into whatever template generates dispatch/maintenance briefs.
+
 - [Plain-adopt lane-drift advisory — nudge `--lane` in lane-shaped repos](plain-adopt-lane-drift-advisory-2026-07-10.md)
   — state: captured; origin: lab (the `adopt --lane` session's card-only 💡,
   filed by the 2026-07-10 night-cap groom: a plain `adopt` into a repo whose
