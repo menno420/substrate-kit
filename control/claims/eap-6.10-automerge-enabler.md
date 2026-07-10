@@ -1,0 +1,3 @@
+# Work claim — EAP §6.10 auto-merge enabler planted by the kit
+
+- `claude/eap-610-automerge-enabler-2026-07-10` · **EAP §6.10 — auto-merge enabler workflow planted by the kit + repo-settings one-time checklist in adopt** — kit-owned `.github/workflows/auto-merge-enabler.yml` planted/regenerated via the substrate-gate.yml mechanism (staged always, live on --wire-enforcement, existence = opt-in regen, #137 carve-out protection), branch-pattern + required-context parameterization via substrate.config.json, do-not-automerge carve-out, tests mirroring the gate coverage · expected files: src/engine/adopt.py, src/engine/lib/config.py, tests/test_adopt.py, tests/test_upgrade.py, dist/bootstrap.py, CHANGELOG.md, docs/operations/auto-merge-guards.md · 2026-07-10
