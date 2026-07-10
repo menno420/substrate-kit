@@ -11,6 +11,49 @@
 > The sibling (SuperBot coordinator) lane's pack is
 > [../succession/](../succession/README.md) — same protocol, different lane.
 
+## 0. Resume here — 2026-07-10 close-out handoff
+
+> Added at the gen-2 close-out (kit-lab lane, session
+> `.sessions/2026-07-10-gen2-close-out.md`). Source: coordinator-lane
+> handoff, 2026-07-10. The companion resume-points list from the sibling
+> close-out lives in [queue-state.md](queue-state.md) (PR #122); this
+> section carries the build priorities and the non-derivable context.
+
+**Resume priorities, in order:**
+
+1. **SessionStart handoff-push idea** — top buildable. Targets run-4's
+   M2/M3 loss (the auto-drafted card was never opened; OFF's plain-README
+   convention beat the kit at its own continuity game — see the run-4 row
+   and `.sessions/2026-07-10-b1-run-4.md`).
+2. **T5 guard-probe redesign — RE-SCOPE FIRST.** Live hooks in run-4
+   partially resolve its premise (the guard FIRED in run-4; the probe's
+   original "zero evidence" gap is half-closed). It touches a pin path
+   (`bench/tasks/T5.md`), so whatever ships must be a **daytime
+   `do-not-automerge` PR for owner ratification** — never auto-merged.
+3. **Model-identity capture automation** — partially superseded; check
+   what already ships (telemetry model line, card 📊 Model convention)
+   before building anything.
+
+**Non-derivable context (would otherwise be lost with the chat):**
+
+- **Adopter v1.7.0 upgrades belong to consumer lanes (KF-2)** — the lab
+  never writes to consumer repos; do not "helpfully" open upgrade PRs on
+  websites/trading-strategy/games from here.
+- **B1 run-5 should WAIT for the F-5 ruling** (⚑ OWNER-ACTION 1, HOT — it
+  decides how runs 2–3 read and with them the trend headline).
+- **The coordinator hourly wake routine is ARMED and RECURRING** (trigger
+  `trig_01FnqnAQjLU2T8d16iHwWQ2h`, cron `0 * * * *`, bound to the kit-lab
+  coordinator session — ORDER 010 RECORD in `control/status.md`), so the
+  next wake is guaranteed. **Independently verified from this close-out
+  session's own surface** via `list_triggers`: at 13:52Z *and again at
+  14:09Z* the trigger read `enabled=true`, `updated_at` == `created_at`
+  (2026-07-10T01:56:06Z — never modified since creation), with observed
+  fires at 13:09:18Z and 14:08:17Z and `next_run_at` 15:06:33Z. This
+  **contradicts** the "ROUTINE STATE: NOT ARMED / externally stopped
+  12:54Z" line the #122 heartbeat recorded from a coordinator relay — two
+  observed fires post-date the alleged stop. If you read a NOT-ARMED
+  claim anywhere, re-verify with `list_triggers` before believing it.
+
 ## 1. First-10-minutes read order (this exact sequence)
 
 1. **This file** — the map; everything else is one hop away.
@@ -21,9 +64,12 @@
    headers stay `status: new` until the MANAGER flips them — diff the inbox
    against status `done=`, never re-execute on `new` alone.
 4. **`control/status.md`** — the last heartbeat: phase, blockers, the ⚑
-   OWNER-ACTION items (renumbered to 1–10 after the owner's 2026-07-10
-   #26/#49 clicks resolved the original items 1–2). You are its sole
-   writer; overwrite it as your deliberate LAST act.
+   OWNER-ACTION items (renumbered after the owner's 2026-07-10 #26/#49
+   clicks resolved the original items 1–2; **12 items as of the 2026-07-10
+   close** — item 11 = enable "automatically update branches", item 12 =
+   route the websites ORDER 005 fleet relay, added by #122; the list in
+   control/status.md at HEAD is always the truth, ordinals here rot). You
+   are its sole writer; overwrite it as your deliberate LAST act.
 5. **`docs/CAPABILITIES.md`** — verified walls + THE DISCOVERY RULE.
    Probing a documented wall twice is a bug; declaring an unverified wall
    is a worse one.
@@ -86,8 +132,9 @@ until then).
   ```
 
   GraphQL `deleteRef` is not enabled; the GitHub MCP has no delete-branch
-  (and no create-release) tool. Owner cleans branches (⚑ OWNER-ACTION 7
-  in the renumbered `control/status.md` list).
+  (and no create-release) tool. Owner cleans branches (⚑ OWNER-ACTION 10
+  in the `control/status.md` list as of the 2026-07-10 close — was 7 when
+  this doc was written; verify the ordinal against status.md at HEAD).
 - **Owner-gated merges are refused on relayed consent** — the auto-mode
   permission classifier denied #17's merge until the owner typed
   "merge 17" live in-session, and denied a worker-spawn containing
@@ -144,7 +191,9 @@ until then).
   ```
 
   The tested defensive script is [setup.sh](setup.sh) (owner pastes it —
-  ⚑ OWNER-ACTION 9 in the renumbered `control/status.md` list). Also: a
+  ⚑ OWNER-ACTION 8 in the `control/status.md` list as of the 2026-07-10
+  close — was 9 when this doc was written; verify against status.md at
+  HEAD). Also: a
   fresh container has NO pytest
   (`/usr/local/bin/python3: No module named pytest`) — `pip install
   pytest ruff` before running the suite.
