@@ -1,6 +1,6 @@
 # 2026-07-10 — gen-2: inbox append-only checker (issue #36 rpt 2)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** claude-opus-4-8 · high · gen-2 kit-side checker (single scoped
   PR: enforce control/inbox.md pure-append + ORDER grammar on the control lane)
