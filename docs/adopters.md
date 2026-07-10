@@ -5,7 +5,7 @@
 > **GENERATED — do not hand-edit** — regenerate with `python3 dist/bootstrap.py currency`
 > (agent-side: kit CI cannot auth to sibling repos, so CI validates
 > only this file's format + staleness, never refetches).
-> Generated: 2026-07-10T18:31:44Z · kit release: v1.7.0
+> Generated: 2026-07-10T20:36:19Z · kit release: v1.7.0
 >
 > Who runs which kit version — the substrate-coordinator's
 > visibility surface (inbox ORDER 003; manager research 2026-07-09).
@@ -25,21 +25,27 @@
 | repo | tree (vendored dist) | config pin | self-report (`kit:` line) | engaged | verdict vs kit v1.7.0 |
 |---|---|---|---|---|---|
 | menno420/substrate-kit | v1.7.0 (dist/bootstrap.py) | v1.0.0 | v1.7.0 | yes | ⚠️ DRIFT · current |
-| menno420/superbot-next | v1.6.0 (bootstrap.py) | v1.6.0 | v1.6.0 | yes | stale (v1.6.0 < v1.7.0) |
-| menno420/websites | v1.6.0 (bootstrap.py) | v1.6.0 | v1.6.0 | yes | stale (v1.6.0 < v1.7.0) |
+| menno420/superbot-next | v1.7.0 (bootstrap.py) | v1.7.0 | v1.6.0 | yes | ⚠️ DRIFT · current |
+| menno420/websites | v1.7.0 (bootstrap.py) | v1.7.0 | v1.6.0 | yes | ⚠️ DRIFT · current |
 | menno420/superbot | — | v1.0.0 | no heartbeat file | — | stale (v1.0.0 < v1.7.0) · pin-only (no vendored dist found) |
-| menno420/superbot-games | v1.2.0 (bootstrap.py) | v1.2.0 | status.md: no `kit:` line · status-mining.md: v1.2.0 · status-exploration.md: v1.2.0 | — | stale (v1.2.0 < v1.7.0) |
-| menno420/trading-strategy | v1.1.0 (bootstrap.py) | v1.1.0 | no `kit:` line | — | stale (v1.1.0 < v1.7.0) |
-| menno420/gba-homebrew | v1.6.0 (bootstrap.py) | v1.6.0 | v1.6.0 | yes | stale (v1.6.0 < v1.7.0) |
+| menno420/superbot-games | v1.7.0 (bootstrap.py) | v1.7.0 | status.md: no `kit:` line · status-mining.md: v1.2.0 · status-exploration.md: v1.2.0 | — | ⚠️ DRIFT · current |
+| menno420/trading-strategy | v1.7.0 (bootstrap.py) | v1.7.0 | no `kit:` line | — | current |
+| menno420/gba-homebrew | v1.7.0 (bootstrap.py) | v1.7.0 | v1.6.0 | yes | ⚠️ DRIFT · current |
 | menno420/pokemon-mod-lab | — | — | no heartbeat file | — | not adopted / unknown |
-| menno420/venture-lab | v1.6.0 (bootstrap.py) | v1.6.0 | no `kit:` line | — | stale (v1.6.0 < v1.7.0) |
-| menno420/fleet-manager | v1.4.0 (bootstrap.py) | v1.4.0 | v1.4.0 | yes | stale (v1.4.0 < v1.7.0) |
+| menno420/venture-lab | v1.7.0 (bootstrap.py) | v1.7.0 | no `kit:` line | — | current |
+| menno420/fleet-manager | v1.7.0 (bootstrap.py) | v1.7.0 | v1.4.0 | yes | ⚠️ DRIFT · current |
 
 ## Drift report
 
 Tree and self-report disagree below — reconcile at the SOURCE (the adopter's own heartbeat / pin), never by hand-editing this file:
 
 - **menno420/substrate-kit** — tree-internal: vendored dist says v1.7.0 but substrate.config.json pins v1.0.0
+- **menno420/superbot-next** — self-report vs tree: control/status.md claims v1.6.0 but the tree says v1.7.0
+- **menno420/websites** — self-report vs tree: control/status.md claims v1.6.0 but the tree says v1.7.0
+- **menno420/superbot-games** — self-report vs tree: control/status-mining.md claims v1.2.0 but the tree says v1.7.0
+- **menno420/superbot-games** — self-report vs tree: control/status-exploration.md claims v1.2.0 but the tree says v1.7.0
+- **menno420/gba-homebrew** — self-report vs tree: control/status.md claims v1.6.0 but the tree says v1.7.0
+- **menno420/fleet-manager** — self-report vs tree: control/status.md claims v1.4.0 but the tree says v1.7.0
 
 ## Row protocol
 
