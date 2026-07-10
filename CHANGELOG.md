@@ -15,6 +15,17 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Added
+
+- SuperBot-coordinator lane close-out + handoff
+  (`docs/succession/close-out-2026-07-10-superbot-coordinator.md`):
+  post-wind-down events (overnight superbot maintenance shift 6 PRs, the
+  mandate-confusion incident + containment playbook, the send_message wall
+  corrected to intermittent), the gen-2 coordinator's first-items brief
+  (testing-lane wind-down verified still owed), explicit routine state
+  (not armed — event-driven wakes only), and the verified unmerged-work
+  record (PRs #52 + #73); gen-1 lane heartbeat flipped to archived.
+
 **Benchmark outcome (KF-5 — travels into the next release's notes):** B1
 cold-start run-4 recorded post-release on v1.7.0 (`2026-07-10-run04`, seed
 710402 harborride, first clean scripted prepare via the #95 engagement arc,
