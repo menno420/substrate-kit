@@ -17,6 +17,19 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **`adopt --lane <name>` — lane-aware adoption for SHARED multi-Project
+  repos** (kit-lab queue item 11, the self-review G1 double-adoption fix):
+  the seeded heartbeat plants as `control/status-<name>.md` instead of the
+  singular `control/status.md` and is declared in `substrate.config.json` →
+  `heartbeat_files` (replacing the untouched default when no Project owns
+  the singular file; appending — never dropping a sibling lane — otherwise),
+  while `control/inbox.md` and `control/README.md` stay single and
+  skip-if-exists. A second Project joining an adopted repo now runs one
+  command instead of hand-creating its heartbeat, hand-editing
+  `heartbeat_files`, and risking a second full adopt. Lane names are
+  validated (letters/digits/hyphen/underscore) before any write; the
+  multi-Project section of the planted `control/README.md` documents the
+  one-command shape.
 - **OWNER-ACTION ↔ CAPABILITIES cross-reference advisory**
   (`check_capability_xref`, kit-lab queue item 8 — the #68 card idea):
   `check` now cross-references every wall-shaped ⚑ OWNER-ACTION ask

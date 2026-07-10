@@ -109,6 +109,77 @@ def doc_is_untouched(backend: Any, relpath: str, current_text: str) -> bool:
 
 BACKUP_DIRNAME = "backup"
 
+# Lane names become path components (`control/status-<lane>.md`) and config
+# entries, so the charset is deliberately tight: no separators, no dots, no
+# spaces — nothing that could escape control/ or read ambiguously in a list.
+_LANE_NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
+
+SINGLE_HEARTBEAT_RELPATH = "control/status.md"
+
+
+def lane_status_relpath(lane: str) -> str:
+    """Return the per-lane heartbeat relpath (`control/status-<lane>.md`)."""
+    return f"control/status-{lane}.md"
+
+
+def validate_lane_name(lane: str) -> str:
+    """Return ``lane`` unchanged, or raise ``ValueError`` for an unsafe name.
+
+    Runs before any write: a lane name is interpolated into a planted path
+    and into ``heartbeat_files``, so a bad one must refuse the whole adopt,
+    never plant-then-apologize.
+    """
+    if not _LANE_NAME_RE.fullmatch(lane):
+        raise ValueError(
+            f"invalid lane name {lane!r} — use letters/digits/hyphen/underscore "
+            "(it becomes control/status-<lane>.md)",
+        )
+    return lane
+
+
+def _register_lane_heartbeat(
+    root: Path,
+    config: Config,
+    lane: str,
+    report: list[str],
+) -> bool:
+    """Register the lane's heartbeat in ``config.heartbeat_files`` (in place).
+
+    Returns True when the config changed (the caller persists it). Rules,
+    all idempotent:
+
+    - already listed → nothing to do (re-adopt safe);
+    - the list is still the untouched default (``control/status.md``) and the
+      singular file does NOT exist on disk (a lane-shaped repo from the
+      start — the ``--lane`` adopt never planted it) → the lane file
+      *replaces* the default entry, because the status gate treats every
+      listed heartbeat as mandatory and must not hold strict RED on a
+      singular file no Project owns;
+    - otherwise (a first Project already beats on ``control/status.md``, or
+      a custom list names sibling lanes) → *append*, never dropping another
+      lane's declared heartbeat (one-writer-per-file scales by splitting).
+
+    An empty configured list means "the default" at every consumer
+    (misconfiguration never silently disables the gate), so it is expanded
+    to the default before the rules above apply.
+    """
+    lane_rel = lane_status_relpath(lane)
+    files = list(config.heartbeat_files) or [SINGLE_HEARTBEAT_RELPATH]
+    if lane_rel in files:
+        report.append(f"lane: {lane} — heartbeat already declared ({lane_rel})")
+        return False
+    if files == [SINGLE_HEARTBEAT_RELPATH] and not (
+        root / SINGLE_HEARTBEAT_RELPATH
+    ).exists():
+        files = [lane_rel]
+    else:
+        files.append(lane_rel)
+    config.heartbeat_files = files
+    report.append(
+        f"lane: {lane} — heartbeat_files now {files} (substrate.config.json)",
+    )
+    return True
+
 _DIST_VERSION_RE = re.compile(r"bootstrap v(\d[^\s]*)")
 
 
@@ -478,6 +549,7 @@ def adopt(
     kit_root: Path,
     include_claude: bool = False,
     wire_enforcement: bool = False,
+    lane: str | None = None,
 ) -> list[str]:
     """Adopt the substrate workflow into ``root``; return the report lines.
 
@@ -502,9 +574,22 @@ def adopt(
     executable CI/hooks silently (the deliberate safety default), but a host —
     or the rebuild's K0 session — flips this on to reproduce the enforcement
     this repo's discipline actually runs on.
+
+    ``lane`` makes the adopt **lane-aware** (the self-review G1 fix for
+    double-adoption in SHARED repos): the seeded heartbeat plants as
+    ``control/status-<lane>.md`` instead of the singular ``control/status.md``
+    and is declared in ``config.heartbeat_files`` (see
+    :func:`_register_lane_heartbeat` for the replace-vs-append rules), while
+    ``control/inbox.md`` and ``control/README.md`` stay single — the
+    manager-owned bus is shared, the heartbeat never is. A second Project
+    adopting into an already-adopted repo passes ``--lane`` and joins
+    (every shared file skip-if-exists kept, only its own heartbeat added)
+    instead of re-planting the first Project's files by hand.
     """
     include_claude = include_claude or wire_enforcement
     assert_safe_target(root, kit_root)
+    if lane is not None:
+        validate_lane_name(lane)
     templates = load_templates()
     report: list[str] = []
 
@@ -527,6 +612,11 @@ def adopt(
     # is planted under the loud UNRENDERED banner (visible, never inert).
     for template_name, plan_rel in ADOPT_PLAN:
         rel = _adopt_dest(plan_rel, config)
+        if lane is not None and template_name == "control-status.md.tmpl":
+            # Lane-aware adopt: the heartbeat is the ONE per-Project file on
+            # the bus — parametrize its dest; a --lane adopt never creates
+            # (nor touches) the singular control/status.md.
+            rel = lane_status_relpath(lane)
         text = render(templates[template_name], context)
         if template_name == "decisions.md.tmpl":
             # The example D-0001 records THIS adoption — stamp the real date so
@@ -627,10 +717,19 @@ def adopt(
             report,
         )
 
+    # (6b2) Lane-aware adopt: declare the just-planted lane heartbeat so the
+    # status gate validates it (config mutated in place — cmd_adopt's
+    # engagement checklist reads the same object).
+    config_dirty = False
+    if lane is not None:
+        config_dirty = _register_lane_heartbeat(root, config, lane, report)
+
     # (6c) The install self-identifies (§4.1): record the kit version in the
     # config file (a declared dataclass field — survives load→save) and state.
     if config.kit_version != KIT_VERSION:
         config.kit_version = KIT_VERSION
+        config_dirty = True
+    if config_dirty:
         save_config(root, config)
     backend.set("kit_version", KIT_VERSION)
     report.append(f"recorded: kit_version {KIT_VERSION}")
