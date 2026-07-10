@@ -1,6 +1,6 @@
 # 2026-07-10 — gen-2: reconcile queue-state + auto-merge stall class + enabler synchronize
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** claude-opus-4-8 · high · gen-2 kit-side docs reconcile +
   low-risk enabler-trigger fix
@@ -65,4 +65,20 @@ that goes behind self-heals on a push instead of waiting an hour.
 
 ## Outcome
 
-_(pending — flipped at close)_
+Shipped all three parts in one PR. **PART A:** `queue-state.md` item 10 now
+records #106 shipped the full post-hoc-apply mechanism (`outcome: shipped`),
+plus a header follow-on reconcile note (HEAD `266807e`; #107/#109/#110 landed
+after the #109 pass). No other item re-touched — the rest were already
+accurate; the three remaining owner-gated items kept. **PART B:** appended the
+auto-merge stall-class entry + `git merge origin/main` branch-update recipe to
+`docs/CAPABILITIES.md` (evidence PR #106 → `855a8e4`). **PART C:** added
+`synchronize` to `auto-merge-enabler.yml` — LOW-RISK (arming idempotent, never
+self-merges, no guard misbehaves on synchronize); this narrows the stall by
+re-arming on fix-pushes. ⚑ RESIDUAL owner item flagged in both the workflow
+comment and CAPABILITIES: fully closing the behind-stall needs the repo setting
+"automatically update branches".
+
+Verification: `python3 dist/bootstrap.py check --strict` green; full suite
+819 passing; `tests/test_ci_control_lane.py` 6/6 (no pin broken). No src/
+change → no dist regen. No pin test needed updating (no test references the
+enabler trigger).
