@@ -76,6 +76,15 @@ ADOPT_PLAN: list[tuple[str, str]] = [
     ("control-README.md.tmpl", "control/README.md"),
     ("control-inbox.md.tmpl", "control/inbox.md"),
     ("control-status.md.tmpl", "control/status.md"),
+    # The kit-owned work-claim convention (EAP program review §6.4): one
+    # file per claim under control/claims/ — the measured 0%-conflict
+    # layout (vs ~98% for a shared-append ledger; superbot
+    # tools/sim/claim_layout_sim.py). The planted README both documents the
+    # convention and makes the directory exist; check_claims enforces it
+    # (advisory-only) with a legacy-location compat window for pre-§6.4
+    # homes (docs/owner/claims/, root claims/). Shared across lanes like
+    # inbox.md/README.md — a --lane adopt never re-plants it.
+    ("control-claims-README.md.tmpl", "control/claims/README.md"),
 ]
 
 # State key holding {planted relpath: sha256 hex} for every doc the kit last

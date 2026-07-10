@@ -709,14 +709,18 @@ def cmd_check(
         target,
         status_files=config.heartbeat_files,
     )
-    # Order-claim hygiene (ORDER 007): advisory-only, like the staleness and
-    # owner-action warnings — a duplicate or stale `claimed-by:` is a
-    # coordination race the manager reconciles, never a required-check red.
-    # Runs on both lanes: claims live on the heartbeat orders line the fast
-    # lane already validates.
+    # Claims hygiene — orders AND work claims (ORDER 007 + EAP §6.4):
+    # advisory-only, like the staleness and owner-action warnings — a
+    # duplicate/stale `claimed-by:`, an orphaned/unparseable work-claim file,
+    # or a legacy claims location is a coordination nudge the manager/session
+    # reconciles, never a required-check red (the §6.4 compat guarantee: no
+    # adopter's existing claims can go born-red on upgrade). Runs on both
+    # lanes: order claims live on the heartbeat orders line and work claims
+    # under control/claims/ — both control-lane surfaces.
     claim_advisories = check_claims(
         target,
         status_files=config.heartbeat_files,
+        claims_dir=config.claims_dir,
     )
     # OWNER-ACTION ↔ CAPABILITIES cross-reference (kit-lab queue item 8, the
     # #68 card idea): advisory-only, like the ORDER 008 format nag it
@@ -831,12 +835,13 @@ def cmd_check(
             findings=owner_ask_advisories,
         )
     if claim_advisories:
-        # Same warn-only contract as the advisories above (ORDER 007): the
-        # duplicate/stale-claim nudge is surfaced + telemetry-recorded but
-        # never counted toward the exit code — the manager adjudicates the
-        # tiebreak; the checker only flags the collision.
+        # Same warn-only contract as the advisories above (ORDER 007 +
+        # EAP §6.4): the duplicate/stale/format/legacy-location claim nudge
+        # is surfaced + telemetry-recorded but never counted toward the exit
+        # code — the manager adjudicates the tiebreak; the checker only
+        # flags the collision/drift.
         _emit(
-            f"check: {len(claim_advisories)} order-claim advisory "
+            f"check: {len(claim_advisories)} claims advisory "
             "warning(s) (never exit-affecting):",
         )
         for finding in claim_advisories:

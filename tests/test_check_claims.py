@@ -21,9 +21,15 @@ import pytest
 
 pytest.importorskip("engine.checks.check_claims")
 
-from engine.checks.check_claims import CLAIM_STALE_HOURS, check_claims
+from engine.checks.check_claims import (
+    CLAIM_STALE_HOURS,
+    LEGACY_CLAIMS_DIRS,
+    WORK_CLAIM_STALE_HOURS,
+    check_claims,
+)
 from engine.checks.check_status_current import STATUS_RELPATH
 from engine.cli import cmd_check
+from engine.lib.config import DEFAULT_CLAIMS_DIR
 
 NOW = datetime(2026, 7, 10, 12, 0, tzinfo=timezone.utc)
 FRESH = "2026-07-10T11:00Z"  # 1h before NOW — inside the horizon
@@ -193,6 +199,148 @@ def test_default_now_uses_wall_clock(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# WORK claims (EAP §6.4) — one file per claim under control/claims/
+# ---------------------------------------------------------------------------
+
+
+def _claim_bullet(token: str, day: str = "2026-07-10") -> str:
+    return f"- `{token}` · **scope** — a slice under way · src/x · {day}\n"
+
+
+def test_no_claims_dir_no_work_findings(tmp_path):
+    # No control protocol, no claims dir anywhere → completely silent.
+    assert check_claims(tmp_path, now=NOW) == []
+    assert DEFAULT_CLAIMS_DIR == "control/claims"
+
+
+def test_valid_fresh_work_claim_is_clean(tmp_path):
+    _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/claude__lane-a.md", _claim_bullet("claude/lane-a"))
+    assert check_claims(tmp_path, now=NOW) == []
+
+
+def test_claims_readme_is_never_a_claim(tmp_path):
+    _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/README.md", "# convention doc, no bullet\n")
+    assert check_claims(tmp_path, now=NOW) == []
+
+
+def test_unparseable_claim_flags_format(tmp_path):
+    _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/mystery.md", "working on stuff\n")
+    findings = check_claims(tmp_path, now=NOW)
+    assert [f.kind for f in findings] == ["claims-format"]
+    assert findings[0].path == f"{DEFAULT_CLAIMS_DIR}/mystery.md"
+
+
+def test_bullet_without_date_flags_format(tmp_path):
+    _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/no-date.md", "- `lane-x` · scope only\n")
+    assert [f.kind for f in check_claims(tmp_path, now=NOW)] == ["claims-format"]
+
+
+def test_old_work_claim_flags_stale(tmp_path):
+    # Dated 5 days before NOW — past the 72h work horizon.
+    _write(
+        tmp_path,
+        f"{DEFAULT_CLAIMS_DIR}/old.md",
+        _claim_bullet("claude/old-lane", day="2026-07-05"),
+    )
+    findings = check_claims(tmp_path, now=NOW)
+    assert [f.kind for f in findings] == ["claims-stale"]
+    assert "orphan" in findings[0].message
+    assert WORK_CLAIM_STALE_HOURS == 72
+
+
+def test_two_files_same_token_flag_duplicate(tmp_path):
+    _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/a.md", _claim_bullet("claude/same"))
+    _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/b.md", _claim_bullet("claude/same"))
+    findings = check_claims(tmp_path, now=NOW)
+    assert [f.kind for f in findings] == ["claims-duplicate", "claims-duplicate"]
+    assert {f.path for f in findings} == {
+        f"{DEFAULT_CLAIMS_DIR}/a.md",
+        f"{DEFAULT_CLAIMS_DIR}/b.md",
+    }
+    for f in findings:
+        assert "claude/same" in f.message
+
+
+def test_distinct_tokens_are_clean(tmp_path):
+    _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/a.md", _claim_bullet("claude/one"))
+    _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/b.md", _claim_bullet("claude/two"))
+    assert check_claims(tmp_path, now=NOW) == []
+
+
+def test_legacy_superbot_location_nudges_and_still_scans(tmp_path):
+    # docs/owner/claims/ (superbot's Q-0195 home): one nudge per legacy dir,
+    # and the claims inside still get the full treatment (here: stale).
+    _write(
+        tmp_path,
+        "docs/owner/claims/claude__x.md",
+        _claim_bullet("claude/x", day="2026-07-01"),
+    )
+    findings = check_claims(tmp_path, now=NOW)
+    kinds = sorted(f.kind for f in findings)
+    assert kinds == ["claims-legacy-location", "claims-stale"]
+    legacy = next(f for f in findings if f.kind == "claims-legacy-location")
+    assert legacy.path == "docs/owner/claims"
+    assert DEFAULT_CLAIMS_DIR in legacy.message
+    assert "claims_dir" in legacy.message
+
+
+def test_legacy_root_claims_location_nudges(tmp_path):
+    # Root claims/ (gba-homebrew's home).
+    _write(tmp_path, "claims/lane.md", _claim_bullet("games/lane"))
+    findings = check_claims(tmp_path, now=NOW)
+    assert [f.kind for f in findings] == ["claims-legacy-location"]
+    assert LEGACY_CLAIMS_DIRS == ("docs/owner/claims", "claims")
+
+
+def test_empty_legacy_dir_is_silent(tmp_path):
+    # A legacy dir holding only its README (or nothing) has nothing to move.
+    _write(tmp_path, "claims/README.md", "# convention doc\n")
+    assert check_claims(tmp_path, now=NOW) == []
+
+
+def test_cross_location_duplicate_is_caught(tmp_path):
+    # The same token claimed canonically AND in a legacy home is still the
+    # collision — the compat window must not blind the duplicate scan.
+    _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/a.md", _claim_bullet("claude/same"))
+    _write(tmp_path, "claims/b.md", _claim_bullet("claude/same"))
+    kinds = sorted(f.kind for f in check_claims(tmp_path, now=NOW))
+    assert kinds == [
+        "claims-duplicate",
+        "claims-duplicate",
+        "claims-legacy-location",
+    ]
+
+
+def test_configured_claims_dir_is_canonical_no_nudge(tmp_path):
+    # A host that pins a legacy path via claims_dir made it canonical —
+    # no legacy nudge, full scanning.
+    _write(
+        tmp_path,
+        "docs/owner/claims/fresh.md",
+        _claim_bullet("claude/fresh"),
+    )
+    findings = check_claims(tmp_path, now=NOW, claims_dir="docs/owner/claims")
+    assert findings == []
+
+
+def test_work_claims_scan_without_control_protocol(tmp_path):
+    # The work half self-gates on the dir, not on control/ evidence.
+    _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/x.md", "no bullet here\n")
+    assert [f.kind for f in check_claims(tmp_path, now=NOW)] == ["claims-format"]
+
+
+def test_work_and_order_findings_combine(tmp_path):
+    _write(
+        tmp_path,
+        STATUS_RELPATH,
+        _status(f"acked=001-005 done=005 claimed-by: 005 lane-a {FRESH}"),
+    )
+    _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/y.md", "unparseable\n")
+    kinds = sorted(f.kind for f in check_claims(tmp_path, now=NOW))
+    assert kinds == ["claims-format", "claims-stale"]
+
+
+# ---------------------------------------------------------------------------
 # cmd_check integration — advisory NEVER touches the exit code
 # ---------------------------------------------------------------------------
 
@@ -223,6 +371,40 @@ def test_cmd_check_status_only_lane_also_warns(tmp_path, capsys):
     )
     assert cmd_check(tmp_path, strict=True, status_only=True) == 0
     assert "claims-stale" in capsys.readouterr().out
+
+
+def test_cmd_check_strict_stays_green_on_work_claim_findings(tmp_path, capsys):
+    # The §6.4 compat guarantee: format + legacy-location nudges (the exact
+    # shape an adopter's pre-unification claims produce on upgrade) never
+    # touch the exit code. Uses the root claims/ legacy home — a docs_root
+    # legacy home additionally meets the ORDINARY docs-hygiene checkers
+    # (badge/reachability), which is check_docs' finding, not a claims one.
+    _write(tmp_path, STATUS_RELPATH, _status("acked=001 done=001"))
+    _write(tmp_path, "claims/legacy-lane.md", "prose, no bullet\n")
+    assert cmd_check(tmp_path, strict=True) == 0
+    out = capsys.readouterr().out
+    assert "claims-legacy-location" in out
+    assert "claims-format" in out
+    assert "never exit-affecting" in out
+
+
+def test_cmd_check_honours_configured_claims_dir(tmp_path, capsys):
+    # A pinned claims_dir is canonical: scanned (the stale nag fires) but
+    # never nudged as legacy (pinning the root claims/ home end-to-end).
+    _write(tmp_path, STATUS_RELPATH, _status("acked=001 done=001"))
+    _write(
+        tmp_path,
+        "claims/old.md",
+        "- `claude/old` · scope — detail · 2026-01-01\n",
+    )
+    (tmp_path / "substrate.config.json").write_text(
+        '{"claims_dir": "claims"}',
+        encoding="utf-8",
+    )
+    assert cmd_check(tmp_path, strict=True) == 0
+    out = capsys.readouterr().out
+    assert "claims-stale" in out
+    assert "claims-legacy-location" not in out
 
 
 def test_cmd_check_quiet_when_claims_clean(tmp_path, capsys):

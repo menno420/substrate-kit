@@ -109,6 +109,23 @@ def _default_heartbeat_files() -> list[str]:
     return ["control/status.md"]
 
 
+"""Default work-claim directory (EAP program review §6.4).
+
+The ONE kit-owned claims convention has two surfaces: ORDER claims are the
+``claimed-by:`` annotation on a lane's own heartbeat orders line (one writer
+per file — see ``control/README.md`` § "Claiming an order"), and WORK/lane
+claims are one-file-per-claim markdown files under this directory (superbot's
+measured evidence: a shared-append claim ledger merge-conflicts at ~98% under
+concurrent sessions vs 0% for per-file — ``tools/sim/claim_layout_sim.py`` in
+menno420/superbot; see the planted ``control/claims/README.md``). Lives under
+``control/`` on purpose: claims are coordination traffic, so they ride the
+control fast lane and land on main fast. Legacy locations
+(``docs/owner/claims/``, root ``claims/``) are auto-detected by
+``check_claims`` with an advisory migration nudge.
+"""
+DEFAULT_CLAIMS_DIR = "control/claims"
+
+
 def _default_badge_tokens() -> list[str]:
     """Return the default Status-badge taxonomy the doc checker accepts."""
     return [
@@ -178,6 +195,11 @@ class Config:
     seams: list[dict] = field(default_factory=list)
     review_seam: dict = field(default_factory=_default_review_seam)
     heartbeat_files: list[str] = field(default_factory=_default_heartbeat_files)
+    # Work-claim home (EAP §6.4 — see DEFAULT_CLAIMS_DIR above). A host that
+    # deliberately keeps its claims elsewhere (e.g. superbot's
+    # docs/owner/claims/) pins that path here; the pinned dir is then
+    # canonical for that host and the legacy-location nudge never fires on it.
+    claims_dir: str = DEFAULT_CLAIMS_DIR
 
     def to_json(self) -> str:
         """Serialise the config to indented, key-sorted JSON."""
