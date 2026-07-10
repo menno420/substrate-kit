@@ -115,7 +115,11 @@ from engine.loop.review_seam import (
     seam_wiring_doc,
     write_review_payload,
 )
-from engine.loop.telemetry import harvest_model_usage, record_guard_fires
+from engine.loop.telemetry import (
+    harvest_model_usage,
+    reconcile_model_usage,
+    record_guard_fires,
+)
 from engine.loop.triggers import check_triggers, mandatory_questions, trigger_block
 from engine.render import build_context, find_placeholders, load_templates, render
 from engine.skills.skills import (
@@ -1394,6 +1398,13 @@ def cmd_session_close(target: Path) -> int:
     _emit(f"session-close: indexed {len(entries)} session(s).")
     log = latest_session_log(target / config.sessions_dir)
     for line in harvest_model_usage(target, log):
+        _emit(f"session-close: {line}")
+    # Whole-tree reconcile (KL-3 write-at-commit, gen-2 queue item 6): the
+    # single-latest harvest above only ever wrote the newest card's row, so a
+    # card committed under a newer one was never harvested (10 rows vs 42
+    # eligible cards). Sweep every complete card so no eligible card is left
+    # behind — idempotent + fail-open, so it costs a re-scan and nothing else.
+    for line in reconcile_model_usage(target, target / config.sessions_dir):
         _emit(f"session-close: {line}")
     # Re-read state: the mine above stamped reflection_buffer.last_mined, and
     # a pre-mine snapshot would re-advise the mine it just ran.

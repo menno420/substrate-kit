@@ -3683,6 +3683,30 @@ def parse_model_line(text: str) -> dict | None:
     return parsed
 
 
+def _build_model_usage_record(session: str, parsed: dict) -> dict:
+    """Build one PL-004 model-usage row from a session slug + parsed 📊 line.
+
+    Shared by ``harvest_model_usage`` (single-latest) and
+    ``reconcile_model_usage`` (whole-tree sweep) so both feeds emit the exact
+    same shape. ``outcome`` ships all-null — a later lab sweep backfills it.
+    """
+    match = _DATE_PREFIX_RE.match(session)
+    return {
+        "session": session,
+        "date": match.group(1) if match else date.today().isoformat(),
+        "model": parsed["model"],
+        "effort": parsed["effort"],
+        "task_class": parsed["task_class"],
+        "tokens_out": parsed["tokens_out"],
+        "outcome": {
+            "ci_green_first_push": None,
+            "checker_findings": None,
+            "merged_pr": None,
+            "reverted_within_window": None,
+        },
+    }
+
+
 def _model_usage_sessions(path: Path) -> set[str]:
     """Return the session slugs already recorded at ``path`` (dedupe key)."""
     sessions: set[str] = set()
@@ -3734,26 +3758,69 @@ def harvest_model_usage(root: Path, session_log: Path | None) -> list[str]:
         if session in _model_usage_sessions(path):
             lines.append(f"model-usage: {session} already recorded (skipped).")
             return lines
-        match = _DATE_PREFIX_RE.match(session)
-        record = {
-            "session": session,
-            "date": match.group(1) if match else date.today().isoformat(),
-            "model": parsed["model"],
-            "effort": parsed["effort"],
-            "task_class": parsed["task_class"],
-            "tokens_out": parsed["tokens_out"],
-            "outcome": {
-                "ci_green_first_push": None,
-                "checker_findings": None,
-                "merged_pr": None,
-                "reverted_within_window": None,
-            },
-        }
-        _append_jsonl(path, record)
+        _append_jsonl(path, _build_model_usage_record(session, parsed))
         lines.append(f"model-usage: recorded {session} -> {MODEL_USAGE_RELPATH}")
         return lines
     except Exception:  # noqa: BLE001 — telemetry fails open by contract
         return ["model-usage: harvest failed (fail-open) — row not recorded."]
+
+
+def reconcile_model_usage(root: Path, sessions_dir: Path) -> list[str]:
+    """Sweep EVERY complete session card into the model-usage feed (write-at-commit).
+
+    The single-latest ``harvest_model_usage`` at session-close only ever wrote
+    the *newest* card's row, so a card committed while a newer card already
+    existed never reached ``telemetry/model-usage.jsonl`` — the KL-3
+    undercount (gen-2 queue item 6: 10 recorded rows vs 42 eligible cards).
+    This reconcile closes that gap deterministically: it appends one row for
+    every **complete** card carrying a valid ``📊 Model:`` line that is not
+    already recorded, so the moment a card commits complete its telemetry row
+    exists and no later card can shadow it out of the harvest.
+
+    Completeness-gated on the exact machinery the session-log checker uses
+    (``status_in_progress`` + ``unresolved_fill_count``): a born-red /
+    in-progress / drafted card has no finished session to report and is picked
+    up only once it flips complete — the write-at-card-commit contract. The
+    record shape is the PL-004 object built by ``_build_model_usage_record``;
+    ``outcome`` starts all-null (the lab sweep backfills it). Idempotent
+    (dedupe by session slug, in-batch too — re-running never double-appends),
+    append-only, and fail-open like every telemetry path. Returns
+    human-readable summary lines for the CLI.
+    """
+    try:
+        if not sessions_dir.is_dir():
+            return []
+        path = root / MODEL_USAGE_RELPATH
+        recorded = _model_usage_sessions(path)
+        added: list[str] = []
+        for card in sorted(sessions_dir.glob("*.md")):
+            if card.name == "README.md":
+                continue
+            try:
+                text = card.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            # A card only earns its row once it commits complete — an
+            # in-progress or drafted (born-red) card is not a finished session.
+            if status_in_progress(text) or unresolved_fill_count(text):
+                continue
+            parsed = parse_model_line(text)
+            if parsed is None:
+                continue
+            session = card.stem
+            if session in recorded:
+                continue
+            _append_jsonl(path, _build_model_usage_record(session, parsed))
+            recorded.add(session)
+            added.append(session)
+        if not added:
+            return ["model-usage: reconcile — no unrecorded complete cards."]
+        head = f"model-usage: reconcile recorded {len(added)} card(s) -> {MODEL_USAGE_RELPATH}"
+        if len(added) <= 6:
+            head += f" ({', '.join(added)})"
+        return [head]
+    except Exception:  # noqa: BLE001 — telemetry fails open by contract
+        return ["model-usage: reconcile failed (fail-open) — rows not recorded."]
 
 # --- engine/loop/handoff.py ---
 """Auto-drafted session handoff (band KL-5, founding plan §10 — the ruled B1 prerequisite).
@@ -10654,6 +10721,13 @@ def cmd_session_close(target: Path) -> int:
     _emit(f"session-close: indexed {len(entries)} session(s).")
     log = latest_session_log(target / config.sessions_dir)
     for line in harvest_model_usage(target, log):
+        _emit(f"session-close: {line}")
+    # Whole-tree reconcile (KL-3 write-at-commit, gen-2 queue item 6): the
+    # single-latest harvest above only ever wrote the newest card's row, so a
+    # card committed under a newer one was never harvested (10 rows vs 42
+    # eligible cards). Sweep every complete card so no eligible card is left
+    # behind — idempotent + fail-open, so it costs a re-scan and nothing else.
+    for line in reconcile_model_usage(target, target / config.sessions_dir):
         _emit(f"session-close: {line}")
     # Re-read state: the mine above stamped reflection_buffer.last_mined, and
     # a pre-mine snapshot would re-advise the mine it just ran.
