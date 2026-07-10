@@ -1,6 +1,6 @@
 # 2026-07-10 — gen-2: telemetry write-at-card-commit + backfill
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** claude-opus-4-8 · high · gen-2 kit-side telemetry fix (single
   scoped PR: emit the model-usage row at card-commit + backfill the historical
