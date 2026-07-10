@@ -15,6 +15,24 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **`.github/workflows/substrate-gate.yml` is now KIT-OWNED** (EAP program
+  review §6.1, menno420/superbot `docs/eap/eap-program-review-2026-07-10.md`):
+  once the live gate exists, every adopt/upgrade pass regenerates it in
+  place — upstream gate fixes (e.g. the #108 ADDED-advisory / MODIFIED-locked
+  born-red sentinel fixes, live-fired on gba-homebrew) now reach installed
+  gates on `bootstrap.py upgrade` instead of stranding as hand-forked
+  patches. **Hand edits to the installed gate are overwritten on upgrade**;
+  the generated header declares it and routes host carve-outs to a separate
+  workflow file. A default adopt still never CREATES live CI (safety doctrine
+  unchanged — only `--wire-enforcement` installs it; existence is the opt-in
+  signal after that). The commented `ci_snippet()` example and the kit's own
+  staged `.substrate/ci/quality.yml.example` carry the same note.
+  **Adopter note (next release's distribution wave):** repos with an
+  installed gate — including gba-homebrew's hand-fixed copy — receive the
+  regeneration on their next upgrade.
+
 ### Added
 
 - SuperBot-coordinator lane close-out + handoff

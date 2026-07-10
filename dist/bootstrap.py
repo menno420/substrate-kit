@@ -8881,6 +8881,11 @@ def ci_snippet() -> str:
         "# `paths-ignore`: a required context that never reports stays\n"
         "# pending and blocks auto-merge.\n"
         "#\n"
+        "# NOTE: the INSTALLED .github/workflows/substrate-gate.yml is\n"
+        "# KIT-OWNED — adopt/upgrade regenerates it in place and hand edits\n"
+        "# are overwritten. Host-specific CI belongs in a separate workflow\n"
+        "# (a copy of this example is a good home).\n"
+        "#\n"
         "# name: substrate-quality\n"
         "# on:\n"
         "#   pull_request:\n"
@@ -8950,13 +8955,27 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
     heartbeat, deferring the red onto the next unrelated PR (the fleet
     adoption review finding, 2026-07-09). Stdlib-only on the system
     ``python3``, so the lane stays fast.
+
+    **Kit-owned (EAP program review §6.1):** the installed copy at
+    :data:`LIVE_CI_RELPATH` is a kit-owned artifact — once it exists, every
+    adopt/upgrade pass regenerates it in place (see :func:`adopt` step 6b),
+    so gate fixes like the two above reach installed gates on
+    ``bootstrap.py upgrade`` instead of stranding as hand-forked patches
+    (the gba-homebrew live-fire fix had to be hand-forked precisely because
+    no such ownership existed). Hand edits are overwritten; the generated
+    header says so and routes host customizations to a separate workflow
+    file.
     """
     return (
         "# substrate-kit enforcement gate (LIVE — installed by "
         "`bootstrap.py adopt --wire-enforcement`).\n"
+        "# KIT-OWNED: adopt/upgrade regenerates this file in place, so\n"
+        "# upstream gate fixes land here on every `bootstrap.py upgrade` —\n"
+        "# hand edits are OVERWRITTEN. Put host-specific customizations\n"
+        "# (e.g. a label carve-out for PRs that legitimately need no session\n"
+        "# card) in a SEPARATE workflow file, never in this one.\n"
         "# Holds the merge red until the session journal is written and every\n"
-        "# hygiene check passes. Add a label carve-out if some PRs legitimately\n"
-        "# need no session card — but if this check is REQUIRED, prefer an\n"
+        "# hygiene check passes. If this check is REQUIRED, prefer an\n"
         "# in-job short-circuit (like the control lane below) over\n"
         "# `paths-ignore`: a required context that never reports stays\n"
         "# pending and blocks auto-merge forever.\n"
@@ -9089,7 +9108,10 @@ def adopt(
     red until the journal is written. Kept opt-in: the kit still never installs
     executable CI/hooks silently (the deliberate safety default), but a host —
     or the rebuild's K0 session — flips this on to reproduce the enforcement
-    this repo's discipline actually runs on.
+    this repo's discipline actually runs on. Once installed, the live gate is
+    **kit-owned** (EAP program review §6.1): every subsequent adopt/upgrade
+    pass regenerates it in place, hand edits included — see step 6b and
+    :func:`live_ci_workflow`.
 
     ``lane`` makes the adopt **lane-aware** (the self-review G1 fix for
     double-adoption in SHARED repos): the seeded heartbeat plants as
@@ -9222,12 +9244,33 @@ def adopt(
             report,
         )
 
-    # (6b) Enforcement opt-in: the LIVE CI gate (the locked door). include_claude
-    # above already wired the live nag; this adds the required check that a
-    # missing journal can never merge past.
-    if wire_enforcement:
+    # (6b) Enforcement opt-in + kit-owned regeneration (EAP program review
+    # §6.1). `--wire-enforcement` installs the LIVE CI gate (the locked door
+    # that pairs with include_claude's live nag). Once the gate EXISTS it is
+    # KIT-OWNED: every adopt/upgrade pass regenerates it in place — the
+    # staged-artifacts-always-regenerate mechanism extended to the one live
+    # workflow the kit installs — so template fixes (e.g. the #108 born-red
+    # sentinel fixes, live-fired on gba-homebrew) reach installed gates on
+    # `bootstrap.py upgrade` instead of stranding as hand-forked patches.
+    # A default adopt still never CREATES live CI (the safety doctrine is
+    # unchanged): only --wire-enforcement installs it; existence is the
+    # opt-in signal after the first install. Hand edits are overwritten by
+    # design — the generated header declares it and routes host carve-outs
+    # to a separate workflow file.
+    live_gate = root / LIVE_CI_RELPATH
+    if live_gate.is_file():
+        if live_gate.read_text(encoding="utf-8") == gate_text:
+            report.append(f"kept: {LIVE_CI_RELPATH} (kit-owned, already current)")
+        else:
+            atomic_write_text(live_gate, gate_text)
+            report.append(
+                f"regenerated: {LIVE_CI_RELPATH} (kit-owned — template@new; "
+                "hand edits are overwritten, host carve-outs belong in a "
+                "separate workflow)",
+            )
+    elif wire_enforcement:
         _adopt_plant(
-            root / LIVE_CI_RELPATH,
+            live_gate,
             LIVE_CI_RELPATH,
             gate_text,
             report,

@@ -464,7 +464,13 @@ def test_default_adopt_never_installs_live_ci(tmp_path):
     assert not (root / ".claude").exists()
 
 
-def test_wire_enforcement_does_not_clobber_an_existing_workflow(tmp_path):
+def test_live_gate_is_kit_owned_and_regenerated_in_place(tmp_path):
+    # EAP program review §6.1: the live gate is KIT-OWNED — an existing file
+    # (a stale template, a hand-forked fix like gba-homebrew's) is regenerated
+    # on every adopt/upgrade pass, so upstream gate fixes reach installed
+    # gates instead of stranding as hand-forked patches. (This inverts the
+    # old never-clobber test on purpose — that behavior is what stranded the
+    # gba-homebrew fix outside the kit.)
     root = tmp_path / "repo"
     config = Config()
     backend = _make_backend(root, config)
@@ -474,8 +480,45 @@ def test_wire_enforcement_does_not_clobber_an_existing_workflow(tmp_path):
     lines = adopt(
         root, config, backend, kit_root=tmp_path / "kit", wire_enforcement=True
     )
-    assert workflow.read_text(encoding="utf-8") == "name: mine\n"
-    assert f"kept: {LIVE_CI_RELPATH}" in lines
+    assert workflow.read_text(encoding="utf-8") == live_ci_workflow()
+    assert any(
+        line.startswith(f"regenerated: {LIVE_CI_RELPATH}") for line in lines
+    )
+
+
+def test_default_adopt_regenerates_an_existing_live_gate(tmp_path):
+    # Existence is the opt-in signal after the first install: even WITHOUT
+    # --wire-enforcement (the upgrade verb's adopt pass runs exactly this
+    # shape), an existing gate is refreshed to the current template — but a
+    # default adopt still never CREATES one (the safety doctrine, covered by
+    # test_default_adopt_never_installs_live_ci above).
+    root = tmp_path / "repo"
+    config = Config()
+    backend = _make_backend(root, config)
+    workflow = root / LIVE_CI_RELPATH
+    workflow.parent.mkdir(parents=True)
+    workflow.write_text(
+        "# stale hand-forked gate\nname: substrate-gate\n", encoding="utf-8"
+    )
+    lines = adopt(root, config, backend, kit_root=tmp_path / "kit")
+    assert workflow.read_text(encoding="utf-8") == live_ci_workflow()
+    assert any(
+        line.startswith(f"regenerated: {LIVE_CI_RELPATH}") for line in lines
+    )
+    # Idempotent second pass: already current -> kept, byte-identical.
+    lines2 = adopt(root, config, backend, kit_root=tmp_path / "kit")
+    assert workflow.read_text(encoding="utf-8") == live_ci_workflow()
+    assert f"kept: {LIVE_CI_RELPATH} (kit-owned, already current)" in lines2
+
+
+def test_live_ci_workflow_declares_kit_ownership():
+    # The overwrite-on-upgrade contract must be visible in the file itself:
+    # the generated header says KIT-OWNED and routes host customizations to
+    # a separate workflow file.
+    text = live_ci_workflow()
+    assert "KIT-OWNED" in text
+    assert "SEPARATE workflow" in text
+    assert "NOTE: the INSTALLED .github/workflows/substrate-gate.yml" in ci_snippet()
 
 
 # ---------------------------------------------------------------------------

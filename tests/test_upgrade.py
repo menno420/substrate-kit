@@ -707,3 +707,53 @@ def test_no_cleanup_when_nothing_was_replaced(tmp_path):
     )
     assert vendored.is_file()
     assert not any("cleaned up" in line for line in lines)
+
+
+# ---------------------------------------------------------------------------
+# Kit-owned live gate regeneration on upgrade (EAP program review §6.1)
+# ---------------------------------------------------------------------------
+
+
+def test_upgrade_regenerates_a_stale_live_gate(tmp_path):
+    # The whole point of declaring the gate kit-owned: an adopter carrying a
+    # stale or hand-forked substrate-gate.yml (gba-homebrew's live-fire fix
+    # was exactly this) gets the current template on `bootstrap.py upgrade` —
+    # no hand-porting of gate patches ever again.
+    from engine.adopt import LIVE_CI_RELPATH, live_ci_workflow
+
+    root, config, backend = _adopted(tmp_path)
+    gate = root / LIVE_CI_RELPATH
+    gate.parent.mkdir(parents=True)
+    gate.write_text("# stale hand-forked gate\nname: substrate-gate\n", encoding="utf-8")
+    _fake_old_dist(root)
+    running = _fake_new_dist(tmp_path)
+    lines = run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    assert gate.read_text(encoding="utf-8") == live_ci_workflow()
+    assert any(
+        line.startswith(f"regenerated: {LIVE_CI_RELPATH}") for line in lines
+    )
+
+
+def test_upgrade_never_creates_a_live_gate_that_was_not_installed(tmp_path):
+    # The safety doctrine survives the kit-owned declaration: an install that
+    # never wired enforcement has no live gate, and upgrade must not sneak
+    # one in — existence is the opt-in signal, absence stays respected.
+    from engine.adopt import LIVE_CI_RELPATH
+
+    root, config, backend = _adopted(tmp_path)
+    _fake_old_dist(root)
+    running = _fake_new_dist(tmp_path)
+    run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    assert not (root / LIVE_CI_RELPATH).exists()
