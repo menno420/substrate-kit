@@ -140,6 +140,26 @@ def test_order_claim_convention_planted(tmp_path):
     assert "[claimed-by: <ids> <lane-or-session> <ISO8601>]" in readme
 
 
+def test_work_claim_convention_planted(tmp_path):
+    # EAP §6.4: the kit-owned work-claim convention plants at
+    # control/claims/README.md (one file per claim — the measured
+    # 0%-conflict layout), and the planted control/README.md routes to it.
+    root, _, lines = _adopt_into(tmp_path)
+    claims_readme = root / "control" / "claims" / "README.md"
+    assert claims_readme.is_file()
+    assert "planted: control/claims/README.md" in lines
+    text = claims_readme.read_text(encoding="utf-8")
+    assert "one file per claim" in text
+    assert "0%" in text and "98%" in text  # the measured evidence travels
+    assert "Delete your own claim file" in text
+    assert "claims-legacy-location" in text
+    assert "claims_dir" in text
+    # Routed from the control protocol contract.
+    readme = (root / "control" / "README.md").read_text(encoding="utf-8")
+    assert "control/claims/" in readme
+    assert "Claiming work" in readme
+
+
 def test_owner_action_format_planted_and_wired(tmp_path):
     # ORDER 008: the planted control/README.md carries the OWNER-ACTION item
     # format (six REQUIRED fields, attempted-or-exact-wall), and the

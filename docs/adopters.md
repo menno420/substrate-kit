@@ -5,7 +5,7 @@
 > **GENERATED — do not hand-edit** — regenerate with `python3 dist/bootstrap.py currency`
 > (agent-side: kit CI cannot auth to sibling repos, so CI validates
 > only this file's format + staleness, never refetches).
-> Generated: 2026-07-10T22:11:08Z · kit release: v1.7.1
+> Generated: 2026-07-10T22:36:35Z · kit release: v1.7.1
 >
 > Who runs which kit version — the substrate-coordinator's
 > visibility surface (inbox ORDER 003; manager research 2026-07-09).
@@ -29,7 +29,7 @@
 | menno420/websites | v1.7.1 (bootstrap.py) | v1.7.1 | v1.7.1 | yes | current |
 | menno420/superbot | — | v1.0.0 | no heartbeat file | — | stale (v1.0.0 < v1.7.1) · pin-only (no vendored dist found) |
 | menno420/superbot-games | v1.7.1 (bootstrap.py) | v1.7.1 | status.md: no `kit:` line · status-mining.md: v1.2.0 · status-exploration.md: v1.2.0 | — | ⚠️ DRIFT · current |
-| menno420/trading-strategy | v1.7.0 (bootstrap.py) | v1.7.0 | v1.7.0 | — | stale (v1.7.0 < v1.7.1) |
+| menno420/trading-strategy | v1.7.1 (bootstrap.py) | v1.7.1 | v1.7.0 | — | ⚠️ DRIFT · current |
 | menno420/gba-homebrew | v1.7.1 (bootstrap.py) | v1.7.1 | v1.6.0 | yes | ⚠️ DRIFT · current |
 | menno420/pokemon-mod-lab | — | — | no heartbeat file | — | not adopted / unknown |
 | menno420/venture-lab | v1.7.1 (bootstrap.py) | v1.7.1 | no `kit:` line | — | current |
@@ -43,6 +43,7 @@ Tree and self-report disagree below — reconcile at the SOURCE (the adopter's o
 - **menno420/superbot-next** — self-report vs tree: control/status.md claims v1.6.0 but the tree says v1.7.1
 - **menno420/superbot-games** — self-report vs tree: control/status-mining.md claims v1.2.0 but the tree says v1.7.1
 - **menno420/superbot-games** — self-report vs tree: control/status-exploration.md claims v1.2.0 but the tree says v1.7.1
+- **menno420/trading-strategy** — self-report vs tree: control/status.md claims v1.7.0 but the tree says v1.7.1
 - **menno420/gba-homebrew** — self-report vs tree: control/status.md claims v1.6.0 but the tree says v1.7.1
 - **menno420/fleet-manager** — self-report vs tree: control/status.md claims v1.7.0 but the tree says v1.7.1
 

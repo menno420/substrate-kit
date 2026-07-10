@@ -15,6 +15,31 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **One kit-owned claims convention + `check_claims` unified on it** (EAP
+  program review 2026-07-10 §6.4 — the fleet ran four forked claim mechanisms
+  while the checker validated a fifth). The convention has two surfaces:
+  ORDER claims stay the `claimed-by:` annotation on a lane's own heartbeat
+  orders line (unchanged), and WORK/lane claims become **one file per claim
+  under `control/claims/`** — the measured winner (superbot's
+  `tools/sim/claim_layout_sim.py`: ~98% merge-conflict rate for a
+  shared-append ledger vs 0% per-file) with gba-homebrew's first-claim-on-main
+  arbitration. New planted template `control/claims/README.md`
+  (`control-claims-README.md.tmpl`, in `ADOPT_PLAN`; upgrades replant it when
+  missing, so it distributes on the next release) + a routing section in the
+  planted `control/README.md`. `check_claims` now also scans the claims
+  directory: `claims-format` (unparseable bullet), `claims-stale` (> 72h
+  work-claim horizon), `claims-duplicate` (same branch/scope token in two
+  files, cross-location included) — all advisory-only, posture unchanged.
+- **Migration/compat window for pre-§6.4 claim homes**: legacy locations
+  (`docs/owner/claims/` — superbot; root `claims/` — gba-homebrew) are
+  auto-detected and scanned in place with a `claims-legacy-location` nudge;
+  because every claims finding is advisory-by-contract, an adopter's existing
+  claims can never red a gate on upgrade. New config key `claims_dir`
+  (default `control/claims`) pins a deliberate different home — a pinned dir
+  is canonical for that host and never nudged.
+
 ## [1.7.1] - 2026-07-10
 
 Fix-and-hardening release (PATCH) shipping the v1.7.0 distribution-wave
