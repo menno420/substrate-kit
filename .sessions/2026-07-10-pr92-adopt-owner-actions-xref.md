@@ -39,11 +39,17 @@ the final status close.
    THE DISCOVERY RULE step 4) and `owner-ask-capability-resolved` (only the
    verified-working side matches → the wall may have fallen; re-verify or
    withdraw). Judgment-shaped asks (product/owner judgment, "not a technical
-   wall") are out of the ledger's scope and skipped. 16 new tests mirror
+   wall") are out of the ledger's scope and skipped. 17 new tests mirror
    `tests/test_check_claims.py` (gating, fail-open, both findings, wall-side
    precedence, cmd_check integration: strict stays green, both lanes warn,
    quiet-when-clean). MODULE_ORDER + dist regenerated; CHANGELOG [Unreleased]
    ### Added entry (MINOR: new checker).
+3. **#99 token alignment (mid-session ripple):** PR #99 (another lane) landed
+   WHY:/VERIFIED-WHEN: shorthand acceptance in `check_owner_actions` while this
+   PR was open; merged main in and aligned the cross-reference to the same
+   accepted label set (VERIFIED-WHEN: locates the wall-evidence field, WHY:
+   bounds values) so the two checkers can't disagree on which asks are
+   structured. One more test pins the shorthand.
 
 Field verification: run against this repo's own `control/status.md` (10 live
 OWNER-ACTION items) the checker is **quiet** — the 3 judgment asks (1, 5, 8) skip
@@ -52,7 +58,7 @@ is already closed, which is exactly the clean baseline the nudge is for.
 
 ## Gates (final head, run in the session worktree)
 
-- `python3 -m pytest tests/ -q` → **795 passed** (779 post-#92 + 16 new)
+- `python3 -m pytest tests/ -q` → **798 passed** (781 post-#92/#99 + 17 new)
 - `python3 dist/bootstrap.py check --strict` → exit 0
 - `python3 src/build_bootstrap.py && git diff --exit-code dist/bootstrap.py` →
   byte-pin green
