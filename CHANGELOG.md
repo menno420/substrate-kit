@@ -15,6 +15,34 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-07-10
+
+New-capability release (MINOR) folding the kit-lab enforcement + adopter-findings
+queue shipped since v1.6.0: the order-bus append-only + ORDER-grammar enforcer
+(#87), the claim-aware checker that gives the ORDER 007 convention teeth (#90),
+the OWNER-ACTION ↔ CAPABILITIES cross-reference advisory (#98), lane-aware
+`adopt --lane <name>` for shared multi-Project repos (#103), the upgrade-UX and
+`--apply-docs`/post-hoc-apply mechanisms, telemetry backfill at card-commit
+(#91), the engagement-gate comment-leniency fix (#86), and a batch of
+adopter-found substrate-gate template fixes (#95/#99, gba-homebrew field
+reports). No planted-doc, state schema, config schema, or CLI contract breaks —
+every new checker is advisory-only or additive, existing installs inherit all of
+it on `upgrade`.
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+**Benchmark outcome (KF-5 — mandatory statement for a MINOR):** B1 cold-start
+run-3 was recorded this cycle (`2026-07-10-run03`, seed 710301 northride, kit
+v1.6.0 ENGAGED arm) — VERDICT: **FAIL under the strict F-5 letter** (M1 to OFF on
+all three pairs 2004/2521/721 vs 562/967/509) while ON wins M2 (resume-and-ship)
++ M3 (durable write-back), max ON footprint 2,521 ≪ 7k budget, zero
+unrecoverable errors; disputed pending the F-5 wording ruling (Reading B would
+PASS). KF-8's 3-run threshold is now met: across all three runs ON wins M2+M3
+every run and stays in-budget, strict-M1 headline 1 PASS / 2 FAIL — caveated on
+the open ruling and the version/seed/judge confounds (run-3: judge = arm model,
+claude-fable-5 everywhere, spawn-harness model overrides ignored). Full detail in
+the `### Added` B1 run-3 entry below.
+
 ### Added
 
 - **`adopt --lane <name>` — lane-aware adoption for SHARED multi-Project
@@ -787,6 +815,7 @@ by real consumers, and now nameable, pinnable, verifiable, and upgradeable.
   `init --unpack` it served never shipped, and it doubled every consumer's
   vendored file for nothing.
 
+[1.7.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.7.0
 [1.6.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.6.0
 [1.5.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.5.0
 [1.4.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.4.0
