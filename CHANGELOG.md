@@ -644,6 +644,7 @@ by real consumers, and now nameable, pinnable, verifiable, and upgradeable.
   `init --unpack` it served never shipped, and it doubled every consumer's
   vendored file for nothing.
 
+[1.6.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.6.0
 [1.5.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.5.0
 [1.4.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.4.0
 [1.3.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.3.0
