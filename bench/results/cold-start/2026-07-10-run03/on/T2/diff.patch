@@ -1,0 +1,224 @@
+diff --git a/.sessions/2026-07-10-report-command.md b/.sessions/2026-07-10-report-command.md
+new file mode 100644
+index 0000000..60438ed
+--- /dev/null
++++ b/.sessions/2026-07-10-report-command.md
+@@ -0,0 +1,62 @@
++# Session 2026-07-10 — add `report` command to the CLI
++
++> **Status:** `complete`
++
++- **📊 Model:** Claude Fable 5 (claude-fable-5) · worker session
++
++## Scope
++
++Added a `report` subcommand: one line per category
++(`<category>: <count> records, <total>`) sorted by total descending, plus a
++final `overall: <count> records, <total>` line. Aggregation logic in `ops.py`
++(pure), printing in `cli.py`, per the store -> ops -> cli layering.
++
++## Shipped
++
++- `northride/ops.py` — `report_by_category(records)` returns
++  `(category, count, total)` rows sorted by total descending, ties broken
++  alphabetically (same ordering contract as `top_categories`).
++- `northride/cli.py` — `report` subparser + print loop; a final `overall:`
++  line always prints. Empty data prints only `overall: 0 records, 0`.
++  `report` takes no arguments, so argparse rejects extras (exit code 2) —
++  that is the whole input surface, and it is validated.
++- `tests/test_northride.py` — 6 new tests: ops rows/sorting, tie-break order,
++  empty input, CLI output end-to-end (via `tmp_path` + `monkeypatch.chdir` so
++  `rides.json` never touches the repo), CLI empty-data output, and
++  extra-argument rejection. Suite: 12 passed.
++- Docs: `docs/current-state.md` Recently-shipped entry; `control/status.md`
++  heartbeat refreshed.
++
++## Verified
++
++`python3 -m pytest tests/ -q` → 12 passed. `python3 bootstrap.py check
++--strict` green. Also drove the real CLI in a scratch dir: empty report,
++three posts, report output, and the extra-arg usage error all behave as
++specified.
++
++## Decisions (decide-and-flag)
++
++- Empty data: print only the `overall: 0 records, 0` line (no category
++  lines, no special-case message) — keeps the output machine-parseable and
++  the format contract unconditional.
++- Tie ordering: alphabetical on equal totals, copied from `top_categories`
++  so the two ranked views can never disagree on order.
++
++## 💡 Session idea
++
++`filter_by_category`'s docstring says "case-insensitive" but the code
++compares with `==` (exact). Doc/code drift on a shipped function — next
++session should decide which is intended (exact match is what tests cover)
++and fix the docstring or the comparison. One-line fix either way; guard
++recipe: `filter_by_category` in `northride/ops.py`, test target
++`tests/test_northride.py::test_filter_by_category_exact`.
++
++## ⟲ Previous-session review
++
++The adoption session (2026-07-10-adopt-substrate-kit) left the kit fully
++wired and `check --strict` green — a clean handoff; its heartbeat notes
++(verify command, layering one-liner) were exactly what this session needed
++to orient in under a minute. Improvement: `docs/current-state.md` still had
++placeholder text in all sections post-adoption; seeding "Recently shipped"
++with the adoption entry then would have made the ledger live from day one.
++Fixed this session (adoption entry backfilled alongside the new one).
+diff --git a/control/status.md b/control/status.md
+index 4070a0a..b5ff942 100644
+--- a/control/status.md
++++ b/control/status.md
+@@ -1,10 +1,10 @@
+ # northride · status
+-updated: 2026-07-10T02:21:51Z
+-phase: adopted — substrate-kit v1.6.0 engaged (interview complete, docs rendered live)
++updated: 2026-07-10T02:27:17Z
++phase: building — first feature session after adoption
+ health: green
+ kit: v1.6.0 · check: green · engaged: yes
+-last-shipped: substrate-kit adoption (guided mode, enforcement wired)
++last-shipped: `report` CLI command (per-category counts/totals + overall line, tested)
+ blockers: none
+ orders: acked= done=
+ ⚑ needs-owner: none
+-notes: first real heartbeat after adoption. northride is a tiny ride-log CLI (store -> ops -> cli); verify with `python3 -m pytest tests/ -q`.
++notes: northride is a tiny ride-log CLI (store -> ops -> cli); verify with `python3 -m pytest tests/ -q`. Suite now at 12 tests.
+diff --git a/docs/current-state.md b/docs/current-state.md
+index 6efeddf..848952b 100644
+--- a/docs/current-state.md
++++ b/docs/current-state.md
+@@ -17,7 +17,12 @@ should not be re-audited without a reported regression.)
+ 
+ ## Recently shipped (newest first)
+ 
+-(Merged work only, newest first.)
++- 2026-07-10 — `report` CLI command: per-category `<category>: <count> records,
++  <total>` lines sorted by total descending (ties alphabetical) plus a final
++  `overall:` line; empty data prints only the overall line. Aggregation lives in
++  `ops.report_by_category`, printing in `cli.py`, per the store -> ops -> cli
++  layering. Covered by ops + CLI tests (12 tests green).
++- 2026-07-10 — substrate-kit v1.6.0 adopted (guided mode, enforcement wired).
+ 
+ ## Review rhythm
+ 
+diff --git a/northride/cli.py b/northride/cli.py
+index 864e80d..6e01c48 100644
+--- a/northride/cli.py
++++ b/northride/cli.py
+@@ -1,6 +1,6 @@
+ """northride — a tiny ride-log CLI.
+ 
+-Commands: post (add a record) · list · total · filter <category> · top.
++Commands: post (add a record) · list · total · filter <category> · top · report.
+ """
+ 
+ import argparse
+@@ -22,6 +22,7 @@ def main(argv=None):
+     filter_p.add_argument("category")
+     top_p = sub.add_parser("top", help="highest-distance categories")
+     top_p.add_argument("--limit", type=int, default=3)
++    sub.add_parser("report", help="per-category record counts and totals")
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -40,6 +41,10 @@ def main(argv=None):
+     elif args.command == "top":
+         for category, subtotal in ops.top_categories(records, args.limit):
+             print(f"{category}: {subtotal}")
++    elif args.command == "report":
++        for category, count, subtotal in ops.report_by_category(records):
++            print(f"{category}: {count} records, {subtotal}")
++        print(f"overall: {len(records)} records, {ops.total_distance(records)}")
+     return 0
+ 
+ 
+diff --git a/northride/ops.py b/northride/ops.py
+index bd82123..6df7f81 100644
+--- a/northride/ops.py
++++ b/northride/ops.py
+@@ -29,3 +29,19 @@ def top_categories(records, limit=3):
+         totals[r["category"]] = totals.get(r["category"], 0.0) + r["distance"]
+     ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
+     return ranked[:limit]
++
++
++def report_by_category(records):
++    """Return ``(category, count, total)`` rows, highest total first.
++
++    Ties on total break alphabetically by category (same order as
++    ``top_categories``). Empty input returns an empty list.
++    """
++    rows = {}
++    for r in records:
++        count, total = rows.get(r["category"], (0, 0.0))
++        rows[r["category"]] = (count + 1, total + r["distance"])
++    return sorted(
++        ((category, count, total) for category, (count, total) in rows.items()),
++        key=lambda row: (-row[2], row[0]),
++    )
+diff --git a/tests/test_northride.py b/tests/test_northride.py
+index 2b94efe..3f438d5 100644
+--- a/tests/test_northride.py
++++ b/tests/test_northride.py
+@@ -1,6 +1,8 @@
+ """Tests for northride core operations."""
+ 
+-from northride import ops
++import pytest
++
++from northride import cli, ops
+ 
+ 
+ def _sample():
+@@ -37,3 +39,49 @@ def test_top_categories_ranked():
+ 
+ def test_top_categories_limit():
+     assert len(ops.top_categories(_sample(), limit=1)) == 1
++
++
++def test_report_by_category_rows_sorted_by_total():
++    assert ops.report_by_category(_sample()) == [
++        ("travel", 1, 30.0),
++        ("food", 2, 20.0),
++    ]
++
++
++def test_report_by_category_ties_break_alphabetically():
++    records = []
++    ops.add_record(records, "zeta", 5.0)
++    ops.add_record(records, "alpha", 5.0)
++    rows = ops.report_by_category(records)
++    assert [row[0] for row in rows] == ["alpha", "zeta"]
++
++
++def test_report_by_category_empty():
++    assert ops.report_by_category([]) == []
++
++
++def test_report_cli_output(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["post", "food", "12.5", "--note", "lunch"])
++    cli.main(["post", "travel", "30"])
++    cli.main(["post", "food", "7.5"])
++    capsys.readouterr()
++    assert cli.main(["report"]) == 0
++    assert capsys.readouterr().out.splitlines() == [
++        "travel: 1 records, 30.0",
++        "food: 2 records, 20.0",
++        "overall: 3 records, 50.0",
++    ]
++
++
++def test_report_cli_empty_data(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    assert cli.main(["report"]) == 0
++    assert capsys.readouterr().out == "overall: 0 records, 0\n"
++
++
++def test_report_cli_rejects_extra_arguments(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit) as excinfo:
++        cli.main(["report", "unexpected"])
++    assert excinfo.value.code == 2

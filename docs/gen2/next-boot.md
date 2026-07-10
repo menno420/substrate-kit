@@ -163,7 +163,10 @@ until then).
 - **Verification commands**: `python3 -m pytest tests/ -q` (722 green at
   wind-down) · `python3 dist/bootstrap.py check --strict` · dist byte-pin:
   `python3 src/build_bootstrap.py && git diff --exit-code dist/bootstrap.py`.
-- **Open owner-gated PRs #26 (PL-011) and #49 (seed fix)** are open BY
-  DESIGN — READY, CI green, `do-not-automerge`. Do not rebase/update-branch
-  them (a push could invalidate the green CI); do not chase them; their
-  terminal state is the owner's click. #49 unblocks B1 run-3.
+- **Owner-gated PRs #26 (PL-011) and #49 (seed fix) are MERGED** — the
+  owner one-clicked both ~2026-07-10T00:08–00:12Z (drift fixed by the B1
+  run-3 session, which verified the merge commits on main; this bullet
+  previously described them as open-by-design blockers). PL-011 is ratified
+  law and B1 run-3 fired the same night (row 3 + run dir via PR #85). The
+  general rule stands for any FUTURE `do-not-automerge` PR: READY, CI
+  green, never rebase/update-branch it, terminal state is the owner's click.

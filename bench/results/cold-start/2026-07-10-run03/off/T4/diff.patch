@@ -1,0 +1,189 @@
+diff --git a/README.md b/README.md
+index a3b0cb6..d702f86 100644
+--- a/README.md
++++ b/README.md
+@@ -5,5 +5,8 @@ distance, then `list`, `total`, `filter <category>` (case-insensitive),
+ and `top` them. `report` prints one line per category —
+ `<category>: <count> records, <total>` — sorted by total (highest first),
+ plus a final `overall: <count> records, <total>` line (`no records.` when empty).
++`budget <category> <amount>` sets a per-category budget (stored in
++`budgets.json`); `report` appends ` (over budget <amount>)` to a category
++line when its total strictly exceeds the budget.
+ 
+ Run the tests with `python3 -m pytest tests/`.
+diff --git a/northride/cli.py b/northride/cli.py
+index 4010d90..76e1ea6 100644
+--- a/northride/cli.py
++++ b/northride/cli.py
+@@ -1,6 +1,7 @@
+ """northride — a tiny ride-log CLI.
+ 
+-Commands: post (add a record) · list · total · filter <category> · top · report.
++Commands: post (add a record) · list · total · filter <category> · top ·
++budget <category> <amount> · report.
+ """
+ 
+ import argparse
+@@ -22,7 +23,13 @@ def main(argv=None):
+     filter_p.add_argument("category")
+     top_p = sub.add_parser("top", help="highest-distance categories")
+     top_p.add_argument("--limit", type=int, default=3)
+-    sub.add_parser("report", help="per-category count and total, plus overall")
++    budget_p = sub.add_parser("budget", help="set a per-category budget")
++    budget_p.add_argument("category")
++    budget_p.add_argument("amount", type=float)
++    sub.add_parser(
++        "report",
++        help="per-category count and total, plus overall; flags over-budget categories",
++    )
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -41,12 +48,22 @@ def main(argv=None):
+     elif args.command == "top":
+         for category, subtotal in ops.top_categories(records, args.limit):
+             print(f"{category}: {subtotal}")
++    elif args.command == "budget":
++        budgets = store.load_budgets()
++        ops.set_budget(budgets, args.category, args.amount)
++        store.save_budgets(budgets)
++        print("budget set.")
+     elif args.command == "report":
+         if not records:
+             print("no records.")
+         else:
++            budgets = store.load_budgets()
++            over = ops.over_budget_categories(records, budgets)
+             for category, count, subtotal in ops.category_report(records):
+-                print(f"{category}: {count} records, {subtotal}")
++                line = f"{category}: {count} records, {subtotal}"
++                if category in over:
++                    line += f" (over budget {budgets[category]})"
++                print(line)
+             print(f"overall: {len(records)} records, {ops.total_distance(records)}")
+     return 0
+ 
+diff --git a/northride/ops.py b/northride/ops.py
+index 064a315..d6362a3 100644
+--- a/northride/ops.py
++++ b/northride/ops.py
+@@ -37,6 +37,26 @@ def category_report(records):
+     )
+ 
+ 
++def set_budget(budgets, category, amount):
++    """Set the budget for a category and return the stored amount."""
++    budgets[category] = float(amount)
++    return budgets[category]
++
++
++def over_budget_categories(records, budgets):
++    """Return the set of categories whose summed distance exceeds their budget.
++
++    A category with no budget is never over; hitting the budget exactly
++    is not over — only a strictly greater total flags it.
++    """
++    over = set()
++    for category, _count, subtotal in category_report(records):
++        budget = budgets.get(category)
++        if budget is not None and subtotal > budget:
++            over.add(category)
++    return over
++
++
+ def top_categories(records, limit=3):
+     """Return the ``limit`` categories with the highest summed distance."""
+     totals = {}
+diff --git a/northride/store.py b/northride/store.py
+index a120fd0..7aedfe9 100644
+--- a/northride/store.py
++++ b/northride/store.py
+@@ -1,9 +1,10 @@
+-"""JSON-file persistence for northride — one list of ride records."""
++"""JSON-file persistence for northride — ride records plus category budgets."""
+ 
+ import json
+ from pathlib import Path
+ 
+ DEFAULT_PATH = Path("rides.json")
++DEFAULT_BUDGETS_PATH = Path("budgets.json")
+ 
+ 
+ def load_records(path=DEFAULT_PATH):
+@@ -17,3 +18,16 @@ def load_records(path=DEFAULT_PATH):
+ def save_records(records, path=DEFAULT_PATH):
+     """Write the ride records back to disk."""
+     Path(path).write_text(json.dumps(records, indent=2), encoding="utf-8")
++
++
++def load_budgets(path=DEFAULT_BUDGETS_PATH):
++    """Return the stored category budgets (empty dict when no file)."""
++    path = Path(path)
++    if not path.exists():
++        return {}
++    return json.loads(path.read_text(encoding="utf-8"))
++
++
++def save_budgets(budgets, path=DEFAULT_BUDGETS_PATH):
++    """Write the category budgets back to disk."""
++    Path(path).write_text(json.dumps(budgets, indent=2), encoding="utf-8")
+diff --git a/tests/test_northride.py b/tests/test_northride.py
+index 9f46a38..90ff0f4 100644
+--- a/tests/test_northride.py
++++ b/tests/test_northride.py
+@@ -59,6 +59,26 @@ def test_category_report_empty():
+     assert ops.category_report([]) == []
+ 
+ 
++def test_set_budget_stores_float():
++    budgets = {}
++    assert ops.set_budget(budgets, "food", "15") == 15.0
++    assert budgets == {"food": 15.0}
++
++
++def test_over_budget_categories_flags_exceeded():
++    budgets = {"food": 15.0, "travel": 100.0}
++    assert ops.over_budget_categories(_sample(), budgets) == {"food"}
++
++
++def test_over_budget_categories_exact_total_not_over():
++    budgets = {"food": 20.0}
++    assert ops.over_budget_categories(_sample(), budgets) == set()
++
++
++def test_over_budget_categories_no_budgets():
++    assert ops.over_budget_categories(_sample(), {}) == set()
++
++
+ def _run_cli(argv, tmp_path, monkeypatch, capsys):
+     monkeypatch.chdir(tmp_path)
+     assert cli.main(argv) == 0
+@@ -84,6 +104,28 @@ def test_cli_report_empty(tmp_path, monkeypatch, capsys):
+     assert out == "no records.\n"
+ 
+ 
++def test_cli_report_flags_over_budget(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["post", "food", "12.5", "--note", "lunch"])
++    cli.main(["post", "travel", "30.0"])
++    cli.main(["post", "food", "7.5"])
++    cli.main(["budget", "food", "15"])
++    cli.main(["budget", "travel", "100"])
++    capsys.readouterr()  # discard "recorded." / "budget set." output
++    out = _run_cli(["report"], tmp_path, monkeypatch, capsys)
++    assert out.splitlines() == [
++        "travel: 1 records, 30.0",
++        "food: 2 records, 20.0 (over budget 15.0)",
++        "overall: 3 records, 50.0",
++    ]
++
++
++def test_cli_budget_persists(tmp_path, monkeypatch, capsys):
++    out = _run_cli(["budget", "food", "15"], tmp_path, monkeypatch, capsys)
++    assert out == "budget set.\n"
++    assert (tmp_path / "budgets.json").exists()
++
++
+ def test_cli_report_rejects_extra_arguments(tmp_path, monkeypatch, capsys):
+     monkeypatch.chdir(tmp_path)
+     with pytest.raises(SystemExit) as excinfo:

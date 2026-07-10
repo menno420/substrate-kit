@@ -1,0 +1,142 @@
+diff --git a/README.md b/README.md
+index d671eb4..a3b0cb6 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,8 @@
+ 
+ A tiny ride-log CLI: `post` records with a category and
+ distance, then `list`, `total`, `filter <category>` (case-insensitive),
+-and `top` them.
++and `top` them. `report` prints one line per category —
++`<category>: <count> records, <total>` — sorted by total (highest first),
++plus a final `overall: <count> records, <total>` line (`no records.` when empty).
+ 
+ Run the tests with `python3 -m pytest tests/`.
+diff --git a/northride/cli.py b/northride/cli.py
+index 864e80d..4010d90 100644
+--- a/northride/cli.py
++++ b/northride/cli.py
+@@ -1,6 +1,6 @@
+ """northride — a tiny ride-log CLI.
+ 
+-Commands: post (add a record) · list · total · filter <category> · top.
++Commands: post (add a record) · list · total · filter <category> · top · report.
+ """
+ 
+ import argparse
+@@ -22,6 +22,7 @@ def main(argv=None):
+     filter_p.add_argument("category")
+     top_p = sub.add_parser("top", help="highest-distance categories")
+     top_p.add_argument("--limit", type=int, default=3)
++    sub.add_parser("report", help="per-category count and total, plus overall")
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -40,6 +41,13 @@ def main(argv=None):
+     elif args.command == "top":
+         for category, subtotal in ops.top_categories(records, args.limit):
+             print(f"{category}: {subtotal}")
++    elif args.command == "report":
++        if not records:
++            print("no records.")
++        else:
++            for category, count, subtotal in ops.category_report(records):
++                print(f"{category}: {count} records, {subtotal}")
++            print(f"overall: {len(records)} records, {ops.total_distance(records)}")
+     return 0
+ 
+ 
+diff --git a/northride/ops.py b/northride/ops.py
+index bd82123..064a315 100644
+--- a/northride/ops.py
++++ b/northride/ops.py
+@@ -22,6 +22,21 @@ def filter_by_category(records, category):
+     return [r for r in records if r["category"] == category]
+ 
+ 
++def category_report(records):
++    """Return (category, count, subtotal) rows sorted by subtotal, highest first.
++
++    Ties break alphabetically by category, matching ``top_categories``.
++    """
++    rows = {}
++    for r in records:
++        count, subtotal = rows.get(r["category"], (0, 0.0))
++        rows[r["category"]] = (count + 1, subtotal + r["distance"])
++    return sorted(
++        ((category, count, subtotal) for category, (count, subtotal) in rows.items()),
++        key=lambda row: (-row[2], row[0]),
++    )
++
++
+ def top_categories(records, limit=3):
+     """Return the ``limit`` categories with the highest summed distance."""
+     totals = {}
+diff --git a/tests/test_northride.py b/tests/test_northride.py
+index 2b94efe..9f46a38 100644
+--- a/tests/test_northride.py
++++ b/tests/test_northride.py
+@@ -1,6 +1,8 @@
+ """Tests for northride core operations."""
+ 
+-from northride import ops
++import pytest
++
++from northride import cli, ops
+ 
+ 
+ def _sample():
+@@ -37,3 +39,53 @@ def test_top_categories_ranked():
+ 
+ def test_top_categories_limit():
+     assert len(ops.top_categories(_sample(), limit=1)) == 1
++
++
++def test_category_report_rows():
++    assert ops.category_report(_sample()) == [
++        ("travel", 1, 30.0),
++        ("food", 2, 20.0),
++    ]
++
++
++def test_category_report_tie_breaks_alphabetically():
++    records = []
++    ops.add_record(records, "b", 5.0)
++    ops.add_record(records, "a", 5.0)
++    assert ops.category_report(records) == [("a", 1, 5.0), ("b", 1, 5.0)]
++
++
++def test_category_report_empty():
++    assert ops.category_report([]) == []
++
++
++def _run_cli(argv, tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    assert cli.main(argv) == 0
++    return capsys.readouterr().out
++
++
++def test_cli_report(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["post", "food", "12.5", "--note", "lunch"])
++    cli.main(["post", "travel", "30.0"])
++    cli.main(["post", "food", "7.5"])
++    capsys.readouterr()  # discard "recorded." output
++    out = _run_cli(["report"], tmp_path, monkeypatch, capsys)
++    assert out.splitlines() == [
++        "travel: 1 records, 30.0",
++        "food: 2 records, 20.0",
++        "overall: 3 records, 50.0",
++    ]
++
++
++def test_cli_report_empty(tmp_path, monkeypatch, capsys):
++    out = _run_cli(["report"], tmp_path, monkeypatch, capsys)
++    assert out == "no records.\n"
++
++
++def test_cli_report_rejects_extra_arguments(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit) as excinfo:
++        cli.main(["report", "extra"])
++    assert excinfo.value.code == 2
