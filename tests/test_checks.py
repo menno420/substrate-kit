@@ -176,13 +176,32 @@ def test_missing_markers_complete_vs_incomplete():
     )
     assert missing_markers(full, _MARKERS) == []
     bare = "nothing here\n"
-    assert missing_markers(bare, _MARKERS) == [m["label"] for m in _MARKERS]
+    # A miss names the label AND the exact byte-form expected (the run-1
+    # ON-arm false-red fix, idea model-line-checker-false-red-2026-07-09:
+    # a bare "missing: Model line" against a card visibly carrying a Model
+    # line told the agent nothing about which needle the scan wanted).
+    assert missing_markers(bare, _MARKERS) == [
+        f"{m['label']} (expected `{m['needle']}`)" for m in _MARKERS
+    ]
 
 
 def test_missing_markers_custom_set():
     markers = [{"label": "Sign-off", "needle": "signed-off-by"}]
     assert missing_markers("Signed-off-by: me", markers) == []
-    assert missing_markers("no trailer", markers) == ["Sign-off"]
+    assert missing_markers("no trailer", markers) == [
+        "Sign-off (expected `signed-off-by`)"
+    ]
+
+
+def test_missing_markers_miss_names_the_model_line_byte_form():
+    # The canonical run-1 ON-arm case: the card carries `> **Model:** …` but
+    # not the configured `📊 Model:` needle — the red must name the expected
+    # byte-form, never contradict what the agent can see on the card.
+    card = (
+        "> **Status:** `complete`\n\n💡 idea\n\nprevious-session review: ok\n\n"
+        "> **Model:** claude-x\n"
+    )
+    assert missing_markers(card, _MARKERS) == ["Model line (expected `📊 Model:`)"]
 
 
 def test_latest_session_log_picks_newest_skips_readme(tmp_path):
@@ -209,7 +228,9 @@ def test_latest_session_log_none_when_absent_or_empty(tmp_path):
 
 def test_check_log_unreadable_returns_all_labels(tmp_path):
     missing = check_log(tmp_path / "does-not-exist.md", _MARKERS)
-    assert missing == [m["label"] for m in _MARKERS]
+    assert missing == [
+        f"{m['label']} (expected `{m['needle']}`)" for m in _MARKERS
+    ]
 
 
 def test_in_progress_status_keeps_the_card_incomplete(tmp_path):

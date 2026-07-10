@@ -17,10 +17,15 @@ Three subcommands, in run order:
     — run 2's seed-424242 SyntaxError class dies here, at prepare time, with
     a named error instead of surfacing mid-run), adopt the kit on the ON arm
     only (``--wire-enforcement`` when the task set includes T5 or a
-    merge-shaped task), then run the §5.1 **smoke step** — walk the ON arm
-    (planted docs exist, `check --strict` exits 0) before any paired session
-    runs (run 1's root cause was discoverable at setup).
-    Writes ``manifest.json`` + per-task prompt pointers.
+    merge-shaped task), walk the KL-7 **RED→ENGAGED→GREEN arc** on the ON arm
+    (deterministic seed-derived interview answers, ``render --live``, staged
+    gate install, first session card, seed heartbeat — a bare adopt is born
+    red by design since kit v1.3.0), then run the §5.1 **smoke step** — the
+    ON arm must actually read GREEN (planted docs exist, `check --strict`
+    exits 0) before any paired session runs (run 1's root cause was
+    discoverable at setup). Writes ``manifest.json`` + per-task prompt
+    pointers on success AND on smoke failure (``smoke_failed: true`` — an
+    aborted prepare leaves evidence, the run-2 lesson).
 
 ``collect``
     File one session's artifacts into the run directory:
@@ -49,7 +54,7 @@ import json
 import shutil
 import subprocess
 import sys
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 BENCH_ROOT = Path(__file__).resolve().parent
@@ -83,6 +88,119 @@ def _run(cmd: list[str], cwd: Path) -> None:
     if result.returncode != 0:
         sys.stderr.write(result.stdout + result.stderr)
         raise SystemExit(f"command failed in {cwd}: {' '.join(cmd)}")
+
+
+# The interview slots the ON-arm engagement arc answers — the same 13 the CI
+# cold-adopt smoke walks (.github/workflows/ci.yml). Deliberately pinned, not
+# discovered: the arc must be byte-reproducible across runs (each runner
+# hand-engaging with ad-hoc answers was a cross-run comparability variable the
+# judge already flagged between runs 1 and 2). If the question bank grows a
+# slot this list misses, the prepare smoke's own `check --strict` assert fails
+# loudly with an `unrendered-slot` finding naming it — the same drift catcher
+# CI relies on.
+ENGAGE_SLOTS = (
+    "integration_mode",
+    "project_name",
+    "primary_language",
+    "architecture_layers",
+    "verify_command",
+    "ownership_model",
+    "doc_roots",
+    "owner_profile",
+    "mutation_seam",
+    "review_ritual",
+    "drift_resolution",
+    "staleness_review",
+    "new_area_ownership",
+)
+
+
+def _seed_answers(seed: int, project: str) -> dict[str, str]:
+    """Deterministic, seed-derived interview answers for the ON arm.
+
+    Truthful where the seed project has a real value (name, language, verify
+    command — every generated seed is a Python package with a pytest suite);
+    a deterministic sentence everywhere else, long enough for every
+    substance floor (max ``min_len`` in the bank is 20).
+    """
+    answers = {
+        slot: (
+            f"seed-{seed} {project}: deterministic bench prepare answer for "
+            f"{slot} (scripted engagement arc, reproducible across runs)"
+        )
+        for slot in ENGAGE_SLOTS
+    }
+    answers["integration_mode"] = "guided"  # adopt's default — a real mode value
+    answers["project_name"] = project
+    answers["primary_language"] = "Python 3 (generated bench seed project)"
+    answers["verify_command"] = "python3 -m pytest tests/ -q"
+    return answers
+
+
+def _engage_on_arm(on_repo: Path, run_id: str, seed: int, project: str) -> list[str]:
+    """Walk the documented RED→ENGAGED→GREEN arc on the ON arm; return steps.
+
+    Kit v1.3.0+ holds a bare adopt BORN RED under ``check --strict`` by
+    design (the KL-7 engagement gate), so "adopted" no longer implies
+    "green" — prepare scripts the same checklist the CI cold-adopt smoke
+    walks (idea run-ab-prepare-engagement-arc-2026-07-09): answer every
+    interview slot with deterministic seed-derived values, ``render --live``,
+    install the staged gate workflow, write the first (complete) session
+    card, write the first ``control/status.md`` heartbeat, commit. The §5.1
+    smoke step then asserts the arm actually reads GREEN.
+    """
+    steps: list[str] = []
+    for slot, value in _seed_answers(seed, project).items():
+        _run([sys.executable, "bootstrap.py", "answer", slot, value], on_repo)
+    steps.append(f"engage: answered {len(ENGAGE_SLOTS)} slots (seed-derived, deterministic)")
+    _run([sys.executable, "bootstrap.py", "render", "--live"], on_repo)
+    steps.append("engage: render --live")
+    # Enforcement: install the staged gate (adopt --wire-enforcement already
+    # planted it live when the task set includes T5).
+    gate_dest = on_repo / ".github" / "workflows" / "substrate-gate.yml"
+    staged = on_repo / ".substrate" / "ci" / "substrate-gate.yml"
+    if gate_dest.exists():
+        steps.append("engage: enforcement already wired (adopt --wire-enforcement)")
+    elif staged.exists():
+        gate_dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(staged, gate_dest)
+        steps.append("engage: installed staged substrate-gate.yml")
+    else:
+        steps.append("engage: no staged gate found to install")
+    # Session loop: the first real (complete) session card.
+    card = on_repo / ".sessions" / f"{date.today().isoformat()}-adoption.md"
+    card.parent.mkdir(parents=True, exist_ok=True)
+    card.write_text(
+        f"# adoption session — bench ON arm (run {run_id})\n\n"
+        "> **Status:** `complete`\n\n"
+        f"💡 idea: n/a — adoption arc scripted by run_ab.py prepare (seed {seed})\n"
+        "⟲ previous-session review: n/a (first session on this arm)\n"
+        "📊 Model: none (scripted by run_ab.py prepare) · low · adoption\n",
+        encoding="utf-8",
+    )
+    steps.append(f"engage: session card {card.name}")
+    # Control loop (KL-8): the seed status.md has no heartbeat and holds
+    # strict RED until the first real overwrite.
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    status = on_repo / "control" / "status.md"
+    status.parent.mkdir(parents=True, exist_ok=True)
+    status.write_text(
+        f"# {project} · status\n"
+        f"updated: {now}\n"
+        f"phase: adopted (bench ON arm, run {run_id})\n"
+        "health: green\n"
+        "last-shipped: none\n"
+        "blockers: none\n"
+        "orders: acked= done=\n"
+        "⚑ needs-owner: none\n"
+        "notes: seed heartbeat written by run_ab.py prepare (scripted engagement arc)\n",
+        encoding="utf-8",
+    )
+    steps.append("engage: control/status.md heartbeat")
+    _run(["git", "add", "-A"], on_repo)
+    _run(["git", "commit", "-q", "-m", "engage substrate-kit (scripted arc)"], on_repo)
+    steps.append("engage: committed")
+    return steps
 
 
 def _git_seed_commit(repo: Path) -> None:
@@ -163,21 +281,12 @@ def cmd_prepare(args) -> int:
     _run(["git", "add", "-A"], on_repo)
     _run(["git", "commit", "-q", "-m", "adopt substrate-kit"], on_repo)
 
-    # 3. The §5.1 smoke step: walk the ON arm before any paired session runs.
-    smoke = list(seed_smoke)
-    for rel in ("CONSTITUTION.md", "docs/current-state.md", ".sessions"):
-        smoke.append(f"{rel}: {'present' if (on_repo / rel).exists() else 'MISSING'}")
-    check = subprocess.run(
-        [sys.executable, "bootstrap.py", "check", "--strict"],
-        cwd=on_repo,
-        capture_output=True,
-        text=True,
-    )
-    smoke.append(f"check --strict exit={check.returncode}")
-    if any("MISSING" in line for line in smoke) or check.returncode != 0:
-        sys.stderr.write("\n".join(smoke) + "\n" + check.stdout + check.stderr)
-        raise SystemExit("SMOKE FAILED — fix the arm before running any session (§5.1).")
-
+    # 3. The engagement arc + §5.1 smoke step: a bare adopt is BORN RED under
+    #    the KL-7 gate by design, so prepare itself walks the documented
+    #    RED→ENGAGED→GREEN checklist, then asserts the arm reads GREEN before
+    #    any paired session runs. The manifest is written on BOTH paths — a
+    #    failed smoke leaves evidence (`smoke_failed`), never nothing (the
+    #    run-2 lesson: an aborted prepare forced hand-written manifests).
     manifest = {
         "run_id": args.run_id,
         "date": date.today().isoformat(),
@@ -188,9 +297,41 @@ def cmd_prepare(args) -> int:
         "arms": arms,
         "task_prompts": {t: str(BENCH_ROOT / "tasks" / f"{t}.md") for t in tasks},
         "rubric": str(BENCH_ROOT / "rubric" / "cold-start-rubric.md"),
-        "smoke": smoke,
     }
-    (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    smoke = list(seed_smoke)
+
+    def _write_manifest() -> None:
+        manifest["smoke"] = smoke
+        (run_dir / "manifest.json").write_text(
+            json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+        )
+
+    project = next(
+        (p.name for p in seed_src.iterdir() if p.is_dir() and p.name != "tests"),
+        "seed-project",
+    )
+    try:
+        smoke.extend(_engage_on_arm(on_repo, args.run_id, args.seed, project))
+        for rel in ("CONSTITUTION.md", "docs/current-state.md", ".sessions"):
+            smoke.append(f"{rel}: {'present' if (on_repo / rel).exists() else 'MISSING'}")
+        check = subprocess.run(
+            [sys.executable, "bootstrap.py", "check", "--strict"],
+            cwd=on_repo,
+            capture_output=True,
+            text=True,
+        )
+        smoke.append(f"check --strict exit={check.returncode}")
+        if any("MISSING" in line for line in smoke) or check.returncode != 0:
+            sys.stderr.write("\n".join(smoke) + "\n" + check.stdout + check.stderr)
+            raise SystemExit(
+                "SMOKE FAILED — fix the arm before running any session (§5.1); "
+                "manifest.json written with smoke_failed for evidence."
+            )
+    except SystemExit:
+        manifest["smoke_failed"] = True
+        _write_manifest()
+        raise
+    _write_manifest()
     print(json.dumps(manifest, indent=2))
     print(
         f"\nprepared {run_dir}. Next: spawn each task's COLD session per arm "

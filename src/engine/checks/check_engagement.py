@@ -72,8 +72,16 @@ def _adoption_evidence(config: Any, state: dict) -> bool:
     return bool(config.kit_version) or bool(state.get("kit_version"))
 
 
-def _scan_relpaths(config: Any) -> list[str]:
-    """Return the planted relpaths the unrendered scan covers."""
+def scan_relpaths(config: Any) -> list[str]:
+    """Return the planted relpaths the unrendered scan covers.
+
+    Public on purpose: ``render --live`` iterates this SAME list, so the
+    render verb and the engagement gate can never disagree about whose job a
+    planted file is. The run-2 gap (idea render-live-claude-md-gap-2026-07-09)
+    was exactly that disagreement — the gate counted ``.claude/CLAUDE.md``'s
+    unrendered banner/slots as strict-RED while the render path skipped the
+    file, stranding every fresh adopter mid-checklist.
+    """
     relpaths = [_adopt_dest(plan_rel, config) for _, plan_rel in ADOPT_PLAN]
     relpaths.extend(EXTRA_SCAN_RELPATHS)
     return relpaths
@@ -87,7 +95,7 @@ def _unrendered_findings(
 ) -> list[Finding]:
     """Scan the planted docs for the UNRENDERED banner / leftover ``${...}``."""
     findings: list[Finding] = []
-    for rel in _scan_relpaths(config):
+    for rel in scan_relpaths(config):
         path = target / rel
         if not path.is_file():
             continue

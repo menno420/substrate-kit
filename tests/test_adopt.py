@@ -371,6 +371,19 @@ def test_sessions_readme_names_convention_and_markers(tmp_path):
         assert marker["label"] in text
 
 
+def test_sessions_readme_plants_each_marker_byte_form(tmp_path):
+    # The run-1 ON-arm false-red guard (idea
+    # model-line-checker-false-red-2026-07-09): the planted README must carry
+    # each configured NEEDLE (the byte-form the checker scans for), not just
+    # the label — an arm session that reads only this doc must be able to
+    # write a card the needle scan accepts (`📊 Model:` included).
+    root, config, _ = _adopt_into(tmp_path)
+    text = (root / config.sessions_dir / "README.md").read_text(encoding="utf-8")
+    for marker in config.session_markers:
+        assert marker["needle"] in text, marker
+        assert f"{marker['label']} (`{marker['needle']}`)" in text, marker
+
+
 def test_planted_index_skeleton_is_valid_json(tmp_path):
     root, _, _ = _adopt_into(tmp_path)
     data = json.loads((root / "project.index.json").read_text(encoding="utf-8"))

@@ -252,6 +252,47 @@ def test_cold_adopt_is_born_red_then_green_once_engaged(tmp_path, capsys):
     )
 
 
+def test_render_live_covers_every_gate_scoped_file_including_claude_md(tmp_path):
+    # The run-2 gap (idea render-live-claude-md-gap-2026-07-09): with the
+    # --include-claude opt-in, `.claude/CLAUDE.md` is planted bannered and the
+    # gate counts it, but `render --live` used to skip it — the KL-7
+    # checklist could not reach GREEN by its own named commands. After the
+    # arc, ZERO unrendered-banner/unrendered-slot findings may remain across
+    # ALL gate-scoped files, with no manual file surgery.
+    root = tmp_path / "repo"
+    config = Config()
+    backend = _init_backend(root, config)
+    adopt(root, config, backend, kit_root=tmp_path / "kit", include_claude=True)
+    claude_md = root / ".claude" / "CLAUDE.md"
+    assert claude_md.read_text(encoding="utf-8").startswith(
+        "> ⚠️ **UNRENDERED SLOTS BELOW"
+    )
+
+    _answer_everything(backend)
+    assert cmd_render(root, live=True) == 0
+
+    rendered = claude_md.read_text(encoding="utf-8")
+    assert "${" not in rendered
+    assert not rendered.startswith("> ⚠️ **UNRENDERED SLOTS BELOW")
+    unrendered = [
+        f
+        for f in check_engagement(root, config)
+        if f.kind in ("unrendered-banner", "unrendered-slot")
+    ]
+    assert unrendered == []
+
+    # …and the rest of the checklist still turns the whole gate GREEN.
+    _install_staged_gate(root, config)
+    _write_complete_card(root, config)
+    (root / "control" / "status.md").write_text(
+        "# repo · status\nupdated: 2026-07-10T00:00Z\nphase: engaged\n"
+        "health: green\nlast-shipped: none\nblockers: none\n"
+        "orders: acked= done=\n⚑ needs-owner: none\nnotes: heartbeat\n",
+        encoding="utf-8",
+    )
+    assert cmd_check(root, strict=True) == 0
+
+
 def test_wire_enforcement_alone_is_still_red(tmp_path):
     # --wire-enforcement wires the door but render + session loop are still
     # pending — a wired-but-unrendered install must not read as engaged.

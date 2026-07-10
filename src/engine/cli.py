@@ -26,8 +26,6 @@ from pathlib import Path
 from typing import Any
 
 from engine.adopt import (
-    ADOPT_PLAN,
-    _adopt_dest,
     adopt,
     record_doc_hash,
     strip_unrendered_banner,
@@ -36,7 +34,7 @@ from engine.agents.agents import AGENTS, agent_document, agent_relpath
 from engine.checks.allowlist import apply_allowlist, load_allowlist
 from engine.checks.check_claims import check_claims
 from engine.checks.check_docs import Finding, run_doc_checks
-from engine.checks.check_engagement import check_engagement
+from engine.checks.check_engagement import check_engagement, scan_relpaths
 from engine.checks.check_inbox_append import check_inbox_append
 from engine.checks.check_namespace import check_namespace
 from engine.checks.check_owner_actions import check_owner_actions
@@ -282,10 +280,17 @@ def _render_live(target: Path, context: dict[str, str], backend: Any) -> int:
     while preserving every hand edit around them. Returns the leftover count.
     Every rewrite re-records the doc's sha256 (the §4.3 "kit last wrote this"
     provenance the upgrade diff keys on).
+
+    The render set is :func:`engine.checks.check_engagement.scan_relpaths` —
+    the SAME list the engagement gate scans — so the two surfaces can never
+    disagree about whose job a planted file is. They used to: ``render
+    --live`` iterated only the ``ADOPT_PLAN`` docs while the gate also
+    counted ``.claude/CLAUDE.md``, so an ``--include-claude`` adopter's
+    checklist could not reach GREEN by its own named commands (run-2 finding,
+    idea render-live-claude-md-gap-2026-07-09).
     """
     leftover_total = 0
-    for _, plan_rel in ADOPT_PLAN:
-        rel = _adopt_dest(plan_rel, load_config(target))
+    for rel in scan_relpaths(load_config(target)):
         path = target / rel
         if not path.exists():
             continue

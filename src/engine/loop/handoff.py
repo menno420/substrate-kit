@@ -39,6 +39,7 @@ from typing import Any
 
 from engine.checks.check_session_log import (
     DRAFT_FILL_TOKEN,
+    _marker_miss,
     check_log,
     latest_session_log,
     status_in_progress,
@@ -459,10 +460,13 @@ def ensure_draft(root: Path, config: Config, backend: Any) -> list[str]:
         if not status_in_progress(text):
             return []  # completed card — consumer-owned, never touched
         missing = check_log(card, config.session_markers)
-        missing_labels = {m for m in missing if not m.startswith("a completed Status")}
-        if not missing_labels:
+        missing_misses = {m for m in missing if not m.startswith("a completed Status")}
+        if not missing_misses:
             return []  # close-out already written; only the status flip remains
-        markers = [m for m in config.session_markers if m.get("label") in missing_labels]
+        # check_log reports each miss as "label (expected `needle`)" — map it
+        # back to the configured marker via the same formatter so the drafted
+        # stand-ins can never drift from what the checker said was missing.
+        markers = [m for m in config.session_markers if _marker_miss(m) in missing_misses]
         section = draft_close_out(evidence, markers)
         atomic_write_text(card, text.rstrip("\n") + "\n\n" + section)
         return [
