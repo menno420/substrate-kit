@@ -17,10 +17,18 @@ Design contract (plan §5.0 — anti-memorization vs comparability):
   case-insensitivity (the Phase-2.5 spendlog bug class, kept so M-measures
   stay comparable across runs). The bug is deliberately untested.
 
-Determinism: identical ``--seed`` ⇒ byte-identical output. A paired run
-generates ONCE and copies the tree to both arms (companion D §2: the seed is
-"committed identically for both arms, never edited between arms") — the
-runner (`run_ab.py prepare`) does exactly that.
+Determinism: identical ``--seed`` ⇒ byte-identical output *within one kit
+version*. A paired run generates ONCE and copies the tree to both arms
+(companion D §2: the seed is "committed identically for both arms, never
+edited between arms") — the runner (`run_ab.py prepare`) does exactly that.
+
+Identifier safety (the run-2 lesson, seed 424242): several drawn tokens
+become Python identifiers (the package name, the measure field / function /
+argument names), so every pool token — and every drawn name, as a hard
+screen in ``_names`` — must be keyword- and builtin-safe. The original
+harvest domain's measure token was ``yield``, a Python keyword, and the
+generated project was a SyntaxError; run-2 had to deviate to seed 424243
+(idea file: ``docs/ideas/make-seed-yield-keyword-bug-2026-07-09.md``).
 
 Bench-side tooling: NOT engine code — print/argparse are fine here; the
 generated project is plain stdlib Python 3.10.
@@ -29,11 +37,16 @@ generated project is plain stdlib Python 3.10.
 from __future__ import annotations
 
 import argparse
+import builtins
+import keyword
 import random
 import sys
 from pathlib import Path
 
-# Surface-name pools (drawn per seed — anti-memorization).
+# Surface-name pools (drawn per seed — anti-memorization). Every token must
+# pass _identifier_safe (keyword/builtin screen) — pinned by the test suite
+# AND re-screened at draw time in _names (defense in depth: a future pool
+# edit that sneaks a keyword in fails loudly, never generates broken code).
 _ADJECTIVES = (
     "brook", "cedar", "delta", "ember", "fjord", "gale", "harbor", "iris",
     "juniper", "krill", "lumen", "moss", "north", "opal", "pine", "quartz",
@@ -43,7 +56,9 @@ _DOMAINS = (
     ("expense", "expenses", "amount"),
     ("catch", "catches", "weight"),
     ("ride", "rides", "distance"),
-    ("harvest", "harvests", "yield"),
+    # NB: the measure token becomes an identifier — "yield" (a keyword) here
+    # generated SyntaxError projects until 2026-07-09 (seed 424242, B1 run-2).
+    ("harvest", "harvests", "bushels"),
     ("visit", "visits", "duration"),
     ("donation", "donations", "amount"),
     ("reading", "readings", "value"),
@@ -52,19 +67,48 @@ _DOMAINS = (
 _VERBS = ("log", "track", "note", "file", "post", "mark")
 
 
+def _identifier_safe(token: str) -> bool:
+    """True when ``token`` can safely become a generated identifier.
+
+    Rejects Python keywords (the seed-424242 ``yield`` SyntaxError class),
+    soft keywords, and builtins (silent shadowing) — not just for the tokens
+    used as identifiers today, but for every drawn token, so a template edit
+    can never quietly promote an unscreened token into an identifier slot.
+    """
+    return (
+        token.isidentifier()
+        and not keyword.iskeyword(token)
+        and not keyword.issoftkeyword(token)
+        and not hasattr(builtins, token)
+    )
+
+
 def _names(seed: int) -> dict[str, str]:
-    """Draw the run's surface names deterministically from ``seed``."""
+    """Draw the run's surface names deterministically from ``seed``.
+
+    Raises ``ValueError`` when any drawn token fails the keyword/builtin
+    screen — a generation-time hard stop, so a bad vocabulary entry dies
+    HERE with a named token instead of emitting a SyntaxError project.
+    """
     rng = random.Random(seed)
     adjective = rng.choice(_ADJECTIVES)
     singular, plural, measure = rng.choice(_DOMAINS)
     verb = rng.choice(_VERBS)
-    return {
+    names = {
         "project": f"{adjective}{singular}",
         "singular": singular,
         "plural": plural,
         "measure": measure,
         "verb": verb,
     }
+    unsafe = sorted({t for t in names.values() if not _identifier_safe(t)})
+    if unsafe:
+        raise ValueError(
+            f"seed {seed} drew identifier-unsafe token(s) {unsafe} — fix the "
+            "surface-name pools (every token must pass _identifier_safe; "
+            "the seed-424242 'yield' lesson, 2026-07-09)"
+        )
+    return names
 
 
 def _store_py(n: dict[str, str]) -> str:
