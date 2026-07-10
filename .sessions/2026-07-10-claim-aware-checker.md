@@ -1,6 +1,6 @@
 # 2026-07-10 — gen-2: claim-aware checker (duplicate + stale claim advisory)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** claude-opus-4-8 · high · gen-2 kit-side checker (single scoped
   PR: enforce the ORDER 007 order-claim convention as an advisory check)
