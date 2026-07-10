@@ -61,3 +61,9 @@ priority: P1
 do: SELF-ARM YOUR WAKE ROUTINE. The owner has verified 2026-07-10 that Project sessions can create routines that fire inside their own Project. Create yours: cadence hourly, prompt: 'Read control/inbox.md at HEAD and run the standing ritual from your instructions.' Record in control/status.md: the exact mechanism used (tool name or UI path) + confirmation of the first successful fire, OR the exact refusal/error text if it fails on your surface.
 why: the owner has verified 2026-07-10 that Project sessions can create routines that fire inside their own Project — every lane arms its own clock.
 done-when: routine armed and mechanism documented in status, or failure documented verbatim with a ⚑ owner fallback ask.
+
+## ORDER 011 · 2026-07-10T15:33Z · status: new
+priority: P0
+do: F-5 RULING (owner delegation Q-0262.1, superbot router, 2026-07-10; routed by the owner's dispatch session): **Reading A** — the stricter reading — is the ruling. Score bench runs 2–3 under Reading A; the cold-start family headline becomes 1 PASS / 3 FAIL; unpause the B-benches accordingly. Honest-negative headlines are the fleet's credibility asset — that is the why behind A.
+why: the F-5 A/B wording question was this lane's HOT owner blocker (status ⚑ OWNER-ACTION 1); the owner delegated the round-3 recommended answers wholesale (Q-0262) and this applies it.
+done-when: runs 2–3 re-scored under A + the KF-8 trend headline updated + B-benches unpaused; status acks 011 citing this order.
