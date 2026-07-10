@@ -106,6 +106,12 @@ def test_main_writes_the_three_assets_plus_notes(tmp_path, capsys):
     assert "## Adopter upgrade checklist" in notes
     assert f"kit: v{kit_version()}" in notes
     assert "{version}" not in notes
+    # The checklist must name release.json next to bootstrap.py.new (idea
+    # upgrade-checklist-release-json-placement): an operator following it to
+    # the letter otherwise omits the file and the sha256 self-verification
+    # silently skips — no tamper/corruption check, no signal it never ran.
+    assert "release.json" in notes
+    assert "silently skips" in notes
 
 
 def test_main_refuses_on_version_mismatch(capsys):

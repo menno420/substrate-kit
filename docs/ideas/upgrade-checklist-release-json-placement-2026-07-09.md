@@ -1,10 +1,10 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 92
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-10
+outcome: shipped
 ---
 
 # Upgrade checklist should say: put `release.json` next to `bootstrap.py.new` — or sha verification silently skips (2026-07-09)
