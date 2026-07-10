@@ -120,22 +120,38 @@ def _unrendered_findings(
     return findings
 
 
+def _strip_comment(line: str) -> str:
+    """Drop a YAML/shell ``#`` comment, keeping the code before it.
+
+    A whole-line comment (leading ``#``) yields ``""``; an inline `` #``
+    comment keeps the code up to it. A bare ``#`` with no leading space
+    (inside a URL or token) is left alone — kept simple, not a YAML parser.
+    """
+    if line.lstrip().startswith("#"):
+        return ""
+    idx = line.find(" #")
+    return line[:idx] if idx != -1 else line
+
+
 def _enforcement_wired(target: Path) -> bool:
     """True when some workflow under .github/workflows/ runs ``check --strict``.
 
     Substring match on purpose: it accepts the planted ``substrate-gate.yml``
     verbatim AND a host's hand-rolled gate (the kit repo's own ``ci.yml``) —
     the condition is "a CI door exists", not "our exact file was copied".
+    Comment content is stripped first, so a workflow that only *mentions* the
+    command inside a ``#`` comment is not a real door and stays unwired.
     """
     workflows = target / ".github" / "workflows"
     if not workflows.is_dir():
         return False
     for path in sorted(workflows.glob("*.yml")) + sorted(workflows.glob("*.yaml")):
         try:
-            if "check --strict" in path.read_text(encoding="utf-8"):
-                return True
+            text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
+        if any("check --strict" in _strip_comment(line) for line in text.splitlines()):
+            return True
     return False
 
 
