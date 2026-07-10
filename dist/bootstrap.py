@@ -8919,8 +8919,22 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
     arbitrary in CI (the kit's own CI once carried a git-mtime-restore shim for
     exactly this). The workflow instead derives the card from what the PR/push
     diff touches under ``sessions_dir`` and passes it via
-    ``check --session-log``; when the diff names no card the argument is
-    simply omitted and the engine's mtime fallback applies (fail-open).
+    ``check --session-log``. When the diff names **no card** the step passes
+    an explicitly named, nonexistent sentinel **without**
+    ``--require-session-log`` — per the engine contract an explicitly named
+    absent card is ADVISORY. (The previous behaviour — omitting the argument —
+    was NOT fail-open in CI: the engine's newest-by-mtime fallback latched
+    onto the mid-session in-progress card and redded every unrelated PR;
+    adopter live-fire, gba-homebrew PR #3, 2026-07-10.) A card **ADDED** by
+    the PR (a born-red heartbeat: first-commit-carries-an-in-progress-card
+    conventions make in-progress the REQUIRED state at birth) also gates
+    advisory via the absent sentinel, because under ``--strict`` the engine
+    reds ANY existing-but-incomplete card — the locked door could never pass
+    a heartbeat (adopter live-fire: gba-homebrew PR #2 merged red on exactly
+    this). A card **MODIFIED** by the PR (every session close-out flips one)
+    keeps the full ``--require-session-log`` locked door, so a close-out that
+    forgot to flip ``complete`` still reds. Both fixes validated live across
+    gba-homebrew PRs #3–#14.
 
     **Control fast lane (KL-8):** a diff touching only ``control/**`` (a
     status heartbeat, a manager inbox append) short-circuits the job GREEN
@@ -8997,8 +9011,24 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         "        if: steps.lane.outputs.control_only != 'true'\n"
         "        # Gate on the session card THIS PR/push touches (CI flattens\n"
         "        # mtimes, so the engine's newest-by-mtime guess is unreliable\n"
-        "        # here). No card in the diff -> no --session-log argument ->\n"
-        "        # the engine's mtime fallback (fail-open).\n"
+        "        # here). No card in the diff -> pass an explicitly named,\n"
+        "        # nonexistent sentinel WITHOUT --require-session-log: per the\n"
+        "        # engine's contract an explicit absent card is ADVISORY,\n"
+        "        # while the bare mtime fallback latches onto the mid-session\n"
+        "        # in-progress card and reds every unrelated PR (adopter\n"
+        "        # live-fire, gba-homebrew PR #3, 2026-07-10 — the omitted\n"
+        "        # argument was never fail-open in CI). Second live-fire case:\n"
+        "        # a heartbeat PR that ADDS the born-red card (first-commit\n"
+        "        # conventions REQUIRE an in-progress card at birth) can never\n"
+        "        # satisfy the locked door — gba-homebrew PR #2 merged red on\n"
+        "        # exactly this. So: a card ADDED by the PR gates ADVISORY via\n"
+        "        # the absent sentinel (under --strict the engine reds ANY\n"
+        "        # existing-but-incomplete card, required or not — born-red is\n"
+        "        # the REQUIRED state at birth, so a heartbeat must not be\n"
+        "        # judged on completeness); a card MODIFIED by the PR (every\n"
+        "        # session close-out flips one) keeps the full locked-door\n"
+        "        # gate, so a close-out that forgot to flip `complete` still\n"
+        "        # reds.\n"
         "        run: |\n"
         '          if [ -n "${{ github.base_ref }}" ]; then\n'
         '            range="origin/${{ github.base_ref }}...HEAD"\n'
@@ -9008,9 +9038,22 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         '          card="$(git diff --name-only --diff-filter=d "$range" -- '
         f"'{sessions_dir}/*.md' ':!{sessions_dir}/README.md' 2>/dev/null "
         '| tail -1)"\n'
-        '          echo "session gate card: ${card:-<none - mtime fallback>}"\n'
-        f"          {interpreter} bootstrap.py check --strict --require-session-log"
-        ' ${card:+--session-log "$card"}\n'
+        '          added="$(git diff --name-only --diff-filter=A "$range" -- '
+        f"'{sessions_dir}/*.md' ':!{sessions_dir}/README.md' 2>/dev/null "
+        '| tail -1)"\n'
+        '          echo "session gate card: ${card:-<none - advisory sentinel>}"\n'
+        '          if [ -n "$card" ] && [ "$card" != "$added" ]; then\n'
+        f"            {interpreter} bootstrap.py check --strict --require-session-log"
+        ' --session-log "$card"\n'
+        "          elif [ -n \"$card\" ]; then\n"
+        '            echo "card $card is newly ADDED by this PR (born-red heartbeat)'
+        ' — advisory sentinel gate"\n'
+        f"            {interpreter} bootstrap.py check --strict --session-log "
+        f"{sessions_dir}/__born-red-card-added__.md\n"
+        "          else\n"
+        f"            {interpreter} bootstrap.py check --strict --session-log "
+        f"{sessions_dir}/__no-card-in-diff__.md\n"
+        "          fi\n"
     )
 
 

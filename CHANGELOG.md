@@ -70,6 +70,25 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Fixed
 
+- **Planted substrate-gate template: no-card and born-red-heartbeat PRs no
+  longer red on an unrelated card** (`live_ci_workflow()` in
+  `src/engine/adopt.py` — two adopter-found defects, both hit and fixed live
+  on menno420/gba-homebrew and validated across its PRs #3–#14):
+  - A PR whose diff names **no session card** now passes an explicitly named,
+    nonexistent sentinel (`--session-log <sessions_dir>/__no-card-in-diff__.md`)
+    **without** `--require-session-log` — advisory per the engine contract.
+    The previous behaviour (omitting the argument) was believed fail-open but
+    was not: on a fresh CI checkout the newest-by-mtime fallback latched onto
+    the mid-session in-progress card and redded every unrelated PR
+    (gba-homebrew PR #3).
+  - A card **ADDED** by the PR (a born-red heartbeat — first-commit
+    conventions require an in-progress card at birth) gates advisory via the
+    absent sentinel (`__born-red-card-added__.md`), since under `--strict` the
+    locked door reds ANY existing-but-incomplete card and a heartbeat could
+    never merge green (gba-homebrew PR #2 merged red on exactly this). A card
+    **MODIFIED** by the PR (every close-out flips one) keeps the full
+    `--require-session-log` locked-door gate, so a close-out that forgot to
+    flip `complete` still reds.
 - **Run-2 ordinary-lane follow-ups (kit PR #95)** — the three engine/harness
   gaps the B1 record sessions filed as idea files:
   - `bench/run_ab.py prepare` no longer fails by design on ON arms: it walks
