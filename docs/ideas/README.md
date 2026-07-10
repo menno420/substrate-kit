@@ -75,11 +75,13 @@ story, the frontmatter keeps the score.
   despite self-flagging the follow-up; reconciled only at gen-2 boot, #78);
   next: mirror check_idea_index.py over docs/retro/, wire into kit-quality.
 - [Rubric F-5 wording: "none regressing" vs the 7k-budget yardstick](rubric-f5-none-regressing-wording-2026-07-09.md)
-  — state: captured; origin: lab (B1 run `2026-07-09-run02` — the first
+  — state: historical; origin: lab (B1 run `2026-07-09-run02` — the first
   clean M1 measurement made two readings of the pinned F-5 text produce
   opposite verdicts on the same evidence; decision brief with both runs'
-  evidence in the file); next: **OWNER decision** — `bench/rubric/` is a
-  pin path, any wording change rides a `do-not-automerge` review PR.
+  evidence in the file); outcome: **RULED — Reading A (strict)**, delivered
+  2026-07-10 via inbox ORDER 011 (owner delegation Q-0262.1; record:
+  `bench/results/cold-start/f5-ruling-order-011.md`). No rubric wording
+  change needed — Reading A IS the pinned letter, so no pin-path PR.
 - [make_seed: keyword domain nouns generate SyntaxError seeds](make-seed-yield-keyword-bug-2026-07-09.md)
   — state: captured; origin: lab (run-2 prepare — ordered seed 424242 hit
   the harvest/`yield` domain, a Python-keyword identifier → SyntaxError

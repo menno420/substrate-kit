@@ -44,8 +44,10 @@
   re-verified by this session).
 - **Benchmark family at 2 rows** (`bench/results/cold-start/index.json`):
   run01 **PASS** (M1 unmeasurable, scorer-tainted; judge claude-opus-4-8),
-  run02 **FAIL** (strict F-5, advisory per KF-5, disputed wording — owner
-  ruling pending; same judge). No trend claim — KF-8 needs ≥3 rows.
+  run02 **FAIL** (strict F-5, advisory per KF-5; the disputed-wording
+  caveat was RETIRED 2026-07-10 by the Reading-A ruling, ORDER 011; same
+  judge). No trend claim at the time — KF-8 needed ≥3 rows. *(Family at 4
+  rows as of 2026-07-10: headline **1 PASS / 3 FAIL**, un-caveated.)*
 - **v1.6.0 fleet rollout COMPLETE** (parallel fleet-wrap session, PR #75,
   merged 20:17Z while this pack was being written): superbot-next v1.6.0
   ENGAGED (superbot-next#96) · websites v1.6.0 ENGAGED (websites#45) ·
@@ -89,9 +91,10 @@ owner's 2026-07-10 clicks — `control/status.md` renumbered the remaining
 nine to OWNER-ACTION 1–10 in the #88 refresh, each six-field structured
 there; that file is the live list, this is the crosswalk):*
 1 merge #26 — ✅ DONE (commit `706190f`) · 2 merge #49 — ✅ DONE (commit
-`6d6046b`) · 3 rubric F-5 A/B ruling — **OPEN, HOT** (now OWNER-ACTION 1;
-gates the recorded run-2/run-3 verdicts + the first KF-8 trend headline;
-`docs/ideas/rubric-f5-none-regressing-wording-2026-07-09.md`) · 4 P10
+`6d6046b`) · 3 rubric F-5 A/B ruling — ✅ **RESOLVED 2026-07-10: Reading A**
+(delivered via inbox ORDER 011, owner delegation Q-0262.1; runs 2–3 stand
+as un-caveated FAILs, family headline **1 PASS / 3 FAIL**, B-benches
+unpaused; `bench/results/cold-start/f5-ruling-order-011.md`) · 4 P10
 required-check swap — OPEN (now OWNER-ACTION 2) · 5 P4 arm the daily lab
 loop — OPEN (OWNER-ACTION 3) · 6 P5 Railway `kit-lab` — OPEN
 (OWNER-ACTION 4) · 7 P8 MIT confirm — OPEN (OWNER-ACTION 5) · 8 P11
@@ -106,9 +109,9 @@ carry their exact gate:*
 1. ✅ **Gen-2 boot** — DONE 2026-07-10 (walking skeleton proven, PR #84
    boot-log breadcrumb + the #80/#81 fast-lane markers).
 2. ✅ **B1 run-3** — DONE (PR #85, run `2026-07-10-run03`, seed 710301):
-   strict-F-5 **FAIL** (advisory per KF-5, DISPUTED pending the F-5
-   ruling; Reading B would PASS) — family at 3 rows, first KF-8 trend
-   stated. Claim #80.
+   strict-F-5 **FAIL** (advisory per KF-5; RULED 2026-07-10 — Reading A
+   per ORDER 011, the FAIL stands un-caveated) — family at 3 rows, first
+   KF-8 trend stated. Claim #80.
 3. ✅ **Run-2 ordinary-lane follow-ups** — DONE (PR #95; claim #94): all
    three gaps (prepare engagement-arc · `render --live` CLAUDE.md ·
    Model-line byte-forms).
@@ -167,6 +170,12 @@ this as time passes.*
   reconciles: **B1 run-4 recorded** (PR #116, `a3616db` — first ruling-INDEPENDENT
   FAIL, family at 4 rows) and **inbox advanced to ORDER 010** (self-arm wake
   routine; `done=010` via PR #120). `control/status.md` carries the full ledger.
+- **F-5 ruling DELIVERED (2026-07-10, inbox ORDER 011): Reading A.** Runs
+  2–3 stand as un-caveated FAILs; the cold-start headline is **1 PASS /
+  3 FAIL**; the "B1 run-5 WAITS for the ruling" hold is CLEARED — the
+  B-bench queue is unblocked (run-5 free to fire, scored under Reading A
+  only). OWNER-ACTION 1 RESOLVED; annotation
+  `bench/results/cold-start/f5-ruling-order-011.md`.
 - **Remaining agent-available items** (no new descriptions — see the Agent-queue
   numbers above): **#4 T5 guard-probe redesign** (gate: pin path — must ride a
   daytime `do-not-automerge` PR the owner one-clicks; run-4 partially resolved the
