@@ -34,6 +34,10 @@ MODULE_ORDER = (
     "lib/state.py",
     "lib/guardrail.py",
     "lib/modes.py",
+    # Before every control-band checker + currency.py: the kit-owned
+    # control-plane grammar constants they all consume (EAP §6.8). Pure
+    # stdlib-re, no engine references.
+    "grammar.py",
     "interview/question_bank.py",
     "interview/stages.py",
     "interview/interview.py",

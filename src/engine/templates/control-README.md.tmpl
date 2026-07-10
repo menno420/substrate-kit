@@ -123,6 +123,8 @@ orders: acked=<ids> done=<ids> [claimed-by: <ids> <lane-or-session> <ISO8601>]
 notes: <anything the manager should know>
 ```
 
+Grammar source of truth: the tokens, field lists, and regexes of this format are kit-owned constants in the kit's `src/engine/grammar.py` (EAP §6.8) — the SAME module the `check` enforcers consume, so writer and enforcer cannot drift; agreement is pinned by the kit's `tests/test_grammar.py`.
+
 The `kit:` line is the **substrate-coordinator visibility** channel (kit-lab reads it via the
 manager relay — zero write access to this repo): `v<X.Y.Z>` = the vendored kit version this
 repo actually runs (update it in the same session as every `bootstrap upgrade`); `check:` =
@@ -156,6 +158,8 @@ Hygiene: **expire or withdraw stale asks every session** (an answered or obsolet
 the list is drift), and **fewer, clearer asks beat complete lists**. `check` warns — advisory,
 never exit-affecting — when a non-`none` ⚑ needs-owner list lacks these fields.
 
+Grammar source of truth: the tokens, field lists, and regexes of this format are kit-owned constants in the kit's `src/engine/grammar.py` (EAP §6.8) — the SAME module the `check` enforcers consume, so writer and enforcer cannot drift; agreement is pinned by the kit's `tests/test_grammar.py`.
+
 ## `inbox.md` order format (manager-written, append-only)
 
 ```markdown
@@ -165,6 +169,8 @@ do: <pointer to a committed doc/section + the ask, kept short>
 why: <one line>
 done-when: <acceptance test>
 ```
+
+Grammar source of truth: the tokens, field lists, and regexes of this format are kit-owned constants in the kit's `src/engine/grammar.py` (EAP §6.8) — the SAME module the `check` enforcers consume, so writer and enforcer cannot drift; agreement is pinned by the kit's `tests/test_grammar.py`.
 
 ## CI + auto-merge notes (learned live, 2026-07-09)
 

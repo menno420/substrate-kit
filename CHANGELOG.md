@@ -17,6 +17,33 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Control-plane grammar centralized in one kit-owned constants module —
+  `src/engine/grammar.py`** (EAP program review 2026-07-10 §6.8 — the
+  ORDER/OWNER-ACTION grammar lived implicitly in the control templates while
+  every enforcer re-derived its own copy, so writer and enforcer could
+  silently drift; the manager's own seeded orders once failed the kit's
+  1.7.0 grammar). One module now owns the tokens, field lists, and regexes
+  for: the ORDER header + required body fields (`check_inbox_append`), the
+  `orders: acked=/done=/claimed-by:` status line and the work-claim bullet
+  (`check_claims`), the six-field ⚑ OWNER-ACTION format + the
+  `⚑ needs-owner` token (`check_owner_actions`), the `updated:` heartbeat
+  line (`check_status_current`), and the `kit:`/`check:`/`engaged:`
+  self-report line (`currency`). Every enforcer was refactored to consume
+  the module — **no behavior change** (every regex moved byte-identical;
+  the pre-existing checker suites pass unchanged) — and the module carries
+  canonical example renderers (the smallest correct writer output per
+  surface). New writer↔enforcer agreement tests (`tests/test_grammar.py`)
+  pin all three layers: the enforcers consume the grammar module's own
+  objects (one-home identity), the example lines the templates teach
+  writers satisfy the enforcer regexes, and the canonical examples pass the
+  full checker entry points end-to-end — including a dogfood pin that the
+  kit's own live `control/inbox.md` parses. The teaching docs
+  (`control-README.md.tmpl`, `control-claims-README.md.tmpl`, and this
+  repo's planted copies) now carry explicit "grammar source of truth"
+  pointers at each format block; grammar is deliberately NOT injected into
+  the templates as render slots (the interview-slot render pipeline is
+  answer-only by design — sync is pinned by tests instead).
+
 - **Setup-script contract: `scripts/env-setup.sh` planted on adopt +
   `check_setup_script` enforcer** (EAP program review 2026-07-10 §6.5 — the
   fleet ran six divergent hand-rolled environment setup scripts; the

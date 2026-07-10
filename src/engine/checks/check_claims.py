@@ -80,6 +80,13 @@ from engine.checks.check_status_current import (
     INBOX_RELPATH,
     heartbeat_relpaths,
 )
+from engine.grammar import (
+    ORDERS_CLAIMED_BY_RE,
+    ORDERS_DONE_RE,
+    ORDERS_LINE_RE,
+    WORK_CLAIM_BULLET_RE,
+    WORK_CLAIM_DATE_RE,
+)
 from engine.lib.config import DEFAULT_CLAIMS_DIR
 
 # The convention's abandonment horizon (control/README.md § "Claims expire"):
@@ -100,19 +107,10 @@ WORK_CLAIM_STALE_HOURS = 72
 # see the module docstring's claims-legacy-location entry.
 LEGACY_CLAIMS_DIRS = ("docs/owner/claims", "claims")
 
-# A work-claim bullet: `- ` + a backticked branch/scope token somewhere on
-# the line. The date is matched separately (it may sit anywhere after).
-_CLAIM_BULLET_RE = re.compile(r"^-\s.*`([^`\n]+)`", re.MULTILINE)
-_CLAIM_DATE_RE = re.compile(r"\b(20\d{2}-\d{2}-\d{2})\b")
-
-# The orders line carries the claim + the done ledger:
-#   orders: acked=<ids> done=<ids> [claimed-by: <ids> <lane> <ISO8601>]
-_ORDERS_RE = re.compile(r"^orders:\s*(.*)$", re.MULTILINE)
-_DONE_RE = re.compile(r"\bdone=(\S*)")
-# claimed-by: <ids> <lane-or-session> <ISO8601> — three whitespace tokens.
-# The ids token is `+`/`,`-separated (README example: `007+008`); the lane may
-# itself carry hyphens (`coordinator-lane`) so it is a whole token, not parsed.
-_CLAIMED_RE = re.compile(r"claimed-by:\s*(\S+)\s+(\S+)\s+(\S+)")
+# The claim grammar — the work-claim bullet and the orders line
+# (acked=/done=/claimed-by:) — is kit-owned with ONE home — engine.grammar
+# (EAP §6.8): the writer templates and this enforcer consume the same
+# constants, so they cannot drift apart. Shape notes live there.
 
 
 def _norm_id(raw: str) -> str | None:
@@ -170,13 +168,13 @@ def _parse_iso(raw: str) -> datetime | None:
 
 def _orders_line(text: str) -> str | None:
     """Return the first ``orders:`` line's value, or None when absent."""
-    match = _ORDERS_RE.search(text)
+    match = ORDERS_LINE_RE.search(text)
     return match.group(1) if match else None
 
 
 def _done_ids(orders_value: str) -> set[str]:
     """Return the set of order ids reported in ``done=`` on an orders line."""
-    match = _DONE_RE.search(orders_value)
+    match = ORDERS_DONE_RE.search(orders_value)
     return _expand_ids(match.group(1)) if match else set()
 
 
@@ -187,7 +185,7 @@ def _claim(orders_value: str) -> tuple[set[str], str, datetime | None] | None:
     token, ``ts`` the parsed timestamp (None when unparseable — the age check
     then simply skips, never fabricating staleness).
     """
-    match = _CLAIMED_RE.search(orders_value)
+    match = ORDERS_CLAIMED_BY_RE.search(orders_value)
     if not match:
         return None
     ids = _expand_ids(match.group(1))
@@ -249,8 +247,8 @@ def _work_claim_findings(
                 text = path.read_text(encoding="utf-8")
             except (OSError, UnicodeDecodeError):
                 continue  # fail open — an unreadable file is not a verdict
-            bullet = _CLAIM_BULLET_RE.search(text)
-            date_match = _CLAIM_DATE_RE.search(text)
+            bullet = WORK_CLAIM_BULLET_RE.search(text)
+            date_match = WORK_CLAIM_DATE_RE.search(text)
             if bullet is None or date_match is None:
                 findings.append(
                     Finding(

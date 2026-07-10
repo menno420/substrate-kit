@@ -44,12 +44,16 @@ files fail open.
 
 from __future__ import annotations
 
-import re
 from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from engine.checks.check_docs import Finding
+
+# The `updated:` heartbeat-line grammar is kit-owned with ONE home —
+# engine.grammar (EAP §6.8): the writer templates and this enforcer consume
+# the same constant, so they cannot drift apart.
+from engine.grammar import UPDATED_LINE_RE
 
 CONTROL_DIR = "control"
 STATUS_RELPATH = "control/status.md"
@@ -60,8 +64,6 @@ CONTROL_README_RELPATH = "control/README.md"
 # spec suggests (2-4h) on purpose: the checker warns about *abandonment*, not
 # about a quiet afternoon — revise with data (KF-8 posture).
 DEFAULT_MAX_AGE_HOURS = 72
-
-_UPDATED_RE = re.compile(r"^updated:\s*(\S+)", re.MULTILINE)
 
 
 def parse_heartbeat(text: str) -> datetime | None:
@@ -75,7 +77,7 @@ def parse_heartbeat(text: str) -> datetime | None:
     line is absent or unparseable (the adopt seed's prose sentinel lands
     here by design).
     """
-    match = _UPDATED_RE.search(text)
+    match = UPDATED_LINE_RE.search(text)
     if not match:
         return None
     raw = match.group(1)
