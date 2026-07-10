@@ -1,6 +1,6 @@
 # 2026-07-10 — gen-2 final session close: status ledger (9 PRs shipped)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** claude-opus-4-8 · high · gen-2 kit-lab deliberate FINAL session-close write
 
