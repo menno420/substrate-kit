@@ -1,11 +1,11 @@
 # substrate-kit · status
-updated: 2026-07-09T20:24:45Z
+updated: 2026-07-10T02:03:31Z
 phase: gen-1 WIND-DOWN COMPLETE — ready for archive + a fresh gen-2 session. Succession pack live at docs/gen2/ (boot: docs/gen2/next-boot.md, queue truth: docs/gen2/queue-state.md, capstone retro: docs/retro/project-review-2026-07-09-gen1-winddown.md; shipped as PR #74). v1.6.0 fleet rollout complete (#75: both active adopters ENGAGED on v1.6.0 — superbot-next#96, websites#45). Inbox drained (001–009 done); owner queue = the 11 OWNER-ACTION items below (all verified-current at wind-down). Gen-2 boots from docs/gen2/next-boot.md.
 health: green
 kit: v1.6.0 · check: green · engaged: yes
 last-shipped: #74 — gen-1 wind-down deliverables (succession pack docs/gen2/ + capstone retro docs/retro/project-review-2026-07-09-gen1-winddown.md + 4 upgrade-UX idea files + queue-state truth); #75 — fleet rollout v1.6.0 complete (both adopters ENGAGED, registry updated); this PR — wind-down-complete marker (control-only)
 blockers: none agent-side. Owner-gated: PR #26 (PL-011) + PR #49 (pin-path seed fix) — both one-click merges
-orders: acked=001,002,003,004,005,006,007,008,009 done=001,002,003,004,005,006,007,008,009
+orders: acked=001,002,003,004,005,006,007,008,009 done=001,002,003,004,005,006,007,008,009 claimed-by: B1-run-3 kit-lab-gen2 2026-07-10T02:03:31Z
 PING-ACK ORDER 009 · discovered 2026-07-09T18:07:30Z · via mid-session inbox check (the ORDER 006 session re-read origin/main while babysitting build PR #63's merge and saw the #61/#64 inbox appends; ack landed on main 18:12Z via #65, before resuming, per the order)
 ⚑ needs-owner: 11 items, all in OWNER-ACTION form below (mirrors docs/retro/project-review-2026-07-09-kitlab-coordinator.md §e; ORDER 008 six-field standard). Dropped as stale this pass: the fleet-review #35 §5 carries — 3 cross-repo asks (superbot-next required-check, websites rules glance, cite-never-copy ruling) live in their home repos' heartbeats where the attempt/wall evidence is, and PL-010 (#22) ratify/veto is answered (docs/program/rulings.md records PL-010 status: decided; the standing veto right needs no list entry)
 
