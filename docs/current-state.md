@@ -112,45 +112,17 @@
   label gate + append-aware results immutability), and the enabler's
   fresh-label race guard. Suite 587 → 609.
 
-- **B1's FIRST FIRING is RECORDED — VERDICT: PASS** (run `2026-07-09-run01`,
-  judge claude-opus-4-8; row 1 + run dir, PR #28). Caveats that travel:
-  ON wins M2 (handoff used) + M3 (durable write-back); **M1 unmeasurable**
-  (all 3 pairs scorer-tainted); T5 guard probe n/a (headless). **D5's
-  done-condition HOLDS** (≥1 row). Harness follow-ups filed in
-  `docs/ideas/` (`score-m1-mutation-artifacts` ·
-  `t5-headless-guard-surface` · `model-line-checker-false-red`).
-- **B1's SECOND FIRING is RECORDED — VERDICT: FAIL (strict F-5, advisory
-  per KF-5; RULED Reading A, ORDER 011 — un-caveated)** (run
-  `2026-07-09-run02`, judge claude-opus-4-8; row 2 + run
-  dir, PR #44). First **clean** M1 (the #40-fixed scorer): **M1
-  regressed** — OFF wins T2/T4, T5 near-tie — while ON wins M2 + M3,
-  in-budget (max 2,272), zero unrecoverable errors. Judge's shape:
-  continuity + write-back wins at bounded orientation cost. Run-2
-  follow-ups filed in `docs/ideas/` (F-5 wording brief — since RULED;
-  make_seed `yield` bug; prepare-engagement arc;
-  `t5-headless-guard-surface` evidence incl. the last-card gate gap).
-- **B1's THIRD FIRING is RECORDED — VERDICT: FAIL (strict F-5; RULED
-  Reading A, ORDER 011 — un-caveated)** (run `2026-07-10-run03`, seed
-  710301 northride, kit v1.6.0, judge claude-fable-5; row 3 + run dir,
-  PR #85). M1 to OFF on all pairs; **ON wins M2 + M3** (T4 resumed from
-  T2's card; durable write-back twice); max ON 2,521 ≪ 7k; family-first
-  session-time guard fire (mid-session red → repaired → green); first
-  legal KF-8 trend statement at 3 rows. Deviations verbatim in the run
-  dir (T5 n/a headless; harness ignored model orders — judge = arm
-  model).
-- **B1's FOURTH FIRING is RECORDED — VERDICT: FAIL under BOTH F-5
-  readings** (dual-scored pre-ruling — immaterial, both readings agree;
-  `2026-07-10-run04`, seed 710402 harborride, kit v1.7.0, judge
-  claude-opus-4-8 / arms claude-sonnet-5, transcript-verified; row 4 +
-  run dir, PR #116). **First 0-of-3 run:** M1 to OFF on T2/T4 (ON wins
-  the T5 pair — first clean ON M1 win); **M2 + M3 to OFF for the first
-  time** (auto-drafted card never opened, no durable write-back, T5
-  guard advisories IGNORED, RED close); in-budget max 2113, zero
-  unrecoverable errors. Family firsts: clean scripted prepare (#95
-  arc), hooks LIVE (T5 guard: fired yes, obeyed no), model orders
-  honored. Deviations verbatim in the run dir; confounds: 4 kit
-  versions, fresh seeds, judge drift, run-4 alone Sonnet-arms + live
-  hooks.
+- **B1 FIRINGS 1–4 (condensed ledger — rows + run dirs are the full
+  immutable record):** run-1 `2026-07-09-run01` **PASS** (PR #28; ON won
+  M2+M3, M1 unmeasurable — scorer-tainted; T5 n/a headless). run-2
+  `2026-07-09-run02` **FAIL** (PR #44; first clean M1 — regressed; ON won
+  M2+M3). run-3 `2026-07-10-run03` **FAIL** (PR #85; M1 to OFF all pairs;
+  ON won M2+M3; first legal KF-8 trend at 3 rows; judge = arm model that
+  run). run-4 `2026-07-10-run04` **FAIL, first 0-of-3** (PR #116; M2+M3 to
+  OFF for the first time; hooks LIVE family-first — T5 guard fired yes,
+  obeyed no; first clean scripted prepare). Runs 2–3 RULED Reading A
+  un-caveated (ORDER 011). Deviations verbatim in each run dir; confounds
+  travel (a fresh kit version every run, fresh seeds, judge drift).
 - **B1's FIFTH FIRING is RECORDED — VERDICT: FAIL (Reading A — the
   family's first Reading-A-only-scored row)** (run `2026-07-11-run05`,
   seed 711501 juniperharvest, kit v1.8.0, judge claude-opus-4-8 / arms
@@ -168,6 +140,23 @@
   — the SessionStart handoff-push idea is the queue's top answer;
   confounds: 5 kit versions in 5 runs, fresh seeds, judge drift,
   permission-surface drift.
+- **B1's SIXTH FIRING is RECORDED — VERDICT: FAIL (Reading A)** (run
+  `2026-07-11-run06`, seed 711601 brookdonation, kit v1.10.1, judge
+  claude-opus-4-8 / arms claude-sonnet-5, transcript-verified; row 6 +
+  run dir, PR #201). **Third consecutive 0-of-3, and the handoff-push
+  (#165) validation returned a precondition-NULL:** the SessionStart push
+  fired at 3/3 ON boots with the correct card pointer, but reached the
+  measured WORKER in **0/3** — a **delivery gap at the
+  orchestrator→worker harness seam, not a converter gap** — so no cold
+  session ever saw the signal. T4 continuity NULL again (the card was
+  never opened; both arms resumed via git); M1 to OFF on T2/T4, ON won
+  the T5 pair (216 vs 341); **M2 tie / M3 tie**; every ON session ended
+  `check --strict` RED. T5 ran v1 text (#181 unratified) + the v2
+  scripted facts (behavioral items precondition-NULL). In-budget max
+  1627; zero unrecoverable errors; zero reset-relaunches (family first —
+  the prepare-time permission smoke ran). **KF-8 trend at 6 rows: 1 PASS
+  / 5 FAIL.** Deviations verbatim in the run dir (OFF-T4 no-op-stub
+  harvest repoint; 7 self-corrected allowlist denials).
 - **The F-5 RULING is DELIVERED — Reading A (strict), 2026-07-10**
   (ORDER 011, Q-0262.1; `bench/results/cold-start/f5-ruling-order-011.md`,
   PR #128): runs 2–3 stand as un-caveated FAILs (immutable rows
@@ -409,12 +398,13 @@ still renders from superbot's committed `console.json`. Exact steps:
 on the next touch and never accretes here; adopted from the groomed-ideas-1
 ⟲ review, implemented at the run close-out.)*
 
-**→ Post-run-5 (2026-07-11):** B1 run-5 FIRED and RECORDED (FAIL, row 5,
-PR #163) — no B-bench is queued-and-runnable (run-6 needs the P4 loop;
-B2/B3/B4 need OWNER-ACTION 6). Top buildable: the SessionStart
-handoff-push idea (next-boot §0 item 1). T5 redesign awaits a daytime
-`do-not-automerge` PR (pin path); the rest is owner-gated (OWNER-ACTION
-2–12 in `control/status.md`).
+**→ Post-run-6 (2026-07-11):** B1 run-6 FIRED and RECORDED (FAIL, row 6,
+PR #201) — the handoff-push validation returned precondition-NULL: the
+push never reaches the measured worker (orchestrator→worker delivery
+gap). Top buildable: close that delivery gap (or re-shape the bench arm
+so the measured session IS the hook-receiving session), then re-validate.
+B2/B3/B4 still need OWNER-ACTION 6; T5 v2 awaits the #181 click; the rest
+is owner-gated (OWNER-ACTION 2–13 in `control/status.md`).
 
 ### Owner gates — each with its one-line unblock
 
@@ -422,8 +412,8 @@ handoff-push idea (next-boot §0 item 1). T5 redesign awaits a daytime
 D-0005; #26/#49 owner-merged 2026-07-10.)*
 
 1. ✅ **Rubric F-5 ruling — RESOLVED 2026-07-10: Reading A** (ORDER 011,
-   Q-0262.1): runs 2–3 un-caveated FAILs; B-benches unpaused (run-5
-   fired 2026-07-11 → **1 PASS / 4 FAIL** at 5 rows).
+   Q-0262.1): runs 2–3 un-caveated FAILs; B-benches unpaused (runs 5–6
+   fired 2026-07-11 → **1 PASS / 5 FAIL** at 6 rows).
 2. **👤 Ratify or veto PL-010 (#22)** — the `feature build` task-class
    ruling. ⚑ **#22 merged mechanically, not by review** (label-race
    incident — timeline in the #22 comment; fresh-label guard deployed).

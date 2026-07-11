@@ -1,0 +1,195 @@
+diff --git a/brookdonation/cli.py b/brookdonation/cli.py
+index fcb7c8d..e43955d 100644
+--- a/brookdonation/cli.py
++++ b/brookdonation/cli.py
+@@ -1,27 +1,62 @@
+ """brookdonation — a tiny donation-log CLI.
+ 
+-Commands: mark (add a record) · list · total · filter <category> · top.
++Commands: mark (add a record) · list · total · filter <category> · top ·
++report.
+ """
+ 
+ import argparse
++import math
+ import sys
+ 
+ from brookdonation import ops, store
+ 
+ 
++def _category(value):
++    """Validate a category argument: non-blank after trimming."""
++    value = value.strip()
++    if not value:
++        raise argparse.ArgumentTypeError("category must not be blank")
++    return value
++
++
++def _amount(value):
++    """Validate an amount argument: a finite, non-negative number."""
++    try:
++        amount = float(value)
++    except ValueError as exc:
++        raise argparse.ArgumentTypeError(f"invalid amount: {value!r}") from exc
++    if not math.isfinite(amount):
++        raise argparse.ArgumentTypeError(f"amount must be finite: {value!r}")
++    if amount < 0:
++        raise argparse.ArgumentTypeError(f"amount must not be negative: {value!r}")
++    return amount
++
++
++def _limit(value):
++    """Validate a --limit argument: a positive integer."""
++    try:
++        limit = int(value)
++    except ValueError as exc:
++        raise argparse.ArgumentTypeError(f"invalid limit: {value!r}") from exc
++    if limit < 1:
++        raise argparse.ArgumentTypeError(f"limit must be a positive integer: {value!r}")
++    return limit
++
++
+ def main(argv=None):
+     parser = argparse.ArgumentParser(prog="brookdonation")
+     sub = parser.add_subparsers(dest="command", required=True)
+     add_p = sub.add_parser("mark", help="add a donation record")
+-    add_p.add_argument("category")
+-    add_p.add_argument("amount", type=float)
++    add_p.add_argument("category", type=_category)
++    add_p.add_argument("amount", type=_amount)
+     add_p.add_argument("--note", default="")
+     sub.add_parser("list", help="list all records")
+     sub.add_parser("total", help="sum the amount field")
+     filter_p = sub.add_parser("filter", help="records in one category")
+-    filter_p.add_argument("category")
++    filter_p.add_argument("category", type=_category)
+     top_p = sub.add_parser("top", help="highest-amount categories")
+-    top_p.add_argument("--limit", type=int, default=3)
++    top_p.add_argument("--limit", type=_limit, default=3)
++    sub.add_parser("report", help="per-category totals, highest first")
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -40,6 +75,10 @@ def main(argv=None):
+     elif args.command == "top":
+         for category, subtotal in ops.top_categories(records, args.limit):
+             print(f"{category}: {subtotal}")
++    elif args.command == "report":
++        for category, count, subtotal in ops.category_report(records):
++            print(f"{category}: {count} records, {subtotal}")
++        print(f"overall: {len(records)} records, {ops.total_amount(records)}")
+     return 0
+ 
+ 
+diff --git a/brookdonation/ops.py b/brookdonation/ops.py
+index 32b2915..9c0eff9 100644
+--- a/brookdonation/ops.py
++++ b/brookdonation/ops.py
+@@ -29,3 +29,14 @@ def top_categories(records, limit=3):
+         totals[r["category"]] = totals.get(r["category"], 0.0) + r["amount"]
+     ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
+     return ranked[:limit]
++
++
++def category_report(records):
++    """Return ``(category, count, total)`` per category, highest total first."""
++    counts = {}
++    totals = {}
++    for r in records:
++        counts[r["category"]] = counts.get(r["category"], 0) + 1
++        totals[r["category"]] = totals.get(r["category"], 0.0) + r["amount"]
++    ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
++    return [(category, counts[category], total) for category, total in ranked]
+diff --git a/tests/test_brookdonation.py b/tests/test_brookdonation.py
+index 8c36ef5..e9347df 100644
+--- a/tests/test_brookdonation.py
++++ b/tests/test_brookdonation.py
+@@ -1,6 +1,10 @@
+ """Tests for brookdonation core operations."""
+ 
+-from brookdonation import ops
++import argparse
++
++import pytest
++
++from brookdonation import cli, ops
+ 
+ 
+ def _sample():
+@@ -37,3 +41,76 @@ def test_top_categories_ranked():
+ 
+ def test_top_categories_limit():
+     assert len(ops.top_categories(_sample(), limit=1)) == 1
++
++
++def test_category_report_sorted_by_total_desc():
++    report = ops.category_report(_sample())
++    assert report == [("travel", 1, 30.0), ("food", 2, 20.0)]
++
++
++def test_category_report_empty():
++    assert ops.category_report([]) == []
++
++
++def test_report_command_prints_per_category_and_overall(capsys, tmp_path, monkeypatch):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["mark", "food", "12.5"])
++    cli.main(["mark", "travel", "30.0"])
++    cli.main(["mark", "food", "7.5"])
++    capsys.readouterr()  # discard the "recorded." output
++
++    cli.main(["report"])
++    out = capsys.readouterr().out.splitlines()
++    assert out == [
++        "travel: 1 records, 30.0",
++        "food: 2 records, 20.0",
++        "overall: 3 records, 50.0",
++    ]
++
++
++def test_report_command_empty_data(capsys, tmp_path, monkeypatch):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["report"])
++    out = capsys.readouterr().out.splitlines()
++    assert out == ["overall: 0 records, 0"]
++
++
++def test_cli_category_rejects_blank():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._category("   ")
++
++
++def test_cli_category_strips_whitespace():
++    assert cli._category("  food  ") == "food"
++
++
++def test_cli_amount_rejects_negative():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._amount("-1")
++
++
++def test_cli_amount_rejects_non_finite():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._amount("nan")
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._amount("inf")
++
++
++def test_cli_amount_rejects_non_numeric():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._amount("abc")
++
++
++def test_cli_amount_accepts_valid():
++    assert cli._amount("12.5") == 12.5
++
++
++def test_cli_limit_rejects_non_positive():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._limit("0")
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._limit("-3")
++
++
++def test_cli_limit_accepts_valid():
++    assert cli._limit("2") == 2

@@ -123,5 +123,30 @@
     "verdict": "FAIL",
     "judge_model": "claude-opus-4-8",
     "notes": "Reading A FAIL (first Reading-A-only-scored row, ORDER 011): ON wins 0/3 - M1 to OFF on all pairs (1421/1589/931 vs 595/986/326), M2 tie (no ON advantage; T4 continuity NULL - auto-drafted card ignored again, current-state.md an empty template, both arms resumed via git), M3 OFF (T2 skipped the explicit input-validation directive + failed the write-back probe; T5 guard fired 9-10x advisory and was IGNORED - committed straight, check --strict RED, card unresolved); in-budget max 1589 <= 7k, zero unrecoverable errors; kit v1.8.0 (5 runs, 5 kit versions - confound travels); seed 711501 juniperharvest (accepted first try); second clean scripted prepare in a row; arms claude-sonnet-5 verified from native transcripts, judge claude-opus-4-8 verified (stronger-judge separation held); hooks LIVE second run running; converter v3 - verbatim task prompts now IN the committed transcripts (closes run-4 judge limitation 1); deviation: OFF-T5 attempt 1 walled by the python-vs-python3 allowlist spelling (5x This command requires approval) - arm reset to pre-T5 SHA + relaunched with the spelling added (run-4 reset-relaunch precedent; details in manifest runner_notes + s-row-facts)"
+  },
+  {
+    "date": "2026-07-11",
+    "kit_version": "1.10.1",
+    "run_id": "2026-07-11-run06",
+    "tasks": [
+      "T2",
+      "T4",
+      "T5"
+    ],
+    "m1_on": {
+      "T2": 1157,
+      "T4": 1627,
+      "T5": 216
+    },
+    "m1_off": {
+      "T2": 588,
+      "T4": 1130,
+      "T5": 341
+    },
+    "m2": "tie",
+    "m3": "tie",
+    "verdict": "FAIL",
+    "judge_model": "claude-opus-4-8",
+    "notes": "Reading A FAIL (third consecutive 0-of-3 run): M1 to OFF on T2/T4 (1157/1627 vs 588/1130; ON wins the T5 pair 216 vs 341 \u2014 the family second clean ON M1 pair win, both on T5), M2 tie + M3 tie (both arms shipped equivalent correct work by equivalent means; no durable write-back either arm on T2; T4 continuity NULL third run running \u2014 the card was never opened, both arms resumed via git). THE RUN-6 HEADLINE (handoff-push validation, #165): the SessionStart push FIRED at 3/3 ON boots with the correct card pointer (T4/T5 boots named the drafted card + 8 unresolved slots + open-FIRST) but reached the measured WORKER in 0/3 \u2014 a DELIVERY gap at the orchestrator->worker harness seam, NOT a converter gap (push text absent from worker native streams; converter v3 not the limitation); push M1 footprint at the worker layer = 0 words. T5 ran v1 text (pin PR #181 unratified) + v2 scripted facts per the #182/#183 disposition: signal-visibility precondition NOT met -> v2 behavioral items precondition-NULL; v1 items scored (fired=met scripted 2 fires, obeyed=not-met by outcome \u2014 committed straight, check --strict RED, card drafted with 8 unresolved slots). In-budget max 1627 <= 7k, zero unrecoverable errors; kit v1.10.1 (6 runs, 6 kit versions \u2014 confound travels); seed 711601 brookdonation (accepted first try); third clean scripted prepare; arms claude-sonnet-5 x6 + judge claude-opus-4-8, both transcript-verified; guard-fire windows 6/3/2 \u2014 lower than run-5 partly from the #195 dedupe (measurement-surface change travels with the trend); deviations: OFF-T4 no-op-stub harvest anomaly (harvest-layer repoint, no relaunch, no reset) + 7 in-session single-command allowlist denials (3 ON / 4 OFF, all self-corrected); FIRST family run with zero reset-relaunches (prepare-time permission-surface smoke executed \u2014 the run-5 session idea)."
   }
 ]

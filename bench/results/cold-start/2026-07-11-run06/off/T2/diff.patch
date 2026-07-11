@@ -1,0 +1,239 @@
+diff --git a/README.md b/README.md
+index b576875..25f3c79 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,10 @@
+ 
+ A tiny donation-log CLI: `mark` records with a category and
+ amount, then `list`, `total`, `filter <category>` (case-insensitive),
+-and `top` them.
++`top`, and `report` them.
++
++`report` prints one line per category (`<category>: <count> records,
++<total>`), sorted by total highest first, followed by an
++`overall: <count> records, <total>` line.
+ 
+ Run the tests with `python3 -m pytest tests/`.
+diff --git a/brookdonation/cli.py b/brookdonation/cli.py
+index fcb7c8d..52edfd8 100644
+--- a/brookdonation/cli.py
++++ b/brookdonation/cli.py
+@@ -1,6 +1,7 @@
+ """brookdonation — a tiny donation-log CLI.
+ 
+-Commands: mark (add a record) · list · total · filter <category> · top.
++Commands: mark (add a record) · list · total · filter <category> · top ·
++report.
+ """
+ 
+ import argparse
+@@ -22,24 +23,32 @@ def main(argv=None):
+     filter_p.add_argument("category")
+     top_p = sub.add_parser("top", help="highest-amount categories")
+     top_p.add_argument("--limit", type=int, default=3)
++    sub.add_parser("report", help="per-category totals, highest total first")
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+-    if args.command == "mark":
+-        ops.add_record(records, args.category, args.amount, args.note)
+-        store.save_records(records)
+-        print("recorded.")
+-    elif args.command == "list":
+-        for r in records:
+-            print(f"{r['category']}: {r['amount']} {r['note']}".rstrip())
+-    elif args.command == "total":
+-        print(ops.total_amount(records))
+-    elif args.command == "filter":
+-        for r in ops.filter_by_category(records, args.category):
+-            print(f"{r['category']}: {r['amount']}")
+-    elif args.command == "top":
+-        for category, subtotal in ops.top_categories(records, args.limit):
+-            print(f"{category}: {subtotal}")
++    try:
++        if args.command == "mark":
++            ops.add_record(records, args.category, args.amount, args.note)
++            store.save_records(records)
++            print("recorded.")
++        elif args.command == "list":
++            for r in records:
++                print(f"{r['category']}: {r['amount']} {r['note']}".rstrip())
++        elif args.command == "total":
++            print(ops.total_amount(records))
++        elif args.command == "filter":
++            for r in ops.filter_by_category(records, args.category):
++                print(f"{r['category']}: {r['amount']}")
++        elif args.command == "top":
++            for category, subtotal in ops.top_categories(records, args.limit):
++                print(f"{category}: {subtotal}")
++        elif args.command == "report":
++            for category, count, total in ops.category_report(records):
++                print(f"{category}: {count} records, {total}")
++            print(f"overall: {len(records)} records, {ops.total_amount(records)}")
++    except ValueError as exc:
++        parser.error(str(exc))
+     return 0
+ 
+ 
+diff --git a/brookdonation/ops.py b/brookdonation/ops.py
+index 32b2915..d20b306 100644
+--- a/brookdonation/ops.py
++++ b/brookdonation/ops.py
+@@ -1,11 +1,29 @@
+ """Core operations over donation records."""
+ 
++import math
++
++
++def _validate_category(category):
++    """Return ``category`` stripped, or raise if it is blank."""
++    category = (category or "").strip()
++    if not category:
++        raise ValueError("category must not be empty")
++    return category
++
++
++def _validate_amount(amount):
++    """Return ``amount`` as a finite float, or raise if it is not."""
++    amount = float(amount)
++    if not math.isfinite(amount):
++        raise ValueError("amount must be a finite number")
++    return amount
++
+ 
+ def add_record(records, category, amount, note=""):
+     """Append a donation record and return it."""
+     record = {
+-        "category": category,
+-        "amount": float(amount),
++        "category": _validate_category(category),
++        "amount": _validate_amount(amount),
+         "note": note,
+     }
+     records.append(record)
+@@ -19,13 +37,28 @@ def total_amount(records):
+ 
+ def filter_by_category(records, category):
+     """Return records whose category matches (case-insensitive)."""
++    category = _validate_category(category)
+     return [r for r in records if r["category"] == category]
+ 
+ 
+ def top_categories(records, limit=3):
+     """Return the ``limit`` categories with the highest summed amount."""
++    if limit <= 0:
++        raise ValueError("limit must be a positive integer")
+     totals = {}
+     for r in records:
+         totals[r["category"]] = totals.get(r["category"], 0.0) + r["amount"]
+     ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
+     return ranked[:limit]
++
++
++def category_report(records):
++    """Return ``(category, count, total)`` tuples, highest total first."""
++    totals = {}
++    counts = {}
++    for r in records:
++        category = r["category"]
++        totals[category] = totals.get(category, 0.0) + r["amount"]
++        counts[category] = counts.get(category, 0) + 1
++    ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
++    return [(category, counts[category], total) for category, total in ranked]
+diff --git a/tests/test_brookdonation.py b/tests/test_brookdonation.py
+index 8c36ef5..0ee958d 100644
+--- a/tests/test_brookdonation.py
++++ b/tests/test_brookdonation.py
+@@ -1,6 +1,10 @@
+ """Tests for brookdonation core operations."""
+ 
+-from brookdonation import ops
++import math
++
++import pytest
++
++from brookdonation import cli, ops
+ 
+ 
+ def _sample():
+@@ -37,3 +41,80 @@ def test_top_categories_ranked():
+ 
+ def test_top_categories_limit():
+     assert len(ops.top_categories(_sample(), limit=1)) == 1
++
++
++def test_top_categories_rejects_non_positive_limit():
++    with pytest.raises(ValueError):
++        ops.top_categories(_sample(), limit=0)
++
++
++def test_add_record_rejects_empty_category():
++    with pytest.raises(ValueError):
++        ops.add_record([], "  ", 1.0)
++
++
++def test_add_record_rejects_non_finite_amount():
++    with pytest.raises(ValueError):
++        ops.add_record([], "food", math.inf)
++
++
++def test_add_record_strips_category():
++    records = []
++    record = ops.add_record(records, "  food  ", 1.0)
++    assert record["category"] == "food"
++
++
++def test_filter_by_category_rejects_empty_category():
++    with pytest.raises(ValueError):
++        ops.filter_by_category(_sample(), "")
++
++
++def test_category_report_ranked_by_total():
++    report = ops.category_report(_sample())
++    assert report[0] == ("travel", 1, 30.0)
++    assert report[1] == ("food", 2, 20.0)
++
++
++def test_category_report_highest_total_first():
++    report = ops.category_report(_sample())
++    totals = [total for _, _, total in report]
++    assert totals == sorted(totals, reverse=True)
++
++
++def test_category_report_counts_and_totals():
++    report = {category: (count, total) for category, count, total in ops.category_report(_sample())}
++    assert report["food"] == (2, 20.0)
++    assert report["travel"] == (1, 30.0)
++
++
++def test_category_report_empty_data():
++    assert ops.category_report([]) == []
++
++
++def test_report_command_output(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["mark", "food", "12.5", "--note", "lunch"])
++    cli.main(["mark", "travel", "30.0"])
++    cli.main(["mark", "food", "7.5"])
++    capsys.readouterr()  # discard the three "recorded." lines
++
++    cli.main(["report"])
++    out = capsys.readouterr().out
++    assert out.splitlines() == [
++        "travel: 1 records, 30.0",
++        "food: 2 records, 20.0",
++        "overall: 3 records, 50.0",
++    ]
++
++
++def test_report_command_empty_data(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["report"])
++    out = capsys.readouterr().out
++    assert out.splitlines() == ["overall: 0 records, 0"]
++
++
++def test_mark_command_rejects_empty_category(tmp_path, monkeypatch):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit):
++        cli.main(["mark", "  ", "1.0"])

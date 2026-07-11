@@ -1,0 +1,49 @@
+{
+  "run_id": "2026-07-11-run06",
+  "date": "2026-07-11",
+  "seed": 711601,
+  "tasks": [
+    "T2",
+    "T4",
+    "T5"
+  ],
+  "wire_enforcement": true,
+  "kit": "/home/user/substrate-kit/dist/bootstrap.py",
+  "arms": {
+    "on": "/tmp/claude-0/-home-user/b9f268bb-5687-5bbe-9f36-b3653f6c7302/scratchpad/run06/2026-07-11-run06/on/repo",
+    "off": "/tmp/claude-0/-home-user/b9f268bb-5687-5bbe-9f36-b3653f6c7302/scratchpad/run06/2026-07-11-run06/off/repo"
+  },
+  "task_prompts": {
+    "T2": "/home/user/substrate-kit/bench/tasks/T2.md",
+    "T4": "/home/user/substrate-kit/bench/tasks/T4.md",
+    "T5": "/home/user/substrate-kit/bench/tasks/T5.md"
+  },
+  "rubric": "/home/user/substrate-kit/bench/rubric/cold-start-rubric.md",
+  "smoke": [
+    "seed suite (on): green",
+    "seed suite (off): green",
+    "engage: answered 13 slots (seed-derived, deterministic)",
+    "engage: render --live",
+    "engage: enforcement already wired (adopt --wire-enforcement)",
+    "engage: session card 2026-07-11-adoption.md",
+    "engage: control/status.md heartbeat",
+    "engage: committed",
+    "CONSTITUTION.md: present",
+    "docs/current-state.md: present",
+    ".sessions: present",
+    "check --strict exit=0"
+  ],
+  "runner_notes": [
+    "THIRD CLEAN SCRIPTED PREPARE in a row: the #95 _engage_on_arm arc completed end-to-end first try on kit v1.10.1 - 13 deterministic slots, render --live, enforcement pre-wired (adopt --wire-enforcement), adoption card, heartbeat, commit; smoke green, check --strict exit=0; manifest written by prepare itself.",
+    "Seed 711601 -> brookdonation. Accepted first try. Fresh surface vs run-1 (709101 galereading), run-2 (424243 cedarvisit), run-3 (710301 northride), run-4 (710402 harborride), run-5 (711501 juniperharvest).",
+    "Spawn mechanism (run-4/5 precedent): headless `claude -p` (CLI 2.1.207) in the arm repo; the environment CLI is a remote-orchestrator entrypoint delegating to exactly ONE worker agent - the worker IS the measured cold session; native subagent transcript harvested from the harness project store and converted by a run-6 rebuild of convert_native.py (v3 semantics: is_error carried through, user text messages emitted as events, PLUS hook-injected model-visible content captured if present in the worker stream - none was, see the signal-visibility note). Prompt fidelity verified scripted: the fenced task text is byte-identical to each worker's first user message, 6/6.",
+    "Models: arms claude-sonnet-5 (verified from every native worker transcript's model field, same model both arms, 6/6); judge model verified from the judge worker's native transcript and recorded in the row - stronger-judge separation per bench/README.md step 4.",
+    "Permission surface (identical both arms, all six sessions, fixed BEFORE any measured spawn): --permission-mode acceptEdits + allowedTools Bash(git add:*) Bash(git commit:*) Bash(python3 -m pytest:*) Bash(python -m pytest:*) - run-5's FINAL surface adopted a priori (both pytest spellings from the start), closing run-5's OFF-T5 spelling-wall class. NEW this run (run-5 session idea executed): a prepare-time permission-surface smoke - one trivial worker spawned in a THROWAWAY scratch repo (never the arms) exercising all four allowlisted command classes before any measured session; it passed, and ZERO harness-level walls occurred in the measured run - first run in the family with no reset-relaunch. In-session single-command auto-denials of out-of-allowlist Bash forms did occur (7 total: OFF-T2 x4, ON-T4 x1, OFF-T4 x1, ON-T5 x1 - piped xargs, cd/git -C, env-prefixed, heredoc forms), every one self-corrected with an allowed form; no stall, no relaunch; roughly arm-balanced (3 ON / 4 OFF).",
+    "SIGNAL-VISIBILITY (the run-6 headline scripted fact, v2 protocol recorded while T5 text stays v1 - PR #181 unratified): the v1.9.0+ SessionStart handoff-push FIRED at every ON boot (3/3) and carried the correct handoff each time (T2 boot: adoption card complete; T4 and T5 boots: '.sessions/2026-07-11-session.md - status: in-progress/drafted, 8 unresolved [[fill:]] slot(s)' + 'Open that card FIRST'), captured verbatim as SessionStart hook_success attachments in the ORCHESTRATOR session stream. BUT the push text reached the WORKER (the measured cold session) in ZERO of three sessions - the orchestrator->worker delegation seam does not forward SessionStart context, and SessionStart does not re-fire for subagents. Scripted greps: 'Session orientation'/'Handoff -' hits in native worker streams = 0/0/0; in orchestrator streams = 1 per boot, content verified. This is a DELIVERY gap at the harness seam, NOT a converter gap: the text is absent from the worker's native stream, so there is nothing for the converter to carry (run-6 spec measure 4 answered: converter v3 is fine; the push never got as far as the worker). Consequence per the v2 protocol: T5's behavioral items are precondition-NULL (no visible signal reached the session); v1 items are scored normally by the judge.",
+    "Handoff-read probe (the #165 card idea, made scripted): did the ON T4 worker open the pushed card path within its session? NO - 0 mentions of the card path in ON-T4's worker stream; its resume path was find -> Read source -> git log -> git show 4e756e4 -> docs/current-state.md (rendered empty template) -> docs/decisions.md/ideas. ON-T2's worker DID see the auto-drafted card path mid-session - via its own `git status` output (the orchestrator-layer Stop hook auto-drafted the card while the worker was mid-task) - and explicitly dismissed it in its final summary as 'unrelated pre-existing working-tree noise (.substrate/state.json, .sessions/2026-07-11-session.md, .substrate/guard-fires.jsonl)'. ON-T5's worker: 0 card mentions.",
+    "Hooks LIVE on the ON arm (third run in the family, advisory posture): SessionStart/PreToolUse/PostToolUse/Stop fired at the orchestrator layer; guard-fires.jsonl session windows: T2 6 fires (1 stance + 5 stop-advisory), T4 3 (stop-advisory), T5 2 (1 stop-advisory + 1 stance) - counts are lower than run-5's 14/16/9-10 largely because the #195 10-minute dedupe of identical verdict-less fires shipped in between (a measurement-surface change that travels with the trend). A 12th line (guard 'session-log') was appended by the RUNNER's own collect-time check --strict, not by any session - excluded from all windows.",
+    "Deviation - OFF-T4 harvest anomaly (harvest-layer only, no relaunch, no reset): the orchestrator layer spawned a second 4-entry 'no-op' stub subagent alongside the task worker, and the harvest script initially picked the stub by mtime. The arm repo was untouched by the stub (single task-worker commit 615d88f); the runner re-pointed the harvest at the task worker's transcript (agent-a7b7fa3a0b4a2c78b, first user message = the verbatim T4 task) and archived the stub next to it (native-noop-stub.jsonl). No fabricated approvals, no session relaunch, no arm reset - the measured session itself ran clean.",
+    "Runner checkpoints (run-4/5 protocol): only ON-T2 had anything to commit - the hook-auto-drafted card committed UNEDITED (5db1038 'T2 end state (runner checkpoint)'); harness noise (__pycache__/.pyc churn, hook-churned .substrate/state.json + guard-fires.jsonl) kept out of checkpoint commits but preserved on disk. The card at T4/T5 start is a scripted plant, not the T2 session's endorsed product.",
+    "Push M1 footprint (run-6 spec measure 3): the full SessionStart orientation at the T5-boot state is ~113 words (handoff section ~45 of them, capped-300-char excerpt discipline held). Because the push never reached the workers, it contributed ZERO words to any measured M1; scripted M1 stays a pure pull-cost measure this run. ON M1: T2 1157 / T4 1627 / T5 216; OFF: 588 / 1130 / 341 - ON wins the T5 pair (second clean ON M1 pair win in the family, both on T5), OFF wins T2/T4; max ON 1627 <= 7000 budget."
+  ]
+}
