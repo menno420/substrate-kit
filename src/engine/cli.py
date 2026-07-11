@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import tempfile
 from datetime import date
@@ -47,7 +48,12 @@ from engine.checks.check_owner_actions import check_owner_actions
 from engine.checks.check_status_current import check_status_current
 from engine.checks.check_orientation_budget import check_orientation_budget
 from engine.checks.check_seam_authority import check_seam_authority
-from engine.checks.check_session_log import check_log, latest_session_log
+from engine.checks.check_session_log import (
+    check_added_card,
+    check_log,
+    latest_session_log,
+    status_in_progress,
+)
 from engine.checks.check_setup_script import check_setup_script
 from engine.contextpack import generate_packs, load_pack_index
 from engine.currency import (
@@ -635,10 +641,21 @@ def cmd_check(
     *,
     require_session_log: bool = False,
     session_log: Path | None = None,
+    added_card: Path | None = None,
     status_only: bool = False,
     inbox_base: Path | None = None,
 ) -> int:
     """Run every hygiene checker against ``target``.
+
+    ``added_card`` (CLI ``--added-card``) names a session card the PR's diff
+    ADDS — the generated gate's advisory sentinel lane passes it so a
+    born-red heartbeat is still *grammar*-checked instead of exempted
+    entirely (the venture-lab #15 false-green class; see
+    :func:`engine.checks.check_session_log.check_added_card` for the
+    declared-status tiering). Findings ride the strict loop like any doc
+    finding and are never allowlistable (they are the session-gate seam);
+    a named file that does not exist is advisory-only — the gate derives
+    the path from the diff, so absence means nothing to judge.
 
     ``inbox_base`` (CLI ``--inbox-base``) names the merge-base version of
     ``control/inbox.md`` — extracted by CI in bash, because engine code never
@@ -787,6 +804,28 @@ def cmd_check(
     entries, allow_findings = load_allowlist(target, config.state_dir)
     doc_findings, suppressed = apply_allowlist(doc_findings, entries)
     doc_findings += allow_findings
+    # Added-card grammar lint (queued kit fix 1, the venture-lab #15
+    # false-green class): appended AFTER the allowlist pass on purpose —
+    # like the session-log gate it extends, it is never allowlistable.
+    if added_card is not None and not status_only:
+        card_path = (
+            added_card if added_card.is_absolute() else target / added_card
+        )
+        if card_path.is_file():
+            card_rel = (
+                str(card_path.relative_to(target))
+                if card_path.is_relative_to(target)
+                else str(card_path)
+            )
+            doc_findings += [
+                Finding(card_rel, "session-card-grammar", miss)
+                for miss in check_added_card(card_path, config.session_markers)
+            ]
+        else:
+            _emit(
+                f"check: --added-card {added_card} does not exist "
+                "(advisory — nothing to grammar-check).",
+            )
     if suppressed:
         _emit(
             f"check: {len(suppressed)} finding(s) suppressed by allowlist "
@@ -997,10 +1036,58 @@ def cmd_check(
             findings=[gate_finding],
         )
 
+    # Designed-hold signal (queued kit fix 4, the PL-006 observer-noise
+    # class): with parallel sessions, every born-red PR's mid-flight red CI
+    # draws "investigate this failure" pings from coordinators/observers —
+    # three live occurrences (#140/#144/#147 class, again on #153). When the
+    # ONLY thing holding the run red is a session card that itself DECLARES
+    # an in-progress/drafted Status, the red is the born-red discipline
+    # working as designed — say so, unmissably, in the failing output (and
+    # as a GitHub annotation when running in Actions) so an observer can
+    # tell a designed hold from a real defect without opening the job log's
+    # fine print. Any other finding alongside suppresses the banner: a
+    # partially-real failure must never be labelled "by design".
+    hold_is_designed = (
+        strict
+        and not doc_findings
+        and not log_absent_fails
+        and log is not None
+        and bool(log_missing)
+        and _card_declares_in_progress(log)
+    )
+    if hold_is_designed:
+        hold_rel = log.relative_to(target) if log.is_relative_to(target) else log
+        _emit(
+            f"check: HOLD (by design): session card {hold_rel} declares an "
+            "in-progress Status — the born-red session gate holds the merge "
+            "red until the card flips complete. This red is the designed "
+            "hold, not a defect; nothing to investigate.",
+        )
+        if os.environ.get("GITHUB_ACTIONS"):
+            _emit(
+                "::notice title=HOLD: session card in-progress (by design)::"
+                f"The born-red session gate is holding this red until {hold_rel} "
+                "flips complete. Designed hold — not a CI failure to "
+                "investigate.",
+            )
     if not doc_findings and not log_missing and not log_absent_fails:
         _emit("check: all checks passed.")
         return 0
     return 1 if strict else 0
+
+
+def _card_declares_in_progress(log: Path) -> bool:
+    """True when ``log``'s own Status badge carries an in-progress value.
+
+    The designed-hold banner's honesty condition (fix 4): the card must SAY
+    it is mid-flight — a card that claims ``complete`` but still reds is a
+    real defect and never gets the "by design" label. Unreadable → False
+    (never claim design intent on evidence that cannot be read).
+    """
+    try:
+        return status_in_progress(log.read_text(encoding="utf-8"))
+    except OSError:
+        return False
 
 
 def _require_state(
@@ -2034,6 +2121,18 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     check.add_argument(
+        "--added-card",
+        type=Path,
+        default=None,
+        help=(
+            "grammar-lint this session card as one newly ADDED by the PR "
+            "(the gate's advisory sentinel lane): born-red incompleteness "
+            "stays exempt, but a missing Status badge — or a card that "
+            "declares itself complete while missing its markers — reds "
+            "(the venture-lab #15 false-green class)"
+        ),
+    )
+    check.add_argument(
         "--status-only",
         action="store_true",
         help=(
@@ -2096,6 +2195,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.strict,
                 require_session_log=args.require_session_log,
                 session_log=args.session_log,
+                added_card=args.added_card,
                 status_only=args.status_only,
                 inbox_base=args.inbox_base,
             )

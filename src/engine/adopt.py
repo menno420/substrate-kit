@@ -683,6 +683,13 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         "        # session (venture-lab #14). Hold semantics may only\n"
         "        # tighten, never loosen, inside the PR that changes them;\n"
         "        # the escape is the normal one — flip the card complete.\n"
+        "        # The advisory lane is NOT a full exemption: --added-card\n"
+        "        # grammar-lints the added card (a missing Status badge, or\n"
+        "        # a card declaring itself complete while missing its\n"
+        "        # markers, reds) while born-red incompleteness stays\n"
+        "        # exempt — the venture-lab #15 class, where an ADDED card\n"
+        "        # merged green with malformed grammar and pre-reddened\n"
+        "        # every later bare `check --strict` run.\n"
         "        run: |\n"
         '          if [ -n "${{ github.base_ref }}" ]; then\n'
         '            range="origin/${{ github.base_ref }}...HEAD"\n'
@@ -709,9 +716,10 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         ' --session-log "$card"\n'
         "          elif [ -n \"$card\" ]; then\n"
         '            echo "card $card is newly ADDED by this PR (born-red heartbeat)'
-        ' — advisory sentinel gate"\n'
+        ' — advisory sentinel gate (card grammar still checked)"\n'
         f"            {interpreter} bootstrap.py check --strict --session-log "
-        f"{sessions_dir}/__born-red-card-added__.md\n"
+        f"{sessions_dir}/__born-red-card-added__.md"
+        ' --added-card "$card"\n'
         "          else\n"
         f"            {interpreter} bootstrap.py check --strict --session-log "
         f"{sessions_dir}/__no-card-in-diff__.md\n"
@@ -1079,6 +1087,83 @@ def _automerge_params(config: Config) -> tuple[list[str], str]:
     return [str(p) for p in patterns], context
 
 
+def _workflow_context_names(root: Path) -> set[str]:
+    """Collect plausible required-check context names from live workflows.
+
+    A workflow job's status-check context is its display ``name:`` when set,
+    else its job id — so both are collected, from every workflow under
+    ``.github/workflows/``. Line-based like :func:`_workflow_outline`
+    (stdlib-only, no YAML parser) and best-effort by design: the result only
+    ever decides whether to *emit an advisory report line*, never a gate.
+    Empty set = nothing judgeable (no workflows dir / no parseable jobs).
+    """
+    names: set[str] = set()
+    wf_dir = root / ".github" / "workflows"
+    if not wf_dir.is_dir():
+        return names
+    for wf_path in sorted(wf_dir.glob("*.yml")) + sorted(wf_dir.glob("*.yaml")):
+        try:
+            text = wf_path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        in_jobs = False
+        current: str | None = None
+        for raw in text.split("\n"):
+            line = raw.rstrip()
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            indent = len(line) - len(line.lstrip(" "))
+            if indent == 0:
+                in_jobs = stripped == "jobs:"
+                current = None
+                continue
+            if not in_jobs:
+                continue
+            if (
+                indent == 2
+                and stripped.endswith(":")
+                and not stripped.startswith("-")
+            ):
+                current = stripped[:-1]
+                names.add(current)
+                continue
+            if current is not None and indent == 4:
+                match = re.match(r"name:\s*(.+)$", stripped)
+                if match is not None:
+                    names.add(match.group(1).strip().strip("'\""))
+    return names
+
+
+def _required_context_advisory(root: Path, required_context: str) -> str | None:
+    """One advisory line when ``automerge.required_context`` looks wrong.
+
+    The websites class (queued kit fix 3): the planted config defaulted
+    ``required_context`` to ``substrate-gate`` while that repo's actual
+    required check is ``quality`` — a value the kit cannot *derive* at plant
+    time (which check is REQUIRED lives in the branch ruleset, owner-UI,
+    invisible in-tree), but can *validate* against what is visible: the job
+    names the repo's own workflows produce. Mismatch → one report line
+    naming the exact config override; nothing judgeable → silence (a fresh
+    adopt with no CI must not nag about a gate that isn't installed yet).
+    The knob stays informational-only either way — the enabler's
+    refuse-to-arm guard counts required contexts generically.
+    """
+    names = _workflow_context_names(root)
+    if not names or required_context in names:
+        return None
+    listed = ", ".join(f"'{name}'" for name in sorted(names))
+    return (
+        f"automerge.required_context '{required_context}' matches no job in "
+        f".github/workflows/ (contexts found: {listed}) — if this repo's "
+        "REQUIRED check has a different name, set substrate.config.json -> "
+        'automerge."required_context" to that exact context. The value '
+        "labels the repo-settings checklist + enabler log lines "
+        "(informational; the refuse-to-arm guard counts required contexts "
+        "generically)."
+    )
+
+
 def _repo_settings_checklist(required_context: str) -> list[str]:
     """Return the one-time repo-settings checklist (EAP §6.10, second half).
 
@@ -1095,11 +1180,117 @@ def _repo_settings_checklist(required_context: str) -> list[str]:
         "(a workflow cannot flip repo settings).",
         f"  2. Require the '{required_context}' status check on the default "
         "branch (Settings → Rules) — with NO required check, arming "
-        "auto-merge merges a PR instantly.",
+        "auto-merge merges a PR instantly. (If this repo's required check "
+        "has a different name, pin it via substrate.config.json -> "
+        'automerge."required_context" so this checklist and the enabler '
+        "logs name the right context.)",
         '  3. Optional: "Automatically delete head branches" + auto-update '
         "of PR branches (closes the merged-branch clutter and the "
         "green-behind stall classes).",
     ]
+
+
+# Search-hygiene plant (queued kit fix 5 — bench run-5 judge limitation 5):
+# the ~12k-line vendored bootstrap.py + the <state_dir>/backup/ dist copies
+# dominate repo-wide search in adopter repos (a code grep surfaces hundreds
+# of engine hits before the repo's own sources). The guidance half shipped
+# with the planted CLAUDE.md search-hygiene note (#165); this is the
+# mechanical half: `.ignore` removes both from ripgrep-family tools by
+# default (`rg -u`/`--no-ignore` still reaches them deliberately; plain
+# `grep -r` has no ignore protocol and stays guidance-only), and
+# `.gitattributes` linguist-generated hints collapse them in GitHub diffs
+# and language stats. Both surfaces are MERGED, never clobbered: the kit
+# only ever appends entries that are missing, under one marker comment.
+SEARCH_HYGIENE_MARKER = (
+    "# substrate-kit search hygiene (planted by adopt/upgrade; the kit only "
+    "ever APPENDS missing entries — existing content above is host-owned)"
+)
+
+
+def _search_hygiene_surfaces(
+    config: Config,
+    vendored_relpath: str,
+) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """Return the (file, entries) plan for the search-hygiene plant.
+
+    Entries are root-anchored (leading ``/``) so only the vendored file and
+    the state-dir backup bank match — never a same-named file deeper in the
+    host tree. An absolute ``vendored_relpath`` (the no-vendored-copy
+    fallback shapes) contributes no bootstrap entry: there is nothing
+    in-repo to hide.
+    """
+    state_dir = config.state_dir.strip("/")
+    bootstrap_entry = None
+    if vendored_relpath and not Path(vendored_relpath).is_absolute():
+        bootstrap_entry = "/" + vendored_relpath.lstrip("/")
+    ignore_entries = tuple(
+        entry
+        for entry in (bootstrap_entry, f"/{state_dir}/backup/")
+        if entry is not None
+    )
+    attr_entries = tuple(
+        f"{pattern} linguist-generated=true"
+        for pattern in (bootstrap_entry, f"/{state_dir}/backup/**")
+        if pattern is not None
+    )
+    return ((".ignore", ignore_entries), (".gitattributes", attr_entries))
+
+
+def _plant_search_hygiene(
+    root: Path,
+    config: Config,
+    vendored_relpath: str,
+    report: list[str],
+) -> None:
+    """Merge the search-hygiene entries into ``.ignore``/``.gitattributes``.
+
+    Append-only merge (the clobber hazard is real: a host `.gitattributes`
+    or `.ignore` carries host policy): existing lines are preserved
+    byte-for-byte, already-present entries are never duplicated (idempotent
+    across adopt/upgrade passes), and appended entries sit under one marker
+    comment naming their provenance. Unreadable file → skip + report,
+    never destroy.
+    """
+    for relpath, entries in _search_hygiene_surfaces(config, vendored_relpath):
+        if not entries:
+            continue
+        path = root / relpath
+        existing = ""
+        if path.is_file():
+            try:
+                existing = path.read_text(encoding="utf-8")
+            except OSError:
+                report.append(
+                    f"skipped: {relpath} (unreadable — left untouched; "
+                    "search-hygiene entries not merged)",
+                )
+                continue
+        present = {line.strip() for line in existing.splitlines()}
+        missing = [entry for entry in entries if entry not in present]
+        if not missing:
+            report.append(
+                f"kept: {relpath} (search-hygiene entries already present)",
+            )
+            continue
+        chunk = ""
+        if existing:
+            if not existing.endswith("\n"):
+                chunk += "\n"
+            chunk += "\n"
+        if SEARCH_HYGIENE_MARKER not in present:
+            chunk += SEARCH_HYGIENE_MARKER + "\n"
+        chunk += "\n".join(missing) + "\n"
+        atomic_write_text(path, existing + chunk)
+        noun = "entry" if len(missing) == 1 else "entries"
+        if existing:
+            report.append(
+                f"merged: {relpath} ({len(missing)} search-hygiene {noun} "
+                "appended; existing content preserved)",
+            )
+        else:
+            report.append(
+                f"planted: {relpath} ({len(missing)} search-hygiene {noun})",
+            )
 
 
 def adopt(
@@ -1209,6 +1400,10 @@ def adopt(
     project_name = context.get("project_name") or root.name
     skeleton = pack_index_skeleton(project_name)
     _adopt_plant(root / "project.index.json", "project.index.json", skeleton, report)
+
+    # (3b) Search hygiene (queued kit fix 5): keep the vendored dist + the
+    # backup bank out of repo-wide search — merged, never clobbered.
+    _plant_search_hygiene(root, config, bootstrap_path, report)
 
     # (4) Stage the .claude material under <state_dir> (regenerated each run).
     state_base = root / config.state_dir
@@ -1340,6 +1535,12 @@ def adopt(
         # repo settings exist — say so in the adopt output itself, every
         # pass (the checklist is idempotent guidance, not a nag).
         report.extend(_repo_settings_checklist(enabler_context))
+    # required_context sanity (queued kit fix 3, the websites class): after
+    # the gate/enabler regens above so a just-installed live gate counts as
+    # a matching context. Advisory line only — see the helper's docstring.
+    context_advisory = _required_context_advisory(root, enabler_context)
+    if context_advisory is not None:
+        report.append(context_advisory)
 
     # (6b2) Lane-aware adopt: declare the just-planted lane heartbeat so the
     # status gate validates it (config mutated in place — cmd_adopt's

@@ -1305,3 +1305,137 @@ def test_gate_holds_added_card_to_locked_door_when_pr_regenerates_the_gate():
     )
     # The plain added-card advisory path survives for ordinary PRs.
     assert "__born-red-card-added__.md" in text
+
+
+# ---------------------------------------------------------------------------
+# Queued kit fixes batch 2 (2026-07-11)
+# ---------------------------------------------------------------------------
+
+
+def test_live_ci_workflow_grammar_checks_added_cards():
+    # Fix 1 (venture-lab #15 false-green class): the advisory sentinel lane
+    # still passes the absent sentinel as --session-log (born-red exemption)
+    # but now grammar-lints the added card via --added-card.
+    text = live_ci_workflow()
+    assert '--session-log .sessions/__born-red-card-added__.md --added-card "$card"' in text
+    assert "card grammar still checked" in text
+    custom = live_ci_workflow(sessions_dir="journal")
+    assert '--session-log journal/__born-red-card-added__.md --added-card "$card"' in custom
+
+
+def test_workflow_context_names_reads_job_ids_and_display_names(tmp_path):
+    from engine.adopt import _workflow_context_names
+
+    wf = tmp_path / ".github" / "workflows"
+    wf.mkdir(parents=True)
+    (wf / "ci.yml").write_text(
+        "name: CI\non: [push]\njobs:\n  quality:\n    name: quality-display\n"
+        "    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n",
+        encoding="utf-8",
+    )
+    names = _workflow_context_names(tmp_path)
+    assert "quality" in names
+    assert "quality-display" in names
+    # No workflows dir → nothing judgeable.
+    assert _workflow_context_names(tmp_path / "elsewhere") == set()
+
+
+def test_required_context_advisory_fires_on_the_websites_shape(tmp_path):
+    # Fix 3: config says 'substrate-gate' while the repo's own workflows only
+    # produce a 'quality' context — one advisory line naming the override.
+    from engine.adopt import _required_context_advisory
+
+    wf = tmp_path / ".github" / "workflows"
+    wf.mkdir(parents=True)
+    (wf / "quality.yml").write_text(
+        "name: Q\non: [push]\njobs:\n  quality:\n    runs-on: ubuntu-latest\n"
+        "    steps:\n      - run: echo hi\n",
+        encoding="utf-8",
+    )
+    line = _required_context_advisory(tmp_path, "substrate-gate")
+    assert line is not None
+    assert "'quality'" in line
+    assert "required_context" in line
+    # Matching context (job id) → silence.
+    assert _required_context_advisory(tmp_path, "quality") is None
+    # Nothing judgeable (no workflows) → silence, never a guess.
+    assert _required_context_advisory(tmp_path / "empty", "substrate-gate") is None
+
+
+def test_adopt_reports_required_context_mismatch(tmp_path):
+    # Adopt-level: a host with pre-existing CI whose contexts don't include
+    # the configured required_context gets the advisory in the report.
+    root = tmp_path / "repo"
+    wf = root / ".github" / "workflows"
+    wf.mkdir(parents=True)
+    (wf / "quality.yml").write_text(
+        "name: Q\non: [push]\njobs:\n  quality:\n    runs-on: ubuntu-latest\n"
+        "    steps:\n      - run: echo hi\n",
+        encoding="utf-8",
+    )
+    config = Config()
+    backend = _make_backend(root, config)
+    lines = adopt(root, config, backend, kit_root=tmp_path / "kit")
+    assert any("matches no job in .github/workflows/" in ln for ln in lines)
+
+
+def test_wire_enforcement_adopt_has_no_context_mismatch(tmp_path):
+    # The installed live gate itself produces the default 'substrate-gate'
+    # context, so a --wire-enforcement adopt must stay silent.
+    root = tmp_path / "repo"
+    config = Config()
+    backend = _make_backend(root, config)
+    lines = adopt(
+        root, config, backend, kit_root=tmp_path / "kit", wire_enforcement=True
+    )
+    assert not any("matches no job" in ln for ln in lines)
+
+
+def test_adopt_plants_search_hygiene_surfaces(tmp_path):
+    # Fix 5 (bench run-5 judge limitation 5, mechanical half): adopt plants
+    # root-anchored .ignore + .gitattributes entries for the vendored dist
+    # and the backup bank.
+    root, config, lines = _adopt_into(tmp_path)
+    ignore = (root / ".ignore").read_text(encoding="utf-8")
+    assert "/bootstrap.py" in ignore
+    assert f"/{config.state_dir.strip('/')}/backup/" in ignore
+    attrs = (root / ".gitattributes").read_text(encoding="utf-8")
+    assert "/bootstrap.py linguist-generated=true" in attrs
+    assert (
+        f"/{config.state_dir.strip('/')}/backup/** linguist-generated=true"
+        in attrs
+    )
+    assert any(".ignore" in ln and "search-hygiene" in ln for ln in lines)
+
+
+def test_search_hygiene_merges_never_clobbers(tmp_path):
+    # A host .ignore/.gitattributes carries host policy: existing lines must
+    # survive byte-for-byte; the kit only appends what is missing.
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / ".ignore").write_text("node_modules/\n", encoding="utf-8")
+    (root / ".gitattributes").write_text(
+        "*.png binary\n/bootstrap.py linguist-generated=true\n",
+        encoding="utf-8",
+    )
+    config = Config()
+    backend = _make_backend(root, config)
+    adopt(root, config, backend, kit_root=tmp_path / "kit")
+    ignore = (root / ".ignore").read_text(encoding="utf-8")
+    assert ignore.startswith("node_modules/\n")
+    assert "/bootstrap.py" in ignore
+    attrs = (root / ".gitattributes").read_text(encoding="utf-8")
+    assert attrs.startswith("*.png binary\n")
+    # The already-present entry is not duplicated.
+    assert attrs.count("/bootstrap.py linguist-generated=true") == 1
+
+
+def test_search_hygiene_is_idempotent_across_passes(tmp_path):
+    root, config, _ = _adopt_into(tmp_path)
+    before_ignore = (root / ".ignore").read_text(encoding="utf-8")
+    before_attrs = (root / ".gitattributes").read_text(encoding="utf-8")
+    backend = JsonStateBackend(root / config.state_dir / "state.json")
+    lines = adopt(root, config, backend, kit_root=tmp_path / "kit")
+    assert (root / ".ignore").read_text(encoding="utf-8") == before_ignore
+    assert (root / ".gitattributes").read_text(encoding="utf-8") == before_attrs
+    assert any("already present" in ln for ln in lines)

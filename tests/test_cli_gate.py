@@ -231,3 +231,159 @@ def test_status_only_ignores_non_status_findings(tmp_path):
         )
         == 1
     )
+
+
+# ---------------------------------------------------------------------------
+# Added-card grammar lint — `check --added-card` (queued kit fix 1,
+# the venture-lab #15 false-green class)
+# ---------------------------------------------------------------------------
+
+
+_SENTINEL = Path(".sessions") / "__born-red-card-added__.md"
+
+
+def test_added_card_born_red_heartbeat_stays_green(tmp_path):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    # The generated gate's advisory lane: absent sentinel as --session-log,
+    # the ADDED card via --added-card. A well-badged in-progress card is the
+    # designed born-red state — no red.
+    card = root / config.sessions_dir / "2026-07-11-born.md"
+    card.write_text(
+        "# born\n\n> **Status:** `in-progress`\n\nabout to do X\n",
+        encoding="utf-8",
+    )
+    assert (
+        cmd_check(
+            root,
+            strict=True,
+            session_log=_SENTINEL,
+            added_card=Path(config.sessions_dir) / "2026-07-11-born.md",
+        )
+        == 0
+    )
+
+
+def test_added_card_claiming_complete_but_malformed_reds(tmp_path, capsys):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    # The exact #15 shape: ADDED card declares `complete` but misses its
+    # grammar needles — under the old full exemption this merged green.
+    card = root / config.sessions_dir / "2026-07-11-bad.md"
+    card.write_text(
+        "# bad\n\n> **Status:** `complete`\n\n## Session idea\nno needle\n"
+        "\n## Model\nCoordinator seat: opus-x\n",
+        encoding="utf-8",
+    )
+    rc = cmd_check(
+        root,
+        strict=True,
+        session_log=_SENTINEL,
+        added_card=Path(config.sessions_dir) / "2026-07-11-bad.md",
+    )
+    assert rc == 1
+    assert "session-card-grammar" in capsys.readouterr().out
+
+
+def test_added_card_without_badge_reds(tmp_path, capsys):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    card = root / config.sessions_dir / "2026-07-11-nobadge.md"
+    card.write_text("# nobadge\n\nfree-form text, no Status\n", encoding="utf-8")
+    rc = cmd_check(
+        root,
+        strict=True,
+        session_log=_SENTINEL,
+        added_card=Path(config.sessions_dir) / "2026-07-11-nobadge.md",
+    )
+    assert rc == 1
+    assert "Status badge" in capsys.readouterr().out
+
+
+def test_added_card_absent_is_advisory(tmp_path, capsys):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    rc = cmd_check(
+        root,
+        strict=True,
+        session_log=_SENTINEL,
+        added_card=Path(config.sessions_dir) / "never-written.md",
+    )
+    assert rc == 0
+    assert "nothing to grammar-check" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# Designed-hold signal (queued kit fix 4, the PL-006 observer-noise class)
+# ---------------------------------------------------------------------------
+
+
+def _write_born_red_card(root: Path, config) -> Path:
+    card = root / config.sessions_dir / "2026-07-11-hold.md"
+    card.write_text(
+        "# hold\n\n> **Status:** `in-progress`\n\nmid-flight\n",
+        encoding="utf-8",
+    )
+    return Path(config.sessions_dir) / "2026-07-11-hold.md"
+
+
+def test_designed_hold_banner_when_only_the_card_holds(tmp_path, capsys):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    rel = _write_born_red_card(root, config)
+    rc = cmd_check(root, strict=True, require_session_log=True, session_log=rel)
+    assert rc == 1  # the hold is real — only its LABELLING changes
+    out = capsys.readouterr().out
+    assert "HOLD (by design)" in out
+    assert "not a defect" in out
+
+
+def test_designed_hold_banner_emits_actions_annotation(tmp_path, capsys, monkeypatch):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    rel = _write_born_red_card(root, config)
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    assert cmd_check(root, strict=True, require_session_log=True, session_log=rel) == 1
+    out = capsys.readouterr().out
+    assert "::notice title=HOLD: session card in-progress (by design)::" in out
+
+
+def test_no_hold_banner_outside_actions(tmp_path, capsys, monkeypatch):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    rel = _write_born_red_card(root, config)
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    assert cmd_check(root, strict=True, require_session_log=True, session_log=rel) == 1
+    out = capsys.readouterr().out
+    assert "HOLD (by design)" in out
+    assert "::notice" not in out
+
+
+def test_no_hold_banner_when_other_findings_exist(tmp_path, capsys):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    rel = _write_born_red_card(root, config)
+    # A REAL defect alongside the hold (heartbeat corrupted): the red is now
+    # partially genuine and must never be labelled "by design".
+    (root / "control" / "status.md").write_text(
+        "# scratch · status\nphase: heartbeat deleted\n", encoding="utf-8"
+    )
+    assert cmd_check(root, strict=True, require_session_log=True, session_log=rel) == 1
+    assert "HOLD (by design)" not in capsys.readouterr().out
+
+
+def test_no_hold_banner_when_card_claims_complete(tmp_path, capsys):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    # An incomplete card that CLAIMS complete is a real defect, not a
+    # designed hold — the honesty condition is the card's own declaration.
+    card = root / config.sessions_dir / "2026-07-11-liar.md"
+    card.write_text("# liar\n\n> **Status:** `complete`\n", encoding="utf-8")
+    rc = cmd_check(
+        root,
+        strict=True,
+        require_session_log=True,
+        session_log=Path(config.sessions_dir) / "2026-07-11-liar.md",
+    )
+    assert rc == 1
+    assert "HOLD (by design)" not in capsys.readouterr().out
