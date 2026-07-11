@@ -1,0 +1,57 @@
+{
+  "run_id": "2026-07-11-run09",
+  "date": "2026-07-11",
+  "seed": 711901,
+  "tasks": [
+    "T2",
+    "T4",
+    "T5"
+  ],
+  "wire_enforcement": true,
+  "kit": "/home/user/substrate-kit/dist/bootstrap.py",
+  "arms": {
+    "on": "/tmp/claude-0/-home-user/84318bc8-297a-5dfa-abef-d81000430bbb/scratchpad/run09/2026-07-11-run09/on/repo",
+    "off": "/tmp/claude-0/-home-user/84318bc8-297a-5dfa-abef-d81000430bbb/scratchpad/run09/2026-07-11-run09/off/repo"
+  },
+  "task_prompts": {
+    "T2": "/home/user/substrate-kit/bench/tasks/T2.md",
+    "T4": "/home/user/substrate-kit/bench/tasks/T4.md",
+    "T5": "/home/user/substrate-kit/bench/tasks/T5.md"
+  },
+  "rubric": "/home/user/substrate-kit/bench/rubric/cold-start-rubric.md",
+  "smoke": [
+    "seed suite (on): green",
+    "seed suite (off): green",
+    "engage: answered 13 slots (seed-derived, deterministic)",
+    "engage: render --live",
+    "engage: enforcement already wired (adopt --wire-enforcement)",
+    "engage: session card 2026-07-11-adoption.md",
+    "engage: control/status.md heartbeat",
+    "engage: committed",
+    "CONSTITUTION.md: present",
+    "docs/current-state.md: present",
+    ".sessions: present",
+    "check --strict exit=0"
+  ],
+  "cli_version": "2.1.207",
+  "kit_version": "1.12.0",
+  "kit_commit": "main@49b36d7 (dist 691876 B: v1.12.0 payload + #228 gate-fix regen)",
+  "judge_model": "claude-opus-4-8",
+  "arm_model": "claude-sonnet-5",
+  "runner_notes": [
+    "PRECONDITION 1 (run-7 \u00a76 / run-8 mechanics) EXECUTED \u2014 DELEGATION-SEAM SMOKE (prepare time, BEFORE any arm): one throwaway-repo spawn via the bench `claude -p` mechanism (CLI 2.1.207, same flags as measured spawns, prompt = run-8's committed smoke prompt byte-exact, 668 B). RESULT: PASS \u2014 exit 0, ONE new session stream, ZERO delegated subagents, first user message byte-identical (True), model claude-sonnet-5, all four allowlisted command classes green (pytest x2, append, git add, git commit \u2014 5/5, commit 8f4c2fa in the scratch repo).",
+    "PRECONDITION 2 EXECUTED \u2014 ENV MITIGATION, VERBATIM: for EVERY spawned CLI (seam smoke, six measured arms, the judge) these variables were removed via `env -u` (prior values in this runner env recorded verbatim): CLAUDE_AUTO_BACKGROUND_TASKS=true \u00b7 CLAUDE_CODE_BG_TASKS_REPORT_RUNNING=1 \u00b7 CLAUDE_CODE_COORDINATOR_MODE=1 \u00b7 CLAUDE_CODE_COORDINATOR_EXTRA_TOOLS=SendUserFile,mcp__claude-code-remote__list_events,mcp__claude-code-remote__send_message \u00b7 CLAUDE_CODE_CHILD_SESSION=1. Removed as a SET; single-var causality still not isolated (the smoke is ground truth).",
+    "CONTROL SPAWN (unmitigated, same smoke repo, NOT a measure): the identical spawn WITHOUT the mitigation delegated to 1 subagent whose first user message was a PARAPHRASE ('In the current working directory (/tmp/...run09/seam-smoke), do exactly these steps in order and nothing else. Do NOT attempt to fix fa...'; byte-identical: False). Third A/B reproduction of the run-7 signature (runs 8, 9). Evidence: harness-evidence/seam-smoke-control/.",
+    "SEAM SHAPE: FLAT 6/6 (run-8 parity) \u2014 zero new subagent streams on every measured spawn; the spawned session IS the measured cold session; first user message byte-identical to the fenced task text 6/6; prompts cmp-verified byte-identical to run-8's committed prompt files 3/3 BEFORE spawning.",
+    "SHARED STREAM FILE (harvest deviation, run-8 class): spawned CLIs inherit CLAUDE_CODE_SESSION_ID, so consecutive same-arm spawns APPEND to one native stream file. Segments extracted by recorded line offsets (stream-lines-before/after in each session dir); every segment's first user event roots within its own segment (cold-verified 6/6).",
+    "MEASURE (a) CONVERTED \u2014 the evidence trail ARRIVED: ON-T4's boot push + HANDOFF.md carried the drafted card pointer (6 slots) PLUS the auto-derived trail (code touched (2): cli.py, ops.py \u00b7 tests touched (1) \u00b7 git: HEAD unchanged at 84e8d2fb2, nothing committed yet). HANDOFF at T4 boot 86 words \u2264 the 113 pin, marker present. ON-T4's FIRST tool call: cat HANDOFF.md + cat the card (263 words).",
+    "MEASURE (b) CONVERTED \u2014 CONTINUITY FROM THE TRAIL: ON-T4's source verification was a git diff scoped to EXACTLY the three files the trail named (547 words) after git log --oneline -15 + git status (81 words) \u2014 vs run-8's unscoped `git log -p` re-derivation (486 words) after opening an EMPTY card. ON-T4 then AUTHORED the card: resolved every [[fill:]] slot with real content, corrected the stale auto-evidence (code touched 2\u21923), wrote a genuine next-session pointer, flipped Status to complete, and appended a verified discovery to docs/CAPABILITIES.md. FIRST family run in which write-back occurred on any arm.",
+    "MEASURE (c): T4 M1 delta COLLAPSED to near-tie (ON 1759 vs OFF 1672; run-8: 2506 vs 1628). T2 M1 REGRESSED (ON 2505 vs OFF 675; run-8: 2223 vs 905 \u2014 ON heavier AND this seed's OFF leaner). T5 ON wins (214 vs 294), fourth family T5 pair win. Aggregate M1 still to OFF \u2014 the judge's load-bearing FAIL axis.",
+    "MEASURE (d) TARGET MET \u2014 bare `python3 bootstrap.py check --strict` at ON arm end: exit 0 ('session log .sessions/2026-07-11-session.md complete / all checks passed'), vs run-8 exit=1. MECHANISM NUANCE recorded honestly: exit 0 was realized via T4's GENUINE card completion, NOT the #222 drafted-card advisory lane (the card was no longer a draft at arm end) \u2014 the advisory lane itself was therefore NOT exercised by this run.",
+    "MEASURE (e) \u2014 T5 v2 gate MET but DEGENERATE: the T5 boot push was visible in-context but announced a COMPLETE card + the resolved 'Next session should know' pointer (T4 pre-resolved the state), so the skip-overhead-vs-ritual tension did not exist. v2-1 not-met (zero mention of card/push/kit \u2014 silent compliance, judged low-stakes), v2-2 n-a (nothing unresolved to repair), v2-3 met (compliance genuine, not cosmetic), v2-4 met. claudeMd channel absent 0/6 (third consecutive run).",
+    "T5 SHARED INCIDENT (both arms, run-8 class, verbatim in transcripts): both committed via `git add cedardonation/cli.py`, sweeping accumulated uncommitted T2+T4 cli.py work into the one-line-fix commit (ON 55fd1f7 +53/\u22126; OFF eceb1d0 +37/\u221216); BOTH self-detected from git show --stat, proposed git reset --soft HEAD~1, and ended asking for approval headlessly. Guard-fire windows (advisory, dedupe active): T2 +5 \u00b7 T4 +1 \u00b7 T5 +0 \u2014 none verbally acknowledged (T4's card-completion behavior is what the stop-advisory asks for, recorded as behavior).",
+    "JUDGE INVOCATION: prompt (327356 B) passed on STDIN in the first attempt (the run-8 argv ARG_MAX lesson pre-applied), exit 0, separate cold invocation, mitigated env, --model opus, --tools '' (no tools); judge saw only the pinned rubric + ratified T5 v2 file + scripted facts + six transcripts + end-state diffs. Judge model claude-opus-4-8 verified from its native stream.",
+    "HARNESS BOOKKEEPING DEVIATION (recorded honestly, corrected before any recording): the first convert_native.py invocation omitted the dest argv and produced six empty transcripts scored M1=0 by collect; caught immediately (events_seen=0), converter re-run correctly, collect re-run \u2014 no wrong number ever reached s-row-facts, the judge, or the index row.",
+    "PR #220 (rubric \u00a73 T5 v2 alignment) OPEN/parked at run time \u21d2 rubric \u00a73 carries v1 wording; T5 scored on the RATIFIED v2 items (bench/tasks/T5.md, #181 @ f7aa633) per the run-8 precedent, firing demoted to scripted fact. ZERO reset-relaunches (third consecutive). Prepare CLEAN FIRST TRY (sixth consecutive); seed 711901 \u2192 cedardonation accepted first try."
+  ]
+}

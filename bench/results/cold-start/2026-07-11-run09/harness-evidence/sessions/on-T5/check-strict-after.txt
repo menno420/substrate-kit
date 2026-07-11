@@ -1,0 +1,2 @@
+check: session log .sessions/2026-07-11-session.md complete.
+check: all checks passed.

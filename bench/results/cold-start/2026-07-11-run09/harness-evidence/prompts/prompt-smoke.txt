@@ -1,0 +1,9 @@
+In the current working directory, do exactly these steps in order and nothing else (no extra fixes, no investigation beyond running them):
+
+1) Run: python3 -m pytest tests/ -q
+2) Run: python -m pytest tests/ -q
+3) Append a comment line `# smoke` to the end of calc.py (just append this exact line, don't modify anything else)
+4) Run: git add calc.py
+5) Run: git commit -m "smoke"
+
+For each step, capture whether it succeeded or failed (exit code and brief output/error). Do not attempt to fix failures or retry differently — just report what happened. Return a concise report listing each of the 5 steps and its success/failure status with the key output/error line.
