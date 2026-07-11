@@ -15,6 +15,7 @@ from engine.checks.check_docs import (
     run_doc_checks,
 )
 from engine.checks.check_session_log import (
+    BORN_RED_HOLD_MESSAGE,
     check_added_card,
     check_log,
     has_status_badge,
@@ -272,13 +273,23 @@ def test_has_status_badge_detects_presence_not_value():
     assert not has_status_badge("# card with no badge at all\n💡 idea\n")
 
 
-def test_added_card_born_red_is_exempt(tmp_path):
-    # The advisory lane's designed state: an ADDED card that declares
-    # in-progress is judged only on carrying a Status badge — mid-flight
-    # incompleteness (no markers yet) must not red the born-red heartbeat.
+def test_added_card_born_red_is_the_hold(tmp_path):
+    # The superbot-games #40 loophole fix: an ADDED card that declares
+    # in-progress is the born-red HOLD — one designed-state finding, never
+    # green (the old full exemption let a card-only born-red PR with
+    # auto-merge pre-armed merge in 24 s) and never a completeness grade
+    # (mid-flight incompleteness stays unjudged; no marker findings).
     card = tmp_path / "2026-07-11-a.md"
     _write(card, "# a\n\n> **Status:** `in-progress`\n\nabout to do X\n")
-    assert check_added_card(card, _MARKERS) == []
+    assert check_added_card(card, _MARKERS) == [BORN_RED_HOLD_MESSAGE]
+
+
+def test_added_card_drafted_is_the_hold_too(tmp_path):
+    # `drafted` is an in-progress value (KL-5): an auto-drafted added card
+    # holds exactly like born-red.
+    card = tmp_path / "2026-07-11-e.md"
+    _write(card, "# e\n\n> **Status:** `drafted`\n")
+    assert check_added_card(card, _MARKERS) == [BORN_RED_HOLD_MESSAGE]
 
 
 def test_added_card_without_any_badge_is_a_grammar_finding(tmp_path):

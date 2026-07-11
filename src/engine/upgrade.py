@@ -54,12 +54,19 @@ from typing import Any
 
 from engine.adopt import (
     ADOPT_PLAN,
+    AUTOMERGE_ENABLER_RELPATH,
     BACKUP_DIRNAME,
+    LIVE_CI_RELPATH,
     _adopt_dest,
+    _automerge_params,
+    _merge_model_doctrine,
     adopt,
     archive_dist,
+    automerge_enabler_workflow,
     dist_version,
     doc_is_untouched,
+    gate_carveouts,
+    live_ci_workflow,
     record_doc_hash,
     with_unrendered_banner,
 )
@@ -302,9 +309,13 @@ def upgrade_report_text(
     (queued fix 1, fleet-manager #40 finding): silence was indistinguishable
     from "the detector never ran", so the report now says which kit-owned
     workflows were scanned with 0 found — or that no kit-owned live workflow
-    exists to scan. Pass ``carveouts=None`` (the post-hoc ``--apply-docs``
-    path, which runs no adopt pass) to state nothing — absence of the block
-    honestly means the detector did not run in that flow.
+    exists to scan. ``carveouts=None`` states nothing — absence of the block
+    honestly means the detector did not run in that flow. The post-hoc
+    ``--apply-docs`` path used to pass ``None`` and thereby REWROTE the
+    report without its carve-out section (websites, v1.9.0 wave — the
+    section had to be hand-restored); it now passes the read-only rescan
+    plus any hits carried from the previous report
+    (:func:`scan_gate_carveouts` / :func:`_carried_carveout_hits`).
     """
     counts: dict[str, int] = {}
     for row in rows:
@@ -355,6 +366,78 @@ def upgrade_report_text(
         for row in diffs:
             lines += [f"### {row['relpath']}", "", "```diff", row["diff"], "```", ""]
     return "\n".join(lines) + "\n"
+
+
+# Suffix marking a carve-out hit carried forward from a previous report —
+# the read-only rescan reflects the CURRENT live workflow (post-regen it
+# usually matches the kit template again), so without the carry a rewrite
+# would erase the historical detection the host may still need to act on.
+CARRIED_CARVEOUT_SUFFIX = " [carried from the previous upgrade report]"
+
+
+def scan_gate_carveouts(root: Path, config: Config) -> list[str]:
+    """Read-only carve-out scan of the installed kit-owned workflows.
+
+    Produces the same ``carve-out:`` / ``carve-out scan:`` line grammar as
+    adopt's regen pass emits, WITHOUT writing or regenerating anything —
+    the post-hoc ``--apply-docs`` flow runs no adopt pass, but its report
+    rewrite must still carry an honest carve-out section (the websites
+    v1.9.0-wave finding: the rewrite dropped the section entirely). A
+    workflow that is absent contributes nothing (nothing installed,
+    nothing to scan); unreadable is reported as skipped, never a crash.
+    """
+    lines: list[str] = []
+    gate_expected = live_ci_workflow(
+        config.interpreter_for_checks or "python3",
+        sessions_dir=config.sessions_dir,
+    )
+    enabler_patterns, enabler_context = _automerge_params(config)
+    enabler_expected = automerge_enabler_workflow(enabler_patterns, enabler_context)
+    for relpath, expected in (
+        (LIVE_CI_RELPATH, gate_expected),
+        (AUTOMERGE_ENABLER_RELPATH, enabler_expected),
+    ):
+        path = root / relpath
+        if not path.is_file():
+            continue
+        try:
+            live_text = path.read_text(encoding="utf-8")
+        except OSError:
+            lines.append(
+                f"carve-out scan: {relpath} — unreadable, scan skipped",
+            )
+            continue
+        found = [] if live_text == expected else gate_carveouts(live_text, expected)
+        if not found:
+            lines.append(f"carve-out scan: {relpath} — ran, 0 found")
+        for line in found:
+            lines.append(f"carve-out: {relpath} — {line}")
+    return lines
+
+
+def _carried_carveout_hits(report_path: Path) -> list[str]:
+    """Extract ``carve-out:`` hit lines from an existing upgrade report.
+
+    Returns them WITHOUT the leading ``- `` bullet and WITHOUT any
+    :data:`CARRIED_CARVEOUT_SUFFIX` (re-added by the caller, so repeated
+    post-hoc runs never stack suffixes). Scan-status lines are not carried
+    — the fresh rescan states the current status. Missing/unreadable
+    report → nothing to carry.
+    """
+    try:
+        text = report_path.read_text(encoding="utf-8")
+    except OSError:
+        return []
+    hits: list[str] = []
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line.startswith("- carve-out:"):
+            continue
+        hit = line[2:]
+        if hit.endswith(CARRIED_CARVEOUT_SUFFIX):
+            hit = hit[: -len(CARRIED_CARVEOUT_SUFFIX)]
+        hits.append(hit)
+    return hits
 
 
 def newest_banked_archive(
@@ -426,13 +509,28 @@ def run_apply_docs_posthoc(
             "apply-docs: no template-improved docs to apply — every planted "
             "doc is already current or consumer-owned.",
         )
+    # The report rewrite must not drop the carve-out section (websites,
+    # v1.9.0 wave): re-emit it from a read-only rescan of the installed
+    # kit-owned workflows, and carry forward hits recorded in the report
+    # being replaced (post-regen the live file usually matches the template
+    # again, so the rescan alone would erase the historical detection the
+    # host may still need to act on).
     report_rel = f"{config.state_dir}/{UPGRADE_REPORT_FILENAME}"
+    carveout_lines = scan_gate_carveouts(root, config)
+    fresh_hits = {
+        line for line in carveout_lines if line.startswith("carve-out:")
+    }
+    for hit in _carried_carveout_hits(root / report_rel):
+        if hit not in fresh_hits:
+            carveout_lines.append(hit + CARRIED_CARVEOUT_SUFFIX)
+            fresh_hits.add(hit)
     atomic_write_text(
         root / report_rel,
         upgrade_report_text(
             from_version or config.kit_version or "unknown",
             rows,
             applied,
+            carveout_lines,
         ),
     )
     report.append(f"report: {report_rel}")
@@ -617,6 +715,13 @@ def run_upgrade(
             "\N{MIDDLE DOT} <task-class>`; session-close harvests it into "
             "telemetry/model-usage.jsonl.",
         )
+        # The adopt pass in step (6) ran BEFORE the needle existed in this
+        # host's markers, so its doctrine merge no-op'd — re-run it now
+        # that the marker is live (idempotent; append-only under the
+        # provenance marker). Without this, the first upgrade that
+        # introduces the needle leaves the planted README doctrine-less
+        # until the NEXT upgrade (the v1.9.0 wave's retroactivity gap).
+        _merge_model_doctrine(root, config, report)
 
     # (7) State migration (backup already banked above).
     backend.migrate(STATE_SCHEMA_VERSION)

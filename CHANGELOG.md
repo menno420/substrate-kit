@@ -15,6 +15,58 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `check --simulate-added-card <file>` — the added-card lane's
+  advisory-only self-test: prints exactly what the lane WOULD conclude for
+  the named card (HOLD / grammar findings / pass) without touching the
+  exit code. The lane was unobservable on the very PR that ships gate
+  changes — the gate-regen branch takes the full locked door, superseding
+  `--added-card` — so that branch of the generated gate now also runs the
+  simulation, keeping the lane's verdict visible in the job log (v1.9.0
+  distribution-wave finding).
+- `docs/operations/release-runbook.md` — the release recipe written down
+  once (version homes, CHANGELOG cut, dist byte-pin, `release.yml`
+  dispatch, three-way hash verification, adopters regen); three
+  consecutive cuts (v1.7.1/v1.8.0/v1.9.0) had reassembled it from prior
+  session cards. Indexed via `docs/operations/README.md` (a reachability
+  root), keeping the K0 boot set untouched at its near-ceiling budget.
+
+### Fixed
+
+- **Born-red card-only loophole (P1, live premature merge):** the
+  generated gate's added-card lane fully EXEMPTED an in-progress ADDED
+  card, so a card-only born-red PR with auto-merge pre-armed went green
+  and merged 24 seconds after open — before the session built anything
+  (superbot-games PR #40, v1.9.0 distribution wave). An ADDED card
+  declaring in-progress/drafted is now an explicit HOLD: a
+  `session-card-hold` finding reds the gate until the card flips
+  complete, self-described by the HOLD-by-design banner (suppressed
+  whenever any real finding rides alongside). Mid-flight completeness is
+  still never graded (the gba-homebrew #2 lesson), a complete-declared
+  added card keeps the full completeness check, and badge-less/malformed
+  cards red exactly as before. Adopter gates inherit the fix on
+  `upgrade` (gate + vendored engine move in lockstep).
+- **`upgrade --apply-docs` dropped the carve-out section:** the post-hoc
+  report rewrite passed `carveouts=None` and rewrote
+  `<state_dir>/upgrade-report.md` WITHOUT its carve-out sections (websites,
+  v1.9.0 wave — hand-restored). The rewrite now re-emits the section from
+  a read-only rescan of the installed kit-owned workflows and carries
+  forward `carve-out:` hits recorded in the report being replaced (marked
+  `[carried from the previous upgrade report]`, dedup-safe across re-runs)
+  — the rescan alone would erase historical detections the host may still
+  need to act on.
+- **Model doctrine now retroactive:** the family-level model-attribution
+  doctrine (ORDER 012, shipped in #170) only reached FRESHLY planted
+  `.sessions/README.md` files — skip-if-exists left every pre-existing
+  planted README without it, and 4 adopters needed manual regen/hand-merge
+  in the v1.9.0 wave. adopt/upgrade now appends the doctrine paragraph to
+  an existing README under a provenance marker, append-only (host content
+  preserved byte-for-byte, the search-hygiene plant pattern), idempotent
+  via a detection phrase shared with the fresh render, and re-run after
+  the upgrade step that first adds the 📊 Model needle so the introducing
+  upgrade itself closes the gap.
+
 ## [1.9.0] - 2026-07-11
 
 Capability release (MINOR) shipping the continuity/hygiene band accumulated

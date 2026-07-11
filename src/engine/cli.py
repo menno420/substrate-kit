@@ -49,6 +49,7 @@ from engine.checks.check_status_current import check_status_current
 from engine.checks.check_orientation_budget import check_orientation_budget
 from engine.checks.check_seam_authority import check_seam_authority
 from engine.checks.check_session_log import (
+    BORN_RED_HOLD_MESSAGE,
     check_added_card,
     check_log,
     latest_session_log,
@@ -642,20 +643,32 @@ def cmd_check(
     require_session_log: bool = False,
     session_log: Path | None = None,
     added_card: Path | None = None,
+    simulate_added_card: Path | None = None,
     status_only: bool = False,
     inbox_base: Path | None = None,
 ) -> int:
     """Run every hygiene checker against ``target``.
 
     ``added_card`` (CLI ``--added-card``) names a session card the PR's diff
-    ADDS — the generated gate's advisory sentinel lane passes it so a
-    born-red heartbeat is still *grammar*-checked instead of exempted
-    entirely (the venture-lab #15 false-green class; see
+    ADDS — the generated gate's added-card lane passes it so a born-red
+    heartbeat is graded by what it *declares* (see
     :func:`engine.checks.check_session_log.check_added_card` for the
-    declared-status tiering). Findings ride the strict loop like any doc
+    declared-status tiering): an in-progress/drafted card yields the
+    born-red HOLD (the superbot-games #40 card-only loophole fix — an
+    added mid-flight card holds the merge red until it flips complete,
+    never advisory-green); grammar misses red as before (the venture-lab
+    #15 false-green class). Findings ride the strict loop like any doc
     finding and are never allowlistable (they are the session-gate seam);
     a named file that does not exist is advisory-only — the gate derives
     the path from the diff, so absence means nothing to judge.
+
+    ``simulate_added_card`` (CLI ``--simulate-added-card``) is the lane's
+    ADVISORY self-test: it prints exactly what the added-card lane WOULD
+    conclude for the named card (hold / findings / pass) without ever
+    touching the exit code. It exists because the lane is unobservable on
+    the very PR that ships gate changes — a PR touching the gate workflow
+    takes the full locked door, superseding ``--added-card`` — so gate
+    work needs an in-run way to verify the lane's grading.
 
     ``inbox_base`` (CLI ``--inbox-base``) names the merge-base version of
     ``control/inbox.md`` — extracted by CI in bash, because engine code never
@@ -804,9 +817,12 @@ def cmd_check(
     entries, allow_findings = load_allowlist(target, config.state_dir)
     doc_findings, suppressed = apply_allowlist(doc_findings, entries)
     doc_findings += allow_findings
-    # Added-card grammar lint (queued kit fix 1, the venture-lab #15
-    # false-green class): appended AFTER the allowlist pass on purpose —
-    # like the session-log gate it extends, it is never allowlistable.
+    # Added-card grading (queued kit fix 1, the venture-lab #15 false-green
+    # class + the superbot-games #40 born-red loophole): appended AFTER the
+    # allowlist pass on purpose — like the session-log gate it extends, it
+    # is never allowlistable. An in-progress ADDED card yields the born-red
+    # HOLD finding (kind `session-card-hold`, so the designed-hold banner
+    # below can recognise it); grammar misses keep `session-card-grammar`.
     if added_card is not None and not status_only:
         card_path = (
             added_card if added_card.is_absolute() else target / added_card
@@ -818,13 +834,64 @@ def cmd_check(
                 else str(card_path)
             )
             doc_findings += [
-                Finding(card_rel, "session-card-grammar", miss)
+                Finding(
+                    card_rel,
+                    (
+                        "session-card-hold"
+                        if miss == BORN_RED_HOLD_MESSAGE
+                        else "session-card-grammar"
+                    ),
+                    miss,
+                )
                 for miss in check_added_card(card_path, config.session_markers)
             ]
         else:
             _emit(
                 f"check: --added-card {added_card} does not exist "
                 "(advisory — nothing to grammar-check).",
+            )
+    # --simulate-added-card: the lane's advisory self-test (v1.9.0 wave
+    # finding — the --added-card grading is unobservable on the very PR
+    # that ships gate changes, because touching the gate workflow routes
+    # the PR through the full locked door instead). Prints the lane's
+    # would-be verdict; NEVER feeds doc_findings or the exit code.
+    if simulate_added_card is not None and not status_only:
+        sim_path = (
+            simulate_added_card
+            if simulate_added_card.is_absolute()
+            else target / simulate_added_card
+        )
+        if not sim_path.is_file():
+            _emit(
+                f"check: simulate-added-card {simulate_added_card} does not "
+                "exist — nothing to simulate (advisory).",
+            )
+        else:
+            sim_misses = check_added_card(sim_path, config.session_markers)
+            if not sim_misses:
+                _emit(
+                    f"check: simulate-added-card {simulate_added_card} — the "
+                    "added-card lane would PASS (card declares a completed "
+                    "Status and carries every marker).",
+                )
+            elif sim_misses == [BORN_RED_HOLD_MESSAGE]:
+                _emit(
+                    f"check: simulate-added-card {simulate_added_card} — the "
+                    "added-card lane would HOLD (born-red: the card declares "
+                    "an in-progress/drafted Status; the gate would stay red "
+                    "until it flips complete).",
+                )
+            else:
+                _emit(
+                    f"check: simulate-added-card {simulate_added_card} — the "
+                    f"added-card lane would RED with {len(sim_misses)} "
+                    "finding(s):",
+                )
+                for miss in sim_misses:
+                    _emit(f"  [simulated session-card-grammar] {miss}")
+            _emit(
+                "check: simulation is advisory-only — it never affects this "
+                "run's exit code.",
             )
     if suppressed:
         _emit(
@@ -1047,6 +1114,7 @@ def cmd_check(
     # tell a designed hold from a real defect without opening the job log's
     # fine print. Any other finding alongside suppresses the banner: a
     # partially-real failure must never be labelled "by design".
+    added_card_holds = [f for f in doc_findings if f.kind == "session-card-hold"]
     hold_is_designed = (
         strict
         and not doc_findings
@@ -1055,8 +1123,24 @@ def cmd_check(
         and bool(log_missing)
         and _card_declares_in_progress(log)
     )
-    if hold_is_designed:
+    # Same banner for the added-card lane's born-red HOLD (the
+    # superbot-games #40 loophole fix): when the ONLY thing holding the run
+    # red is the ADDED card's in-progress declaration, that red is the
+    # designed hold too — an observer must be able to tell it from a defect
+    # without opening the fine print. Any other finding alongside (a grammar
+    # miss, a doc finding, an incomplete --session-log card) suppresses it.
+    added_hold_is_designed = (
+        strict
+        and bool(added_card_holds)
+        and len(doc_findings) == len(added_card_holds)
+        and not log_missing
+        and not log_absent_fails
+    )
+    if added_hold_is_designed:
+        hold_rel = added_card_holds[0].path
+    elif hold_is_designed:
         hold_rel = log.relative_to(target) if log.is_relative_to(target) else log
+    if hold_is_designed or added_hold_is_designed:
         _emit(
             f"check: HOLD (by design): session card {hold_rel} declares an "
             "in-progress Status — the born-red session gate holds the merge "
@@ -2125,11 +2209,24 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help=(
-            "grammar-lint this session card as one newly ADDED by the PR "
-            "(the gate's advisory sentinel lane): born-red incompleteness "
-            "stays exempt, but a missing Status badge — or a card that "
-            "declares itself complete while missing its markers — reds "
-            "(the venture-lab #15 false-green class)"
+            "grade this session card as one newly ADDED by the PR (the "
+            "gate's added-card lane): an in-progress/drafted card is the "
+            "born-red HOLD (red until it flips complete — the "
+            "superbot-games #40 loophole fix); a missing Status badge — or "
+            "a card that declares itself complete while missing its "
+            "markers — reds (the venture-lab #15 false-green class)"
+        ),
+    )
+    check.add_argument(
+        "--simulate-added-card",
+        type=Path,
+        default=None,
+        help=(
+            "ADVISORY self-test: print what the gate's added-card lane "
+            "WOULD do for this card (hold / grammar findings / pass) "
+            "without affecting the exit code — makes the lane observable "
+            "on the very PR that ships gate changes, where the locked "
+            "door supersedes the --added-card path"
         ),
     )
     check.add_argument(
@@ -2196,6 +2293,7 @@ def main(argv: list[str] | None = None) -> int:
                 require_session_log=args.require_session_log,
                 session_log=args.session_log,
                 added_card=args.added_card,
+                simulate_added_card=args.simulate_added_card,
                 status_only=args.status_only,
                 inbox_base=args.inbox_base,
             )

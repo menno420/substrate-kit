@@ -1,1 +1,0 @@
-- `claude/wave-fixes-v190` · **v1.9.0 wave-fixes slice** — born-red card-only loophole gate fix, --apply-docs carve-out re-emit, retroactive model doctrine, --simulate-added-card, folded-gate note, release runbook · expected files: src/engine/{adopt,upgrade,cli}.py, src/engine/checks/check_session_log.py, tests, dist regen, docs/operations/release-runbook.md · 2026-07-11

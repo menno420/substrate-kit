@@ -702,22 +702,28 @@ def test_live_ci_workflow_selects_the_card_from_the_diff():
     assert "--session-log journal/__born-red-card-added__.md" in custom
 
 
-def test_live_ci_workflow_gates_added_cards_advisory_but_locks_modified_ones():
+def test_live_ci_workflow_gates_added_cards_by_declared_status():
     text = live_ci_workflow()
     # A card ADDED by the PR is a born-red heartbeat (first-commit conventions
-    # REQUIRE an in-progress card at birth); under --strict the locked door
-    # reds ANY incomplete card, so a heartbeat could never merge green
-    # (adopter live-fire: gba-homebrew PR #2). Added cards gate advisory via
-    # the absent sentinel; modified cards (close-out flips) keep the full
-    # --require-session-log locked door.
+    # REQUIRE an in-progress card at birth); it gates via the absent sentinel
+    # + --added-card, whose declared-status tiering HOLDs an in-progress card
+    # red until it flips complete (the superbot-games #40 card-only loophole
+    # fix) while never grading mid-flight completeness (gba-homebrew PR #2).
+    # Modified cards (close-out flips) keep the full --require-session-log
+    # locked door.
     assert "--diff-filter=A" in text
     assert "--session-log .sessions/__born-red-card-added__.md" in text
     assert '[ "$card" != "$added" ]' in text
-    # The locked door still exists — on the modified-card branch only.
+    # The locked door still exists — on the modified-card branch.
     assert 'check --strict --require-session-log --session-log "$card"' in text
-    # The interpreter threads through all three branches.
+    # The gate-regen locked-door branch also self-tests the added-card lane
+    # (--simulate-added-card), so the lane stays observable on the very PRs
+    # that ship gate changes.
+    assert '--simulate-added-card "$card"' in text
+    # The interpreter threads through all four branches (locked door with
+    # simulate, plain locked door, added-card hold lane, no-card sentinel).
     custom = live_ci_workflow("python3.10")
-    assert custom.count("python3.10 bootstrap.py check --strict") == 3
+    assert custom.count("python3.10 bootstrap.py check --strict") == 4
 
 
 def test_sessions_readme_carries_the_guard_recipe_convention(tmp_path):
@@ -1341,12 +1347,12 @@ def test_gate_holds_added_card_to_locked_door_when_pr_regenerates_the_gate():
 
 
 def test_live_ci_workflow_grammar_checks_added_cards():
-    # Fix 1 (venture-lab #15 false-green class): the advisory sentinel lane
-    # still passes the absent sentinel as --session-log (born-red exemption)
-    # but now grammar-lints the added card via --added-card.
+    # Fix 1 (venture-lab #15 false-green class): the added-card lane still
+    # passes the absent sentinel as --session-log but grades the added card
+    # via --added-card (in-progress → HOLD, grammar misses → red).
     text = live_ci_workflow()
     assert '--session-log .sessions/__born-red-card-added__.md --added-card "$card"' in text
-    assert "card grammar still checked" in text
+    assert "in-progress HOLDs until the card flips complete" in text
     custom = live_ci_workflow(sessions_dir="journal")
     assert '--session-log journal/__born-red-card-added__.md --added-card "$card"' in custom
 

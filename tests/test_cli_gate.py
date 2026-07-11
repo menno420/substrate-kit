@@ -242,15 +242,44 @@ def test_status_only_ignores_non_status_findings(tmp_path):
 _SENTINEL = Path(".sessions") / "__born-red-card-added__.md"
 
 
-def test_added_card_born_red_heartbeat_stays_green(tmp_path):
+def test_added_card_born_red_heartbeat_holds(tmp_path, capsys):
     root = tmp_path / "repo"
     config = _adopt_scratch(root, tmp_path / "kit")
-    # The generated gate's advisory lane: absent sentinel as --session-log,
-    # the ADDED card via --added-card. A well-badged in-progress card is the
-    # designed born-red state — no red.
+    # The superbot-games #40 loophole regression: a card-only diff whose
+    # ADDED card declares in-progress must HOLD (exit 1 under strict) —
+    # under the old full exemption this exact shape went green and a
+    # pre-armed auto-merge landed the PR 24 s after open, before the
+    # session built anything. The gate's added-card lane: absent sentinel
+    # as --session-log, the ADDED card via --added-card.
     card = root / config.sessions_dir / "2026-07-11-born.md"
     card.write_text(
         "# born\n\n> **Status:** `in-progress`\n\nabout to do X\n",
+        encoding="utf-8",
+    )
+    rc = cmd_check(
+        root,
+        strict=True,
+        session_log=_SENTINEL,
+        added_card=Path(config.sessions_dir) / "2026-07-11-born.md",
+    )
+    assert rc == 1
+    out = capsys.readouterr().out
+    assert "session-card-hold" in out
+    # The hold is self-describing: the designed-hold banner fires so an
+    # observer can tell the born-red discipline from a real defect.
+    assert "HOLD (by design)" in out
+
+
+def test_added_card_complete_card_only_diff_stays_green(tmp_path):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    # The other lane of the regression pair: a card-only diff whose ADDED
+    # card declares complete AND carries every marker passes as before —
+    # the hold never blocks a finished close-out.
+    card = root / config.sessions_dir / "2026-07-11-done.md"
+    card.write_text(
+        "# done\n\n> **Status:** `complete`\n\n💡 idea\n\n"
+        "⟲ previous-session review: ok\n\n📊 Model: fam · low · docs-only\n",
         encoding="utf-8",
     )
     assert (
@@ -258,10 +287,32 @@ def test_added_card_born_red_heartbeat_stays_green(tmp_path):
             root,
             strict=True,
             session_log=_SENTINEL,
-            added_card=Path(config.sessions_dir) / "2026-07-11-born.md",
+            added_card=Path(config.sessions_dir) / "2026-07-11-done.md",
         )
         == 0
     )
+
+
+def test_added_card_hold_banner_suppressed_by_real_findings(tmp_path, capsys):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    # A partially-real failure is never labelled "by design": the in-progress
+    # hold plus an incomplete --session-log card reds WITHOUT the banner.
+    born = root / config.sessions_dir / "2026-07-11-born.md"
+    born.write_text("# born\n\n> **Status:** `in-progress`\n", encoding="utf-8")
+    other = root / config.sessions_dir / "2026-07-10-other.md"
+    other.write_text(
+        "# other\n\n> **Status:** `complete`\n\nno markers here\n",
+        encoding="utf-8",
+    )
+    rc = cmd_check(
+        root,
+        strict=True,
+        session_log=Path(config.sessions_dir) / "2026-07-10-other.md",
+        added_card=Path(config.sessions_dir) / "2026-07-11-born.md",
+    )
+    assert rc == 1
+    assert "HOLD (by design)" not in capsys.readouterr().out
 
 
 def test_added_card_claiming_complete_but_malformed_reds(tmp_path, capsys):
@@ -311,6 +362,61 @@ def test_added_card_absent_is_advisory(tmp_path, capsys):
     )
     assert rc == 0
     assert "nothing to grammar-check" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# --simulate-added-card — the added-card lane's advisory self-test (v1.9.0
+# wave finding: the lane is unobservable on the very PR that ships gate
+# changes, because the gate-regen branch takes the full locked door)
+# ---------------------------------------------------------------------------
+
+
+def test_simulate_added_card_reports_hold_without_affecting_exit(tmp_path, capsys):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    card = root / config.sessions_dir / "2026-07-11-born.md"
+    card.write_text("# born\n\n> **Status:** `in-progress`\n", encoding="utf-8")
+    # Same in-progress card that would HOLD via --added-card — but simulate
+    # is advisory-only: it names the would-be verdict and the run stays 0.
+    rc = cmd_check(
+        root,
+        strict=True,
+        session_log=_SENTINEL,
+        simulate_added_card=Path(config.sessions_dir) / "2026-07-11-born.md",
+    )
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "would HOLD" in out
+    assert "advisory-only" in out
+
+
+def test_simulate_added_card_reports_grammar_reds_and_passes(tmp_path, capsys):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    bad = root / config.sessions_dir / "2026-07-11-bad.md"
+    bad.write_text("# bad\n\n> **Status:** `complete`\nno markers\n", encoding="utf-8")
+    good = root / config.sessions_dir / "2026-07-11-good.md"
+    good.write_text(
+        "# good\n\n> **Status:** `complete`\n\n💡 idea\n\n"
+        "⟲ previous-session review: ok\n\n📊 Model: fam · low · docs-only\n",
+        encoding="utf-8",
+    )
+    rc = cmd_check(
+        root,
+        strict=True,
+        session_log=_SENTINEL,
+        simulate_added_card=Path(config.sessions_dir) / "2026-07-11-bad.md",
+    )
+    assert rc == 0
+    assert "would RED" in capsys.readouterr().out
+    rc = cmd_check(
+        root,
+        strict=True,
+        session_log=_SENTINEL,
+        simulate_added_card=Path(config.sessions_dir) / "2026-07-11-good.md",
+    )
+    assert rc == 0
+    assert "would PASS" in capsys.readouterr().out
 
 
 # ---------------------------------------------------------------------------
