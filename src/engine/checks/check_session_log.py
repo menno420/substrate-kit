@@ -114,8 +114,21 @@ def has_status_badge(text: str) -> bool:
     return any("**status:**" in line.lower() for line in text.splitlines())
 
 
+# The added-card born-red HOLD message (the superbot-games #40 loophole
+# fix). Callers that need to route this finding differently (the CLI gives
+# it its own finding kind so the designed-hold banner can recognise it)
+# match on this exact string — keep it a single module-level constant.
+BORN_RED_HOLD_MESSAGE = (
+    "born-red HOLD: this PR ADDS a session card that declares an "
+    "in-progress/drafted Status — the gate holds the merge red until the "
+    "card flips complete (designed hold, not a defect). Without this hold "
+    "a card-only born-red PR with auto-merge pre-armed merges the instant "
+    "CI reports (superbot-games #40 merged in 24 s on exactly this)."
+)
+
+
 def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
-    """Grammar-lint a card newly ADDED by a PR (the gate's advisory lane).
+    """Grade a card newly ADDED by a PR (the gate's added-card lane).
 
     The venture-lab #15 false-green class: the generated gate exempts an
     ADDED card from the locked door so a born-red heartbeat can merge — but
@@ -124,15 +137,20 @@ def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[s
     merged green and pre-reddened every later bare ``check --strict`` run
     via the newest-by-mtime fallback (fixed only by the next upgrade wave).
 
-    The middle tier (idea recorded on venture-lab PR #17's session card):
-    judge the added card by what it *declares*, never by mid-flight
+    Judge the added card by what it *declares*, never by mid-flight
     completeness —
 
     - **no Status badge at all** → a grammar finding: every session card
       carries a parseable ``> **Status:**`` badge from its first commit
       (the born-red convention *requires* the badge; it exempts the VALUE).
-    - **badge declares in-progress/drafted** → no findings: born-red
-      incompleteness is the designed state and stays fully exempt.
+    - **badge declares in-progress/drafted** → the born-red **HOLD**
+      (:data:`BORN_RED_HOLD_MESSAGE`): the PR is a mid-flight session and
+      must stay red until the card flips complete. This supersedes the
+      #168 full exemption — "exempt" meant GREEN, and a green card-only
+      diff with auto-merge pre-armed merged 24 seconds after open
+      (superbot-games #40, the v1.9.0 wave's premature-merge finding).
+      Born-red incompleteness is still never graded (no marker findings) —
+      the hold is a single designed-state finding, not a completeness red.
     - **badge declares anything else** (``complete`` & co.) → the card
       claims to be a finished close-out, so it gets the full
       :func:`check_log` completeness check — missing markers and unresolved
@@ -149,7 +167,7 @@ def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[s
             "VALUE, never its presence",
         ]
     if status_in_progress(text):
-        return []
+        return [BORN_RED_HOLD_MESSAGE]
     return check_log(path, markers)
 
 

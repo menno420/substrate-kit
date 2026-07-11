@@ -954,3 +954,146 @@ def test_upgrade_report_names_nothing_to_scan_when_no_live_workflow(tmp_path):
     )
     assert "## Carve-out scan" in report_text
     assert "no kit-owned live workflow installed, nothing to scan" in report_text
+
+
+# ---------------------------------------------------------------------------
+# Post-hoc --apply-docs keeps the carve-out section (websites, v1.9.0 wave:
+# the report rewrite passed carveouts=None and DROPPED the section — it had
+# to be hand-restored)
+# ---------------------------------------------------------------------------
+
+
+def test_posthoc_apply_report_reemits_the_carveout_section(tmp_path, monkeypatch):
+    from engine.adopt import LIVE_CI_RELPATH, live_ci_workflow
+
+    root, config, backend = _skipped_apply_upgrade(tmp_path, monkeypatch)
+    gate = root / LIVE_CI_RELPATH
+    gate.parent.mkdir(parents=True, exist_ok=True)
+    gate.write_text(
+        live_ci_workflow(
+            config.interpreter_for_checks or "python3",
+            sessions_dir=config.sessions_dir,
+        ),
+        encoding="utf-8",
+    )
+    run_apply_docs_posthoc(root, config, backend)
+    report_text = (root / config.state_dir / "upgrade-report.md").read_text(
+        encoding="utf-8",
+    )
+    # The rewrite carries an honest carve-out section again: the read-only
+    # rescan ran and states its clean result explicitly.
+    assert "## Carve-out scan" in report_text
+    assert f"carve-out scan: {LIVE_CI_RELPATH} — ran, 0 found" in report_text
+
+
+def test_posthoc_apply_report_carries_prior_carveout_hits(tmp_path, monkeypatch):
+    from engine.upgrade import CARRIED_CARVEOUT_SUFFIX
+
+    root, config, backend = _skipped_apply_upgrade(tmp_path, monkeypatch)
+    report_path = root / config.state_dir / "upgrade-report.md"
+    report_path.write_text(
+        "# substrate-kit upgrade report — v0.9.0 → vX\n\n"
+        "## ⚠️ Gate carve-outs (host additions the kit-owned regen "
+        "could not keep)\n\n"
+        "- carve-out: .github/workflows/substrate-gate.yml — host-added "
+        "job 'pytest' (run tests)\n",
+        encoding="utf-8",
+    )
+    run_apply_docs_posthoc(root, config, backend)
+    report_text = report_path.read_text(encoding="utf-8")
+    # The historical detection survives the rewrite, marked as carried —
+    # post-regen the live file matches the template again, so the rescan
+    # alone would have erased the hit the host may still need to act on.
+    assert "host-added job 'pytest'" in report_text
+    assert CARRIED_CARVEOUT_SUFFIX in report_text
+    assert "Gate carve-outs" in report_text
+    # Idempotent: a second post-hoc rewrite never stacks suffixes or
+    # duplicates the hit.
+    run_apply_docs_posthoc(root, config, backend)
+    report_text = report_path.read_text(encoding="utf-8")
+    assert report_text.count("host-added job 'pytest'") == 1
+    assert report_text.count(CARRIED_CARVEOUT_SUFFIX) == 1
+
+
+# ---------------------------------------------------------------------------
+# Retroactive model doctrine (v1.9.0 wave: the PR #170 render was
+# fresh-plant-only; 4 adopters needed manual regen/hand-merge)
+# ---------------------------------------------------------------------------
+
+
+def test_upgrade_merges_model_doctrine_into_preexisting_readme(tmp_path):
+    from engine.adopt import MODEL_DOCTRINE_MARKER
+
+    root, config, backend = _adopted(tmp_path)
+    # Simulate a pre-doctrine planted README (skip-if-exists keeps it).
+    readme = root / config.sessions_dir / "README.md"
+    old_text = "# Session logs\n\nOld planted README without the doctrine.\n"
+    readme.write_text(old_text, encoding="utf-8")
+    # Pre-KL-3 install: markers lack the Model line; the upgrade adds the
+    # needle at step 6b and must merge the doctrine in the SAME run (the
+    # adopt pass in step 6 ran before the needle existed).
+    config.session_markers = [
+        m for m in config.session_markers if m.get("label") != "Model line"
+    ]
+    _fake_old_dist(root, {"architecture.md.tmpl": "old ${project_name}"})
+    running = _fake_new_dist(tmp_path)
+    lines = run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    text = readme.read_text(encoding="utf-8")
+    # Host content preserved byte-for-byte; doctrine appended under the
+    # provenance marker (the search-hygiene plant pattern).
+    assert text.startswith(old_text)
+    assert MODEL_DOCTRINE_MARKER in text
+    assert "family-level model name your own harness/environment reports" in text
+    assert any("model-attribution doctrine appended" in line for line in lines)
+    # Idempotent: a re-run appends nothing (the detection phrase is present).
+    lines = run_upgrade(
+        root,
+        load_config(root),
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    assert readme.read_text(encoding="utf-8") == text
+    assert not any("model-attribution doctrine appended" in line for line in lines)
+
+
+def test_fresh_plant_readme_needs_no_doctrine_merge(tmp_path):
+    from engine.adopt import MODEL_DOCTRINE_MARKER
+
+    # A fresh v1.9.0+ plant renders the doctrine inline — the retroactive
+    # merge must recognise it as present (shared detection phrase) and
+    # never double-append.
+    root, config, backend = _adopted(tmp_path)
+    readme = root / config.sessions_dir / "README.md"
+    text = readme.read_text(encoding="utf-8")
+    assert (
+        text.count("family-level model name your own harness/environment reports")
+        == 1
+    )
+    assert MODEL_DOCTRINE_MARKER not in text
+    lines = adopt(root, config, backend, kit_root=tmp_path / "kit")
+    assert readme.read_text(encoding="utf-8") == text
+    assert not any("model-attribution doctrine appended" in line for line in lines)
+
+
+def test_doctrine_merge_noop_when_markers_lack_the_needle(tmp_path):
+    from engine.adopt import _merge_model_doctrine
+
+    root, config, backend = _adopted(tmp_path)
+    readme = root / config.sessions_dir / "README.md"
+    old_text = "# Session logs\n\nno doctrine, and no Model needle either\n"
+    readme.write_text(old_text, encoding="utf-8")
+    config.session_markers = [
+        m for m in config.session_markers if m.get("label") != "Model line"
+    ]
+    report: list[str] = []
+    _merge_model_doctrine(root, config, report)
+    # Doctrine without the needle would be noise — nothing written.
+    assert readme.read_text(encoding="utf-8") == old_text
+    assert report == []

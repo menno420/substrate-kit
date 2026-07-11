@@ -391,6 +391,89 @@ def _adopt_stage(path: Path, relpath: str, text: str, report: list[str]) -> None
     report.append(f"staged: {relpath}")
 
 
+# Provenance marker for the retroactively-merged model doctrine (the
+# search-hygiene plant pattern): appended entries sit under one comment
+# naming their origin, so a host reading its own README knows which
+# paragraph the kit owns.
+MODEL_DOCTRINE_MARKER = (
+    "<!-- substrate-kit: model-attribution doctrine "
+    "(family-level names — ORDER 012) -->"
+)
+
+# The doctrine's detection phrase — one distinctive substring shared by the
+# fresh-plant render and the retroactive merge, so the two paths can never
+# drift apart on "is it already there?".
+_MODEL_DOCTRINE_PHRASE = "family-level model name your own harness/environment reports"
+
+
+def _model_doctrine_text() -> str:
+    """The ORDER 012 family-level model-attribution doctrine, one paragraph.
+
+    Composed in one place for both consumers: the fresh
+    ``.sessions/README.md`` plant embeds it inline, and
+    :func:`_merge_model_doctrine` appends it (under
+    :data:`MODEL_DOCTRINE_MARKER`) to READMEs planted before the doctrine
+    existed — the v1.9.0 wave found 4 adopters needing exactly that
+    hand-merge because the PR #170 render was not retroactive.
+    """
+    return (
+        f"The `{MODEL_LINE_NEEDLE}` model segment is the **{_MODEL_DOCTRINE_PHRASE} "
+        "this session** "
+        "(e.g. `fable-5`, `opus-4.8`, `sonnet-5`) — the committed card's "
+        "self-report is the attribution ground truth. Never copy it from "
+        "an external surface (schedule/Routines screens are evidenced to "
+        "misattribute), and never record a full dated model ID — "
+        "family-level names only."
+    )
+
+
+def _merge_model_doctrine(
+    root: Path,
+    config: Config,
+    report: list[str],
+) -> None:
+    """Append the model doctrine to a pre-existing ``.sessions/README.md``.
+
+    The PR #170 doctrine render only reached FRESH plants — skip-if-exists
+    left every already-planted README without it, and the v1.9.0
+    distribution wave had to regen/hand-merge 4 adopters. Retroactive now,
+    with the same append-only/provenance covenant as the search-hygiene
+    plants: existing content is preserved byte-for-byte (host edits are
+    host policy), the appended paragraph sits under
+    :data:`MODEL_DOCTRINE_MARKER`, re-runs are idempotent (the
+    detection phrase is shared with the fresh render, so a v1.9.0+ plant
+    is already "present"), and an unreadable file is skipped + reported,
+    never destroyed. No-op when the host's markers don't require the
+    Model line — doctrine without the needle would be noise.
+    """
+    if not any(
+        m.get("needle") == MODEL_LINE_NEEDLE for m in config.session_markers
+    ):
+        return
+    relpath = f"{config.sessions_dir}/README.md"
+    path = root / config.sessions_dir / "README.md"
+    if not path.is_file():
+        return
+    try:
+        existing = path.read_text(encoding="utf-8")
+    except OSError:
+        report.append(
+            f"skipped: {relpath} (unreadable — model doctrine not merged)",
+        )
+        return
+    if _MODEL_DOCTRINE_PHRASE in existing:
+        return
+    chunk = ""
+    if not existing.endswith("\n"):
+        chunk += "\n"
+    chunk += "\n" + MODEL_DOCTRINE_MARKER + "\n" + _model_doctrine_text() + "\n"
+    atomic_write_text(path, existing + chunk)
+    report.append(
+        f"merged: {relpath} (model-attribution doctrine appended; "
+        "existing content preserved)",
+    )
+
+
 def _adopt_sessions_readme(markers: list[dict[str, str]]) -> str:
     """Compose the one-paragraph ``.sessions/README.md`` (born-red convention).
 
@@ -414,15 +497,7 @@ def _adopt_sessions_readme(markers: list[dict[str, str]]) -> str:
     # markers actually require the Model line.
     model_doctrine = ""
     if any(m.get("needle") == MODEL_LINE_NEEDLE for m in markers):
-        model_doctrine = (
-            f" The `{MODEL_LINE_NEEDLE}` model segment is the **family-level "
-            "model name your own harness/environment reports this session** "
-            "(e.g. `fable-5`, `opus-4.8`, `sonnet-5`) — the committed card's "
-            "self-report is the attribution ground truth. Never copy it from "
-            "an external surface (schedule/Routines screens are evidenced to "
-            "misattribute), and never record a full dated model ID — "
-            "family-level names only."
-        )
+        model_doctrine = " " + _model_doctrine_text()
     return (
         "# Session logs\n\n"
         "Per-session logs live here as `<date>-<slug>.md`, newest first. "
@@ -523,22 +598,31 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
     onto the mid-session in-progress card and redded every unrelated PR;
     adopter live-fire, gba-homebrew PR #3, 2026-07-10.) A card **ADDED** by
     the PR (a born-red heartbeat: first-commit-carries-an-in-progress-card
-    conventions make in-progress the REQUIRED state at birth) also gates
-    advisory via the absent sentinel, because under ``--strict`` the engine
-    reds ANY existing-but-incomplete card — the locked door could never pass
-    a heartbeat (adopter live-fire: gba-homebrew PR #2 merged red on exactly
-    this). A card **MODIFIED** by the PR (every session close-out flips one)
+    conventions make in-progress the REQUIRED state at birth) gates via the
+    absent sentinel plus ``--added-card`` — the engine grades the card by
+    what it DECLARES: an in-progress/drafted card is the born-red **HOLD**
+    (red until it flips complete), a badge-less or complete-but-malformed
+    card reds on grammar, and a complete well-formed card passes. The hold
+    tier closed the v1.9.0 wave's card-only loophole: the previous lane
+    fully EXEMPTED an in-progress added card, so a card-only born-red PR
+    with auto-merge pre-armed went green and merged 24 seconds after open —
+    before the session built anything (superbot-games PR #40). Completeness
+    is still never graded mid-flight (the gba-homebrew PR #2 lesson —
+    born-red is the REQUIRED state at birth); the hold is a single
+    designed-state finding with a HOLD-by-design banner, not a marker red.
+    A card **MODIFIED** by the PR (every session close-out flips one)
     keeps the full ``--require-session-log`` locked door, so a close-out that
-    forgot to flip ``complete`` still reds. Both fixes validated live across
-    gba-homebrew PRs #3–#14. One deliberate exception (queued fix 3,
-    venture-lab #14): a card ADDED by a PR that ALSO touches this gate
-    workflow file itself gates through the full locked door — GitHub runs a
-    ``pull_request`` workflow from the PR head, so the PR that regenerates
-    the gate runs the NEW gate mid-PR, and without the exception the regen
-    could silently flip an added born-red card from held-red (old gate
-    semantics) to advisory, auto-merging a partial session. Hold semantics
-    may only tighten, never loosen, within the PR that changes them; the
-    merge path is unchanged — flip the card ``complete``.
+    forgot to flip ``complete`` still reds. Both diff-selection fixes
+    validated live across gba-homebrew PRs #3–#14. One deliberate exception
+    (queued fix 3, venture-lab #14): a card ADDED by a PR that ALSO touches
+    this gate workflow file itself gates through the full locked door —
+    GitHub runs a ``pull_request`` workflow from the PR head, so the PR that
+    regenerates the gate runs the NEW gate mid-PR, and without the exception
+    the regen could silently loosen an added card's hold MID-PR. Hold
+    semantics may only tighten, never loosen, within the PR that changes
+    them; that branch also runs ``--simulate-added-card`` so the lane's
+    would-be verdict stays observable on exactly the PRs that ship gate
+    changes. The merge path is unchanged — flip the card ``complete``.
 
     **Control fast lane (KL-8):** a diff touching only ``control/**`` (a
     status heartbeat, a manager inbox append) short-circuits the job GREEN
@@ -680,33 +764,34 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         "        # while the bare mtime fallback latches onto the mid-session\n"
         "        # in-progress card and reds every unrelated PR (adopter\n"
         "        # live-fire, gba-homebrew PR #3, 2026-07-10 — the omitted\n"
-        "        # argument was never fail-open in CI). Second live-fire case:\n"
-        "        # a heartbeat PR that ADDS the born-red card (first-commit\n"
-        "        # conventions REQUIRE an in-progress card at birth) can never\n"
-        "        # satisfy the locked door — gba-homebrew PR #2 merged red on\n"
-        "        # exactly this. So: a card ADDED by the PR gates ADVISORY via\n"
-        "        # the absent sentinel (under --strict the engine reds ANY\n"
-        "        # existing-but-incomplete card, required or not — born-red is\n"
-        "        # the REQUIRED state at birth, so a heartbeat must not be\n"
-        "        # judged on completeness); a card MODIFIED by the PR (every\n"
-        "        # session close-out flips one) keeps the full locked-door\n"
-        "        # gate, so a close-out that forgot to flip `complete` still\n"
-        "        # reds. EXCEPT: when this same PR also touches THIS gate\n"
-        "        # workflow file (an upgrade PR regenerating the kit-owned\n"
-        "        # gate), an ADDED card keeps the FULL locked door too — the\n"
-        "        # PR runs the NEW gate the moment the regen commit lands, so\n"
-        "        # without this the regen itself could flip an added card\n"
-        "        # from held-red to advisory MID-PR and auto-merge a partial\n"
-        "        # session (venture-lab #14). Hold semantics may only\n"
-        "        # tighten, never loosen, inside the PR that changes them;\n"
-        "        # the escape is the normal one — flip the card complete.\n"
-        "        # The advisory lane is NOT a full exemption: --added-card\n"
-        "        # grammar-lints the added card (a missing Status badge, or\n"
-        "        # a card declaring itself complete while missing its\n"
-        "        # markers, reds) while born-red incompleteness stays\n"
-        "        # exempt — the venture-lab #15 class, where an ADDED card\n"
-        "        # merged green with malformed grammar and pre-reddened\n"
-        "        # every later bare `check --strict` run.\n"
+        "        # argument was never fail-open in CI). A card ADDED by the PR\n"
+        "        # (first-commit conventions REQUIRE an in-progress card at\n"
+        "        # birth) gates via the absent sentinel + --added-card: the\n"
+        "        # engine grades the card by what it DECLARES — an\n"
+        "        # in-progress/drafted card is the born-red HOLD (red until it\n"
+        "        # flips complete; the superbot-games #40 loophole fix, where\n"
+        "        # a card-only born-red PR with auto-merge pre-armed went\n"
+        "        # green and merged 24 s after open), a badge-less or\n"
+        "        # complete-but-malformed card reds on grammar (the\n"
+        "        # venture-lab #15 false-green class), and a complete\n"
+        "        # well-formed card passes. Completeness is never graded\n"
+        "        # mid-flight (the gba-homebrew #2 lesson — born-red is the\n"
+        "        # REQUIRED state at birth); the hold is a single\n"
+        "        # designed-state finding with a HOLD-by-design banner. A\n"
+        "        # card MODIFIED by the PR (every session close-out flips\n"
+        "        # one) keeps the full locked-door gate, so a close-out that\n"
+        "        # forgot to flip `complete` still reds. EXCEPT: when this\n"
+        "        # same PR also touches THIS gate workflow file (an upgrade\n"
+        "        # PR regenerating the kit-owned gate), an ADDED card keeps\n"
+        "        # the FULL locked door too — the PR runs the NEW gate the\n"
+        "        # moment the regen commit lands, so without this the regen\n"
+        "        # itself could loosen an added card's hold MID-PR\n"
+        "        # (venture-lab #14). Hold semantics may only tighten, never\n"
+        "        # loosen, inside the PR that changes them; that branch also\n"
+        "        # runs --simulate-added-card so the added-card lane's\n"
+        "        # would-be verdict stays observable on exactly the PRs that\n"
+        "        # ship gate changes. The escape is the normal one — flip\n"
+        "        # the card complete.\n"
         "        run: |\n"
         '          if [ -n "${{ github.base_ref }}" ]; then\n'
         '            range="origin/${{ github.base_ref }}...HEAD"\n'
@@ -728,12 +813,17 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         '              echo "card $card is ADDED but this PR also touches the'
         ' gate workflow itself — locked-door gate (mid-PR semantics may only'
         ' tighten; flip the card complete to merge)"\n'
+        f"              {interpreter} bootstrap.py check --strict"
+        ' --require-session-log --session-log "$card"'
+        ' --simulate-added-card "$card"\n'
+        "            else\n"
+        f"              {interpreter} bootstrap.py check --strict"
+        ' --require-session-log --session-log "$card"\n'
         "            fi\n"
-        f"            {interpreter} bootstrap.py check --strict --require-session-log"
-        ' --session-log "$card"\n'
         "          elif [ -n \"$card\" ]; then\n"
         '            echo "card $card is newly ADDED by this PR (born-red heartbeat)'
-        ' — advisory sentinel gate (card grammar still checked)"\n'
+        ' — added-card gate: in-progress HOLDs until the card flips complete;'
+        ' grammar misses red"\n'
         f"            {interpreter} bootstrap.py check --strict --session-log "
         f"{sessions_dir}/__born-red-card-added__.md"
         ' --added-card "$card"\n'
@@ -1408,10 +1498,14 @@ def adopt(
             # Provenance for the upgrade diff (§4.3): hash what the kit wrote.
             record_doc_hash(backend, rel, final)
 
-    # (2) Session-log scaffolding.
+    # (2) Session-log scaffolding. A pre-existing README (skip-if-exists
+    # keeps it) still receives the model-attribution doctrine append-only
+    # under a provenance marker — the PR #170 render was fresh-plant-only,
+    # and the v1.9.0 wave hand-merged 4 adopters for exactly this gap.
     sessions_rel = f"{config.sessions_dir}/README.md"
     readme = _adopt_sessions_readme(config.session_markers)
     _adopt_plant(root / config.sessions_dir / "README.md", sessions_rel, readme, report)
+    _merge_model_doctrine(root, config, report)
 
     # (3) The context-pack index skeleton.
     project_name = context.get("project_name") or root.name

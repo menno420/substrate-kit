@@ -49,6 +49,14 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- [Folded-gate hosts need the PR-diff-aware card selection too](folded-gate-diff-aware-card-2026-07-11.md)
+  — state: captured; origin: consumer (superbot-next folded the session
+  gate into its own CI as a `gate` job that still grades the
+  newest-by-mtime card; during the v1.9.0 wave it graded a SIBLING
+  complete card while the PR's own card was in-progress); next: their lane
+  ports the diff-derived `--session-log` block (the kit's `ci.yml`
+  session-gate step is the copyable reference); kit-side advisory only if
+  the class recurs.
 - [Dispatch race: briefs need an explicit re-verify-then-stand-down clause](dispatch-race-reverify-clause-2026-07-10.md)
   — state: captured; origin: coordinator-lane (the #106 unstall dispatch
   lost a 6-second race to a sibling's branch-update; the dispatched session
