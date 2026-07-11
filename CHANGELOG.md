@@ -15,6 +15,25 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-07-11
+
+Capability release (MINOR) shipping the EAP program-review §6 kit-owned
+band plus the queued fixes batch: the unified work-claim convention +
+`check_claims` claims-directory scan (#144), the planted
+`scripts/env-setup.sh` setup-script contract + `check_setup_script`
+enforcer (#147), the kit-owned control-plane grammar constants module
+`engine/grammar.py` with writer↔enforcer agreement tests (#150), the
+kit-planted auto-merge enabler workflow + repo-settings one-time checklist
+(#153), and the four #156 fixes (explicit-when-clean carve-out reporting,
+hash-verified backup collision-banking, the mid-PR gate hold-tightening
+rule, and the code-span-aware unrendered-slot scan including the
+control-fast-lane scan close). MINOR per the header's contract: new
+templates, a new checker, a new module, and a new planted workflow — no
+planted-doc, state schema, config schema, or CLI contract breaks; adopters
+inherit everything on `upgrade`.
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
 ### Added
 
 - **Auto-merge enabler workflow planted by the kit + repo-settings one-time
@@ -1105,6 +1124,7 @@ by real consumers, and now nameable, pinnable, verifiable, and upgradeable.
   `init --unpack` it served never shipped, and it doubled every consumer's
   vendored file for nothing.
 
+[1.8.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.8.0
 [1.7.1]: https://github.com/menno420/substrate-kit/releases/tag/v1.7.1
 [1.7.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.7.0
 [1.6.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.6.0
