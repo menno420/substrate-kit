@@ -15,6 +15,23 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-07-11
+
+Capability release (MINOR) shipping the run-6 delivery-gap fix — a new
+worker-visible handoff surface: the kit-regenerated, marker-guarded
+`HANDOFF.md` pull-visible pointer at repo root plus the planted `CLAUDE.md`
+read-first rider that routes sessions through it (#203, one shared composer
+with the #165 SessionStart push so the two surfaces can never drift) —
+together with the fleet-currency `kit:` line bullet/bold-label grammar
+leniency, the `guard-fires.jsonl` 10-minute dedupe of identical verdict-less
+fires, and the generated gate's action-pin bumps to `actions/checkout@v5` /
+`actions/setup-python@v6` (all #195). MINOR per the header's contract: new
+capability (a new regenerated surface + orientation wiring) plus fixes — no
+planted-doc, state schema, config schema, or CLI contract breaks; adopters
+inherit everything on `upgrade`.
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
 **Benchmark outcome (KF-5 — travels into the next release's notes):** B1
 cold-start SIXTH firing (`2026-07-11-run06`, seed 711601 brookdonation, kit
 v1.10.1, arms claude-sonnet-5 ×6, judge claude-opus-4-8, both
@@ -1426,6 +1443,7 @@ by real consumers, and now nameable, pinnable, verifiable, and upgradeable.
   `init --unpack` it served never shipped, and it doubled every consumer's
   vendored file for nothing.
 
+[1.11.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.11.0
 [1.10.1]: https://github.com/menno420/substrate-kit/releases/tag/v1.10.1
 [1.10.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.10.0
 [1.9.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.9.0
