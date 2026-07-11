@@ -1,1 +1,0 @@
-- `claude/bump-v1.12.0` · **release v1.12.0 cut** — version bump (config.py + pyproject + CHANGELOG cut + dist regen), release.yml dispatch, three-way verify, adopters regen + status close-out · expected files: src/engine/lib/config.py, pyproject.toml, CHANGELOG.md, dist/bootstrap.py, .sessions/, control/status.md, docs/adopters.md · 2026-07-11
