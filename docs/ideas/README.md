@@ -49,6 +49,21 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- [Gate card picker `tail -1` lets a multi-card diff shadow the born-red hold](gate-tail1-multi-card-shadowing-2026-07-11.md)
+  — state: captured; origin: consumer (venture-lab #33, first exercise of
+  the regenerated v1.10.0 gate: head 798a3d0 shipped an ADDED in-progress
+  card GREEN because the picker's `tail -1` graded a modified sibling
+  instead — run 29144734514; single-card head 60e91f8 correctly HELD, run
+  29144777017); **HIGH — partially reopens the superbot-games #40 class the
+  v1.10.0 release closed**; next: a v1.10.1 kit-fixes slice grades EVERY
+  card in the diff (HOLD if any added card is in-progress) in the gate
+  template + the kit's own `ci.yml` in lockstep.
+- [`_MODEL_DOCTRINE_PHRASE` exact-substring match is emphasis-blind](model-doctrine-emphasis-blind-phrase-2026-07-11.md)
+  — state: captured; origin: consumer (websites #105: their hand-merged
+  doctrine had `**…**` inside the detection phrase, so the retroactive
+  append missed it and added a harmless near-duplicate paragraph;
+  idempotent afterwards); next: quick-win — normalize emphasis before the
+  substring test + one regression fixture; engine change → dist byte-pin.
 - [Folded-gate hosts need the PR-diff-aware card selection too](folded-gate-diff-aware-card-2026-07-11.md)
   — state: captured; origin: consumer (superbot-next folded the session
   gate into its own CI as a `gate` job that still grades the
