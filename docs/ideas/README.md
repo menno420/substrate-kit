@@ -245,3 +245,17 @@ origin repo; frontmatter still tracks their B4 outcome.)
   — pointer stub (canonical: superbot); **shipped** as kit PR #16
   (2026-07-09) — the survive window closes 2026-08-08; the sweep flips it
   `survived` if no revert exists then.
+- [📊 Model-line payload lint advisory](model-line-payload-lint-advisory-2026-07-11.md)
+  — state: captured (groomed off the heartbeat at the archive-prep
+  close-out; carried since the #170 card as W-10a evidence: 4/5 newest
+  cards had off-PL-004 effort/task-class payloads, hand-fixed in #199);
+  next: quick-win — advisory payload lint in the session-log checker with
+  writer/enforcer-shared constants (grammar.py pattern), never
+  exit-affecting.
+- [Archive-ready close-out as a kit surface](archive-ready-close-out-surface-2026-07-11.md)
+  — state: captured (the archive-prep session's 💡, 2026-07-11): chat
+  archival is now a routine program event (three in three days) and its
+  wrap-up ritual is hand-derived each time — auto-draft the archive-ready
+  note from evidence (health runs, open-PR table, ⚑ list, probe-verified
+  routine state) the way KL-5 auto-drafts cards; next: structured plan
+  (loop + templates + checker).

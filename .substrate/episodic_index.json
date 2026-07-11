@@ -44,6 +44,69 @@
     "summary": "> **Status:** `complete` *(PR #28 \u2014 auto-merge armed at open)*"
   },
   {
+    "slug": "b1-run2-record",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "b1",
+      "run-2",
+      "record",
+      "cold-start",
+      "row",
+      "2",
+      "strict-f-5",
+      "fail",
+      "judged",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #44 \u2014 auto-merge armed at open)*"
+  },
+  {
+    "slug": "coordinator-review",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "superbot-coordinator",
+      "lane",
+      "suffixed",
+      "wake-up",
+      "review",
+      "project",
+      "self-review",
+      "heartbeat",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR \u2014 READY at open, auto-merge armed; suffixed filenames per the owner's lane rule \u2014 this session never touches k"
+  },
+  {
+    "slug": "coordinator-winddown",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "superbot-coordinator",
+      "lane",
+      "wind-down",
+      "succession",
+      "pack",
+      "gen-1",
+      "gen-2",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR \u2014 READY at open, auto-merge armed; suffixed filenames per the owner's lane rule \u2014 this session never touches c"
+  },
+  {
     "slug": "enabler-race-hotfix",
     "date": "2026-07-09",
     "tags": [
@@ -81,6 +144,47 @@
       "\ud83d\udcca"
     ],
     "summary": "> **Status:** `complete` *(PR #35 \u2014 auto-merge armed at open via MCP, per convention)*"
+  },
+  {
+    "slug": "fleet-wrap",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "fleet",
+      "rollout",
+      "v1",
+      "6",
+      "0",
+      "wrap-up",
+      "kit-side",
+      "increment",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #75 \u2014 auto-merge armed at open via MCP, per convention)*"
+  },
+  {
+    "slug": "gen1-winddown",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "gen-1",
+      "wind-down",
+      "deliverables",
+      "kit-lab",
+      "lane",
+      "phase",
+      "2",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #74 \u2014 opened READY at the born-red commit,"
   },
   {
     "slug": "groomed-ideas-1",
@@ -284,6 +388,134 @@
     "summary": "> **Status:** `complete` *(PR #31 \u2014 auto-merge armed at open)*"
   },
   {
+    "slug": "order003",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "order",
+      "003",
+      "substrate-coordinator",
+      "visibility",
+      "band",
+      "v1",
+      "3",
+      "0",
+      "cut",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #41 \u2014 auto-merge armed at open)*"
+  },
+  {
+    "slug": "order004",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "order",
+      "004",
+      "configurable",
+      "heartbeat",
+      "paths",
+      "multi-project",
+      "adopter",
+      "rider",
+      "v1",
+      "4",
+      "0",
+      "cut",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #46 \u2014 READY at open, auto-merge armed)*"
+  },
+  {
+    "slug": "order005-retro",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "order",
+      "005",
+      "gen-1",
+      "self-review",
+      "retro",
+      "project",
+      "review",
+      "document",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #50 \u2014 READY at open, auto-merge armed)*"
+  },
+  {
+    "slug": "order006",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "order",
+      "006",
+      "capability-manifest",
+      "band",
+      "v1",
+      "5",
+      "0",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #63 \u2014 auto-merge armed at open; claim PR #60 merged first)*"
+  },
+  {
+    "slug": "order007",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "order",
+      "007",
+      "order-claiming",
+      "convention",
+      "50",
+      "disposition",
+      "v1",
+      "6",
+      "0",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #69 \u2014 opened READY at the born-red commit; claim PR #67 merged first; ORDER 008 sibling build PR #68 merged be"
+  },
+  {
+    "slug": "order008",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "order",
+      "008",
+      "owner-action",
+      "quality",
+      "band",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #68 \u2014 opened READY at the born-red commit; claim PR #67 merged first)*"
+  },
+  {
     "slug": "p0-adopt-engage-gate",
     "date": "2026-07-09",
     "tags": [
@@ -342,6 +574,48 @@
     "summary": "> **Status:** `complete` *(PR #22 \u2014 discuss-first, `do-not-automerge`,"
   },
   {
+    "slug": "pl011-adoption-engaged",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "pl-011",
+      "adoption",
+      "is",
+      "not",
+      "done",
+      "until",
+      "engaged",
+      "owner-review",
+      "pr",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #26 \u2014 `do-not-automerge` at creation,"
+  },
+  {
+    "slug": "project-review",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "gen-1",
+      "retro",
+      "self-review",
+      "order",
+      "005",
+      "project",
+      "review",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #51 \u2014 READY at open)*"
+  },
+  {
     "slug": "run-closeout",
     "date": "2026-07-09",
     "tags": [
@@ -358,6 +632,48 @@
       "\ud83d\udcca"
     ],
     "summary": "> **Status:** `complete` *(PR #21 \u2014 the run-level close-out increment;"
+  },
+  {
+    "slug": "run2-harness-prep",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "run-2",
+      "harness",
+      "prep",
+      "score_m1",
+      "artifacts",
+      "telemetry",
+      "last-line",
+      "shadowing",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #40 \u2014 auto-merge armed at open)*"
+  },
+  {
+    "slug": "seed-fix-yield-keyword",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "make_seed",
+      "yield-keyword",
+      "fix",
+      "prepare",
+      "seed-suite",
+      "smoke",
+      "pin-path",
+      "do-not-automerge",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #49 \u2014 do-not-automerge by pin-path law, LEFT OPEN for owner ratification)*"
   },
   {
     "slug": "v1.1.0-release",
@@ -401,5 +717,1588 @@
       "\ud83d\udcca"
     ],
     "summary": "> **Status:** `complete` *(PR #32 \u2014 auto-merge armed at open)*"
+  },
+  {
+    "slug": "winddown-addendum",
+    "date": "2026-07-09",
+    "tags": [
+      "session",
+      "2026-07-09",
+      "kit-lab",
+      "coordinator",
+      "wind-down",
+      "addendum",
+      "docs-only",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR #76 \u2014 auto-merge armed at open via MCP, per convention)*"
+  },
+  {
+    "slug": "adopt-lane",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "gen-2",
+      "adopt",
+      "lane",
+      "lane-aware",
+      "adoption",
+      "shared",
+      "repos",
+      "queue",
+      "item",
+      "11",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "adopter-findings-batch",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "gen-2",
+      "adopter",
+      "findings",
+      "batch",
+      "owner-action",
+      "tokens",
+      "fast-ci",
+      "arm-race",
+      "parallel-worker",
+      "worktree",
+      "\ud83d\udca1",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "b1-run-3",
+    "date": "2026-07-10",
+    "tags": [
+      "session",
+      "2026-07-10",
+      "b1",
+      "run-3",
+      "cold-start",
+      "bench",
+      "third",
+      "firing",
+      "kf-8",
+      "threshold",
+      "run",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "b1-run-4",
+    "date": "2026-07-10",
+    "tags": [
+      "session",
+      "2026-07-10",
+      "b1",
+      "run-4",
+      "cold-start",
+      "bench",
+      "fourth",
+      "firing",
+      "dual",
+      "f-5",
+      "reading",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "bump-v1.7.0",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "gen-2",
+      "bump",
+      "v1",
+      "7",
+      "0",
+      "release",
+      "prep",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "bump-v1.7.1",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "bump",
+      "v1",
+      "7",
+      "1",
+      "release",
+      "prep",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "claim-aware-checker",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "gen-2",
+      "claim-aware",
+      "checker",
+      "duplicate",
+      "stale",
+      "claim",
+      "advisory",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "close-36-readme-note",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "gen-2",
+      "close",
+      "issue",
+      "36",
+      "readme",
+      "writer-identity",
+      "honesty",
+      "note",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "coordinator-closeout",
+    "date": "2026-07-10",
+    "tags": [
+      "session",
+      "2026-07-10",
+      "superbot-coordinator",
+      "lane",
+      "close-out",
+      "handoff",
+      "gen-1",
+      "archived",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(PR \u2014 READY at open, squash auto-merge armed; suffixed filenames per the owner's lane rule \u2014 this session never to"
+  },
+  {
+    "slug": "coordinator-dispatch-inbox-check",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "coordinator-dispatch",
+      "inbox",
+      "check",
+      "stand-down",
+      "already",
+      "drained",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "currency-regen-v170-wave",
+    "date": "2026-07-10",
+    "tags": [
+      "session",
+      "2026-07-10",
+      "adopter-registry",
+      "regen",
+      "after",
+      "v1",
+      "7",
+      "0",
+      "upgrade",
+      "wave",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "currency-regen-v171-wave",
+    "date": "2026-07-10",
+    "tags": [
+      "session",
+      "2026-07-10",
+      "adopter-registry",
+      "regen",
+      "after",
+      "v1",
+      "7",
+      "1",
+      "upgrade",
+      "wave",
+      "kit",
+      "seat",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "eap-610-automerge-enabler",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "eap",
+      "6",
+      "10",
+      "auto-merge",
+      "enabler",
+      "workflow",
+      "planted",
+      "kit",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "eap-64-claims",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "eap",
+      "6",
+      "4",
+      "one",
+      "claims",
+      "template",
+      "check_claims",
+      "unified",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "eap-65-setup-script",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "eap",
+      "6",
+      "5",
+      "setup-script",
+      "contract",
+      "template",
+      "checker",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "eap-68-grammar",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "eap",
+      "6",
+      "8",
+      "order",
+      "owner-action",
+      "grammar",
+      "as",
+      "one",
+      "kit-owned",
+      "constants",
+      "module",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "eap61-kit-owned-gate",
+    "date": "2026-07-10",
+    "tags": [
+      "session",
+      "2026-07-10",
+      "eap",
+      "6",
+      "1",
+      "substrate-gate",
+      "yml",
+      "declared",
+      "kit-owned",
+      "regenerated",
+      "adopt",
+      "upgrade",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "eap63-currency-checker",
+    "date": "2026-07-10",
+    "tags": [
+      "session",
+      "2026-07-10",
+      "eap",
+      "6",
+      "3",
+      "kit-upgrade",
+      "currency",
+      "checker",
+      "generated",
+      "docs",
+      "adopters",
+      "md",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "fix-engagement-comment-leniency",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "gen-2",
+      "fix",
+      "engagement-checker",
+      "comment-leniency",
+      "issue",
+      "36",
+      "rpt",
+      "1",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "gate-template-sentinel-fixes",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "visiting",
+      "adopter",
+      "lane",
+      "gate-template",
+      "sentinel",
+      "fixes",
+      "gba-homebrew",
+      "track",
+      "b",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "gen2-close-out",
+    "date": "2026-07-10",
+    "tags": [
+      "session",
+      "2026-07-10",
+      "gen-2",
+      "close-out",
+      "dispatch-race",
+      "finding",
+      "renumber-drift",
+      "fixes",
+      "next-run",
+      "brief",
+      "docs-only",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "gen2-final-close",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "gen-2",
+      "final",
+      "session",
+      "close",
+      "status",
+      "ledger",
+      "9",
+      "prs",
+      "shipped",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "gen2-owner-closeout",
+    "date": "2026-07-10",
+    "tags": [
+      "session",
+      "2026-07-10",
+      "gen-2",
+      "owner",
+      "close-out",
+      "coordinator",
+      "retro",
+      "sweep",
+      "next-run",
+      "brief",
+      "final",
+      "heartbeat",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "gen2-session-close",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "gen-2",
+      "session",
+      "close",
+      "status",
+      "md",
+      "capabilities",
+      "merge-wall",
+      "recipe",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "gen2-status-v1.7.0-shipped",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "gen-2",
+      "correct",
+      "status",
+      "v1",
+      "7",
+      "0",
+      "released",
+      "capabilities",
+      "release-recipe",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "gen2-wave2-close",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "gen-2",
+      "wave-2",
+      "session",
+      "close",
+      "release-readiness",
+      "note",
+      "full",
+      "ledger",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "idea-seeds-kit",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "overnight",
+      "idea",
+      "seeds",
+      "2",
+      "gen-2",
+      "night",
+      "prep",
+      "part",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "inbox-append-only-checker",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "gen-2",
+      "inbox",
+      "append-only",
+      "checker",
+      "issue",
+      "36",
+      "rpt",
+      "2",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "nightcap-docs-reconcile",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "gen-2",
+      "night-cap",
+      "docs",
+      "reconcile",
+      "groom",
+      "post-overnight-run",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "order-010-hourly-wake",
+    "date": "2026-07-10",
+    "tags": [
+      "session",
+      "2026-07-10",
+      "order",
+      "010",
+      "hourly",
+      "wake",
+      "routine",
+      "bus",
+      "record",
+      "docs-only",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "order-011-f5-reading-a",
+    "date": "2026-07-10",
+    "tags": [
+      "session",
+      "2026-07-10",
+      "order",
+      "011",
+      "f-5",
+      "ruling",
+      "applied",
+      "reading",
+      "runs",
+      "2",
+      "3",
+      "re-scored",
+      "b-benches",
+      "unpaused",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "pr92-adopt-owner-actions-xref",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "gen-2",
+      "adopt",
+      "orphaned",
+      "92",
+      "owner-action",
+      "capabilities",
+      "cross-reference",
+      "advisory",
+      "queue",
+      "item",
+      "8",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "queue-reconcile-enabler-sync",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "gen-2",
+      "reconcile",
+      "queue-state",
+      "auto-merge",
+      "stall",
+      "class",
+      "enabler",
+      "synchronize",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "retro-index-debt",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "retro",
+      "readme",
+      "index",
+      "debt",
+      "reconciled",
+      "gen-2",
+      "night",
+      "prep",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "run2-ordinary-followups",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "gen-2",
+      "run-2",
+      "ordinary-lane",
+      "follow-ups",
+      "queue",
+      "item",
+      "3",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "telemetry-write-at-commit",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "gen-2",
+      "telemetry",
+      "write-at-card-commit",
+      "backfill",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "upgrade-apply-docs-posthoc",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "gen-2",
+      "full",
+      "upgrade-apply-docs",
+      "post-hoc-apply",
+      "mechanism",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "upgrade-ux-fixes-batch",
+    "date": "2026-07-10",
+    "tags": [
+      "2026-07-10",
+      "gen-2",
+      "four",
+      "upgrade-ux",
+      "fixes",
+      "v1",
+      "6",
+      "0",
+      "rollout",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "v171-payload",
+    "date": "2026-07-10",
+    "tags": [
+      "session",
+      "2026-07-10",
+      "v1",
+      "7",
+      "1",
+      "payload",
+      "spurious-backup",
+      "fix",
+      "gate",
+      "carve-out",
+      "protection",
+      "inbox-base",
+      "wiring",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "adopters-regen-v190-wave",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "adopters",
+      "regen",
+      "after",
+      "v1",
+      "9",
+      "0",
+      "distribution",
+      "wave",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "archive-prep-close-out",
+    "date": "2026-07-11",
+    "tags": [
+      "session",
+      "2026-07-11",
+      "archive-prep",
+      "wrap-up",
+      "close-out",
+      "owner",
+      "order",
+      "via",
+      "coordinator",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "b1-run-5",
+    "date": "2026-07-11",
+    "tags": [
+      "session",
+      "2026-07-11",
+      "b1",
+      "run-5",
+      "cold-start",
+      "bench",
+      "fifth",
+      "firing",
+      "first",
+      "reading-a-only",
+      "run",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "b1-run-6",
+    "date": "2026-07-11",
+    "tags": [
+      "session",
+      "2026-07-11",
+      "b1",
+      "run-6",
+      "cold-start",
+      "bench",
+      "sixth",
+      "firing",
+      "handoff-push",
+      "validation",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "b1-run-7",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "b1",
+      "cold-start",
+      "run-7",
+      "handoff-pointer",
+      "re-validation",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "b1-run-8",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "b1",
+      "cold-start",
+      "run-8",
+      "delegation-seam",
+      "smoke",
+      "then",
+      "pointer",
+      "re-validation",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "b1-run-9",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "b1",
+      "cold-start",
+      "firing",
+      "9",
+      "bench",
+      "run-9",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "bump-v1.10.0",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "bump",
+      "v1",
+      "10",
+      "0",
+      "release",
+      "prep",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "bump-v1.10.1",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "bump",
+      "v1",
+      "10",
+      "1",
+      "release",
+      "prep",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "bump-v1.11.0",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "bump",
+      "v1",
+      "11",
+      "0",
+      "release",
+      "prep",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "bump-v1.12.0",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "bump",
+      "v1",
+      "12",
+      "0",
+      "release",
+      "prep",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "bump-v1.8.0",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "bump",
+      "v1",
+      "8",
+      "0",
+      "release",
+      "prep",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "bump-v1.9.0",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "bump",
+      "v1",
+      "9",
+      "0",
+      "release",
+      "prep",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "carveout-three-way-compare",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "upgrade",
+      "carve-out",
+      "scanner",
+      "three-way",
+      "compare",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "close-v1.10.1",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "release",
+      "v1",
+      "10",
+      "1",
+      "close-out",
+      "currency",
+      "regen",
+      "status",
+      "heartbeat",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "close-v1.11.0",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "release",
+      "v1",
+      "11",
+      "0",
+      "close-out",
+      "currency",
+      "regen",
+      "status",
+      "heartbeat",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "close-v1.12.0",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "release",
+      "v1",
+      "12",
+      "0",
+      "close-out",
+      "currency",
+      "regen",
+      "status",
+      "heartbeat",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "currency-private-repo-fix",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "currency",
+      "scanner",
+      "private-repo",
+      "blindness",
+      "fix",
+      "adopters",
+      "regen",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "currency-regen-v180-wave",
+    "date": "2026-07-11",
+    "tags": [
+      "session",
+      "2026-07-11",
+      "adopter-registry",
+      "regen",
+      "after",
+      "v1",
+      "8",
+      "0",
+      "upgrade",
+      "wave",
+      "kit",
+      "seat",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "gate-sibling-deletion-fix",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "gate",
+      "fixes",
+      "grade",
+      "modified",
+      "siblings",
+      "red",
+      "card",
+      "deletions",
+      "disposition",
+      "226",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "gate-tail1-v1101-fix",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "v1",
+      "10",
+      "1",
+      "payload",
+      "gate",
+      "tail-1",
+      "multi-card",
+      "shadowing",
+      "fix",
+      "doctrine",
+      "emphasis",
+      "normalization",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "handoff-pointer-file",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "pull-visible",
+      "handoff",
+      "pointer",
+      "run-6",
+      "delivery-gap",
+      "fix",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "host-workflow-pin-bump",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "host",
+      "workflow",
+      "action-pin",
+      "bump",
+      "checkout",
+      "v5",
+      "setup-python",
+      "v6",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "kit-fixes-batch-2",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "queued",
+      "kit",
+      "fixes",
+      "batch",
+      "2",
+      "items",
+      "1",
+      "5",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "kit-fixes-batch",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "queued",
+      "kit",
+      "fixes",
+      "batch",
+      "4",
+      "v1",
+      "8",
+      "0",
+      "payload",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "on-t2-footprint-cut",
+    "date": "2026-07-11",
+    "tags": [
+      "session",
+      "2026-07-11",
+      "on-t2",
+      "footprint",
+      "cut",
+      "fresh-state",
+      "handoff",
+      "fast",
+      "path",
+      "collect",
+      "zero-events",
+      "guard",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "order-012-model-attribution",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "order",
+      "012",
+      "model-attribution",
+      "ground",
+      "truth",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "order-013-self-review",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "order",
+      "013",
+      "lane",
+      "self-review",
+      "last",
+      "24h",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "p4-unblock-run6",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "p4",
+      "investigation",
+      "run-6",
+      "unblock",
+      "v1",
+      "10",
+      "1-wave",
+      "mechanical",
+      "fixes",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "release-v1100-closeout",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "release",
+      "v1",
+      "10",
+      "0",
+      "close-out",
+      "currency",
+      "regen",
+      "status",
+      "heartbeat",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "release-v180-closeout",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "release",
+      "v1",
+      "8",
+      "0",
+      "close-out",
+      "currency",
+      "regen",
+      "status",
+      "heartbeat",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "release-v190-closeout",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "release",
+      "v1",
+      "9",
+      "0",
+      "close-out",
+      "currency",
+      "regen",
+      "status",
+      "heartbeat",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "run8-content-gap",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "run-8",
+      "countermeasure",
+      "close",
+      "content",
+      "gap",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "sessionstart-handoff-push",
+    "date": "2026-07-11",
+    "tags": [
+      "session",
+      "2026-07-11",
+      "sessionstart",
+      "handoff-push",
+      "cold-session",
+      "continuity",
+      "evidence-backed",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "t5-guard-probe-rescope",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "t5",
+      "guard-probe",
+      "re-scope",
+      "pin",
+      "path",
+      "owner-ratification",
+      "pr",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(the WORK is complete; the PR itself PARKS open \u2014"
+  },
+  {
+    "slug": "t5-rescope-analysis",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "t5",
+      "re-scope",
+      "analysis",
+      "doc",
+      "support",
+      "lane",
+      "merges",
+      "green",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "wave-fixes-v190",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "v1",
+      "9",
+      "0",
+      "distribution-wave",
+      "fixes",
+      "slice",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "wave-v1100-adopters-regen",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "v1",
+      "10",
+      "0",
+      "wave",
+      "close-out",
+      "adopters",
+      "regen",
+      "findings",
+      "intake",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "wave-v1101-adopters-regen",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "v1",
+      "10",
+      "1",
+      "wave",
+      "close-out",
+      "adopters",
+      "registry",
+      "regen",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "wave-v1110-adopters-regen",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "v1",
+      "11",
+      "0",
+      "wave",
+      "close-out",
+      "adopters",
+      "registry",
+      "regen",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "wave-v1120-adopters-regen",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "v1",
+      "12",
+      "0",
+      "wave",
+      "close-out",
+      "adopters",
+      "registry",
+      "regen",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
   }
 ]
