@@ -1,6 +1,6 @@
 # 2026-07-11 — run-8 countermeasure: close the CONTENT gap
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** fable-5 · high · feature build
 
@@ -37,4 +37,57 @@ cards, index.json.
 
 ## Close-out
 
-(to be written — this card flips complete as the deliberate last step)
+Shipped the declared scope exactly — build commit 6fcaf80, flip-complete is
+this commit. Tests **1012 → 1029** (+17: 8 handoff-harvest, 4 pointer-trail,
+5 gate-lane); ruff clean; dist byte-pin clean (**689586 B**); idea-index /
+program-law / bench-integrity OK; `check --strict --status-only` exit 0 on
+the overwritten heartbeat. End-to-end driven in a scratch adopt: the
+Stop-hook draft now carries `commits this session (1): "add report command
+to CLI"`; `HANDOFF.md` carries the evidence trail at **85 words ≤ the 113
+pin**; the next session's bare `check --strict` is exit 0 with the
+`session-log-draft` advisory while `--require-session-log` stays exit 1.
+
+Design decisions (decided-and-flagged, evidence on each):
+- **D1 trail rides the shared composer** (push + file can't drift) and only
+  fires when the card's pointer is UNRESOLVED — a resolved human pointer
+  wins (leanness). Evidence: run-8 report §2 T4 ("ON's real context came
+  from reading `cli.py`"; the card ON-T4 opened is quoted in full in the
+  transcript at L4 — 8 slots, zero content).
+- **D2 kept bounded** — only the four surfaces run-8 ON demonstrably read
+  without payoff (T2 transcript L3/L5/L19/L21; T4 L18) were trimmed/re-
+  routed; no doc-system redesign, contracts test-pinned.
+- **D3 detection is the badge VALUE, not a substring** — the regression test
+  caught the "*(auto-drafted …)*" prose false-positive on a flipped badge;
+  `_STATUS_VALUE_RE` parses the backticked value. Advisory scoped to the
+  mtime-fallback lane only; born-red/gate lanes byte-unchanged.
+
+Mid-slice: two coordinator red-pings on the born-red head 23864c2 —
+job-log-verified per PL-006 as the designed hold + legacy-alias mirrors
+(job 86560943881, verbatim "HOLD (by design)… nothing to investigate");
+the W-9 class, not a defect. One local trap: an f-string `\N{…}` escape in
+an expression part is a SyntaxError on the 3.10 floor — caught by the local
+suite before push.
+
+## 💡 Session idea
+
+Teach the auto-draft to pre-fill `Decisions made:` from a mechanical
+source: `grep` the session's own commit bodies for "decided"/"decide-and-
+flag" lines (the reflog harvest already parses `.git/logs/HEAD`; commit
+BODIES need object parsing — loose-object zlib is stdlib). Run-8 showed
+every harvestable slot the engine fills is arrival content the cold session
+doesn't re-derive; decisions are the highest-value slot still blank, and
+sessions that follow the repo convention already write them into commit
+messages.
+
+## ⟲ Previous-session review
+
+The run-8 session (#215/#218) executed a hard spec cleanly — the seam smoke
++ A/B control turned an environment failure into a reproducible finding,
+and its report's §2/§5 evidence quotes made THIS slice's design derivable
+without re-reading six transcripts blind (that's what a good record buys).
+One improvement it surfaced: its close-out (#218) updated phase/health/
+last-shipped but left the `notes:` line describing the run-7 close — the
+notes chain skipped a link (this slice's overwrite carries it forward
+correctly). Workflow improvement: the status-overwrite recipe should name
+`notes:` explicitly in its checklist so the chain can't skip.
+
