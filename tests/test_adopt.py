@@ -723,8 +723,11 @@ def test_live_ci_workflow_gates_added_cards_by_declared_status():
     # absent sentinel + --added-card, whose declared-status tiering HOLDs an
     # in-progress card red until it flips complete (the superbot-games #40
     # card-only loophole fix) while never grading mid-flight completeness
-    # (gba-homebrew PR #2). Sibling cards modified in the same diff are
-    # advisory-only; a modified-only diff keeps the full
+    # (gba-homebrew PR #2). Sibling cards modified in the same diff gate
+    # through the SAME --require-session-log locked door as a modified-only
+    # diff (review #226 finding G-1 — the old advisory-only logging let a PR
+    # adding one good card silently break a modified sibling; supersedes the
+    # #187 advisory design); a modified-only diff keeps the full
     # --require-session-log locked door on each modified card.
     assert "--diff-filter=A" in text
     assert "--session-log .sessions/__born-red-card-added__.md" in text
@@ -733,18 +736,35 @@ def test_live_ci_workflow_gates_added_cards_by_declared_status():
     # tail-1-truncated, and every added card walks the added-card lane.
     assert 'done <<< "$added"' in text
     assert "| tail -1)\"\n          added=" not in text
-    assert "modified sibling card (advisory" in text
-    # The locked door still exists — on the modified-only branch.
+    assert "modified sibling card (locked-door gate" in text
+    assert "modified sibling card (advisory" not in text
+    # The locked door — on the modified-only branch AND the modified-sibling
+    # loop inside the added branch.
     assert 'check --strict --require-session-log --session-log "$card"' in text
     # The gate-regen locked-door branch also self-tests the added-card lane
     # (--simulate-added-card), so the lane stays observable on the very PRs
     # that ship gate changes.
     assert '--simulate-added-card "$card"' in text
-    # The interpreter threads through all four branches (locked door with
-    # simulate, added-card hold lane, modified-card locked door, no-card
-    # sentinel).
+    # The interpreter threads through all five branches (locked door with
+    # simulate, added-card hold lane, modified-sibling locked door,
+    # modified-card locked door, no-card sentinel).
     custom = live_ci_workflow("python3.10")
-    assert custom.count("python3.10 bootstrap.py check --strict") == 4
+    assert custom.count("python3.10 bootstrap.py check --strict") == 5
+
+
+def test_live_ci_workflow_reds_on_deleted_session_cards():
+    # Review #226 finding G-2: the card lists use --diff-filter=d (deletions
+    # excluded), so a deletion-only PR fell to the no-card advisory path and
+    # could merge while erasing session memory. The gate now captures
+    # deletions explicitly and hard-reds on any deleted card.
+    text = live_ci_workflow()
+    assert "--diff-filter=D" in text
+    assert "session card DELETED by this PR" in text
+    assert "fail=1" in text
+    # The deletion capture honours a custom sessions_dir too.
+    custom = live_ci_workflow(sessions_dir="journal")
+    assert "--diff-filter=D" in custom
+    assert "'journal/*.md' ':!journal/README.md'" in custom
 
 
 def test_sessions_readme_carries_the_guard_recipe_convention(tmp_path):
@@ -1777,10 +1797,11 @@ def test_gate_script_holds_the_shadowed_added_in_progress_card(tmp_path):
     assert rc != 0, out
     # The added card reached the added-card lane.
     assert "--added-card .sessions/2026-07-11-new.md" in log
-    # The modified sibling is advisory-only: logged, never graded.
-    assert "modified sibling card (advisory" in out
+    # The modified sibling now gates through the locked door too (review
+    # #226 finding G-1): graded, not just logged.
+    assert "modified sibling card (locked-door gate" in out
     assert ".sessions/session-001.md" in out
-    assert "session-001" not in log
+    assert "--require-session-log --session-log .sessions/session-001.md" in log
 
 
 def test_gate_script_passes_a_single_added_complete_card(tmp_path):
@@ -1793,6 +1814,64 @@ def test_gate_script_passes_a_single_added_complete_card(tmp_path):
     rc, out, log = _run_gate(tmp_path, repo, _generated_gate_script(tmp_path))
     assert rc == 0, out
     assert "--added-card .sessions/2026-07-11-new.md" in log
+
+
+def test_gate_script_reds_added_good_card_with_broken_modified_sibling(tmp_path):
+    # Review #226 finding G-1, THE attack shape: the PR adds one GOOD
+    # (complete) card and, in the same diff, breaks a sibling — flips it
+    # back to in-progress. Under the old advisory-only semantics the
+    # sibling was logged but never graded, so the PR merged green while
+    # damaging session memory. The sibling must now red through the
+    # locked door.
+    repo = _gate_repo(tmp_path)
+    (repo / ".sessions" / "2026-07-11-new.md").write_text(
+        _COMPLETE_CARD, encoding="utf-8"
+    )
+    (repo / ".sessions" / "session-001.md").write_text(
+        _IN_PROGRESS_CARD, encoding="utf-8"
+    )
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "added good card, broken sibling")
+    rc, out, log = _run_gate(tmp_path, repo, _generated_gate_script(tmp_path))
+    assert rc != 0, out
+    # The broken sibling reached the engine through the locked door.
+    assert "--require-session-log --session-log .sessions/session-001.md" in log
+    # The added card still walked its own added-card lane (the sibling
+    # verdict ADDS red — it never substitutes for the added card's).
+    assert "--added-card .sessions/2026-07-11-new.md" in log
+
+
+def test_gate_script_added_card_with_healthy_modified_sibling_stays_green(
+    tmp_path,
+):
+    # The legitimate close-out-adjacent shape: added complete card +
+    # sibling modified but still complete/well-formed. Grading siblings
+    # must not red the normal flow.
+    repo = _gate_repo(tmp_path)
+    (repo / ".sessions" / "2026-07-11-new.md").write_text(
+        _COMPLETE_CARD, encoding="utf-8"
+    )
+    sibling = repo / ".sessions" / "session-001.md"
+    sibling.write_text(_COMPLETE_CARD + "\npointer backfill\n", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "added card + healthy sibling backfill")
+    rc, out, log = _run_gate(tmp_path, repo, _generated_gate_script(tmp_path))
+    assert rc == 0, out
+    assert "--require-session-log --session-log .sessions/session-001.md" in log
+    assert "--added-card .sessions/2026-07-11-new.md" in log
+
+
+def test_gate_script_reds_a_deletion_only_diff(tmp_path):
+    # Review #226 finding G-2: --diff-filter=d excludes deletions, so a PR
+    # that only DELETES session cards fell to the no-card advisory sentinel
+    # and could merge while erasing session memory. Deletion = hard red.
+    repo = _gate_repo(tmp_path)
+    _git(repo, "rm", ".sessions/session-001.md")
+    _git(repo, "commit", "-m", "deletion-only diff")
+    rc, out, log = _run_gate(tmp_path, repo, _generated_gate_script(tmp_path))
+    assert rc != 0, out
+    assert "session card DELETED by this PR" in out
+    assert ".sessions/session-001.md" in out
 
 
 def test_gate_script_holds_when_any_of_several_added_cards_is_in_progress(
@@ -1855,3 +1934,24 @@ def test_kit_ci_gate_script_holds_the_shadowed_added_in_progress_card(tmp_path):
     # Both diff cards were graded through the locked door.
     assert "--session-log .sessions/2026-07-11-new.md" in log
     assert "--session-log .sessions/session-001.md" in log
+
+
+def test_kit_ci_gate_script_reds_a_deletion_only_diff(tmp_path):
+    # Review #226 finding G-2, kit dogfood surface: the ci.yml gate built
+    # its card list with --diff-filter=d too, so a deletion-only PR fell to
+    # the mtime fallback and could merge while erasing session memory.
+    ci_text = (
+        Path(__file__).resolve().parents[1] / ".github" / "workflows" / "ci.yml"
+    ).read_text(encoding="utf-8")
+    stub = tmp_path / "stub-engine"
+    ci_text = ci_text.replace("python3 dist/bootstrap.py", str(stub))
+    script = _gate_script(
+        tmp_path, ci_text, "- name: Session gate (§3.2 item 5"
+    )
+    repo = _gate_repo(tmp_path)
+    _git(repo, "rm", ".sessions/session-001.md")
+    _git(repo, "commit", "-m", "deletion-only diff")
+    rc, out, log = _run_gate(tmp_path, repo, script)
+    assert rc != 0, out
+    assert "session card DELETED by this PR" in out
+    assert ".sessions/session-001.md" in out

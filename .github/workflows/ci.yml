@@ -236,7 +236,13 @@ jobs:
         # in the diff -> argument omitted -> the engine's mtime fallback
         # (fail-open; on main every merged card is complete). A PR that
         # adds an `in-progress` card stays red until the card flips
-        # complete.
+        # complete. Session cards DELETED by the diff are a hard red —
+        # session memory is append-only; the card list uses
+        # --diff-filter=d (deletions excluded), so without the explicit
+        # --diff-filter=D capture a deletion-only PR fell to the no-card
+        # fallback and merged while erasing session memory (external
+        # review #226 finding G-2; same guard in the generated adopter
+        # gate, src/engine/adopt.py live_ci_workflow()).
         run: |
           if [ -n "${{ github.base_ref }}" ]; then
             range="origin/${{ github.base_ref }}...HEAD"
@@ -244,18 +250,26 @@ jobs:
             range="${{ github.event.before }}..${{ github.sha }}"
           fi
           cards="$(git diff --name-only --diff-filter=d "$range" -- '.sessions/*.md' ':!.sessions/README.md' 2>/dev/null)"
+          deleted="$(git diff --name-only --diff-filter=D "$range" -- '.sessions/*.md' ':!.sessions/README.md' 2>/dev/null)"
           echo "session gate cards: ${cards:-<none - mtime fallback>}"
+          fail=0
+          if [ -n "$deleted" ]; then
+            while IFS= read -r card; do
+              [ -z "$card" ] && continue
+              echo "session card DELETED by this PR (session memory is append-only — hard red): $card"
+            done <<< "$deleted"
+            fail=1
+          fi
           if [ -z "$cards" ]; then
-            python3 dist/bootstrap.py check --strict --require-session-log
+            python3 dist/bootstrap.py check --strict --require-session-log || fail=1
           else
-            fail=0
             while IFS= read -r card; do
               [ -z "$card" ] && continue
               echo "grading session card: $card"
               python3 dist/bootstrap.py check --strict --require-session-log --session-log "$card" || fail=1
             done <<< "$cards"
-            exit "$fail"
           fi
+          exit "$fail"
 
   # ── TEMPORARY legacy-context aliases (delete after P10 lands) ─────────────
   # Discovered live in PR #6: an owner-landed ruleset on main requires the

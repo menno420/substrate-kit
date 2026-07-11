@@ -650,13 +650,25 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
     is still never graded mid-flight (the gba-homebrew PR #2 lesson —
     born-red is the REQUIRED state at birth); the hold is a single
     designed-state finding with a HOLD-by-design banner, not a marker red.
-    Sibling cards **MODIFIED** by a diff that also adds card(s) are
-    **advisory-only** — logged, never grade-affecting: the added card is the
-    gate's subject, and a sibling backfill (the mtime-lottery lesson's
-    encouraged pattern) can no longer shadow it. A diff that **only
+    Sibling cards **MODIFIED** by a diff that also adds card(s) gate through
+    the **same** ``--require-session-log`` locked door as a modified-only
+    diff — the added card is still the gate's subject via its own
+    ``--added-card`` lane, so a sibling verdict can only ADD red, never
+    substitute for the added card's (grading siblings is strictly tighter
+    than the earlier advisory-only logging and cannot reintroduce the
+    tail-1 shadowing; supersedes the #187 advisory-sibling design —
+    external review #226 finding G-1 showed a PR adding one good card
+    could silently flip a sibling to in-progress, or strip its markers,
+    and still merge). A diff that **only
     modifies** cards (every session close-out flips one) keeps the full
     ``--require-session-log`` locked door on EACH modified card, so a
-    close-out that forgot to flip ``complete`` still reds. The
+    close-out that forgot to flip ``complete`` still reds. Session cards
+    **DELETED** by the diff are a hard red on sight — session memory is
+    append-only, and the card lists are built with ``--diff-filter=d``
+    (deletions excluded), so before this guard a deletion-only PR fell to
+    the no-card advisory path and could merge while erasing session
+    memory (external review #226 finding G-2; same guard mirrored in the
+    kit's own dogfood gate). The
     diff-selection fixes validated live across gba-homebrew PRs #3–#14.
     One deliberate exception
     (queued fix 3, venture-lab #14): a card ADDED by a PR that ALSO touches
@@ -831,9 +843,19 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         "        # REQUIRED state at birth); the hold is a single\n"
         "        # designed-state finding with a HOLD-by-design banner.\n"
         "        # Sibling cards MODIFIED by a diff that also adds card(s)\n"
-        "        # are ADVISORY-ONLY (logged, never grade-affecting): the\n"
-        "        # added card is the gate's subject, and a sibling backfill\n"
-        "        # can no longer shadow it. A diff that ONLY modifies cards\n"
+        "        # gate through the SAME --require-session-log locked door\n"
+        "        # as a modified-only diff: the added card still gates via\n"
+        "        # its own --added-card lane, so a sibling verdict can only\n"
+        "        # ADD red, never substitute — strictly tighter than the\n"
+        "        # old advisory-only logging, which let a PR adding one\n"
+        "        # good card silently break a modified sibling (review\n"
+        "        # #226 finding G-1; supersedes the #187 advisory design).\n"
+        "        # Session cards DELETED by the diff are a hard red —\n"
+        "        # session memory is append-only; the card lists use\n"
+        "        # --diff-filter=d (deletions excluded), so without this a\n"
+        "        # deletion-only PR fell to the no-card advisory path and\n"
+        "        # merged while erasing session memory (review #226\n"
+        "        # finding G-2). A diff that ONLY modifies cards\n"
         "        # (every session close-out flips one) keeps the full\n"
         "        # locked-door gate on EACH modified card, so a close-out\n"
         "        # that forgot to flip `complete` still reds. EXCEPT: when\n"
@@ -858,17 +880,30 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         f"'{sessions_dir}/*.md' ':!{sessions_dir}/README.md' 2>/dev/null)\"\n"
         '          added="$(git diff --name-only --diff-filter=A "$range" -- '
         f"'{sessions_dir}/*.md' ':!{sessions_dir}/README.md' 2>/dev/null)\"\n"
+        '          deleted="$(git diff --name-only --diff-filter=D "$range" -- '
+        f"'{sessions_dir}/*.md' ':!{sessions_dir}/README.md' 2>/dev/null)\"\n"
         '          gate_regen="$(git diff --name-only "$range" -- '
         f"'{LIVE_CI_RELPATH}' 2>/dev/null | tail -1)\"\n"
         '          echo "session gate cards: ${cards:-<none - advisory sentinel>}"\n'
         "          fail=0\n"
+        '          if [ -n "$deleted" ]; then\n'
+        "            while IFS= read -r card; do\n"
+        '              [ -z "$card" ] && continue\n'
+        '              echo "session card DELETED by this PR (session memory is'
+        ' append-only — hard red): $card"\n'
+        '            done <<< "$deleted"\n'
+        "            fail=1\n"
+        "          fi\n"
         '          if [ -n "$added" ]; then\n'
         "            while IFS= read -r card; do\n"
         '              [ -z "$card" ] && continue\n'
         "              if printf '%s\\n' \"$added\" | grep -Fxq -- \"$card\";"
         " then continue; fi\n"
-        '              echo "modified sibling card (advisory — logged, never'
-        ' grade-affecting): $card"\n'
+        '              echo "modified sibling card (locked-door gate — same'
+        " door as a modified-only diff; supersedes the #187 advisory"
+        ' semantics): $card"\n'
+        f"              {interpreter} bootstrap.py check --strict"
+        ' --require-session-log --session-log "$card" || fail=1\n'
         '            done <<< "$cards"\n'
         "            while IFS= read -r card; do\n"
         '              [ -z "$card" ] && continue\n'
