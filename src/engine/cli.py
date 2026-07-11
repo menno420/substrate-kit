@@ -2013,6 +2013,15 @@ def cmd_currency(
         _emit(f"currency: wrote {out_path} ({len(scans)} repo(s) scanned).")
     for line in drift_report_lines(scans, KIT_VERSION):
         _emit(f"  {line}")
+    unreadable = [scan.repo for scan in scans if scan.unreadable]
+    if unreadable:
+        _emit(
+            f"currency: UNREADABLE {len(unreadable)} repo(s): "
+            + ", ".join(unreadable)
+            + " — no transport could read their trees; their rows say"
+            " 'unreadable' (adoption UNKNOWN, never 'not adopted')."
+            " Fix transport/auth (GITHUB_TOKEN/GH_TOKEN?) and rerun.",
+        )
     drifting = [scan.repo for scan in scans if scan.drifts()]
     if drifting:
         _emit(

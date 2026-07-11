@@ -5,7 +5,7 @@
 > **GENERATED — do not hand-edit** — regenerate with `python3 dist/bootstrap.py currency`
 > (agent-side: kit CI cannot auth to sibling repos, so CI validates
 > only this file's format + staleness, never refetches).
-> Generated: 2026-07-11T17:44:47Z · kit release: v1.12.0
+> Generated: 2026-07-11T18:08:39Z · kit release: v1.12.0
 >
 > Who runs which kit version — the substrate-coordinator's
 > visibility surface (inbox ORDER 003; manager research 2026-07-09).
@@ -30,8 +30,8 @@
 | menno420/superbot | — | v1.0.0 | no heartbeat file | — | stale (v1.0.0 < v1.12.0) · pin-only (no vendored dist found) |
 | menno420/superbot-games | v1.12.0 (bootstrap.py) | v1.12.0 | status.md: no `kit:` line · status-mining.md: v1.7.1 · status-exploration.md: v1.7.1 | — | ⚠️ DRIFT · current |
 | menno420/trading-strategy | v1.12.0 (bootstrap.py) | v1.12.0 | v1.7.1 | — | ⚠️ DRIFT · current |
-| menno420/gba-homebrew | v1.12.0 (bootstrap.py) | v1.12.0 | v1.11.0 | — | ⚠️ DRIFT · current |
-| menno420/pokemon-mod-lab | — | — | no heartbeat file | — | not adopted / unknown |
+| menno420/gba-homebrew | v1.12.0 (bootstrap.py) | v1.12.0 | v1.12.0 | — | current |
+| menno420/pokemon-mod-lab | v1.6.0 (bootstrap.py) | v1.6.0 | no `kit:` line | — | stale (v1.6.0 < v1.12.0) |
 | menno420/venture-lab | v1.12.0 (bootstrap.py) | v1.12.0 | v1.10.1 | yes | ⚠️ DRIFT · current |
 | menno420/fleet-manager | v1.12.0 (bootstrap.py) | v1.12.0 | v1.7.0 | yes | ⚠️ DRIFT · current |
 
@@ -45,7 +45,6 @@ Tree and self-report disagree below — reconcile at the SOURCE (the adopter's o
 - **menno420/superbot-games** — self-report vs tree: control/status-mining.md claims v1.7.1 but the tree says v1.12.0
 - **menno420/superbot-games** — self-report vs tree: control/status-exploration.md claims v1.7.1 but the tree says v1.12.0
 - **menno420/trading-strategy** — self-report vs tree: control/status.md claims v1.7.1 but the tree says v1.12.0
-- **menno420/gba-homebrew** — self-report vs tree: control/status.md claims v1.11.0 but the tree says v1.12.0
 - **menno420/venture-lab** — self-report vs tree: control/status.md claims v1.10.1 but the tree says v1.12.0
 - **menno420/fleet-manager** — self-report vs tree: control/status.md claims v1.7.0 but the tree says v1.12.0
 
@@ -63,6 +62,10 @@ Tree and self-report disagree below — reconcile at the SOURCE (the adopter's o
   — their channel is their own `control/status.md` `kit:` line.
 - **Staleness reads as dark**, not as wrong: the `Generated:` stamp
   above is the evidence date; rerun the scan to refresh.
+- **`unreadable` reads as dark too**: no transport (raw content,
+  authenticated API, branch tarball) could see that repo's tree
+  this run — adoption is UNKNOWN, deliberately never rendered as
+  "not adopted" (private-repo 404s are transport, not evidence).
 - **Roster:** `docs/fleet-repos.txt` (one `owner/repo` per line;
   extra tokens name per-lane heartbeat files).
 - **Releases point back here:** every release's notes carry the
