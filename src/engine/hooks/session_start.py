@@ -27,12 +27,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from engine.checks.check_session_log import (
-    DRAFT_FILL_TOKEN,
-    latest_session_log,
-    status_in_progress,
-    unresolved_fill_count,
-)
 from engine.economy.engine import economy_gauges
 from engine.interview.interview import pending_questions, session_questions
 from engine.lib.config import Config
@@ -42,6 +36,7 @@ from engine.lib.modes import (
     triggers_mandate,
     workflow_proposal_due,
 )
+from engine.loop.handoff_pointer import handoff_lines
 from engine.loop.reflections import (
     REFLECTIONS_FILENAME,
     active_lessons,
@@ -59,12 +54,6 @@ _ORI_STANDARD_LESSON_CAP = 3
 # an advisory (6), and the workflow proposal (10) — observe imposes nothing
 # else.
 _ORI_MINIMAL_SECTIONS = frozenset({1, 2, 6, 10})
-# Cap on the pushed handoff-pointer excerpt — the push must stay terse (the
-# B1 M1 lesson: ON already pays a footprint premium; a fat banner makes the
-# regression worse, not better).
-_ORI_HANDOFF_EXCERPT_CAP = 300
-# The drafted close-out's handoff field (engine.loop.handoff draft text).
-_ORI_HANDOFF_NEEDLE = "next session should know"
 
 
 def _ori_status_header(state: dict[str, Any], config: Config) -> str:
@@ -78,31 +67,6 @@ def _ori_status_header(state: dict[str, Any], config: Config) -> str:
     )
 
 
-def _ori_handoff_pointer(text: str) -> str:
-    """Extract the newest RESOLVED handoff pointer from a session card.
-
-    The auto-draft writes ``- Next session should know: [[fill: …]]`` and a
-    closing session resolves the slot in place, so the pointer is a line
-    match, not structure. The LAST resolved match wins (drafted close-outs
-    append, so the newest section sits at the bottom); a line still carrying
-    an unresolved ``[[fill:`` slot is skipped — pushing a template slot at a
-    cold session would be noise, not handoff.
-    """
-    pointer = ""
-    for line in text.splitlines():
-        lowered = line.lower()
-        index = lowered.find(_ORI_HANDOFF_NEEDLE)
-        if index < 0:
-            continue
-        rest = line[index + len(_ORI_HANDOFF_NEEDLE) :].lstrip(" :**").strip()
-        if not rest or DRAFT_FILL_TOKEN in rest:
-            continue
-        pointer = rest
-    if len(pointer) > _ORI_HANDOFF_EXCERPT_CAP:
-        pointer = pointer[: _ORI_HANDOFF_EXCERPT_CAP - 1].rstrip() + "…"
-    return pointer
-
-
 def _ori_handoff(root: Path, config: Config) -> str:
     """Render section 2 — the handoff push ('' when no session card exists).
 
@@ -112,31 +76,24 @@ def _ori_handoff(root: Path, config: Config) -> str:
     section PUSHES it: the newest card's path, its completion state, its
     unresolved auto-draft slot count, and the previous session's resolved
     "Next session should know" pointer, capped terse (the M1 budget).
+
+    The bullet lines are the shared ``engine.loop.handoff_pointer`` composer
+    — the same content the repo-root ``HANDOFF.md`` pointer file carries (the
+    B1 run-6 delivery-gap fix: this push stops at the orchestrator, so the
+    file delivers the identical trail through the working-tree surfaces
+    delegated workers actually touch). One composer, two surfaces — the
+    pushed and pulled text can never drift apart.
     """
-    card = latest_session_log(root / config.sessions_dir)
-    if card is None:
+    lines = handoff_lines(root, config)
+    if not lines:
         return ""
-    text = card.read_text(encoding="utf-8", errors="replace")
-    try:
-        rel = card.relative_to(root)
-    except ValueError:
-        rel = card
-    status = "in-progress/drafted" if status_in_progress(text) else "complete"
-    slots = unresolved_fill_count(text)
-    slot_note = f", {slots} unresolved [[fill:]] slot(s)" if slots else ""
-    lines = [
-        "## Handoff — the previous session's trail (pushed; read before re-deriving)",
-        "",
-        f"- Newest session card: `{rel}` — status: {status}{slot_note}.",
-    ]
-    pointer = _ori_handoff_pointer(text)
-    if pointer:
-        lines.append(f"- Next session should know: {pointer}")
-    lines.append(
-        "- Open that card FIRST — it is the last session's record; prefer it "
-        "over re-deriving history from `git log`/`git show`.",
+    return "\n".join(
+        [
+            "## Handoff — the previous session's trail (pushed; read before re-deriving)",
+            "",
+            *lines,
+        ],
     )
-    return "\n".join(lines)
 
 
 def _ori_stance(state: dict[str, Any]) -> str:

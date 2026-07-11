@@ -120,6 +120,7 @@ from engine.loop.handoff import (
     ensure_draft,
     record_session_anchor,
 )
+from engine.loop.handoff_pointer import write_handoff_pointer
 from engine.loop.kpis import kpi_footer, workflow_kpis
 from engine.loop.maintenance import compaction_due, maintenance_report, run_compaction
 from engine.loop.reflections import (
@@ -496,7 +497,10 @@ def _hook_sessionstart(target: Path) -> list[str]:
     The anchor (timestamp + git HEAD/branch, ``state["session_anchor"]``) is
     the evidence baseline the KL-5 auto-draft diffs against at session close.
     Recording is fail-open inside ``record_session_anchor`` — orientation
-    must never be blocked by evidence bookkeeping.
+    must never be blocked by evidence bookkeeping. The boot also regenerates
+    the repo-root ``HANDOFF.md`` pointer (the B1 run-6 delivery-gap fix: the
+    orchestrator→worker seam does not forward this hook's stdout, so the same
+    handoff content rides the working tree, where delegated workers look).
     """
     config = load_config(target)
     backend = JsonStateBackend(_state_path(target, config))
@@ -504,6 +508,7 @@ def _hook_sessionstart(target: Path) -> list[str]:
     if text:
         sys.stdout.write(text)
     record_session_anchor(target, config, backend)
+    write_handoff_pointer(target, config)
     return []
 
 
@@ -1655,7 +1660,9 @@ def cmd_session_start(target: Path) -> int:
 
     Also records the session-start evidence anchor (fail-open) — the same
     baseline the SessionStart hook records, so a session driven by the CLI
-    instead of the hook still gets an evidence-backed auto-draft at close.
+    instead of the hook still gets an evidence-backed auto-draft at close —
+    and regenerates the repo-root ``HANDOFF.md`` pointer (the B1 run-6
+    delivery-gap fix), exactly as the hook does.
     """
     loaded = _require_state(target, "session-start")
     if loaded is None:
@@ -1663,6 +1670,9 @@ def cmd_session_start(target: Path) -> int:
     config, backend = loaded
     _emit(compose_orientation(target, config, backend))
     record_session_anchor(target, config, backend)
+    note = write_handoff_pointer(target, config)
+    if note:
+        _emit(f"session-start: {note}")
     return 0
 
 
