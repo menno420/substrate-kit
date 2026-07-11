@@ -1,0 +1,1 @@
+- `claude/rearm-q0265-failsafe` · **routine-state: Q-0265 failsafe re-arm record** — record the v1.1-cutover trigger re-arm in status.md · control/status.md + .sessions/ · 2026-07-11
