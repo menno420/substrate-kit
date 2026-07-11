@@ -18,6 +18,15 @@ from engine.lib.config import KIT_VERSION
 
 _PLACEHOLDER_RE = re.compile(r"\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}")
 
+# Markdown code carriers, stripped by find_placeholders_outside_code before
+# scanning (the #148/#150 poison: a status heartbeat's `${VAR}` inside
+# backticks read as an unfilled interview slot and held strict RED). The
+# same proven pair check_session_log uses for its `[[fill:]]` counting —
+# fences first (a fence line may contain no backtick-span boundary), then
+# inline spans.
+_MD_CODE_SPAN_RE = re.compile(r"`[^`\n]*`")
+_MD_CODE_FENCE_RE = re.compile(r"^```.*?^```", re.MULTILINE | re.DOTALL)
+
 # Context keys the ENGINE computes and injects itself — never interview
 # slots. The template/bank coherence guard (tests/test_render.py) exempts
 # exactly this set, so a template may reference them without a bank question
@@ -29,6 +38,23 @@ ENGINE_CONTEXT_KEYS = frozenset({"kit_version"})
 def find_placeholders(text: str) -> set[str]:
     """Return the set of ``${name}`` placeholders remaining in ``text``."""
     return set(_PLACEHOLDER_RE.findall(text))
+
+
+def find_placeholders_outside_code(text: str) -> set[str]:
+    """Return the ``${name}`` placeholders outside code spans / fenced blocks.
+
+    The engagement gate's unrendered-slot scan reads host-maintained planted
+    docs (a control/status.md heartbeat above all), where a literal
+    ``${VAR}`` inside backticks or a fenced block is *prose about* a token,
+    never an unfilled interview slot — kit PR #148 poisoned main with exactly
+    that (a status code span), redding every subsequent full-lane PR until a
+    hand-fix (#150). Fenced blocks are stripped first, then inline spans —
+    the same order :mod:`engine.checks.check_session_log` uses for its
+    ``[[fill:]]`` counting. The full-text :func:`find_placeholders` stays the
+    writer-side truth (banner placement, render coverage): a template slot is
+    real wherever it sits, including inside backticks.
+    """
+    return find_placeholders(_MD_CODE_SPAN_RE.sub("", _MD_CODE_FENCE_RE.sub("", text)))
 
 
 def render(text: str, context: dict[str, str]) -> str:

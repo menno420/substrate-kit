@@ -85,3 +85,21 @@ def test_render_and_find_placeholders_never_disagree_on_dollars():
     assert find_placeholders(text) == {"X", "z"}
     out = render(text, {"z": "Z"})
     assert out == "keep $${X} and $$ and $y; fill Z"
+
+
+def test_find_placeholders_outside_code_strips_spans_and_fences():
+    # Queued fix 4 (the #148/#150 poison): dollar-brace literals inside
+    # inline code spans and fenced blocks are prose about a token, not
+    # unfilled slots; bare ones still count.
+    from engine.render import find_placeholders_outside_code
+
+    text = (
+        "bare ${live_slot} here\n"
+        "a mention of `${span_slot}` in backticks\n"
+        "```\n${fenced_slot} inside a fence\n```\n"
+        "and `code with ${another_span}` again\n"
+    )
+    assert find_placeholders_outside_code(text) == {"live_slot"}
+    # A fully-clean doc and a code-only doc both scan empty.
+    assert find_placeholders_outside_code("plain prose") == set()
+    assert find_placeholders_outside_code("`${only_span}`") == set()

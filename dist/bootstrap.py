@@ -8616,6 +8616,15 @@ silently blank. Templates ship embedded in the bootstrap (the generated
 
 _PLACEHOLDER_RE = re.compile(r"\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}")
 
+# Markdown code carriers, stripped by find_placeholders_outside_code before
+# scanning (the #148/#150 poison: a status heartbeat's `${VAR}` inside
+# backticks read as an unfilled interview slot and held strict RED). The
+# same proven pair check_session_log uses for its `[[fill:]]` counting —
+# fences first (a fence line may contain no backtick-span boundary), then
+# inline spans.
+_MD_CODE_SPAN_RE = re.compile(r"`[^`\n]*`")
+_MD_CODE_FENCE_RE = re.compile(r"^```.*?^```", re.MULTILINE | re.DOTALL)
+
 # Context keys the ENGINE computes and injects itself — never interview
 # slots. The template/bank coherence guard (tests/test_render.py) exempts
 # exactly this set, so a template may reference them without a bank question
@@ -8627,6 +8636,23 @@ ENGINE_CONTEXT_KEYS = frozenset({"kit_version"})
 def find_placeholders(text: str) -> set[str]:
     """Return the set of ``${name}`` placeholders remaining in ``text``."""
     return set(_PLACEHOLDER_RE.findall(text))
+
+
+def find_placeholders_outside_code(text: str) -> set[str]:
+    """Return the ``${name}`` placeholders outside code spans / fenced blocks.
+
+    The engagement gate's unrendered-slot scan reads host-maintained planted
+    docs (a control/status.md heartbeat above all), where a literal
+    ``${VAR}`` inside backticks or a fenced block is *prose about* a token,
+    never an unfilled interview slot — kit PR #148 poisoned main with exactly
+    that (a status code span), redding every subsequent full-lane PR until a
+    hand-fix (#150). Fenced blocks are stripped first, then inline spans —
+    the same order :mod:`engine.checks.check_session_log` uses for its
+    ``[[fill:]]`` counting. The full-text :func:`find_placeholders` stays the
+    writer-side truth (banner placement, render coverage): a template slot is
+    real wherever it sits, including inside backticks.
+    """
+    return find_placeholders(_MD_CODE_SPAN_RE.sub("", _MD_CODE_FENCE_RE.sub("", text)))
 
 
 def render(text: str, context: dict[str, str]) -> str:
@@ -9231,6 +9257,16 @@ def archive_dist(
     the archive exists from v1.0.0 onward. Pre-stamp dists archive as
     ``bootstrap-unknown.py``. Idempotent: an identical existing archive is
     left alone; None when there is no single file to archive (source layout).
+
+    **Never overwrite, never silently accept** (queued fix 2, wave B'
+    verification): a pre-existing archive at the target name is
+    hash-verified against the bytes about to be banked. Identical → the
+    explicit ``(already banked)`` line. Different → the earlier bank is a
+    rollback source someone may still need (two unstamped dists both name
+    ``bootstrap-unknown.py``; a re-tagged dist can collide on a version
+    name), so the new bytes bank under a content-hash-suffixed dedup name
+    and the collision is reported — the pre-existing archive is left
+    byte-untouched.
     """
     if not dist_file.is_file():
         return None
@@ -9238,15 +9274,31 @@ def archive_dist(
     version = dist_version(text) or "unknown"
     dest = root / config.state_dir / BACKUP_DIRNAME / f"bootstrap-{version}.py"
     rel = f"{config.state_dir}/{BACKUP_DIRNAME}/bootstrap-{version}.py"
-    if dest.exists() and dest.read_text(encoding="utf-8") == text:
-        # Never silent on the idempotent path: an upgrade whose OLD dist was
-        # already banked (a prior adopt/check pass, or a re-run) must still
-        # account for it explicitly, or the report's only `archived:` line
-        # names the NEW version and readers conclude the old dist was never
-        # banked — the exact doubt the archive-first covenant exists to remove
-        # (field-reported three times, v1.6.0 rollout).
-        report.append(f"archived: {rel} (already banked)")
-        return dest
+    if dest.exists():
+        if dest.read_text(encoding="utf-8") == text:
+            # Never silent on the idempotent path: an upgrade whose OLD dist
+            # was already banked (a prior adopt/check pass, or a re-run) must
+            # still account for it explicitly, or the report's only
+            # `archived:` line names the NEW version and readers conclude the
+            # old dist was never banked — the exact doubt the archive-first
+            # covenant exists to remove (field-reported three times, v1.6.0
+            # rollout).
+            report.append(f"archived: {rel} (already banked)")
+            return dest
+        digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:8]
+        dedup_name = f"bootstrap-{version}.{digest}.py"
+        dedup = dest.with_name(dedup_name)
+        dedup_rel = f"{config.state_dir}/{BACKUP_DIRNAME}/{dedup_name}"
+        if dedup.exists() and dedup.read_text(encoding="utf-8") == text:
+            report.append(f"archived: {dedup_rel} (already banked)")
+            return dedup
+        atomic_write_text(dedup, text)
+        report.append(
+            f"archived: {dedup_rel} (name collision: {rel} already exists "
+            "with DIFFERENT content — banked under a content-hash suffix; "
+            "the pre-existing archive was NOT overwritten)",
+        )
+        return dedup
     atomic_write_text(dest, text)
     report.append(f"archived: {rel}")
     return dest
@@ -9493,7 +9545,15 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
     this). A card **MODIFIED** by the PR (every session close-out flips one)
     keeps the full ``--require-session-log`` locked door, so a close-out that
     forgot to flip ``complete`` still reds. Both fixes validated live across
-    gba-homebrew PRs #3–#14.
+    gba-homebrew PRs #3–#14. One deliberate exception (queued fix 3,
+    venture-lab #14): a card ADDED by a PR that ALSO touches this gate
+    workflow file itself gates through the full locked door — GitHub runs a
+    ``pull_request`` workflow from the PR head, so the PR that regenerates
+    the gate runs the NEW gate mid-PR, and without the exception the regen
+    could silently flip an added born-red card from held-red (old gate
+    semantics) to advisory, auto-merging a partial session. Hold semantics
+    may only tighten, never loosen, within the PR that changes them; the
+    merge path is unchanged — flip the card ``complete``.
 
     **Control fast lane (KL-8):** a diff touching only ``control/**`` (a
     status heartbeat, a manager inbox append) short-circuits the job GREEN
@@ -9646,7 +9706,15 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         "        # judged on completeness); a card MODIFIED by the PR (every\n"
         "        # session close-out flips one) keeps the full locked-door\n"
         "        # gate, so a close-out that forgot to flip `complete` still\n"
-        "        # reds.\n"
+        "        # reds. EXCEPT: when this same PR also touches THIS gate\n"
+        "        # workflow file (an upgrade PR regenerating the kit-owned\n"
+        "        # gate), an ADDED card keeps the FULL locked door too — the\n"
+        "        # PR runs the NEW gate the moment the regen commit lands, so\n"
+        "        # without this the regen itself could flip an added card\n"
+        "        # from held-red to advisory MID-PR and auto-merge a partial\n"
+        "        # session (venture-lab #14). Hold semantics may only\n"
+        "        # tighten, never loosen, inside the PR that changes them;\n"
+        "        # the escape is the normal one — flip the card complete.\n"
         "        run: |\n"
         '          if [ -n "${{ github.base_ref }}" ]; then\n'
         '            range="origin/${{ github.base_ref }}...HEAD"\n'
@@ -9659,8 +9727,16 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         '          added="$(git diff --name-only --diff-filter=A "$range" -- '
         f"'{sessions_dir}/*.md' ':!{sessions_dir}/README.md' 2>/dev/null "
         '| tail -1)"\n'
+        '          gate_regen="$(git diff --name-only "$range" -- '
+        f"'{LIVE_CI_RELPATH}' 2>/dev/null | tail -1)\"\n"
         '          echo "session gate card: ${card:-<none - advisory sentinel>}"\n'
-        '          if [ -n "$card" ] && [ "$card" != "$added" ]; then\n'
+        '          if [ -n "$card" ] && { [ "$card" != "$added" ] || '
+        '[ -n "$gate_regen" ]; }; then\n'
+        '            if [ "$card" = "$added" ]; then\n'
+        '              echo "card $card is ADDED but this PR also touches the'
+        ' gate workflow itself — locked-door gate (mid-PR semantics may only'
+        ' tighten; flip the card complete to merge)"\n'
+        "            fi\n"
         f"            {interpreter} bootstrap.py check --strict --require-session-log"
         ' --session-log "$card"\n'
         "          elif [ -n \"$card\" ]; then\n"
@@ -9977,9 +10053,19 @@ def _regen_kit_owned_workflow(
     if live_path.is_file():
         live_text = live_path.read_text(encoding="utf-8")
         if live_text == expected_text:
+            # Byte-identity IS a clean scan result — say so explicitly
+            # (queued fix 1): a report with no carve-out language at all is
+            # indistinguishable from "the detector never ran".
+            report.append(f"carve-out scan: {relpath} — ran, 0 found")
             report.append(f"kept: {relpath} (kit-owned, already current)")
             return
         carveouts = gate_carveouts(live_text, expected_text)
+        if not carveouts:
+            # Explicit-when-clean (queued fix 1, fleet-manager #40 finding):
+            # the scan ran and found no host additions — name that, so the
+            # upgrade report can prove the detector ran instead of leaving
+            # silence that also matches "never ran".
+            report.append(f"carve-out scan: {relpath} — ran, 0 found")
         if carveouts:
             digest = hashlib.sha256(live_text.encode("utf-8")).hexdigest()[:8]
             stem = relpath.rsplit("/", 1)[-1]
@@ -10406,10 +10492,23 @@ def _unrendered_findings(
     config: Any,
     *,
     evidence: bool,
+    relpaths: list[str] | None = None,
 ) -> list[Finding]:
-    """Scan the planted docs for the UNRENDERED banner / leftover ``${...}``."""
+    """Scan the planted docs for the UNRENDERED banner / leftover ``${...}``.
+
+    The ``unrendered-slot`` finding is **code-span-aware** (queued fix 4, the
+    #148/#150 incident): planted docs the host maintains — the
+    ``control/status.md`` heartbeat above all — legitimately *mention*
+    ``${VAR}`` literals inside backticks or fenced blocks, and those are
+    prose about a token, never an unfilled interview slot. The banner branch
+    keeps the full-text slot listing: a doc still under the UNRENDERED banner
+    is kit output by construction, so a backticked slot there (e.g. the
+    ai-project-workflow template's `` `${verify_command}` ``) is a real slot
+    — and the banner itself (placed on full-text evidence) keeps holding the
+    gate until it renders away.
+    """
     findings: list[Finding] = []
-    for rel in scan_relpaths(config):
+    for rel in relpaths if relpaths is not None else scan_relpaths(config):
         path = target / rel
         if not path.is_file():
             continue
@@ -10419,6 +10518,10 @@ def _unrendered_findings(
             continue
         slots = sorted(find_placeholders(text))
         listed = ", ".join(slots[:5]) + (" …" if len(slots) > 5 else "")
+        live_slots = sorted(find_placeholders_outside_code(text))
+        live_listed = ", ".join(live_slots[:5]) + (
+            " …" if len(live_slots) > 5 else ""
+        )
         if text.startswith(UNRENDERED_BANNER_FIRST_LINE):
             detail = f" (unfilled: {listed})" if slots else ""
             findings.append(
@@ -10430,16 +10533,35 @@ def _unrendered_findings(
                     "<slot> <value>`), then `bootstrap.py render --live`.",
                 ),
             )
-        elif evidence and slots:
+        elif evidence and live_slots:
             findings.append(
                 Finding(
                     rel,
                     "unrendered-slot",
-                    f"{len(slots)} unfilled ${{...}} slot(s): {listed} — "
+                    f"{len(live_slots)} unfilled ${{...}} slot(s): "
+                    f"{live_listed} — "
                     "answer them, then `bootstrap.py render --live`.",
                 ),
             )
     return findings
+
+
+def check_engagement_control(target: Path, config: Any) -> list[Finding]:
+    """The unrendered scan scoped to control-plane planted docs (fast lane).
+
+    Queued fix 4's deeper-bug half (#148 root cause): the CI control fast
+    lane runs only ``check --strict --status-only``, so a control-only PR
+    that wrote a slot regression into ``control/status.md`` merged GREEN and
+    poisoned main — every SUBSEQUENT full-lane PR went red until a hand-fix
+    (#150). A control-only diff can only regress ``control/**`` files, so
+    the fast lane runs exactly this scoped scan: the same banner/slot logic,
+    restricted to the planted docs under ``control/``. Cheap by construction
+    (a handful of file reads, stdlib-only) — the lane stays fast.
+    """
+    state = _load_state(target, config)
+    evidence = _adoption_evidence(config, state)
+    control = [rel for rel in scan_relpaths(config) if rel.startswith("control/")]
+    return _unrendered_findings(target, config, evidence=evidence, relpaths=control)
 
 
 def _strip_comment(line: str) -> str:
@@ -11326,12 +11448,19 @@ def upgrade_report_text(
 ) -> str:
     """Compose ``<state_dir>/upgrade-report.md``.
 
-    ``carveouts`` — the ``carve-out:`` lines adopt's kit-owned gate regen
-    emitted (host-added jobs/steps the regen could not keep; the full
-    pre-regen gate is banked under ``<state_dir>/backup/``). They get their
-    own loud section: the report file is the upgrade PR's body evidence, and
-    a host whose only CI job lived inside the kit gate (superbot-games #16)
-    must see the relocation instruction there, not only in stdout.
+    ``carveouts`` — the ``carve-out:`` / ``carve-out scan:`` lines adopt's
+    kit-owned workflow regen emitted. Real carve-outs (host-added jobs/steps
+    the regen could not keep; the full pre-regen copy is banked under
+    ``<state_dir>/backup/``) get their own loud section: the report file is
+    the upgrade PR's body evidence, and a host whose only CI job lived inside
+    the kit gate (superbot-games #16) must see the relocation instruction
+    there, not only in stdout. A **clean** scan is stated explicitly too
+    (queued fix 1, fleet-manager #40 finding): silence was indistinguishable
+    from "the detector never ran", so the report now says which kit-owned
+    workflows were scanned with 0 found — or that no kit-owned live workflow
+    exists to scan. Pass ``carveouts=None`` (the post-hoc ``--apply-docs``
+    path, which runs no adopt pass) to state nothing — absence of the block
+    honestly means the detector did not run in that flow.
     """
     counts: dict[str, int] = {}
     for row in rows:
@@ -11349,14 +11478,30 @@ def upgrade_report_text(
         "|---|---|---|",
     ]
     lines += [f"| {r['relpath']} | {r['class']} | {r['note']} |" for r in rows]
-    if carveouts:
+    scans = [line for line in carveouts or [] if line.startswith("carve-out scan:")]
+    hits = [line for line in carveouts or [] if line.startswith("carve-out:")]
+    if hits:
         lines += [
             "",
             "## ⚠️ Gate carve-outs (host additions the kit-owned regen "
             "could not keep)",
             "",
         ]
-        lines += [f"- {line}" for line in carveouts]
+        lines += [f"- {line}" for line in hits]
+    if carveouts is not None:
+        lines += ["", "## Carve-out scan", ""]
+        if scans:
+            lines += [f"- {line}" for line in scans]
+        if hits:
+            lines += [
+                f"- carve-out scan: {len(hits)} carve-out line(s) reported "
+                "above (see the ⚠️ section).",
+            ]
+        if not scans and not hits:
+            lines += [
+                "- carve-out scan: ran — no kit-owned live workflow "
+                "installed, nothing to scan.",
+            ]
     if applied:
         lines += ["", "## Applied (--apply-docs)", ""]
         lines += [f"- {line}" for line in applied]
@@ -11601,9 +11746,14 @@ def run_upgrade(
     # Gate carve-outs (superbot-games #16 class): adopt's kit-owned gate
     # regen reports host additions it could not keep as ``carve-out:`` lines
     # — surface them in upgrade-report.md too (the report is the upgrade PR's
-    # body evidence; a stdout-only warning is too easy to lose).
+    # body evidence; a stdout-only warning is too easy to lose). The clean
+    # ``carve-out scan:`` lines travel with them (queued fix 1): the report
+    # states "ran, 0 found" explicitly instead of a silence that also reads
+    # as "the detector never ran".
     gate_carveout_lines = [
-        line for line in adopt_lines if line.startswith("carve-out:")
+        line
+        for line in adopt_lines
+        if line.startswith(("carve-out:", "carve-out scan:"))
     ]
 
     # (6b) KL-3: the 📊 Model needle joins session_markers at upgrade time —
@@ -12343,10 +12493,17 @@ def cmd_check(
     adopters_gate, adopters_advisories = check_adopters_current(target)
     if status_only:
         # --status-only: the fast lane's scoped gate (see docstring). Only the
-        # control-lane checkers run — the heartbeat gate and, when CI passes a
-        # base, the inbox append-only gate; everything downstream (allowlist,
-        # guard fires, emit loop) is shared with the full run.
-        doc_findings = list(status_gate) + inbox_findings
+        # control-lane checkers run — the heartbeat gate, the control-scoped
+        # unrendered scan (queued fix 4: a control-only PR that writes a slot
+        # regression into a control-plane planted doc must red HERE, not
+        # poison the next full-lane PR — the #148/#150 incident), and, when
+        # CI passes a base, the inbox append-only gate; everything downstream
+        # (allowlist, guard fires, emit loop) is shared with the full run.
+        doc_findings = (
+            list(status_gate)
+            + inbox_findings
+            + check_engagement_control(target, config)
+        )
     else:
         docs_root = target / config.docs_root
         doc_findings = list(

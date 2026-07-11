@@ -1200,3 +1200,108 @@ def test_planted_readme_documents_the_one_command_lane_shape(tmp_path):
     readme = (root / "control" / "README.md").read_text(encoding="utf-8")
     assert "adopt --lane <name>" in readme
     assert "control/status-<name>.md" in readme
+
+
+# ---------------------------------------------------------------------------
+# Queued kit fixes batch (2026-07-11): explicit-when-clean carve-out scan ·
+# archive hash-verify + dedup · mid-PR gate-regen born-red hold
+# ---------------------------------------------------------------------------
+
+
+def test_kit_owned_regen_reports_explicit_clean_scan(tmp_path):
+    # Queued fix 1 (fleet-manager #40 finding): a clean scan says so out
+    # loud — silence was indistinguishable from "the detector never ran".
+    # Covers both clean shapes: kept-already-current and regenerated-clean.
+    root = tmp_path / "repo"
+    config = Config()
+    backend = _make_backend(root, config)
+    workflow = root / LIVE_CI_RELPATH
+    workflow.parent.mkdir(parents=True)
+    workflow.write_text(live_ci_workflow(), encoding="utf-8")
+    lines = adopt(root, config, backend, kit_root=tmp_path / "kit")
+    assert f"carve-out scan: {LIVE_CI_RELPATH} — ran, 0 found" in lines
+
+    root2 = tmp_path / "repo2"
+    backend2 = _make_backend(root2, Config())
+    workflow2 = root2 / LIVE_CI_RELPATH
+    workflow2.parent.mkdir(parents=True)
+    workflow2.write_text(
+        "# stale hand-forked gate\nname: substrate-gate\n", encoding="utf-8"
+    )
+    lines2 = adopt(root2, Config(), backend2, kit_root=tmp_path / "kit")
+    assert f"carve-out scan: {LIVE_CI_RELPATH} — ran, 0 found" in lines2
+    # A dirty regen reports its carve-outs INSTEAD of the clean-scan line.
+    root3 = tmp_path / "repo3"
+    backend3 = _make_backend(root3, Config())
+    workflow3 = root3 / LIVE_CI_RELPATH
+    workflow3.parent.mkdir(parents=True)
+    workflow3.write_text(
+        live_ci_workflow()
+        + "  pytest:\n    runs-on: ubuntu-latest\n    steps:\n"
+        "      - name: host suite\n        run: pytest\n",
+        encoding="utf-8",
+    )
+    lines3 = adopt(root3, Config(), backend3, kit_root=tmp_path / "kit")
+    assert not any(line.startswith("carve-out scan:") for line in lines3)
+    assert any(line.startswith("carve-out:") for line in lines3)
+
+
+def test_archive_dist_never_overwrites_a_differing_bank(tmp_path):
+    # Queued fix 2 (wave B' verification): a pre-existing archive at the
+    # target name with DIFFERENT bytes is a rollback source — never
+    # overwritten, never silently accepted. The new bytes bank under a
+    # content-hash dedup name and the collision is reported.
+    root = tmp_path / "repo"
+    config = Config()
+    dist_file = root / "bootstrap.py"
+    dist_file.parent.mkdir(parents=True, exist_ok=True)
+    dist_file.write_text(
+        '"""substrate-kit bootstrap v0.9.0 — GENERATED, DO NOT EDIT."""\n# A\n',
+        encoding="utf-8",
+    )
+    rel = f"{config.state_dir}/backup/bootstrap-0.9.0.py"
+    first: list[str] = []
+    banked = archive_dist(root, config, dist_file, first)
+    assert first == [f"archived: {rel}"]
+    original_bytes = banked.read_text(encoding="utf-8")
+
+    # Same version stamp, different content (the bootstrap-unknown.py /
+    # re-tagged-dist collision class).
+    dist_file.write_text(
+        '"""substrate-kit bootstrap v0.9.0 — GENERATED, DO NOT EDIT."""\n# B\n',
+        encoding="utf-8",
+    )
+    second: list[str] = []
+    dedup = archive_dist(root, config, dist_file, second)
+    assert dedup != banked
+    assert dedup.name.startswith("bootstrap-0.9.0.") and dedup.name.endswith(".py")
+    assert dedup.read_text(encoding="utf-8") == dist_file.read_text(encoding="utf-8")
+    # The pre-existing bank is byte-untouched and the collision is loud.
+    assert banked.read_text(encoding="utf-8") == original_bytes
+    assert len(second) == 1
+    assert "NOT overwritten" in second[0]
+    assert "name collision" in second[0]
+
+    # Idempotent on the dedup path too.
+    third: list[str] = []
+    again = archive_dist(root, config, dist_file, third)
+    assert again == dedup
+    assert third == [
+        f"archived: {config.state_dir}/backup/{dedup.name} (already banked)"
+    ]
+
+
+def test_gate_holds_added_card_to_locked_door_when_pr_regenerates_the_gate():
+    # Queued fix 3 (venture-lab #14): a PR that both ADDS a session card and
+    # touches the gate workflow itself runs the NEW gate mid-PR — the added
+    # card must keep the FULL locked door, so hold semantics can only
+    # tighten, never loosen, inside the PR that changes them.
+    text = live_ci_workflow()
+    assert f"'{LIVE_CI_RELPATH}'" in text
+    assert 'gate_regen="$(git diff --name-only "$range" -- ' in text
+    assert (
+        'if [ -n "$card" ] && { [ "$card" != "$added" ] || '
+        '[ -n "$gate_regen" ]; }; then' in text
+    )
+    # The plain added-card advisory path survives for ordinary PRs.
+    assert "__born-red-card-added__.md" in text

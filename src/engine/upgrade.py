@@ -292,12 +292,19 @@ def upgrade_report_text(
 ) -> str:
     """Compose ``<state_dir>/upgrade-report.md``.
 
-    ``carveouts`` — the ``carve-out:`` lines adopt's kit-owned gate regen
-    emitted (host-added jobs/steps the regen could not keep; the full
-    pre-regen gate is banked under ``<state_dir>/backup/``). They get their
-    own loud section: the report file is the upgrade PR's body evidence, and
-    a host whose only CI job lived inside the kit gate (superbot-games #16)
-    must see the relocation instruction there, not only in stdout.
+    ``carveouts`` — the ``carve-out:`` / ``carve-out scan:`` lines adopt's
+    kit-owned workflow regen emitted. Real carve-outs (host-added jobs/steps
+    the regen could not keep; the full pre-regen copy is banked under
+    ``<state_dir>/backup/``) get their own loud section: the report file is
+    the upgrade PR's body evidence, and a host whose only CI job lived inside
+    the kit gate (superbot-games #16) must see the relocation instruction
+    there, not only in stdout. A **clean** scan is stated explicitly too
+    (queued fix 1, fleet-manager #40 finding): silence was indistinguishable
+    from "the detector never ran", so the report now says which kit-owned
+    workflows were scanned with 0 found — or that no kit-owned live workflow
+    exists to scan. Pass ``carveouts=None`` (the post-hoc ``--apply-docs``
+    path, which runs no adopt pass) to state nothing — absence of the block
+    honestly means the detector did not run in that flow.
     """
     counts: dict[str, int] = {}
     for row in rows:
@@ -315,14 +322,30 @@ def upgrade_report_text(
         "|---|---|---|",
     ]
     lines += [f"| {r['relpath']} | {r['class']} | {r['note']} |" for r in rows]
-    if carveouts:
+    scans = [line for line in carveouts or [] if line.startswith("carve-out scan:")]
+    hits = [line for line in carveouts or [] if line.startswith("carve-out:")]
+    if hits:
         lines += [
             "",
             "## ⚠️ Gate carve-outs (host additions the kit-owned regen "
             "could not keep)",
             "",
         ]
-        lines += [f"- {line}" for line in carveouts]
+        lines += [f"- {line}" for line in hits]
+    if carveouts is not None:
+        lines += ["", "## Carve-out scan", ""]
+        if scans:
+            lines += [f"- {line}" for line in scans]
+        if hits:
+            lines += [
+                f"- carve-out scan: {len(hits)} carve-out line(s) reported "
+                "above (see the ⚠️ section).",
+            ]
+        if not scans and not hits:
+            lines += [
+                "- carve-out scan: ran — no kit-owned live workflow "
+                "installed, nothing to scan.",
+            ]
     if applied:
         lines += ["", "## Applied (--apply-docs)", ""]
         lines += [f"- {line}" for line in applied]
@@ -567,9 +590,14 @@ def run_upgrade(
     # Gate carve-outs (superbot-games #16 class): adopt's kit-owned gate
     # regen reports host additions it could not keep as ``carve-out:`` lines
     # — surface them in upgrade-report.md too (the report is the upgrade PR's
-    # body evidence; a stdout-only warning is too easy to lose).
+    # body evidence; a stdout-only warning is too easy to lose). The clean
+    # ``carve-out scan:`` lines travel with them (queued fix 1): the report
+    # states "ran, 0 found" explicitly instead of a silence that also reads
+    # as "the detector never ran".
     gate_carveout_lines = [
-        line for line in adopt_lines if line.startswith("carve-out:")
+        line
+        for line in adopt_lines
+        if line.startswith(("carve-out:", "carve-out scan:"))
     ]
 
     # (6b) KL-3: the 📊 Model needle joins session_markers at upgrade time —

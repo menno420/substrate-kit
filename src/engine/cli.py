@@ -36,7 +36,11 @@ from engine.checks.check_adopters_current import check_adopters_current
 from engine.checks.check_capability_xref import check_capability_xref
 from engine.checks.check_claims import check_claims
 from engine.checks.check_docs import Finding, run_doc_checks
-from engine.checks.check_engagement import check_engagement, scan_relpaths
+from engine.checks.check_engagement import (
+    check_engagement,
+    check_engagement_control,
+    scan_relpaths,
+)
 from engine.checks.check_inbox_append import check_inbox_append
 from engine.checks.check_namespace import check_namespace
 from engine.checks.check_owner_actions import check_owner_actions
@@ -757,10 +761,17 @@ def cmd_check(
     adopters_gate, adopters_advisories = check_adopters_current(target)
     if status_only:
         # --status-only: the fast lane's scoped gate (see docstring). Only the
-        # control-lane checkers run — the heartbeat gate and, when CI passes a
-        # base, the inbox append-only gate; everything downstream (allowlist,
-        # guard fires, emit loop) is shared with the full run.
-        doc_findings = list(status_gate) + inbox_findings
+        # control-lane checkers run — the heartbeat gate, the control-scoped
+        # unrendered scan (queued fix 4: a control-only PR that writes a slot
+        # regression into a control-plane planted doc must red HERE, not
+        # poison the next full-lane PR — the #148/#150 incident), and, when
+        # CI passes a base, the inbox append-only gate; everything downstream
+        # (allowlist, guard fires, emit loop) is shared with the full run.
+        doc_findings = (
+            list(status_gate)
+            + inbox_findings
+            + check_engagement_control(target, config)
+        )
     else:
         docs_root = target / config.docs_root
         doc_findings = list(

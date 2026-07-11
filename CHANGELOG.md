@@ -122,6 +122,52 @@ workflow refuses to publish a version that has no section in this file.
   (default `control/claims`) pins a deliberate different home — a pinned dir
   is canonical for that host and never nudged.
 
+### Fixed
+
+- **Carve-out scan is explicit when clean** (queued fix 1, fleet-manager #40
+  finding): the kit-owned workflow regen now emits
+  `carve-out scan: <relpath> — ran, 0 found` on a clean scan (both the
+  kept-already-current and regenerated-clean shapes), and `upgrade-report.md`
+  always carries a `## Carve-out scan` section stating what was scanned —
+  clean scans listed per file, a hit count pointing at the ⚠️ section, or an
+  explicit "no kit-owned live workflow installed, nothing to scan". Silence
+  previously also matched "the detector never ran". The post-hoc
+  `--apply-docs` report (which runs no adopt pass) deliberately carries no
+  scan section — there, absence honestly means the detector did not run.
+- **Pre-existing upgrade backups are hash-verified, never overwritten**
+  (queued fix 2, wave B' verification): `archive_dist()` byte-compares a
+  pre-existing archive at the target name; identical content keeps the
+  explicit `(already banked)` line, while DIFFERENT content — two unstamped
+  dists both naming `bootstrap-unknown.py`, or a re-tagged dist colliding on
+  a version name — now banks under a content-hash-suffixed dedup name
+  (`bootstrap-<version>.<sha8>.py`) with a loud `name collision … NOT
+  overwritten` report line. The earlier bank (someone's rollback source) is
+  left byte-untouched.
+- **Mid-PR gate-regen born-red hold** (queued fix 3, venture-lab #14): a PR
+  that both ADDS a session card and touches the kit-owned
+  `substrate-gate.yml` itself runs the NEW gate mid-PR (GitHub executes
+  `pull_request` workflows from the PR head), which previously flipped the
+  added born-red card from held-red to advisory inside the very PR that
+  regenerated the gate — auto-merge could land a partial session. The
+  generated gate now routes an ADDED card through the full
+  `--require-session-log` locked door whenever the same diff touches the
+  gate workflow file: hold semantics may only tighten, never loosen, within
+  the PR that changes them; the merge path is unchanged (flip the card
+  `complete`).
+- **Unrendered-slot scan is code-span and code-fence aware** (queued fix 4,
+  the kit's own #148/#150 incident): a literal dollar-brace token inside
+  backticks or a fenced block in a planted doc — a control/status.md
+  heartbeat mentioning a token above all — is prose, not an unfilled
+  interview slot, and no longer reds the engagement gate
+  (`engine.render.find_placeholders_outside_code`; the banner hold keeps
+  full-text slot evidence, so a genuinely unfilled template slot inside
+  backticks still holds via `unrendered-banner`). And the deeper bug is
+  fixed too: the CI control fast lane (`check --strict --status-only`) now
+  runs the unrendered scan scoped to control-plane planted docs
+  (`check_engagement_control`), so a control-only PR can no longer smuggle a
+  slot regression past the scan onto main and pre-redden every subsequent
+  full-lane PR.
+
 ## [1.7.1] - 2026-07-10
 
 Fix-and-hardening release (PATCH) shipping the v1.7.0 distribution-wave

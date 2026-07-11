@@ -904,3 +904,53 @@ def test_upgrade_never_creates_a_live_gate_that_was_not_installed(tmp_path):
         running=running,
     )
     assert not (root / LIVE_CI_RELPATH).exists()
+
+
+def test_upgrade_report_states_clean_carveout_scan_explicitly(tmp_path):
+    # Queued fix 1 (fleet-manager #40 finding): a clean scan was SILENT in
+    # upgrade-report.md — indistinguishable from "the detector never ran".
+    # A pristine kit-owned gate now yields an explicit scan section naming
+    # the file scanned with 0 found.
+    from engine.adopt import LIVE_CI_RELPATH, live_ci_workflow
+
+    root, config, backend = _adopted(tmp_path)
+    gate = root / LIVE_CI_RELPATH
+    gate.parent.mkdir(parents=True)
+    gate.write_text(live_ci_workflow(), encoding="utf-8")
+    _fake_old_dist(root)
+    running = _fake_new_dist(tmp_path)
+    lines = run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    assert f"carve-out scan: {LIVE_CI_RELPATH} — ran, 0 found" in lines
+    report_text = (root / config.state_dir / "upgrade-report.md").read_text(
+        encoding="utf-8",
+    )
+    assert "## Carve-out scan" in report_text
+    assert f"carve-out scan: {LIVE_CI_RELPATH} — ran, 0 found" in report_text
+    assert "Gate carve-outs" not in report_text
+
+
+def test_upgrade_report_names_nothing_to_scan_when_no_live_workflow(tmp_path):
+    # No kit-owned live workflow installed → the report still states scan
+    # status: ran, nothing to scan (absence of the section would read as
+    # "never ran").
+    root, config, backend = _adopted(tmp_path)
+    _fake_old_dist(root)
+    running = _fake_new_dist(tmp_path)
+    run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    report_text = (root / config.state_dir / "upgrade-report.md").read_text(
+        encoding="utf-8",
+    )
+    assert "## Carve-out scan" in report_text
+    assert "no kit-owned live workflow installed, nothing to scan" in report_text
