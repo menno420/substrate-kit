@@ -953,6 +953,142 @@ def test_adopt_gate_regen_banks_and_reports_carveouts(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# Three-way carve-out compare (v1.11.0-wave phantom-carve-out fix): the OLD
+# template — what the kit last shipped, recovered from the staged copy under
+# <state_dir>/ci/ before the staging pass overwrites it — joins the compare,
+# so kit-side template evolution (the #199/#195 action-pin bumps) is never
+# misread as host additions and a live gate byte-identical to the old
+# template is never banked.
+# ---------------------------------------------------------------------------
+
+
+def _pin_bumped_down_gate() -> str:
+    """The v1.11.0-wave OLD-template shape: the outgoing kit template differs
+    from the current one only by a kit-side action-pin version."""
+    return live_ci_workflow().replace(
+        "uses: actions/checkout@v5",
+        "uses: actions/checkout@v4",
+    )
+
+
+def test_pin_bump_only_regen_yields_no_phantom_carveouts_and_no_bank(tmp_path):
+    # The v1.11.0-wave false positive (fleet-manager #72, superbot-games #45,
+    # trading-strategy #60, gba-homebrew #44, venture-lab #37): a live gate
+    # byte-identical to the OLD template, upgraded across a kit-side pin
+    # bump, must produce ZERO carve-out flags and NO pre-regen bank — the
+    # whole live-vs-new delta is the kit's own outgoing content.
+    from engine.adopt import gate_carveouts
+
+    old_template = _pin_bumped_down_gate()
+    assert old_template != live_ci_workflow()
+    # The phantom is real under a two-way compare — that is what this fix
+    # removes: vs the NEW template alone, the old pin reads as host-added.
+    assert gate_carveouts(old_template, live_ci_workflow()) != []
+    root = tmp_path / "repo"
+    config = Config()
+    backend = _make_backend(root, config)
+    staged = root / config.state_dir / "ci" / "substrate-gate.yml"
+    staged.parent.mkdir(parents=True, exist_ok=True)
+    staged.write_text(old_template, encoding="utf-8")
+    workflow = root / LIVE_CI_RELPATH
+    workflow.parent.mkdir(parents=True)
+    workflow.write_text(old_template, encoding="utf-8")
+    lines = adopt(root, config, backend, kit_root=tmp_path / "kit")
+    # Regenerated to template@new, with no carve-out flags and no bank.
+    assert workflow.read_text(encoding="utf-8") == live_ci_workflow()
+    assert not any(line.startswith("carve-out:") for line in lines)
+    assert any(
+        line.startswith(f"carve-out scan: {LIVE_CI_RELPATH} — ran, 0 found")
+        for line in lines
+    )
+    assert any(
+        "live matched the previous kit template" in line for line in lines
+    )
+    assert not list(
+        (root / config.state_dir / "backup").glob("substrate-gate.pre-regen-*.yml")
+    )
+
+
+def test_genuine_host_carveout_still_detected_with_old_template(tmp_path):
+    # Three-way compare must never suppress a REAL host addition: content
+    # present in live and absent from BOTH templates stays detected and the
+    # full pre-regen copy stays banked (the superbot-games #16 covenant).
+    root = tmp_path / "repo"
+    config = Config()
+    backend = _make_backend(root, config)
+    staged = root / config.state_dir / "ci" / "substrate-gate.yml"
+    staged.parent.mkdir(parents=True, exist_ok=True)
+    staged.write_text(live_ci_workflow(), encoding="utf-8")
+    hand_edited = live_ci_workflow() + (
+        "  pytest:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - name: host test suite\n"
+        "        run: python3 -m pytest tests/ -q\n"
+    )
+    workflow = root / LIVE_CI_RELPATH
+    workflow.parent.mkdir(parents=True)
+    workflow.write_text(hand_edited, encoding="utf-8")
+    lines = adopt(root, config, backend, kit_root=tmp_path / "kit")
+    assert workflow.read_text(encoding="utf-8") == live_ci_workflow()
+    assert any(
+        line.startswith(f"carve-out: {LIVE_CI_RELPATH} — host-added job 'pytest'")
+        for line in lines
+    )
+    banked = list(
+        (root / config.state_dir / "backup").glob("substrate-gate.pre-regen-*.yml")
+    )
+    assert len(banked) == 1
+    assert banked[0].read_text(encoding="utf-8") == hand_edited
+
+
+def test_mixed_kit_change_and_host_addition_flags_only_the_host_step(tmp_path):
+    # Mixed shape: kit-side pin bump AND a host-added step in the same live
+    # gate — only the host step is flagged and banked; the kit-side delta is
+    # at most the one-line informational note, never a carve-out.
+    old_template = _pin_bumped_down_gate()
+    live = old_template.replace(
+        "      - uses: actions/checkout@v4\n",
+        "      - uses: actions/checkout@v4\n"
+        "      - name: host coverage upload\n"
+        "        run: echo host step\n",
+    )
+    assert live != old_template
+    root = tmp_path / "repo"
+    config = Config()
+    backend = _make_backend(root, config)
+    staged = root / config.state_dir / "ci" / "substrate-gate.yml"
+    staged.parent.mkdir(parents=True, exist_ok=True)
+    staged.write_text(old_template, encoding="utf-8")
+    workflow = root / LIVE_CI_RELPATH
+    workflow.parent.mkdir(parents=True)
+    workflow.write_text(live, encoding="utf-8")
+    lines = adopt(root, config, backend, kit_root=tmp_path / "kit")
+    assert workflow.read_text(encoding="utf-8") == live_ci_workflow()
+    host_hits = [
+        line
+        for line in lines
+        if line.startswith(f"carve-out: {LIVE_CI_RELPATH} — host-added")
+    ]
+    assert host_hits == [
+        f"carve-out: {LIVE_CI_RELPATH} — host-added step "
+        "'host coverage upload' in job 'substrate-gate'",
+    ]
+    # The kit-side pin delta never surfaces as a carve-out — informational
+    # note only.
+    assert not any("checkout@v4" in line for line in lines)
+    assert any(
+        line.startswith(f"carve-out scan: {LIVE_CI_RELPATH} — kit-updated")
+        for line in lines
+    )
+    banked = list(
+        (root / config.state_dir / "backup").glob("substrate-gate.pre-regen-*.yml")
+    )
+    assert len(banked) == 1
+    assert banked[0].read_text(encoding="utf-8") == live
+
+
+# ---------------------------------------------------------------------------
 # Auto-merge enabler planted by the kit (EAP program review §6.10)
 # ---------------------------------------------------------------------------
 
@@ -1297,7 +1433,16 @@ def test_kit_owned_regen_reports_explicit_clean_scan(tmp_path):
         encoding="utf-8",
     )
     lines3 = adopt(root3, Config(), backend3, kit_root=tmp_path / "kit")
-    assert not any(line.startswith("carve-out scan:") for line in lines3)
+    # A dirty regen never claims a clean scan — and with no staged copy to
+    # recover the old template from (first adopt), the three-way compare
+    # honestly degrades to two-way and SAYS so (explicit-fallback warning).
+    assert not any(
+        line.startswith(f"carve-out scan: {LIVE_CI_RELPATH} — ran, 0 found")
+        for line in lines3
+    )
+    assert any(
+        "previous kit template unavailable" in line for line in lines3
+    )
     assert any(line.startswith("carve-out:") for line in lines3)
 
 

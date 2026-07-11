@@ -15,6 +15,32 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Carve-out scanner three-way compare (v1.11.0-wave false positive, 6
+  live-gate adopters).** When a release changed the kit's OWN generated gate
+  content (the #199/#195 `checkout@v5` / `setup-python@v6` pin bumps), the
+  kit-owned workflow regen compared the adopter's LIVE gate against the NEW
+  template only, misread the kit's outgoing template content as "host-added"
+  steps — phantom carve-outs on the wave cards of fleet-manager #72,
+  superbot-games #45, trading-strategy #60, gba-homebrew #44, venture-lab
+  #37 — and banked a pre-regen copy byte-identical to the OLD staged
+  template. The regen now runs a THREE-WAY compare: live vs the OLD template
+  (what the kit last shipped, recovered from the staged copy under
+  `<state_dir>/ci/` captured before the staging pass overwrites it — the
+  banked dist cannot supply it, these workflows are code-generated, not
+  `_TEMPLATES` entries) vs the NEW template. A detection counts as a host
+  carve-out ONLY when the content is explained by NEITHER template;
+  kit-side evolution is a one-line `kit-updated N step(s)` informational
+  note; a live gate byte-identical to the old template yields zero flags
+  and NO bank (the bank preserves host customization — identical content
+  has none). Old template unrecoverable (first adopt, staged copy missing)
+  → honest degrade to the previous two-way compare with an explicit warning
+  line, never a crash. Genuine host additions (content in neither template)
+  are still detected and banked exactly as before — regression trio in
+  `tests/test_adopt.py` + the end-to-end pin-bump report shape in
+  `tests/test_upgrade.py`.
+
 ## [1.11.0] - 2026-07-11
 
 Capability release (MINOR) shipping the run-6 delivery-gap fix — a new

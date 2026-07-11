@@ -432,6 +432,54 @@ def test_upgrade_pristine_gate_regen_stays_clean(tmp_path):
     assert "Gate carve-outs" not in report_text
 
 
+def test_upgrade_pin_bump_only_gate_reports_no_phantom_carveouts(tmp_path):
+    # The v1.11.0-wave false positive end-to-end through the upgrade flow:
+    # the live gate is byte-identical to the OLD template (recovered from
+    # the pre-upgrade staged copy under <state_dir>/ci/), and the new
+    # release only bumped a kit-side action pin — the upgrade report must
+    # carry NO carve-out section, and nothing is banked.
+    from engine.adopt import LIVE_CI_RELPATH, live_ci_workflow
+
+    root, config, backend = _adopted(tmp_path)
+    old_template = live_ci_workflow().replace(
+        "uses: actions/checkout@v5",
+        "uses: actions/checkout@v4",
+    )
+    assert old_template != live_ci_workflow()
+    # Rewind the staged copy to what the OLD kit shipped (adopt in _adopted
+    # staged the current render).
+    staged = root / config.state_dir / "ci" / "substrate-gate.yml"
+    staged.write_text(old_template, encoding="utf-8")
+    gate = root / LIVE_CI_RELPATH
+    gate.parent.mkdir(parents=True)
+    gate.write_text(old_template, encoding="utf-8")
+    _fake_old_dist(root)
+    running = _fake_new_dist(tmp_path)
+    lines = run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    assert gate.read_text(encoding="utf-8") == live_ci_workflow()
+    assert not any(line.startswith("carve-out:") for line in lines)
+    assert not list(
+        (root / config.state_dir / BACKUP_DIRNAME).glob(
+            "substrate-gate.pre-regen-*.yml",
+        )
+    )
+    report_text = (root / config.state_dir / "upgrade-report.md").read_text(
+        encoding="utf-8",
+    )
+    assert "Gate carve-outs" not in report_text
+    assert (
+        f"carve-out scan: {LIVE_CI_RELPATH} — ran, 0 found (live matched "
+        "the previous kit template byte-for-byte; the delta is kit-side "
+        "template evolution)" in report_text
+    )
+
+
 def test_upgrade_enabler_regen_surfaces_carveouts_in_the_report(tmp_path):
     # EAP §6.10: the auto-merge enabler is kit-owned via the SAME mechanism
     # as the gate — an upgrade regenerates a hand-forked enabler in place,

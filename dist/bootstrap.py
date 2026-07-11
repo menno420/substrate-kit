@@ -9777,6 +9777,20 @@ def _adopt_stage(path: Path, relpath: str, text: str, report: list[str]) -> None
     report.append(f"staged: {relpath}")
 
 
+def _staged_previous_text(path: Path) -> str | None:
+    """Return a staged artifact's pre-regen bytes, or None when absent.
+
+    The three-way carve-out compare's old-template recovery source: read
+    BEFORE :func:`_adopt_stage` overwrites the staged copy with the new
+    render. Unreadable honestly equals absent — the consumer degrades to
+    the two-way compare rather than crashing.
+    """
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+
 # Provenance marker for the retroactively-merged model doctrine (the
 # search-hygiene plant pattern): appended entries sit under one comment
 # naming their origin, so a host reading its own README knows which
@@ -10561,6 +10575,7 @@ def _regen_kit_owned_workflow(
     *,
     noun: str,
     install_when_absent: bool,
+    old_text: str | None = None,
 ) -> None:
     """Plant/regenerate one kit-owned live workflow (adopt step 6b shape).
 
@@ -10573,6 +10588,24 @@ def _regen_kit_owned_workflow(
     additions are detected (:func:`gate_carveouts`), the full pre-regen copy
     is banked content-hash-named under ``<state_dir>/backup/``, and each
     carve-out is reported (upgrade surfaces them in ``upgrade-report.md``).
+
+    **Three-way compare (v1.11.0-wave phantom-carve-out fix):** when a kit
+    release changes the kit's OWN generated workflow content (the #199/#195
+    checkout@v5 / setup-python@v6 pin bumps), a two-way live-vs-new compare
+    misreads the kit's outgoing template content as "host-added" (6 live-gate
+    adopters flagged phantom carve-outs on the v1.11.0 wave) and banks a
+    pre-regen copy byte-identical to the OLD template. ``old_text`` — what
+    the kit LAST shipped, recovered by the caller from the staged copy under
+    ``<state_dir>/ci/`` BEFORE the staging pass overwrites it (the banked
+    dist cannot supply it: these workflows are code-generated, not
+    ``_TEMPLATES`` entries, so an old dist would have to be *executed* to
+    re-render them) — makes the compare three-way: a detection counts as a
+    host carve-out ONLY when the content is present in live and explained by
+    NEITHER template. Kit-side evolution is a one-line informational note;
+    a live file byte-identical to the old template yields zero flags and NO
+    bank (the bank preserves host customization — identical content has
+    none). ``old_text=None`` (first adopt, staged copy missing) degrades to
+    the two-way compare with an explicit warning when it detects anything.
     """
     live_path = root / relpath
     if live_path.is_file():
@@ -10584,7 +10617,51 @@ def _regen_kit_owned_workflow(
             report.append(f"carve-out scan: {relpath} — ran, 0 found")
             report.append(f"kept: {relpath} (kit-owned, already current)")
             return
+        if old_text is not None and live_text == old_text:
+            # Three-way fast path: the live file is byte-identical to what
+            # the kit last shipped — the whole live-vs-new delta is kit-side
+            # template evolution. Nothing is host-added, nothing is banked;
+            # the regen just moves the file to template@new.
+            report.append(
+                f"carve-out scan: {relpath} — ran, 0 found (live matched "
+                "the previous kit template byte-for-byte; the delta is "
+                "kit-side template evolution)",
+            )
+            atomic_write_text(live_path, expected_text)
+            report.append(
+                f"regenerated: {relpath} (kit-owned — template@new; "
+                "hand edits are overwritten, host carve-outs belong in a "
+                "separate workflow)",
+            )
+            return
         carveouts = gate_carveouts(live_text, expected_text)
+        kit_side = 0
+        if old_text is not None:
+            # Three-way compare: a detection vs the NEW template that does
+            # NOT also fire vs the OLD template is explained by what the
+            # kit last shipped — kit-side evolution, never a host addition.
+            # Only content present in live and in NEITHER template survives
+            # as a carve-out (the intersection of both detections).
+            vs_old = set(gate_carveouts(live_text, old_text))
+            kept = [line for line in carveouts if line in vs_old]
+            kit_side = len(carveouts) - len(kept)
+            carveouts = kept
+        elif carveouts:
+            # No recoverable old template: degrade to the two-way compare
+            # and say so — kit-side template evolution may over-report as
+            # host additions in this mode (the v1.11.0-wave class).
+            report.append(
+                f"carve-out scan: {relpath} — previous kit template "
+                "unavailable (no staged copy to recover it from); two-way "
+                "compare vs the new template may report kit-side template "
+                "changes as host additions",
+            )
+        if kit_side:
+            report.append(
+                f"carve-out scan: {relpath} — kit-updated {kit_side} "
+                "step(s)/job(s) (template evolution; not host additions, "
+                "not banked)",
+            )
         if not carveouts:
             # Explicit-when-clean (queued fix 1, fleet-manager #40 finding):
             # the scan ran and found no host additions — name that, so the
@@ -11003,6 +11080,18 @@ def adopt(
         sessions_dir=config.sessions_dir,
     )
     gate_rel = f"{config.state_dir}/ci/substrate-gate.yml"
+    # Three-way compare inputs (v1.11.0-wave phantom-carve-out fix): until
+    # the _adopt_stage calls below overwrite them, the staged copies under
+    # <state_dir>/ci/ hold what the kit LAST shipped — capture those bytes
+    # FIRST so the kit-owned regen (step 6b) can tell kit-side template
+    # evolution from host additions. Absent staged copy (first adopt) →
+    # None → the regen honestly degrades to its two-way compare.
+    old_staged_gate = _staged_previous_text(
+        state_base / "ci" / "substrate-gate.yml",
+    )
+    old_staged_enabler = _staged_previous_text(
+        state_base / "ci" / "auto-merge-enabler.yml",
+    )
     _adopt_stage(
         state_base / "ci" / "substrate-gate.yml",
         gate_rel,
@@ -11069,6 +11158,7 @@ def adopt(
         report,
         noun="gate",
         install_when_absent=wire_enforcement,
+        old_text=old_staged_gate,
     )
     # The auto-merge enabler (EAP §6.10) follows the gate's exact lifecycle:
     # created only by --wire-enforcement, kit-owned once it exists (a
@@ -11082,6 +11172,7 @@ def adopt(
         report,
         noun="enabler",
         install_when_absent=wire_enforcement,
+        old_text=old_staged_enabler,
     )
     if (root / AUTOMERGE_ENABLER_RELPATH).is_file():
         # The §6.10 second half: the enabler is inert until two owner-UI
