@@ -52,6 +52,61 @@ handoff-push idea is the evidence-backed answer. Evidence:
   machinery and the exclusion flags (`grep --exclude=bootstrap.py
   --exclude-dir=.substrate` / `rg -g '!…'`). The mechanical fix (planted
   ignore/attributes file) stays queued as a kit fix in `control/status.md`.
+- **Added-card grammar lint in the generated gate** (`check --added-card`;
+  queued kit fix 1, the venture-lab #15 false-green class — an ADDED card
+  declaring `complete` while missing its grammar tokens merged green under
+  the advisory sentinel's full exemption and pre-reddened every later bare
+  `check --strict` run via the newest-by-mtime fallback; design per the
+  idea on venture-lab PR #17's session card). The generated
+  `substrate-gate.yml`'s advisory lane now passes the added card to the new
+  `--added-card` flag: judged by what the card *declares* — no Status badge
+  at all → grammar red (born-red exempts the badge's VALUE, never its
+  presence); badge in-progress/drafted → fully exempt (the born-red flow is
+  unchanged); badge claiming anything else → the full completeness check.
+  Findings ride the strict loop as `session-card-grammar` and are never
+  allowlistable. Adopters inherit via the gate regen on `upgrade`.
+- **Designed-hold signal on born-red reds** (queued kit fix 4, the PL-006
+  observer-noise class — three live occurrences of a coordinator/observer
+  red-pinging a DESIGNED session-gate hold: the #140/#144/#147 class, again
+  on #153). When the ONLY thing holding a strict `check` red is a session
+  card that itself declares an in-progress/drafted Status, the failing
+  output now says so unmissably — `check: HOLD (by design): … not a
+  defect; nothing to investigate` — plus a `::notice title=HOLD: session
+  card in-progress (by design)` GitHub annotation when running in Actions.
+  Any other finding alongside suppresses the banner: a partially-real
+  failure is never labelled "by design".
+- **Search-hygiene surfaces planted by adopt/upgrade** (queued kit fix 5,
+  the mechanical half of the run-5 judge's grep-pollution finding; the
+  guidance half is the planted-CLAUDE.md note above). Adopt now plants
+  root-anchored entries into `.ignore` (ripgrep-family tools skip the
+  vendored `bootstrap.py` + `<state_dir>/backup/` by default;
+  `rg --no-ignore`/`-u` still reaches them deliberately) and
+  `.gitattributes` (`linguist-generated=true` collapses both in GitHub
+  diffs and language stats). Merge-only, never clobber: existing host
+  content is preserved byte-for-byte, missing entries append under one
+  provenance marker comment, and repeat passes are idempotent. Plain
+  `grep -r` has no ignore protocol and stays covered by the guidance note.
+
+### Fixed
+
+- **`automerge.required_context` is validated against the repo's own
+  workflows at plant time** (queued kit fix 3, the websites class: the
+  planted default is `substrate-gate` while that repo's real required
+  check is `quality`). The kit cannot *derive* the required check (the
+  branch ruleset is owner-UI, invisible in-tree), so adopt/upgrade now
+  *validates*: when `.github/workflows/` produces job contexts and none
+  matches the configured `required_context`, the report emits one advisory
+  line naming the exact `substrate.config.json → automerge.required_context`
+  override; the repo-settings checklist documents the same override.
+  Nothing judgeable → silence; the knob stays informational-only (the
+  enabler's refuse-to-arm guard counts required contexts generically).
+- **`src/build_bootstrap.py` reports the real written byte count** (queued
+  kit fix 2 — the print said `len(content)`, a CHARACTER count, while the
+  artifact is UTF-8 with multi-byte glyphs, understating the file by ~3 KB:
+  `622084 bytes` printed vs 625066 on disk at v1.8.0, re-confirmed on
+  #160/#161). The builder now writes the encoded bytes and prints their
+  length, which also pins the artifact against platform newline
+  translation.
 
 ## [1.8.0] - 2026-07-11
 

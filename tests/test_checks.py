@@ -15,7 +15,9 @@ from engine.checks.check_docs import (
     run_doc_checks,
 )
 from engine.checks.check_session_log import (
+    check_added_card,
     check_log,
+    has_status_badge,
     latest_session_log,
     missing_markers,
     status_in_progress,
@@ -262,6 +264,63 @@ def test_status_in_progress_token_variants():
     assert status_in_progress("> **Status:** `hold` — waiting\n")
     assert not status_in_progress("> **Status:** `complete`\n")
     assert not status_in_progress("no badge at all\n")
+
+
+def test_has_status_badge_detects_presence_not_value():
+    assert has_status_badge("> **Status:** `in-progress`\n")
+    assert has_status_badge("> **Status:** `complete`\n")
+    assert not has_status_badge("# card with no badge at all\n💡 idea\n")
+
+
+def test_added_card_born_red_is_exempt(tmp_path):
+    # The advisory lane's designed state: an ADDED card that declares
+    # in-progress is judged only on carrying a Status badge — mid-flight
+    # incompleteness (no markers yet) must not red the born-red heartbeat.
+    card = tmp_path / "2026-07-11-a.md"
+    _write(card, "# a\n\n> **Status:** `in-progress`\n\nabout to do X\n")
+    assert check_added_card(card, _MARKERS) == []
+
+
+def test_added_card_without_any_badge_is_a_grammar_finding(tmp_path):
+    # Born-red exempts the badge's VALUE, never its presence: a card with no
+    # parseable Status badge is malformed from its first commit.
+    card = tmp_path / "2026-07-11-b.md"
+    _write(card, "# b\n\n## Session idea\nfree-form, no badge\n")
+    misses = check_added_card(card, _MARKERS)
+    assert len(misses) == 1
+    assert "Status badge" in misses[0]
+
+
+def test_added_card_claiming_complete_gets_the_full_check(tmp_path):
+    # The venture-lab #15 false-green class: an ADDED card declaring
+    # `complete` while missing its grammar tokens (💡 / 📊 Model:) merged
+    # green under the old full exemption and pre-reddened every later bare
+    # `check --strict` run. Declared-complete → judged as complete.
+    card = tmp_path / "2026-07-11-c.md"
+    _write(
+        card,
+        "# c\n\n> **Status:** `complete`\n\n## Session idea\nno needle\n"
+        "\n## Model\nCoordinator seat: opus-x\n",
+    )
+    misses = check_added_card(card, _MARKERS)
+    assert misses == check_log(card, _MARKERS)
+    assert any("Model line" in m for m in misses)
+    assert any("Session idea" in m for m in misses)
+
+
+def test_added_card_complete_and_well_formed_is_clean(tmp_path):
+    card = tmp_path / "2026-07-11-d.md"
+    _write(
+        card,
+        "# d\n\n> **Status:** `complete`\n\n💡 idea\n\n"
+        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n",
+    )
+    assert check_added_card(card, _MARKERS) == []
+
+
+def test_added_card_unreadable_is_named_honestly(tmp_path):
+    misses = check_added_card(tmp_path / "absent.md", _MARKERS)
+    assert misses == ["an unreadable added card (cannot grammar-check)"]
 
 
 # ---------------------------------------------------------------------------

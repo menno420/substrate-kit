@@ -226,11 +226,19 @@ def build() -> str:
 
 
 def main() -> int:
-    """Generate ``dist/bootstrap.py`` from ``src/engine``."""
-    content = build()
+    """Generate ``dist/bootstrap.py`` from ``src/engine``.
+
+    The reported size is the real written BYTE count (``len`` of the UTF-8
+    encoding), not ``len(content)`` — that counts *characters*, and the
+    templates carry multi-byte glyphs (💡/⟲/📊/·/—), so the old print
+    understated the file by ~3 KB (622084 chars vs 625066 bytes at v1.8.0;
+    queued kit fix 2, re-confirmed on #160/#161). Writing the encoded bytes
+    directly also pins the artifact against platform newline translation.
+    """
+    data = build().encode("utf-8")
     DIST_PATH.parent.mkdir(parents=True, exist_ok=True)
-    DIST_PATH.write_text(content, encoding="utf-8")
-    sys.stdout.write(f"wrote {DIST_PATH} ({len(content)} bytes)\n")
+    DIST_PATH.write_bytes(data)
+    sys.stdout.write(f"wrote {DIST_PATH} ({len(data)} bytes)\n")
     return 0
 
 

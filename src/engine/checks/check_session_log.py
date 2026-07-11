@@ -109,6 +109,50 @@ def status_in_progress(text: str) -> bool:
     return False
 
 
+def has_status_badge(text: str) -> bool:
+    """True when the log carries any Status badge line at all."""
+    return any("**status:**" in line.lower() for line in text.splitlines())
+
+
+def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
+    """Grammar-lint a card newly ADDED by a PR (the gate's advisory lane).
+
+    The venture-lab #15 false-green class: the generated gate exempts an
+    ADDED card from the locked door so a born-red heartbeat can merge — but
+    the old exemption skipped the card ENTIRELY, so a card that declared
+    itself ``complete`` while missing its grammar tokens (💡 / ``📊 Model:``)
+    merged green and pre-reddened every later bare ``check --strict`` run
+    via the newest-by-mtime fallback (fixed only by the next upgrade wave).
+
+    The middle tier (idea recorded on venture-lab PR #17's session card):
+    judge the added card by what it *declares*, never by mid-flight
+    completeness —
+
+    - **no Status badge at all** → a grammar finding: every session card
+      carries a parseable ``> **Status:**`` badge from its first commit
+      (the born-red convention *requires* the badge; it exempts the VALUE).
+    - **badge declares in-progress/drafted** → no findings: born-red
+      incompleteness is the designed state and stays fully exempt.
+    - **badge declares anything else** (``complete`` & co.) → the card
+      claims to be a finished close-out, so it gets the full
+      :func:`check_log` completeness check — missing markers and unresolved
+      ``[[fill:]]`` slots red exactly as they would on a MODIFIED card.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return ["an unreadable added card (cannot grammar-check)"]
+    if not has_status_badge(text):
+        return [
+            "a Status badge line (expected `> **Status:**`) — a session card "
+            "carries one from its first commit; born-red exempts the badge's "
+            "VALUE, never its presence",
+        ]
+    if status_in_progress(text):
+        return []
+    return check_log(path, markers)
+
+
 def check_log(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
     """Return what keeps one log file from counting complete (all if unreadable).
 

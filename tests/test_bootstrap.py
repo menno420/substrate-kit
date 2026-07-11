@@ -152,3 +152,23 @@ def test_module_order_covers_every_engine_module():
         if p.name != "__init__.py" and "templates" not in p.parts
     }
     assert on_disk == set(MODULE_ORDER)
+
+
+def test_main_reports_the_real_written_byte_count(tmp_path, monkeypatch, capsys):
+    """Queued kit fix 2: the old print reported ``len(content)`` — a CHARACTER
+    count — while the artifact is UTF-8 with multi-byte glyphs (💡/⟲/📊/·/—),
+    so it understated the file by ~3 KB (622084 chars vs 625066 bytes at
+    v1.8.0). The printed number must equal the on-disk byte size."""
+    import build_bootstrap
+
+    target = tmp_path / "dist" / "bootstrap.py"
+    monkeypatch.setattr(build_bootstrap, "DIST_PATH", target)
+    assert build_bootstrap.main() == 0
+    out = capsys.readouterr().out
+    match = re.search(r"\((\d+) bytes\)", out)
+    assert match is not None, out
+    assert int(match.group(1)) == target.stat().st_size
+    # The regression is only meaningful while chars != bytes — pin that the
+    # artifact really is multi-byte so this test can't silently degrade.
+    text = target.read_text(encoding="utf-8")
+    assert len(text) != target.stat().st_size

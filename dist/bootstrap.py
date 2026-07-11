@@ -1751,6 +1751,50 @@ def status_in_progress(text: str) -> bool:
     return False
 
 
+def has_status_badge(text: str) -> bool:
+    """True when the log carries any Status badge line at all."""
+    return any("**status:**" in line.lower() for line in text.splitlines())
+
+
+def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
+    """Grammar-lint a card newly ADDED by a PR (the gate's advisory lane).
+
+    The venture-lab #15 false-green class: the generated gate exempts an
+    ADDED card from the locked door so a born-red heartbeat can merge — but
+    the old exemption skipped the card ENTIRELY, so a card that declared
+    itself ``complete`` while missing its grammar tokens (💡 / ``📊 Model:``)
+    merged green and pre-reddened every later bare ``check --strict`` run
+    via the newest-by-mtime fallback (fixed only by the next upgrade wave).
+
+    The middle tier (idea recorded on venture-lab PR #17's session card):
+    judge the added card by what it *declares*, never by mid-flight
+    completeness —
+
+    - **no Status badge at all** → a grammar finding: every session card
+      carries a parseable ``> **Status:**`` badge from its first commit
+      (the born-red convention *requires* the badge; it exempts the VALUE).
+    - **badge declares in-progress/drafted** → no findings: born-red
+      incompleteness is the designed state and stays fully exempt.
+    - **badge declares anything else** (``complete`` & co.) → the card
+      claims to be a finished close-out, so it gets the full
+      :func:`check_log` completeness check — missing markers and unresolved
+      ``[[fill:]]`` slots red exactly as they would on a MODIFIED card.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return ["an unreadable added card (cannot grammar-check)"]
+    if not has_status_badge(text):
+        return [
+            "a Status badge line (expected `> **Status:**`) — a session card "
+            "carries one from its first commit; born-red exempts the badge's "
+            "VALUE, never its presence",
+        ]
+    if status_in_progress(text):
+        return []
+    return check_log(path, markers)
+
+
 def check_log(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
     """Return what keeps one log file from counting complete (all if unreadable).
 
@@ -9789,6 +9833,13 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         "        # session (venture-lab #14). Hold semantics may only\n"
         "        # tighten, never loosen, inside the PR that changes them;\n"
         "        # the escape is the normal one — flip the card complete.\n"
+        "        # The advisory lane is NOT a full exemption: --added-card\n"
+        "        # grammar-lints the added card (a missing Status badge, or\n"
+        "        # a card declaring itself complete while missing its\n"
+        "        # markers, reds) while born-red incompleteness stays\n"
+        "        # exempt — the venture-lab #15 class, where an ADDED card\n"
+        "        # merged green with malformed grammar and pre-reddened\n"
+        "        # every later bare `check --strict` run.\n"
         "        run: |\n"
         '          if [ -n "${{ github.base_ref }}" ]; then\n'
         '            range="origin/${{ github.base_ref }}...HEAD"\n'
@@ -9815,9 +9866,10 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         ' --session-log "$card"\n'
         "          elif [ -n \"$card\" ]; then\n"
         '            echo "card $card is newly ADDED by this PR (born-red heartbeat)'
-        ' — advisory sentinel gate"\n'
+        ' — advisory sentinel gate (card grammar still checked)"\n'
         f"            {interpreter} bootstrap.py check --strict --session-log "
-        f"{sessions_dir}/__born-red-card-added__.md\n"
+        f"{sessions_dir}/__born-red-card-added__.md"
+        ' --added-card "$card"\n'
         "          else\n"
         f"            {interpreter} bootstrap.py check --strict --session-log "
         f"{sessions_dir}/__no-card-in-diff__.md\n"
@@ -10185,6 +10237,83 @@ def _automerge_params(config: Config) -> tuple[list[str], str]:
     return [str(p) for p in patterns], context
 
 
+def _workflow_context_names(root: Path) -> set[str]:
+    """Collect plausible required-check context names from live workflows.
+
+    A workflow job's status-check context is its display ``name:`` when set,
+    else its job id — so both are collected, from every workflow under
+    ``.github/workflows/``. Line-based like :func:`_workflow_outline`
+    (stdlib-only, no YAML parser) and best-effort by design: the result only
+    ever decides whether to *emit an advisory report line*, never a gate.
+    Empty set = nothing judgeable (no workflows dir / no parseable jobs).
+    """
+    names: set[str] = set()
+    wf_dir = root / ".github" / "workflows"
+    if not wf_dir.is_dir():
+        return names
+    for wf_path in sorted(wf_dir.glob("*.yml")) + sorted(wf_dir.glob("*.yaml")):
+        try:
+            text = wf_path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        in_jobs = False
+        current: str | None = None
+        for raw in text.split("\n"):
+            line = raw.rstrip()
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            indent = len(line) - len(line.lstrip(" "))
+            if indent == 0:
+                in_jobs = stripped == "jobs:"
+                current = None
+                continue
+            if not in_jobs:
+                continue
+            if (
+                indent == 2
+                and stripped.endswith(":")
+                and not stripped.startswith("-")
+            ):
+                current = stripped[:-1]
+                names.add(current)
+                continue
+            if current is not None and indent == 4:
+                match = re.match(r"name:\s*(.+)$", stripped)
+                if match is not None:
+                    names.add(match.group(1).strip().strip("'\""))
+    return names
+
+
+def _required_context_advisory(root: Path, required_context: str) -> str | None:
+    """One advisory line when ``automerge.required_context`` looks wrong.
+
+    The websites class (queued kit fix 3): the planted config defaulted
+    ``required_context`` to ``substrate-gate`` while that repo's actual
+    required check is ``quality`` — a value the kit cannot *derive* at plant
+    time (which check is REQUIRED lives in the branch ruleset, owner-UI,
+    invisible in-tree), but can *validate* against what is visible: the job
+    names the repo's own workflows produce. Mismatch → one report line
+    naming the exact config override; nothing judgeable → silence (a fresh
+    adopt with no CI must not nag about a gate that isn't installed yet).
+    The knob stays informational-only either way — the enabler's
+    refuse-to-arm guard counts required contexts generically.
+    """
+    names = _workflow_context_names(root)
+    if not names or required_context in names:
+        return None
+    listed = ", ".join(f"'{name}'" for name in sorted(names))
+    return (
+        f"automerge.required_context '{required_context}' matches no job in "
+        f".github/workflows/ (contexts found: {listed}) — if this repo's "
+        "REQUIRED check has a different name, set substrate.config.json -> "
+        'automerge."required_context" to that exact context. The value '
+        "labels the repo-settings checklist + enabler log lines "
+        "(informational; the refuse-to-arm guard counts required contexts "
+        "generically)."
+    )
+
+
 def _repo_settings_checklist(required_context: str) -> list[str]:
     """Return the one-time repo-settings checklist (EAP §6.10, second half).
 
@@ -10201,11 +10330,117 @@ def _repo_settings_checklist(required_context: str) -> list[str]:
         "(a workflow cannot flip repo settings).",
         f"  2. Require the '{required_context}' status check on the default "
         "branch (Settings → Rules) — with NO required check, arming "
-        "auto-merge merges a PR instantly.",
+        "auto-merge merges a PR instantly. (If this repo's required check "
+        "has a different name, pin it via substrate.config.json -> "
+        'automerge."required_context" so this checklist and the enabler '
+        "logs name the right context.)",
         '  3. Optional: "Automatically delete head branches" + auto-update '
         "of PR branches (closes the merged-branch clutter and the "
         "green-behind stall classes).",
     ]
+
+
+# Search-hygiene plant (queued kit fix 5 — bench run-5 judge limitation 5):
+# the ~12k-line vendored bootstrap.py + the <state_dir>/backup/ dist copies
+# dominate repo-wide search in adopter repos (a code grep surfaces hundreds
+# of engine hits before the repo's own sources). The guidance half shipped
+# with the planted CLAUDE.md search-hygiene note (#165); this is the
+# mechanical half: `.ignore` removes both from ripgrep-family tools by
+# default (`rg -u`/`--no-ignore` still reaches them deliberately; plain
+# `grep -r` has no ignore protocol and stays guidance-only), and
+# `.gitattributes` linguist-generated hints collapse them in GitHub diffs
+# and language stats. Both surfaces are MERGED, never clobbered: the kit
+# only ever appends entries that are missing, under one marker comment.
+SEARCH_HYGIENE_MARKER = (
+    "# substrate-kit search hygiene (planted by adopt/upgrade; the kit only "
+    "ever APPENDS missing entries — existing content above is host-owned)"
+)
+
+
+def _search_hygiene_surfaces(
+    config: Config,
+    vendored_relpath: str,
+) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """Return the (file, entries) plan for the search-hygiene plant.
+
+    Entries are root-anchored (leading ``/``) so only the vendored file and
+    the state-dir backup bank match — never a same-named file deeper in the
+    host tree. An absolute ``vendored_relpath`` (the no-vendored-copy
+    fallback shapes) contributes no bootstrap entry: there is nothing
+    in-repo to hide.
+    """
+    state_dir = config.state_dir.strip("/")
+    bootstrap_entry = None
+    if vendored_relpath and not Path(vendored_relpath).is_absolute():
+        bootstrap_entry = "/" + vendored_relpath.lstrip("/")
+    ignore_entries = tuple(
+        entry
+        for entry in (bootstrap_entry, f"/{state_dir}/backup/")
+        if entry is not None
+    )
+    attr_entries = tuple(
+        f"{pattern} linguist-generated=true"
+        for pattern in (bootstrap_entry, f"/{state_dir}/backup/**")
+        if pattern is not None
+    )
+    return ((".ignore", ignore_entries), (".gitattributes", attr_entries))
+
+
+def _plant_search_hygiene(
+    root: Path,
+    config: Config,
+    vendored_relpath: str,
+    report: list[str],
+) -> None:
+    """Merge the search-hygiene entries into ``.ignore``/``.gitattributes``.
+
+    Append-only merge (the clobber hazard is real: a host `.gitattributes`
+    or `.ignore` carries host policy): existing lines are preserved
+    byte-for-byte, already-present entries are never duplicated (idempotent
+    across adopt/upgrade passes), and appended entries sit under one marker
+    comment naming their provenance. Unreadable file → skip + report,
+    never destroy.
+    """
+    for relpath, entries in _search_hygiene_surfaces(config, vendored_relpath):
+        if not entries:
+            continue
+        path = root / relpath
+        existing = ""
+        if path.is_file():
+            try:
+                existing = path.read_text(encoding="utf-8")
+            except OSError:
+                report.append(
+                    f"skipped: {relpath} (unreadable — left untouched; "
+                    "search-hygiene entries not merged)",
+                )
+                continue
+        present = {line.strip() for line in existing.splitlines()}
+        missing = [entry for entry in entries if entry not in present]
+        if not missing:
+            report.append(
+                f"kept: {relpath} (search-hygiene entries already present)",
+            )
+            continue
+        chunk = ""
+        if existing:
+            if not existing.endswith("\n"):
+                chunk += "\n"
+            chunk += "\n"
+        if SEARCH_HYGIENE_MARKER not in present:
+            chunk += SEARCH_HYGIENE_MARKER + "\n"
+        chunk += "\n".join(missing) + "\n"
+        atomic_write_text(path, existing + chunk)
+        noun = "entry" if len(missing) == 1 else "entries"
+        if existing:
+            report.append(
+                f"merged: {relpath} ({len(missing)} search-hygiene {noun} "
+                "appended; existing content preserved)",
+            )
+        else:
+            report.append(
+                f"planted: {relpath} ({len(missing)} search-hygiene {noun})",
+            )
 
 
 def adopt(
@@ -10315,6 +10550,10 @@ def adopt(
     project_name = context.get("project_name") or root.name
     skeleton = pack_index_skeleton(project_name)
     _adopt_plant(root / "project.index.json", "project.index.json", skeleton, report)
+
+    # (3b) Search hygiene (queued kit fix 5): keep the vendored dist + the
+    # backup bank out of repo-wide search — merged, never clobbered.
+    _plant_search_hygiene(root, config, bootstrap_path, report)
 
     # (4) Stage the .claude material under <state_dir> (regenerated each run).
     state_base = root / config.state_dir
@@ -10446,6 +10685,12 @@ def adopt(
         # repo settings exist — say so in the adopt output itself, every
         # pass (the checklist is idempotent guidance, not a nag).
         report.extend(_repo_settings_checklist(enabler_context))
+    # required_context sanity (queued kit fix 3, the websites class): after
+    # the gate/enabler regens above so a just-installed live gate counts as
+    # a matching context. Advisory line only — see the helper's docstring.
+    context_advisory = _required_context_advisory(root, enabler_context)
+    if context_advisory is not None:
+        report.append(context_advisory)
 
     # (6b2) Lane-aware adopt: declare the just-planted lane heartbeat so the
     # status gate validates it (config mutated in place — cmd_adopt's
@@ -12441,10 +12686,21 @@ def cmd_check(
     *,
     require_session_log: bool = False,
     session_log: Path | None = None,
+    added_card: Path | None = None,
     status_only: bool = False,
     inbox_base: Path | None = None,
 ) -> int:
     """Run every hygiene checker against ``target``.
+
+    ``added_card`` (CLI ``--added-card``) names a session card the PR's diff
+    ADDS — the generated gate's advisory sentinel lane passes it so a
+    born-red heartbeat is still *grammar*-checked instead of exempted
+    entirely (the venture-lab #15 false-green class; see
+    :func:`engine.checks.check_session_log.check_added_card` for the
+    declared-status tiering). Findings ride the strict loop like any doc
+    finding and are never allowlistable (they are the session-gate seam);
+    a named file that does not exist is advisory-only — the gate derives
+    the path from the diff, so absence means nothing to judge.
 
     ``inbox_base`` (CLI ``--inbox-base``) names the merge-base version of
     ``control/inbox.md`` — extracted by CI in bash, because engine code never
@@ -12593,6 +12849,28 @@ def cmd_check(
     entries, allow_findings = load_allowlist(target, config.state_dir)
     doc_findings, suppressed = apply_allowlist(doc_findings, entries)
     doc_findings += allow_findings
+    # Added-card grammar lint (queued kit fix 1, the venture-lab #15
+    # false-green class): appended AFTER the allowlist pass on purpose —
+    # like the session-log gate it extends, it is never allowlistable.
+    if added_card is not None and not status_only:
+        card_path = (
+            added_card if added_card.is_absolute() else target / added_card
+        )
+        if card_path.is_file():
+            card_rel = (
+                str(card_path.relative_to(target))
+                if card_path.is_relative_to(target)
+                else str(card_path)
+            )
+            doc_findings += [
+                Finding(card_rel, "session-card-grammar", miss)
+                for miss in check_added_card(card_path, config.session_markers)
+            ]
+        else:
+            _emit(
+                f"check: --added-card {added_card} does not exist "
+                "(advisory — nothing to grammar-check).",
+            )
     if suppressed:
         _emit(
             f"check: {len(suppressed)} finding(s) suppressed by allowlist "
@@ -12803,10 +13081,58 @@ def cmd_check(
             findings=[gate_finding],
         )
 
+    # Designed-hold signal (queued kit fix 4, the PL-006 observer-noise
+    # class): with parallel sessions, every born-red PR's mid-flight red CI
+    # draws "investigate this failure" pings from coordinators/observers —
+    # three live occurrences (#140/#144/#147 class, again on #153). When the
+    # ONLY thing holding the run red is a session card that itself DECLARES
+    # an in-progress/drafted Status, the red is the born-red discipline
+    # working as designed — say so, unmissably, in the failing output (and
+    # as a GitHub annotation when running in Actions) so an observer can
+    # tell a designed hold from a real defect without opening the job log's
+    # fine print. Any other finding alongside suppresses the banner: a
+    # partially-real failure must never be labelled "by design".
+    hold_is_designed = (
+        strict
+        and not doc_findings
+        and not log_absent_fails
+        and log is not None
+        and bool(log_missing)
+        and _card_declares_in_progress(log)
+    )
+    if hold_is_designed:
+        hold_rel = log.relative_to(target) if log.is_relative_to(target) else log
+        _emit(
+            f"check: HOLD (by design): session card {hold_rel} declares an "
+            "in-progress Status — the born-red session gate holds the merge "
+            "red until the card flips complete. This red is the designed "
+            "hold, not a defect; nothing to investigate.",
+        )
+        if os.environ.get("GITHUB_ACTIONS"):
+            _emit(
+                "::notice title=HOLD: session card in-progress (by design)::"
+                f"The born-red session gate is holding this red until {hold_rel} "
+                "flips complete. Designed hold — not a CI failure to "
+                "investigate.",
+            )
     if not doc_findings and not log_missing and not log_absent_fails:
         _emit("check: all checks passed.")
         return 0
     return 1 if strict else 0
+
+
+def _card_declares_in_progress(log: Path) -> bool:
+    """True when ``log``'s own Status badge carries an in-progress value.
+
+    The designed-hold banner's honesty condition (fix 4): the card must SAY
+    it is mid-flight — a card that claims ``complete`` but still reds is a
+    real defect and never gets the "by design" label. Unreadable → False
+    (never claim design intent on evidence that cannot be read).
+    """
+    try:
+        return status_in_progress(log.read_text(encoding="utf-8"))
+    except OSError:
+        return False
 
 
 def _require_state(
@@ -13840,6 +14166,18 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     check.add_argument(
+        "--added-card",
+        type=Path,
+        default=None,
+        help=(
+            "grammar-lint this session card as one newly ADDED by the PR "
+            "(the gate's advisory sentinel lane): born-red incompleteness "
+            "stays exempt, but a missing Status badge — or a card that "
+            "declares itself complete while missing its markers — reds "
+            "(the venture-lab #15 false-green class)"
+        ),
+    )
+    check.add_argument(
         "--status-only",
         action="store_true",
         help=(
@@ -13902,6 +14240,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.strict,
                 require_session_log=args.require_session_log,
                 session_log=args.session_log,
+                added_card=args.added_card,
                 status_only=args.status_only,
                 inbox_base=args.inbox_base,
             )
