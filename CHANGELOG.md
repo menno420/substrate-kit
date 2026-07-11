@@ -15,6 +15,55 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.12.1] - 2026-07-11
+
+Patch release (PATCH) shipping the adopter-gate false-green fixes from
+external review #226 (kit PR #228): modified sibling session cards now
+gate through the same locked door as a modified-only diff (G-1 — a PR
+adding one good card can no longer silently break a sibling and merge
+green), and session-card deletions are a hard red on BOTH gate surfaces
+(G-2 — a deletion-only PR no longer falls to the no-card path and
+erases session memory on a green merge). Rides along: the currency
+scanner's layered fetcher (private repos render tree truth, never
+"not adopted", #232) and the fresh-state handoff fast path + bench
+collect zero-events guard (#236). PATCH per the header's contract,
+decided under the 2026-07-11 owner feature-freeze directive: fixes and
+hardening of existing surfaces — no new checker, command, or template,
+and no planted-doc, state schema, config schema, or CLI contract
+breaks; adopters inherit the regenerated gate on `upgrade`.
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+**Benchmark outcome (KF-5 — travels into the next release's notes):** B1
+cold-start NINTH firing (`2026-07-11-run09`, seed 711901 cedardonation, kit =
+vendored dist at main@49b36d7 — v1.12.0 payload + the #228 gate-fix regen,
+CLI 2.1.207; run dir + row committed, PR #233): **VERDICT FAIL (Reading A) —
+a NEAR-MISS, and the family's first ON M2+M3 double win earned by genuine
+behavior.** The #222 content-gap countermeasure validated end-to-end: the
+evidence trail ARRIVED (ON-T4's boot push + `HANDOFF.md`, 86 words ≤ the 113
+pin, carried the drafted card + changed-files + git state), ON-T4's source
+check was a `git diff` scoped to exactly the three trail-named files (vs
+run-8's unscoped `git log -p` over an empty card), and ON-T4 **authored the
+card** — every `[[fill:]]` slot resolved with real content, stale
+auto-evidence corrected, genuine next-session pointer, Status flipped
+`complete`, plus a verified `docs/CAPABILITIES.md` append — the first
+family run in which write-back occurred on any arm; bare `check --strict`
+exit **0** at ON arm end (run-8: 1), realized via genuine completion (the
+#222 advisory lane was therefore never exercised). M1: T4 collapsed to
+near-tie (1759 vs 1672; run-8 2506/1628), T5 to ON (214 vs 294), but T2
+regressed (2505 vs 675) — aggregate M1 to OFF, which under strict Reading A
+fails the none-regressing bar (the judge notes a lenient M1-tie reading
+would PASS). T5's v2 signal-visibility gate was met but DEGENERATE — the
+push announced a COMPLETE card, so no skip-vs-ritual tension existed
+(v2-2 n-a); both arms repeated run-8's `git add cli.py` commit sweep,
+self-detected, ended asking headlessly. Seam: smoke PASS mitigated; the
+unmitigated control spawn still delegated a paraphrased-prompt worker
+(third A/B reproduction); flat seam byte-verbatim 6/6; zero
+reset-relaunches (third consecutive). **KF-8 trend at 8 rows: 1 PASS /
+7 FAIL.** Next: cut ON-T2's first-session orientation footprint (the build
+task pays the full boot cost with nothing to resume), then re-validate;
+rubric §3 alignment still parks on PR #220.
+
 ### Added
 
 - **Fresh-state fast path in the handoff surfaces (B1 run-9 ON-T2
@@ -102,36 +151,6 @@ workflow refuses to publish a version that has no section in this file.
   repo → truly absent; auth failure everywhere → unreadable, not
   "not adopted"; tarball fallback reads + proves absence; one probe per
   repo (cached).
-
-**Benchmark outcome (KF-5 — travels into the next release's notes):** B1
-cold-start NINTH firing (`2026-07-11-run09`, seed 711901 cedardonation, kit =
-vendored dist at main@49b36d7 — v1.12.0 payload + the #228 gate-fix regen,
-CLI 2.1.207; run dir + row committed, PR #233): **VERDICT FAIL (Reading A) —
-a NEAR-MISS, and the family's first ON M2+M3 double win earned by genuine
-behavior.** The #222 content-gap countermeasure validated end-to-end: the
-evidence trail ARRIVED (ON-T4's boot push + `HANDOFF.md`, 86 words ≤ the 113
-pin, carried the drafted card + changed-files + git state), ON-T4's source
-check was a `git diff` scoped to exactly the three trail-named files (vs
-run-8's unscoped `git log -p` over an empty card), and ON-T4 **authored the
-card** — every `[[fill:]]` slot resolved with real content, stale
-auto-evidence corrected, genuine next-session pointer, Status flipped
-`complete`, plus a verified `docs/CAPABILITIES.md` append — the first
-family run in which write-back occurred on any arm; bare `check --strict`
-exit **0** at ON arm end (run-8: 1), realized via genuine completion (the
-#222 advisory lane was therefore never exercised). M1: T4 collapsed to
-near-tie (1759 vs 1672; run-8 2506/1628), T5 to ON (214 vs 294), but T2
-regressed (2505 vs 675) — aggregate M1 to OFF, which under strict Reading A
-fails the none-regressing bar (the judge notes a lenient M1-tie reading
-would PASS). T5's v2 signal-visibility gate was met but DEGENERATE — the
-push announced a COMPLETE card, so no skip-vs-ritual tension existed
-(v2-2 n-a); both arms repeated run-8's `git add cli.py` commit sweep,
-self-detected, ended asking headlessly. Seam: smoke PASS mitigated; the
-unmitigated control spawn still delegated a paraphrased-prompt worker
-(third A/B reproduction); flat seam byte-verbatim 6/6; zero
-reset-relaunches (third consecutive). **KF-8 trend at 8 rows: 1 PASS /
-7 FAIL.** Next: cut ON-T2's first-session orientation footprint (the build
-task pays the full boot cost with nothing to resume), then re-validate;
-rubric §3 alignment still parks on PR #220.
 
 ## [1.12.0] - 2026-07-11
 
@@ -1720,6 +1739,7 @@ by real consumers, and now nameable, pinnable, verifiable, and upgradeable.
   `init --unpack` it served never shipped, and it doubled every consumer's
   vendored file for nothing.
 
+[1.12.1]: https://github.com/menno420/substrate-kit/releases/tag/v1.12.1
 [1.12.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.12.0
 [1.11.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.11.0
 [1.10.1]: https://github.com/menno420/substrate-kit/releases/tag/v1.10.1
