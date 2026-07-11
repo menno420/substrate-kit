@@ -15,6 +15,18 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.10.1] - 2026-07-11
+
+Fix release (PATCH) shipping the v1.10.0 tail findings (PR #187): the
+session-gate `tail -1` multi-card shadowing fix (every card in a PR's
+session-card diff is now graded, closing the partial reopening of the
+superbot-games #40 premature-merge class) and the emphasis-blind
+`_MODEL_DOCTRINE_PHRASE` presence check. No planted-doc, state schema,
+config schema, or CLI contract breaks; adopters inherit both on `upgrade`
+(gate + vendored engine move in lockstep).
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
 ### Fixed
 
 - Session-gate multi-card shadowing (HIGH — venture-lab #33 head 798a3d0,
@@ -1342,6 +1354,7 @@ by real consumers, and now nameable, pinnable, verifiable, and upgradeable.
   `init --unpack` it served never shipped, and it doubled every consumer's
   vendored file for nothing.
 
+[1.10.1]: https://github.com/menno420/substrate-kit/releases/tag/v1.10.1
 [1.10.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.10.0
 [1.9.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.9.0
 [1.8.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.8.0
