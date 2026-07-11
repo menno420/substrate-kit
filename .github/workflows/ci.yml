@@ -222,22 +222,40 @@ jobs:
         if: steps.lane.outputs.control_only != 'true'
         # (Control lane: a heartbeat PR touches no .sessions/ card and needs
         # none — coordination writes are exempt from the card ritual.)
-        # PR-diff-aware card selection: gate on the session card this PR/push
-        # actually touches, passed via `check --session-log` — this replaced
-        # the git-mtime-restore shim (a CI checkout flattens every mtime, so
-        # the engine's newest-by-mtime guess was arbitrary here). No card in
-        # the diff -> argument omitted -> the engine's mtime fallback
-        # (fail-open; on main every merged card is complete). A PR that adds
-        # an `in-progress` card stays red until the card flips complete.
+        # PR-diff-aware card selection: gate on the session cards this
+        # PR/push actually touches, passed via `check --session-log` — this
+        # replaced the git-mtime-restore shim (a CI checkout flattens every
+        # mtime, so the engine's newest-by-mtime guess was arbitrary here).
+        # EVERY card in the diff is graded, never a single picked one: the
+        # old `tail -1` picker graded only the last-sorted card, so a PR
+        # that ADDED an in-progress card and MODIFIED a later-sorting
+        # sibling shipped the in-progress card GREEN (the multi-card
+        # shadowing loophole, venture-lab #33 head 798a3d0 — the kit's own
+        # gate had the same picker). Added in-progress cards red via the
+        # engine's in-progress hold; ANY red card fails the step. No card
+        # in the diff -> argument omitted -> the engine's mtime fallback
+        # (fail-open; on main every merged card is complete). A PR that
+        # adds an `in-progress` card stays red until the card flips
+        # complete.
         run: |
           if [ -n "${{ github.base_ref }}" ]; then
             range="origin/${{ github.base_ref }}...HEAD"
           else
             range="${{ github.event.before }}..${{ github.sha }}"
           fi
-          card="$(git diff --name-only --diff-filter=d "$range" -- '.sessions/*.md' ':!.sessions/README.md' 2>/dev/null | tail -1)"
-          echo "session gate card: ${card:-<none - mtime fallback>}"
-          python3 dist/bootstrap.py check --strict --require-session-log ${card:+--session-log "$card"}
+          cards="$(git diff --name-only --diff-filter=d "$range" -- '.sessions/*.md' ':!.sessions/README.md' 2>/dev/null)"
+          echo "session gate cards: ${cards:-<none - mtime fallback>}"
+          if [ -z "$cards" ]; then
+            python3 dist/bootstrap.py check --strict --require-session-log
+          else
+            fail=0
+            while IFS= read -r card; do
+              [ -z "$card" ] && continue
+              echo "grading session card: $card"
+              python3 dist/bootstrap.py check --strict --require-session-log --session-log "$card" || fail=1
+            done <<< "$cards"
+            exit "$fail"
+          fi
 
   # ── TEMPORARY legacy-context aliases (delete after P10 lands) ─────────────
   # Discovered live in PR #6: an owner-landed ruleset on main requires the

@@ -1,10 +1,10 @@
 ---
-state: captured
+state: promoted
 origin: consumer:menno420/websites
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 187
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-11
+outcome: shipped
 ---
 
 # `_MODEL_DOCTRINE_PHRASE` exact-substring match is emphasis-blind (2026-07-11)

@@ -1097,3 +1097,38 @@ def test_doctrine_merge_noop_when_markers_lack_the_needle(tmp_path):
     # Doctrine without the needle would be noise — nothing written.
     assert readme.read_text(encoding="utf-8") == old_text
     assert report == []
+
+
+def test_doctrine_merge_detects_emphasis_variant_phrase(tmp_path):
+    # The v1.10.0-wave defect (websites #105): a hand-merged doctrine carried
+    # Markdown emphasis INSIDE the detection phrase, the exact-substring test
+    # missed it, and a harmless near-duplicate paragraph was appended. The
+    # presence check is now emphasis-blind (strip * _ ` + collapse
+    # whitespace) — an emphasis-variant existing phrase means NO append.
+    from engine.adopt import MODEL_DOCTRINE_MARKER, _merge_model_doctrine
+
+    root, config, backend = _adopted(tmp_path)
+    readme = root / config.sessions_dir / "README.md"
+    # The exact websites shape: emphasis opens mid-phrase.
+    starred = (
+        "# Session logs\n\nThe model segment is the family-level model name "
+        "**your own harness/environment reports this session** — hand-merged "
+        "pre-retroactively.\n"
+    )
+    readme.write_text(starred, encoding="utf-8")
+    report: list[str] = []
+    _merge_model_doctrine(root, config, report)
+    assert readme.read_text(encoding="utf-8") == starred
+    assert MODEL_DOCTRINE_MARKER not in starred
+    assert report == []
+    # Underscore emphasis + a reflowed line break inside the phrase — still
+    # the same doctrine, still no duplicate append.
+    underscored = (
+        "# Session logs\n\nUse the _family-level model name_ your own\n"
+        "harness/environment reports for the card's model segment.\n"
+    )
+    readme.write_text(underscored, encoding="utf-8")
+    report = []
+    _merge_model_doctrine(root, config, report)
+    assert readme.read_text(encoding="utf-8") == underscored
+    assert report == []

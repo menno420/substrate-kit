@@ -1,10 +1,10 @@
 ---
-state: captured
+state: promoted
 origin: consumer:menno420/venture-lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 187
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-11
+outcome: shipped
 ---
 
 # Gate card picker `tail -1` lets a multi-card diff shadow the born-red hold (2026-07-11)
