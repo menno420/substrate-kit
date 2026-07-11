@@ -1,1 +1,0 @@
-- `release-v1.9.0` · **release cut v1.9.0** — MINOR bump 1.8.0 → 1.9.0 (version surface + CHANGELOG cut + dist re-pin), release.yml dispatch publish, adopters regen + status close-out · expected: src/engine/lib/config.py, pyproject.toml, CHANGELOG.md, dist/bootstrap.py, docs/adopters.md, control/status.md, .sessions/ · 2026-07-11
