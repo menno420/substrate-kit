@@ -15,6 +15,23 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-07-11
+
+Capability release (MINOR) shipping the continuity/hygiene band accumulated
+since v1.8.0: the SessionStart handoff push — the B1 run-4/run-5
+continuity-null fix (#165) — plus the queued kit-fixes batch 2 (#167/#168:
+the added-card grammar lint in the generated gate, the born-red
+designed-hold signal, the `.ignore`/`.gitattributes` search-hygiene plants
+with their planted-CLAUDE.md guidance note, plant-time
+`automerge.required_context` validation, and the build byte-count print
+fix) and the ORDER 012 family-level model-attribution doctrine in the
+planted `.sessions/README.md` (#170). MINOR per the header's contract: a
+new orientation capability, a new gate lint, new planted surfaces, new
+template doctrine — no planted-doc, state schema, config schema, or CLI
+contract breaks; adopters inherit everything on `upgrade`.
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
 **Benchmark outcome (KF-5 — travels into the next release's notes):** B1
 cold-start FIFTH firing (`2026-07-11-run05`, seed 711501 juniperharvest, kit
 v1.8.0, arms claude-sonnet-5, judge claude-opus-4-8, both transcript-verified;
@@ -1230,6 +1247,7 @@ by real consumers, and now nameable, pinnable, verifiable, and upgradeable.
   `init --unpack` it served never shipped, and it doubled every consumer's
   vendored file for nothing.
 
+[1.9.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.9.0
 [1.8.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.8.0
 [1.7.1]: https://github.com/menno420/substrate-kit/releases/tag/v1.7.1
 [1.7.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.7.0
