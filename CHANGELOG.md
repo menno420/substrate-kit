@@ -15,6 +15,32 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Session-gate multi-card shadowing (HIGH — venture-lab #33 head 798a3d0,
+  run 29144734514): the gate's `tail -1` card picker graded only the
+  last-sorted card of a PR's session-card diff, so a PR that ADDED an
+  in-progress card AND MODIFIED a later-sorting sibling went GREEN under
+  the v1.10.0 `session-card-hold` — partially reopening the
+  superbot-games #40 pre-armed-auto-merge premature-merge class. The
+  generated gate template AND the kit's own `ci.yml` session gate now
+  grade EVERY card in the diff: each ADDED card walks the added-card lane
+  (any added in-progress/drafted card → HOLD; all added cards must be
+  complete and well-formed for green; the gate-regen locked-door +
+  `--simulate-added-card` branch applies per added card), sibling cards
+  MODIFIED alongside an added card are advisory-only (logged, never
+  grade-affecting), and a modified-only diff keeps the locked door on
+  each modified card. Regression tests execute the generated gate's bash
+  in a scratch git repo, including the exact shadowing shape. Adopters
+  inherit on `upgrade` (gate + vendored engine move in lockstep).
+- `_MODEL_DOCTRINE_PHRASE` presence check made emphasis-blind (websites
+  #105): the retroactive model-doctrine append's exact-substring test
+  missed an existing phrase carrying Markdown emphasis (`**`/`_`/backticks
+  inside the phrase) and appended a harmless near-duplicate paragraph
+  once. The check now strips emphasis characters and collapses whitespace
+  before comparing; an emphasis-variant hand-merged doctrine is
+  recognized as present.
+
 ## [1.10.0] - 2026-07-11
 
 Capability release (MINOR) shipping the v1.9.0 distribution wave's fixes

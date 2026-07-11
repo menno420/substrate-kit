@@ -10,6 +10,7 @@ parallel); until that module lands these tests skip rather than red the suite.
 """
 
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -704,24 +705,31 @@ def test_live_ci_workflow_selects_the_card_from_the_diff():
 
 def test_live_ci_workflow_gates_added_cards_by_declared_status():
     text = live_ci_workflow()
-    # A card ADDED by the PR is a born-red heartbeat (first-commit conventions
-    # REQUIRE an in-progress card at birth); it gates via the absent sentinel
-    # + --added-card, whose declared-status tiering HOLDs an in-progress card
-    # red until it flips complete (the superbot-games #40 card-only loophole
-    # fix) while never grading mid-flight completeness (gba-homebrew PR #2).
-    # Modified cards (close-out flips) keep the full --require-session-log
-    # locked door.
+    # EVERY card ADDED by the PR is a born-red heartbeat (first-commit
+    # conventions REQUIRE an in-progress card at birth); each gates via the
+    # absent sentinel + --added-card, whose declared-status tiering HOLDs an
+    # in-progress card red until it flips complete (the superbot-games #40
+    # card-only loophole fix) while never grading mid-flight completeness
+    # (gba-homebrew PR #2). Sibling cards modified in the same diff are
+    # advisory-only; a modified-only diff keeps the full
+    # --require-session-log locked door on each modified card.
     assert "--diff-filter=A" in text
     assert "--session-log .sessions/__born-red-card-added__.md" in text
-    assert '[ "$card" != "$added" ]' in text
-    # The locked door still exists — on the modified-card branch.
+    # The multi-card loop replaced the tail-1 single-card pick (venture-lab
+    # #33 shadowing loophole): added/changed card lists are no longer
+    # tail-1-truncated, and every added card walks the added-card lane.
+    assert 'done <<< "$added"' in text
+    assert "| tail -1)\"\n          added=" not in text
+    assert "modified sibling card (advisory" in text
+    # The locked door still exists — on the modified-only branch.
     assert 'check --strict --require-session-log --session-log "$card"' in text
     # The gate-regen locked-door branch also self-tests the added-card lane
     # (--simulate-added-card), so the lane stays observable on the very PRs
     # that ship gate changes.
     assert '--simulate-added-card "$card"' in text
     # The interpreter threads through all four branches (locked door with
-    # simulate, plain locked door, added-card hold lane, no-card sentinel).
+    # simulate, added-card hold lane, modified-card locked door, no-card
+    # sentinel).
     custom = live_ci_workflow("python3.10")
     assert custom.count("python3.10 bootstrap.py check --strict") == 4
 
@@ -1333,9 +1341,13 @@ def test_gate_holds_added_card_to_locked_door_when_pr_regenerates_the_gate():
     text = live_ci_workflow()
     assert f"'{LIVE_CI_RELPATH}'" in text
     assert 'gate_regen="$(git diff --name-only "$range" -- ' in text
+    # Inside the added-card loop, a gate-touching PR routes EVERY added card
+    # through the full locked door (+ the advisory simulate), not the
+    # added-card lane.
+    assert 'if [ -n "$gate_regen" ]; then' in text
     assert (
-        'if [ -n "$card" ] && { [ "$card" != "$added" ] || '
-        '[ -n "$gate_regen" ]; }; then' in text
+        '--require-session-log --session-log "$card"'
+        ' --simulate-added-card "$card" || fail=1' in text
     )
     # The plain added-card advisory path survives for ordinary PRs.
     assert "__born-red-card-added__.md" in text
@@ -1473,3 +1485,215 @@ def test_search_hygiene_is_idempotent_across_passes(tmp_path):
     assert (root / ".ignore").read_text(encoding="utf-8") == before_ignore
     assert (root / ".gitattributes").read_text(encoding="utf-8") == before_attrs
     assert any("already present" in ln for ln in lines)
+
+
+# ---------------------------------------------------------------------------
+# Gate multi-card grading — the tail-1 shadowing loophole (v1.10.1 payload)
+#
+# These tests EXECUTE the generated gate's actual bash run-block in a scratch
+# git repo, with the engine replaced by a stub that models its graded-card
+# contract (in-progress card -> exit 1, anything else -> exit 0) and logs
+# every invocation. The engine's real grading is pinned separately by
+# tests/test_cli_gate.py; the seam these tests pin is the SHELL side — which
+# cards reach the engine, through which lane, and how verdicts combine. The
+# old `tail -1` picker graded only the last-sorted card of the diff, so a PR
+# that ADDED an in-progress card and MODIFIED a later-sorting sibling shipped
+# the in-progress card GREEN (venture-lab #33 head 798a3d0, run 29144734514).
+# ---------------------------------------------------------------------------
+
+_STUB_ENGINE = """\
+#!/usr/bin/env python3
+import os, sys
+
+args = sys.argv[1:]
+with open(os.environ["STUB_LOG"], "a", encoding="utf-8") as f:
+    f.write(" ".join(args) + "\\n")
+target = None
+if "--added-card" in args:
+    target = args[args.index("--added-card") + 1]
+elif "--session-log" in args:
+    target = args[args.index("--session-log") + 1]
+if target and os.path.exists(target):
+    with open(target, encoding="utf-8") as f:
+        if "in-progress" in f.read():
+            sys.exit(1)
+sys.exit(0)
+"""
+
+_COMPLETE_CARD = "# card\n\n> **Status:** `complete`\n\nall done\n"
+_IN_PROGRESS_CARD = "# card\n\n> **Status:** `in-progress`\n\nborn red\n"
+
+
+def _extract_run_block(text: str, step_marker: str) -> str:
+    """Pull a step's ``run: |`` script out of a workflow's YAML text."""
+    start = text.index(step_marker)
+    run_at = text.index("run: |\n", start)
+    body_indent = None
+    lines = []
+    for line in text[run_at:].split("\n")[1:]:
+        if body_indent is None:
+            body_indent = len(line) - len(line.lstrip(" "))
+        if line.strip() == "" or not line.startswith(" " * body_indent):
+            break
+        lines.append(line[body_indent:])
+    return "\n".join(lines) + "\n"
+
+
+def _gate_script(tmp_path: Path, workflow_text: str, step_marker: str) -> Path:
+    """Materialize a runnable gate script (GitHub expressions resolved)."""
+    script = _extract_run_block(workflow_text, step_marker)
+    script = script.replace("${{ github.base_ref }}", "main")
+    script = script.replace("${{ github.event.before }}", "")
+    script = script.replace("${{ github.sha }}", "HEAD")
+    path = tmp_path / "gate.sh"
+    path.write_text(script, encoding="utf-8")
+    return path
+
+
+def _git(repo: Path, *args: str) -> None:
+    subprocess.run(
+        ["git", "-c", "user.email=t@t", "-c", "user.name=t", *args],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+
+
+def _gate_repo(tmp_path: Path) -> Path:
+    """Scratch repo: main carries a complete sibling card; a `pr` branch is
+    checked out ready for the shape under test."""
+    repo = tmp_path / "repo"
+    (repo / ".sessions").mkdir(parents=True)
+    _git(repo, "init", "-b", "main")
+    (repo / ".sessions" / "README.md").write_text("# convention\n", encoding="utf-8")
+    (repo / ".sessions" / "session-001.md").write_text(
+        _COMPLETE_CARD, encoding="utf-8"
+    )
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "baseline")
+    _git(repo, "update-ref", "refs/remotes/origin/main", "main")
+    _git(repo, "checkout", "-b", "pr")
+    return repo
+
+
+def _run_gate(tmp_path: Path, repo: Path, script: Path) -> tuple[int, str, str]:
+    stub = tmp_path / "stub-engine"
+    stub.write_text(_STUB_ENGINE, encoding="utf-8")
+    stub.chmod(0o755)
+    log = tmp_path / "stub.log"
+    log.write_text("", encoding="utf-8")
+    proc = subprocess.run(
+        ["bash", "-e", str(script)],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        env={"PATH": "/usr/bin:/bin", "STUB_LOG": str(log)},
+    )
+    return proc.returncode, proc.stdout, log.read_text(encoding="utf-8")
+
+
+def _generated_gate_script(tmp_path: Path) -> Path:
+    stub = tmp_path / "stub-engine"
+    text = live_ci_workflow(interpreter=str(stub))
+    return _gate_script(
+        tmp_path, text, "- name: substrate gate (docs + session-log required)"
+    )
+
+
+def test_gate_script_holds_the_shadowed_added_in_progress_card(tmp_path):
+    # THE regression shape (venture-lab #33): the PR ADDS an in-progress card
+    # AND MODIFIES a sibling card that sorts later alphabetically
+    # (".sessions/session-001.md" > ".sessions/2026-...md"). The old picker
+    # graded only the sibling and went GREEN; the gate must HOLD.
+    repo = _gate_repo(tmp_path)
+    (repo / ".sessions" / "2026-07-11-new.md").write_text(
+        _IN_PROGRESS_CARD, encoding="utf-8"
+    )
+    sibling = repo / ".sessions" / "session-001.md"
+    sibling.write_text(
+        _COMPLETE_CARD + "\nprovenance-marked grammar backfill\n", encoding="utf-8"
+    )
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "shadowing shape")
+    rc, out, log = _run_gate(tmp_path, repo, _generated_gate_script(tmp_path))
+    assert rc != 0, out
+    # The added card reached the added-card lane.
+    assert "--added-card .sessions/2026-07-11-new.md" in log
+    # The modified sibling is advisory-only: logged, never graded.
+    assert "modified sibling card (advisory" in out
+    assert ".sessions/session-001.md" in out
+    assert "session-001" not in log
+
+
+def test_gate_script_passes_a_single_added_complete_card(tmp_path):
+    repo = _gate_repo(tmp_path)
+    (repo / ".sessions" / "2026-07-11-new.md").write_text(
+        _COMPLETE_CARD, encoding="utf-8"
+    )
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "single complete added card")
+    rc, out, log = _run_gate(tmp_path, repo, _generated_gate_script(tmp_path))
+    assert rc == 0, out
+    assert "--added-card .sessions/2026-07-11-new.md" in log
+
+
+def test_gate_script_holds_when_any_of_several_added_cards_is_in_progress(
+    tmp_path,
+):
+    # Multiple ADDED cards: every one is graded; one in-progress card holds
+    # the whole step even though a later-sorting added card is complete.
+    repo = _gate_repo(tmp_path)
+    (repo / ".sessions" / "2026-07-11-a.md").write_text(
+        _IN_PROGRESS_CARD, encoding="utf-8"
+    )
+    (repo / ".sessions" / "2026-07-11-b.md").write_text(
+        _COMPLETE_CARD, encoding="utf-8"
+    )
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "two added cards, one in-progress")
+    rc, out, log = _run_gate(tmp_path, repo, _generated_gate_script(tmp_path))
+    assert rc != 0, out
+    assert "--added-card .sessions/2026-07-11-a.md" in log
+    assert "--added-card .sessions/2026-07-11-b.md" in log
+
+
+def test_gate_script_modified_only_diff_keeps_the_locked_door(tmp_path):
+    # No added card: the existing modified-card semantics — the full
+    # --require-session-log locked door engages on the modified card.
+    repo = _gate_repo(tmp_path)
+    sibling = repo / ".sessions" / "session-001.md"
+    sibling.write_text(_COMPLETE_CARD + "\nclose-out detail\n", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "modified-only diff")
+    rc, out, log = _run_gate(tmp_path, repo, _generated_gate_script(tmp_path))
+    assert rc == 0, out
+    assert "--require-session-log --session-log .sessions/session-001.md" in log
+    assert "--added-card" not in log
+
+
+def test_kit_ci_gate_script_holds_the_shadowed_added_in_progress_card(tmp_path):
+    # The kit's OWN .github/workflows/ci.yml had the same tail-1 picker; its
+    # (single-lane) gate must also grade every diff card, so the shadowing
+    # shape holds red via the engine's in-progress hold.
+    ci_text = (
+        Path(__file__).resolve().parents[1] / ".github" / "workflows" / "ci.yml"
+    ).read_text(encoding="utf-8")
+    stub = tmp_path / "stub-engine"
+    ci_text = ci_text.replace("python3 dist/bootstrap.py", str(stub))
+    script = _gate_script(
+        tmp_path, ci_text, "- name: Session gate (§3.2 item 5"
+    )
+    repo = _gate_repo(tmp_path)
+    (repo / ".sessions" / "2026-07-11-new.md").write_text(
+        _IN_PROGRESS_CARD, encoding="utf-8"
+    )
+    (repo / ".sessions" / "session-001.md").write_text(
+        _COMPLETE_CARD + "\nbackfill\n", encoding="utf-8"
+    )
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "shadowing shape")
+    rc, out, log = _run_gate(tmp_path, repo, script)
+    assert rc != 0, out
+    # Both diff cards were graded through the locked door.
+    assert "--session-log .sessions/2026-07-11-new.md" in log
+    assert "--session-log .sessions/session-001.md" in log
