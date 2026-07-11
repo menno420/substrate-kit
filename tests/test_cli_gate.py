@@ -493,3 +493,78 @@ def test_no_hold_banner_when_card_claims_complete(tmp_path, capsys):
     )
     assert rc == 1
     assert "HOLD (by design)" not in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# The unadopted-auto-draft advisory lane (B1 run-8 content-gap fix)
+# ---------------------------------------------------------------------------
+# Run-8: the ON arm ended `check --strict` exit=1 solely because the engine's
+# own Stop-hook draft (`.sessions/2026-07-11-session.md`, 8 unresolved slots)
+# was never touched — the NEXT cold session would inherit a red repo it did
+# not redden. A pure machine skeleton (Status `drafted` + the auto-draft
+# marker) is advisory in the bare mtime-fallback lane; every merge-gate lane
+# keeps the locked door.
+
+
+def _write_unadopted_draft(root, config, name="2026-07-11-session.md"):
+    from engine.loop.handoff import SessionEvidence, draft_card
+
+    card = root / config.sessions_dir / name
+    card.write_text(
+        draft_card("2026-07-11 — session", SessionEvidence(), config),
+        encoding="utf-8",
+    )
+    return card
+
+
+def test_unadopted_draft_is_advisory_in_bare_strict(tmp_path, capsys):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    _write_unadopted_draft(root, config)
+    rc = cmd_check(root, strict=True)
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "unadopted auto-draft" in out
+    assert "not exit-affecting" in out
+
+
+def test_unadopted_draft_still_reds_in_gate_mode(tmp_path):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    _write_unadopted_draft(root, config)
+    # --require-session-log (the CI gate): the locked door is unchanged.
+    assert cmd_check(root, strict=True, require_session_log=True) == 1
+
+
+def test_unadopted_draft_still_reds_under_explicit_selection(tmp_path):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    card = _write_unadopted_draft(root, config)
+    # An explicit --session-log names the PR's own card: never advisory.
+    rc = cmd_check(
+        root,
+        strict=True,
+        session_log=Path(config.sessions_dir) / card.name,
+    )
+    assert rc == 1
+
+
+def test_session_owned_in_progress_card_still_reds_bare_strict(tmp_path):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    # A card a SESSION wrote (born-red, no auto-draft marker) is that
+    # session's responsibility — bare strict keeps holding.
+    card = root / config.sessions_dir / "2026-07-11-mine.md"
+    card.write_text("# mine\n\n> **Status:** `in-progress`\n", encoding="utf-8")
+    assert cmd_check(root, strict=True) == 1
+
+
+def test_adopted_draft_flipped_to_in_progress_still_reds(tmp_path):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    # A session that ADOPTED the draft (flipped `drafted` → `in-progress`)
+    # owns it now: unresolved slots red exactly as before.
+    card = _write_unadopted_draft(root, config)
+    text = card.read_text(encoding="utf-8").replace("`drafted`", "`in-progress`")
+    card.write_text(text, encoding="utf-8")
+    assert cmd_check(root, strict=True) == 1

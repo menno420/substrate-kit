@@ -18,6 +18,13 @@ Evidence sources (all pure stdlib — no subprocess, per the engine lint bans):
   analog of ``git diff --stat`` — classified code / tests / docs / sessions;
 - git **HEAD movement** since the anchor (commits happened / nothing
   committed yet);
+- the **commit subjects this session**, parsed from the HEAD reflog
+  (``.git/logs/HEAD`` is plain text — the B1 run-8 content-gap fix: the
+  draft carries what the session's commits SAY, not just that they exist);
+- the **previous card's resolved handoff pointer** (missing-card path) — the
+  one line the last session wrote for the next one must survive into the new
+  draft instead of dying with the superseded card (run-8: ON-T4 opened the
+  pointed card and found only unfilled slots);
 - the **derived verify command** (the adopt-time ``verify_command`` slot) —
   the engine cannot execute it, so the draft carries it as a run-and-record
   slot rather than fake results (the console's no-fake-data rule).
@@ -26,8 +33,11 @@ The drafted text marks every judgment-only field with a ``[[fill: …]]`` slot
 and the card with ``<!-- substrate:auto-draft -->``; the session-log checker
 counts unresolved slots, so a **drafted-but-unedited card is distinguishable
 from a completed one** and the born-red gate keeps holding until the slots
-resolve. Everything here is fail-open by contract: drafting can never crash a
-hook or ``session-close``.
+resolve. ``[[fill:]]`` is reserved for the genuinely unknowable — everything
+harvestable is pre-filled as evidence (run-8's judge denied write-back credit
+to an 8-slot skeleton; every slot the engine can fill itself is arrival
+content the cold session doesn't have to re-derive). Everything here is
+fail-open by contract: drafting can never crash a hook or ``session-close``.
 """
 
 from __future__ import annotations
@@ -46,7 +56,7 @@ from engine.checks.check_session_log import (
 )
 from engine.lib.atomicio import atomic_write_text
 from engine.lib.config import Config
-from engine.loop.handoff_pointer import write_handoff_pointer
+from engine.loop.handoff_pointer import resolved_handoff_pointer, write_handoff_pointer
 
 # State key for the session-start evidence anchor.
 SESSION_ANCHOR_KEY = "session_anchor"
@@ -90,6 +100,10 @@ _CODE_SUFFIXES = frozenset(
 # "+N more" tail instead of flooding the card.
 _EVIDENCE_RENDER_CAP = 15
 _SHA_LEN = 9
+# Reflog-harvest caps: a marathon session lists its newest subjects, and one
+# runaway subject can't flood the card (the M1-footprint lesson).
+_COMMIT_RENDER_CAP = 5
+_COMMIT_SUBJECT_CAP = 72
 
 
 def _fill(hint: str) -> str:
@@ -147,6 +161,57 @@ def _resolve_ref(git_dir: Path, ref: str) -> str | None:
             if len(parts) == 2 and parts[1].strip() == ref:
                 return parts[0].strip() or None
     return None
+
+
+def _reflog_subjects(root: Path, since_epoch: float | None) -> list[str]:
+    """Return commit subjects recorded in the HEAD reflog after ``since_epoch``.
+
+    Pure file parsing of ``.git/logs/HEAD`` (plain text, one entry per line:
+    ``<old-sha> <new-sha> <ident> <epoch> <tz>\\t<action>: <subject>``) — the
+    stdlib analog of ``git log --format=%s --since=…``. Only ``commit``
+    actions count (plus amend/initial/merge variants); checkouts, resets and
+    pulls are movement, not authored work. Worktree-aware via
+    :func:`_git_dir`. Fail-open: any failure returns ``[]``.
+
+    This is the B1 run-8 content-gap harvest: the draft previously proved
+    commits *happened* (HEAD moved) but not what they SAID — the next cold
+    session had to re-derive via ``git log`` (run-8 ON-T4 paid 486 words of
+    ``git log -p`` re-derivation right after opening the empty card).
+    """
+    try:
+        if since_epoch is None:
+            return []
+        git_dir = _git_dir(root)
+        if git_dir is None:
+            return []
+        log = git_dir / "logs" / "HEAD"
+        if not log.is_file():
+            return []
+        subjects: list[str] = []
+        for line in log.read_text(encoding="utf-8", errors="replace").splitlines():
+            head, tab, action = line.partition("\t")
+            if not tab:
+                continue
+            parts = head.split()
+            if len(parts) < 2:
+                continue
+            try:
+                ts = int(parts[-2])
+            except ValueError:
+                continue
+            if ts <= since_epoch:
+                continue
+            kind, sep, subject = action.partition(":")
+            if not sep or not kind.startswith("commit"):
+                continue
+            subject = subject.strip()
+            if len(subject) > _COMMIT_SUBJECT_CAP:
+                subject = subject[: _COMMIT_SUBJECT_CAP - 1].rstrip() + "…"
+            if subject:
+                subjects.append(subject)
+        return subjects
+    except Exception:  # fail open — reflog evidence is best-effort by contract
+        return []
 
 
 def read_git_head(root: Path) -> tuple[str | None, str | None]:
@@ -223,6 +288,11 @@ class SessionEvidence:
     verify_command: str | None = None
     # category -> sorted relative paths; categories: code/tests/docs/sessions/other
     changed: dict[str, list[str]] = field(default_factory=dict)
+    # commit subjects this session, oldest → newest (HEAD reflog harvest)
+    commits: list[str] = field(default_factory=list)
+    # the previous card's resolved "Next session should know" line (carried
+    # forward into the new draft — missing-card path only)
+    prior_pointer: str | None = None
 
 
 def _classify(rel: str, config: Config) -> str:
@@ -285,6 +355,7 @@ def gather_evidence(root: Path, config: Config, state: dict[str, Any]) -> Sessio
                 evidence.verify_command = entry["value"]
         if evidence.anchor_epoch is not None:
             evidence.changed = _changed_since(root, config, evidence.anchor_epoch)
+        evidence.commits = _reflog_subjects(root, evidence.anchor_epoch)
     except Exception:  # fail open — return whatever was gathered so far
         return evidence
     return evidence
@@ -325,6 +396,14 @@ def _evidence_lines(evidence: SessionEvidence) -> list[str]:
         else:
             movement = "HEAD unresolved"
         lines.append(f"- git: {branch}, {movement}.")
+    if evidence.commits:
+        shown = evidence.commits[-_COMMIT_RENDER_CAP:]
+        skipped = len(evidence.commits) - len(shown)
+        more = f" (+{skipped} earlier)" if skipped > 0 else ""
+        subjects = " · ".join(f'"{s}"' for s in shown)
+        lines.append(f"- commits this session ({len(evidence.commits)}): {subjects}{more}")
+    if evidence.prior_pointer:
+        lines.append(f"- previous session's pointer: {evidence.prior_pointer}")
     if evidence.verify_command:
         lines.append(
             f"- verify: run `{evidence.verify_command}` and record the result "
@@ -352,10 +431,11 @@ def _marker_line(marker: dict[str, str]) -> str | None:
             f"{_fill('one genuine remark on the previous session + one workflow improvement')}"
         )
     if label == "Model line":
-        return (
-            f"- **\N{BAR CHART} Model:** {_fill('model')} \N{MIDDLE DOT} "
-            f"{_fill('effort')} \N{MIDDLE DOT} {_fill('task-class (Q-0248 taxonomy)')}"
-        )
+        # ONE slot, not three (run-8: the judge counted "8 unresolved slots"
+        # as the skeleton's headline — every slot the session must touch is
+        # friction; one edit fills the whole line).
+        hint = "model \N{MIDDLE DOT} effort \N{MIDDLE DOT} task-class (Q-0248 taxonomy)"
+        return f"- **\N{BAR CHART} Model:** {_fill(hint)}"
     return f"- {needle} {_fill(label or 'resolve this marker')}"
 
 
@@ -452,7 +532,17 @@ def _draft_advisories(root: Path, config: Config, backend: Any) -> list[str]:
             and evidence.anchor_epoch is not None
             and card.stat().st_mtime <= evidence.anchor_epoch
         ):
-            card = None  # newest card predates this session — not ours
+            # Newest card predates this session — not ours to close, but its
+            # resolved handoff pointer is exactly the line the last session
+            # left for THIS one: carry it into the new draft (run-8 content
+            # gap — the pointer must not die with the superseded card).
+            try:
+                evidence.prior_pointer = resolved_handoff_pointer(
+                    card.read_text(encoding="utf-8", errors="replace"),
+                ) or None
+            except OSError:
+                evidence.prior_pointer = None
+            card = None
         if card is None:
             day = date.today().isoformat()
             path = _unique_card_path(sessions_dir, day)

@@ -468,3 +468,131 @@ def test_unresolved_fill_count_ignores_code_spans_and_fences():
     prose = "the checker counts `[[fill:]]` slots\n```\n[[fill: in a fence]]\n```\n"
     assert unresolved_fill_count(prose) == 0
     assert unresolved_fill_count(prose + "- Decisions made: [[fill: real slot]]\n") == 1
+
+
+# ---------------------------------------------------------------------------
+# Run-8 content-gap harvests — reflog subjects + prior-card pointer
+# ---------------------------------------------------------------------------
+
+
+def _fake_reflog(root, entries):
+    """Write a .git/logs/HEAD with (epoch, action_and_subject) entries."""
+    log = root / ".git" / "logs" / "HEAD"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    lines = [
+        f"{SHA_A} {SHA_B} A U Thor <a@example.com> {epoch} +0000\t{action}"
+        for epoch, action in entries
+    ]
+    log.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def test_reflog_subjects_harvested_into_evidence(tmp_path):
+    config, backend = _init(tmp_path)
+    _fake_git(tmp_path)
+    _fake_reflog(
+        tmp_path,
+        [
+            (100, "commit: pre-session work (excluded)"),
+            (2000, "commit: add report command"),
+            (2100, "checkout: moving from a to b"),
+            (2200, "commit (amend): fix report rounding"),
+            (2300, "pull: fast-forward"),
+        ],
+    )
+    _anchor(backend, epoch=1000.0)
+    evidence = gather_evidence(tmp_path, config, dict(backend.data))
+    assert evidence.commits == ["add report command", "fix report rounding"]
+    text = draft_close_out(evidence)
+    assert 'commits this session (2): "add report command" · "fix report rounding"' in text
+
+
+def test_reflog_subjects_capped_and_truncated(tmp_path):
+    from engine.loop.handoff import _COMMIT_RENDER_CAP, _COMMIT_SUBJECT_CAP
+
+    config, backend = _init(tmp_path)
+    _fake_git(tmp_path)
+    long_subject = "x" * 200
+    _fake_reflog(
+        tmp_path,
+        [(2000 + i, f"commit: change {i}") for i in range(7)] + [(3000, f"commit: {long_subject}")],
+    )
+    _anchor(backend, epoch=1000.0)
+    evidence = gather_evidence(tmp_path, config, dict(backend.data))
+    assert len(evidence.commits) == 8
+    assert all(len(s) <= _COMMIT_SUBJECT_CAP for s in evidence.commits)
+    text = draft_close_out(evidence)
+    # Newest _COMMIT_RENDER_CAP subjects shown; earlier ones summarized.
+    assert f"(+{8 - _COMMIT_RENDER_CAP} earlier)" in text
+    assert "change 6" in text  # newest window
+    assert '"change 0"' not in text  # oldest rolled into the tail
+
+
+def test_reflog_no_anchor_or_no_git_is_empty(tmp_path):
+    config, backend = _init(tmp_path)
+    evidence = gather_evidence(tmp_path, config, dict(backend.data))
+    assert evidence.commits == []
+
+
+def test_prior_card_pointer_carried_into_new_draft(tmp_path):
+    config, backend = _init(tmp_path)
+    sessions = tmp_path / config.sessions_dir
+    sessions.mkdir()
+    prior = sessions / "2026-07-01-old.md"
+    prior.write_text(
+        "# old\n> **Status:** `complete`\n"
+        "- Next session should know: the budgets read-hook lives in store.py\n",
+        encoding="utf-8",
+    )
+    past = time.time() - 3600
+    os.utime(prior, (past, past))
+    _anchor(backend, epoch=time.time() - 60)
+    ensure_draft(tmp_path, config, backend)
+    drafted = [p for p in sessions.glob("*.md") if p != prior]
+    assert len(drafted) == 1
+    text = drafted[0].read_text(encoding="utf-8")
+    assert (
+        "- previous session's pointer: the budgets read-hook lives in store.py" in text
+    )
+
+
+def test_prior_card_unresolved_pointer_not_carried(tmp_path):
+    config, backend = _init(tmp_path)
+    sessions = tmp_path / config.sessions_dir
+    sessions.mkdir()
+    prior = sessions / "2026-07-01-old.md"
+    prior.write_text(
+        "# old\n> **Status:** `complete`\n"
+        "- Next session should know: [[fill: the handoff pointer]]\n",
+        encoding="utf-8",
+    )
+    past = time.time() - 3600
+    os.utime(prior, (past, past))
+    _anchor(backend, epoch=time.time() - 60)
+    ensure_draft(tmp_path, config, backend)
+    drafted = [p for p in sessions.glob("*.md") if p != prior]
+    text = drafted[0].read_text(encoding="utf-8")
+    assert "previous session's pointer" not in text
+
+
+def test_skeleton_card_slot_budget():
+    # Run-8's judge headline was "8 unresolved [[fill:]] slots" — the
+    # skeleton reserves fills for the genuinely unknowable ONLY. Budget
+    # pinned so slots can't silently creep back up.
+    text = draft_card("2026-07-11 — session", SessionEvidence(), Config())
+    assert unresolved_fill_count(text) <= 6
+
+
+def test_draft_marker_constants_pinned():
+    # checks/ mirrors the marker instead of importing loop/ (module order);
+    # this pin is what keeps the two constants from drifting apart.
+    from engine.checks.check_session_log import AUTO_DRAFT_MARKER
+
+    assert AUTO_DRAFT_MARKER == DRAFT_MARKER
+
+
+def test_single_fill_model_stand_in_never_harvests():
+    text = draft_close_out(SessionEvidence(), Config().session_markers)
+    model_lines = [l for l in text.splitlines() if "📊 Model:" in l]
+    assert len(model_lines) == 1
+    assert model_lines[0].count(DRAFT_FILL_TOKEN) == 1  # one edit fills the line
+    assert parse_model_line(text) is None

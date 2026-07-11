@@ -15,7 +15,66 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Substantive auto-draft + handoff trail (B1 run-8 content-gap
+  countermeasure, deliverable 1).** Run-8 was the family's first
+  card-continuity conversion — ON opened `HANDOFF.md` in its FIRST tool
+  call on T2 and T4 and ON-T4 followed it to the pointed card — and the
+  payload was an empty skeleton (8 unresolved `[[fill:]]` slots; judge:
+  "orientation cost paid; intended benefit not realized"). The arrival
+  surface now carries harvestable content: (a) the auto-draft's evidence
+  half adds **commit subjects this session** parsed from the HEAD reflog
+  (`.git/logs/HEAD`, pure file parsing — the draft previously proved HEAD
+  *moved* but not what the commits SAID, so run-8 ON-T4 paid 486 words of
+  `git log -p` re-derivation right after opening the empty card) and the
+  **previous card's resolved "Next session should know" pointer** (carried
+  forward on the missing-card path — the one line the last session wrote
+  for the next one no longer dies with the superseded card); (b) when the
+  newest card's pointer is still an unresolved slot, `HANDOFF.md` (and the
+  SessionStart push — one composer, two surfaces) surfaces the draft's own
+  evidence bullets as an auto-derived trail (capped 4 lines / 140 chars;
+  the pointer stays inside the ~113-word budget) instead of pointing at a
+  skeleton; (c) the drafted `📊 Model:` stand-in is ONE `[[fill:]]` slot,
+  not three — the skeleton card drops 8 → 6 unresolved slots, reserving
+  fills for the genuinely unknowable (judgment + verify results).
+
+### Changed
+
+- **Planted-orientation trim (run-8 countermeasure, deliverable 2).**
+  Run-8's ON arm paid 2.0–2.7× OFF's M1 on T2/T4 reading planted docs that
+  bought nothing: ON-T2 read `CONSTITUTION.md` in full (631 words) plus
+  `docs/CAPABILITIES.md`, `docs/AGENT_ORIENTATION.md` and
+  `docs/current-state.md` before its first edit; ON-T4 re-read
+  current-state + CAPABILITIES + AGENT_ORIENTATION (791 words) mid-task.
+  Targeted trims, not a doc-system redesign: `CLAUDE.md.tmpl`'s read-first
+  list shrinks to the three-surface boot set (working agreement →
+  `HANDOFF.md` → current-state) and demotes CAPABILITIES/AGENT_ORIENTATION
+  to route-on-need; `AGENT_ORIENTATION.md.tmpl` drops its duplicate
+  start-list and duplicate verify block (one home each, pointing at
+  CLAUDE.md); `CONSTITUTION.md.tmpl` condenses the program-law register
+  enumeration to a cite-the-register pointer and tightens the
+  understand-and-reflect / capabilities / owner-attention bullets
+  (591 → 488 template words). All planted-pointer contracts (program-law
+  register cite + PL-IDs, OWNER-ACTION fields, CAPABILITIES mentions)
+  preserved and checker-verified.
+
 ### Fixed
+
+- **Unadopted auto-draft no longer reds the next session's bare
+  `check --strict` (run-8 countermeasure, deliverable 3).** Run-8 ON ended
+  T5 with `check --strict` exit=1 solely because the engine's own Stop-hook
+  draft was never touched — the next cold session would inherit a red repo
+  it did not redden and cannot honestly close (the judgment slots belong to
+  the departed session). A pure machine skeleton — Status badge VALUE
+  `drafted` (backtick-parsed, so the badge's "*(auto-drafted …)*" prose
+  can't false-positive after a flip) plus the `<!-- substrate:auto-draft -->`
+  marker (`check_session_log.is_unadopted_draft`) — now reports as an
+  ADVISORY (`session-log-draft` guard fire, never exit-affecting) in the
+  bare mtime-fallback lane only. Every merge-gate lane keeps the locked
+  door: `--require-session-log`, explicit `--session-log`, and the
+  `--added-card` born-red HOLD are unchanged, and a card a session ADOPTED
+  (badge flipped off `drafted`) reds exactly as before.
 
 - **Carve-out scanner three-way compare (v1.11.0-wave false positive, 6
   live-gate adopters).** When a release changed the kit's OWN generated gate
