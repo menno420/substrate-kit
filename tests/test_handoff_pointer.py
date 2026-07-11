@@ -188,3 +188,82 @@ def test_ensure_draft_advisory_contract_unchanged(tmp_path):
     )
     assert ensure_draft(tmp_path, config, backend) == []
     assert (tmp_path / HANDOFF_POINTER_FILENAME).exists()
+
+
+# ---------------------------------------------------------------------------
+# The auto-derived evidence trail (B1 run-8 content-gap fix)
+# ---------------------------------------------------------------------------
+# Run-8 report §2: ON-T4 "`cat .sessions/2026-07-11-session.md`" returned an
+# unfilled draft, so ON's real context came from reading `cli.py` — the
+# pointer converted into a skeleton. When the card's own pointer is still an
+# unresolved slot, the pointer file carries the draft's auto-collected
+# EVIDENCE (files touched, HEAD movement, commit subjects) itself.
+
+_DRAFT_CARD = (
+    "# Session\n\n> **Status:** `drafted`\n\n"
+    "<!-- substrate:auto-draft -->\n\n"
+    "- code touched (2): `deltareading/cli.py`, `deltareading/ops.py`\n"
+    "- tests touched (1): `tests/test_deltareading.py`\n"
+    "- git: branch `master`, HEAD unchanged at 70408b0d6 (nothing committed yet).\n"
+    '- commits this session (1): "add report command"\n'
+    "- verify: run `python3 -m pytest tests/ -q` and record the result → "
+    "[[fill: verify result]]\n"
+    "- Decisions made: [[fill: decisions taken this session, or none]]\n"
+    "- Next session should know: [[fill: the handoff pointer — where to pick up]]\n"
+)
+
+
+def test_trail_surfaces_draft_evidence_when_pointer_unresolved(tmp_path):
+    config, _ = _init(tmp_path)
+    _write_card(tmp_path, config, "2026-07-11-session.md", _DRAFT_CARD)
+    write_handoff_pointer(tmp_path, config)
+    text = (tmp_path / HANDOFF_POINTER_FILENAME).read_text(encoding="utf-8")
+    assert "- code touched (2): `deltareading/cli.py`" in text
+    assert "- git: branch `master`, HEAD unchanged" in text
+    assert '"add report command"' in text
+    # Unresolved-slot lines never ride the trail (noise, not handoff) — the
+    # header's "N unresolved [[fill:]] slot(s)" count note is the one
+    # legitimate mention; no real slot (`[[fill: hint]]`) may appear.
+    assert "[[fill: " not in text
+    assert "Next session should know" not in text
+
+
+def test_trail_absent_when_pointer_resolved(tmp_path):
+    config, _ = _init(tmp_path)
+    _write_card(tmp_path, config, "2026-07-11-session.md", _CARD)
+    write_handoff_pointer(tmp_path, config)
+    text = (tmp_path / HANDOFF_POINTER_FILENAME).read_text(encoding="utf-8")
+    # The resolved human pointer wins; no evidence trail alongside.
+    assert "Next session should know: the budgets read-hook lives in store.py" in text
+    assert "code touched" not in text
+
+
+def test_trail_pointer_file_stays_lean(tmp_path):
+    # Even carrying the trail, the pointer must hold the ~113-word budget
+    # (the push footprint the bench pins — a fat artifact worsens M1).
+    config, _ = _init(tmp_path)
+    _write_card(tmp_path, config, "2026-07-11-session.md", _DRAFT_CARD)
+    write_handoff_pointer(tmp_path, config)
+    text = (tmp_path / HANDOFF_POINTER_FILENAME).read_text(encoding="utf-8")
+    assert len(text.split()) <= 113
+
+
+def test_trail_caps_lines_and_length(tmp_path):
+    from engine.loop.handoff_pointer import (
+        _TRAIL_CHAR_CAP,
+        _TRAIL_LINE_CAP,
+        evidence_trail,
+    )
+
+    text = (
+        "- code touched (1): `" + "x" * 300 + "`\n"
+        "- tests touched (1): `t`\n"
+        "- docs touched (1): `d`\n"
+        "- other touched (1): `o`\n"
+        "- sessions touched (1): `s`\n"
+        "- git: branch `main`, HEAD moved.\n"
+    )
+    trail = evidence_trail(text)
+    assert len(trail) == _TRAIL_LINE_CAP
+    assert all(len(line) <= _TRAIL_CHAR_CAP for line in trail)
+    assert trail[0].endswith("…")

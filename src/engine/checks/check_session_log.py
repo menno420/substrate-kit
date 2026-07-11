@@ -100,6 +100,50 @@ def unresolved_fill_count(text: str) -> int:
     return stripped.count(DRAFT_FILL_TOKEN)
 
 
+# The engine's own draft provenance marker (engine.loop.handoff stamps it on
+# every auto-drafted card/section). Mirrored here — not imported — because
+# checks/ sits below loop/ in the module order and the marker is a stable
+# one-line contract; ``tests/test_handoff.py`` pins the two constants equal.
+AUTO_DRAFT_MARKER = "<!-- substrate:auto-draft -->"
+
+
+def is_unadopted_draft(text: str) -> bool:
+    """True when a card is an engine-authored auto-draft no session adopted.
+
+    Only the engine's ``draft_card`` writes the ``drafted`` Status value, and
+    it stamps :data:`AUTO_DRAFT_MARKER` alongside; the card's own badge text
+    instructs the adopting session to flip the badge. Both present = a pure
+    machine skeleton — the previous session ended without touching its card
+    and the Stop-hook seam drafted one from evidence.
+
+    Why the distinction matters (B1 run-8): the ON arm ended with ``check
+    --strict`` exit=1 solely because of a skeleton the ENGINE wrote — the
+    next cold session would arrive to a red repo it did not redden and
+    cannot honestly close (the judgment slots belong to the departed
+    session). The bare mtime-fallback ``check`` lane treats such a card as
+    an ADVISORY (adopt it: verify the evidence, resolve the slots, flip the
+    badge); the merge-gate lanes (``--require-session-log`` /
+    ``--session-log`` / ``--added-card``) still hold RED — a PR shipping a
+    drafted card is the born-red discipline working as designed.
+    """
+    return AUTO_DRAFT_MARKER in text and _status_value_drafted(text)
+
+
+_STATUS_VALUE_RE = re.compile(r"\*\*status:\*\*\s*`([^`]+)`", re.IGNORECASE)
+
+
+def _status_value_drafted(text: str) -> bool:
+    """True when the Status badge's backticked VALUE is the auto-draft
+    ``drafted`` — a substring scan would misread a badge whose trailing
+    prose says "*(auto-drafted by substrate-kit …)*" after a session flips
+    the value to ``in-progress`` (adoption must end the advisory)."""
+    for line in text.splitlines():
+        if "**status:**" in line.lower():
+            match = _STATUS_VALUE_RE.search(line)
+            return bool(match) and match.group(1).strip().lower() == "drafted"
+    return False
+
+
 def status_in_progress(text: str) -> bool:
     """True when the log's Status badge line carries an in-progress value."""
     for line in text.splitlines():

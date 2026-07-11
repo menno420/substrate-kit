@@ -52,6 +52,7 @@ from engine.checks.check_session_log import (
     BORN_RED_HOLD_MESSAGE,
     check_added_card,
     check_log,
+    is_unadopted_draft,
     latest_session_log,
     status_in_progress,
 )
@@ -698,7 +699,13 @@ def cmd_check(
     namespace/shadowing guard, the seam-authority fences, and the orientation
     word budget — each engaging only when its inputs exist. Findings always
     count toward the exit code (under ``--strict``); an *incomplete* existing
-    session log counts. A *missing* session log is **advisory by default** (a
+    session log counts — EXCEPT an **unadopted auto-draft** in the
+    mtime-fallback lane (no explicit ``--session-log``, no
+    ``require_session_log``): a card the engine itself drafted and no session
+    adopted reports as an advisory instead of a failure, so a departed
+    session's untouched skeleton cannot leave the repo red for the next cold
+    session (B1 run-8; see ``check_session_log.is_unadopted_draft``). Gate
+    mode is unaffected. A *missing* session log is **advisory by default** (a
     host may run ``check`` mid-session) but becomes a **hard failure** under
     ``require_session_log`` — the gate mode the live CI workflow runs, so a
     session that never writes its journal cannot merge (the "locked door" that
@@ -1061,6 +1068,25 @@ def cmd_check(
     # In gate mode an absent log is itself a failing condition, so it must feed
     # the exit code exactly like an incomplete one.
     log_absent_fails = log is None and require_session_log
+    # Unadopted-auto-draft advisory lane (B1 run-8): a card the ENGINE wrote
+    # (Stop-hook draft) that no session ever adopted must not leave the repo
+    # red for the NEXT session's bare `check --strict` — run-8's ON arm ended
+    # exit=1 solely on its own untouched skeleton, and the next cold session
+    # would inherit that red without owning the judgment slots. Applies ONLY
+    # to the mtime-fallback lane: an explicit --session-log selection or
+    # --require-session-log gate mode keeps the locked door (a PR shipping a
+    # drafted card is the born-red discipline, not this class).
+    draft_advisory = False
+    if (
+        log is not None
+        and log_missing
+        and session_log is None
+        and not require_session_log
+    ):
+        try:
+            draft_advisory = is_unadopted_draft(log.read_text(encoding="utf-8"))
+        except OSError:
+            draft_advisory = False
     if log is None:
         if session_log is not None:
             absent = f"--session-log {session_log} does not exist"
@@ -1075,7 +1101,31 @@ def cmd_check(
             _emit(f"check: {absent} (advisory — not a failure).")
     else:
         rel = log.relative_to(target) if log.is_relative_to(target) else log
-        if log_missing:
+        if log_missing and draft_advisory:
+            _emit(
+                f"check: session log {rel} is an unadopted auto-draft "
+                f"({', '.join(log_missing)}) — advisory in the mtime-fallback "
+                "lane, not exit-affecting: adopt it (verify the evidence, "
+                "resolve the [[fill:]] slots, flip the Status badge) or it "
+                "holds the merge in gate mode (--require-session-log / "
+                "--session-log / --added-card).",
+            )
+            record_guard_fires(
+                target,
+                config.state_dir,
+                cmd="check",
+                surface="check",
+                posture="advisory",
+                findings=[
+                    Finding(
+                        str(rel),
+                        "session-log-draft",
+                        f"unadopted auto-draft: {', '.join(log_missing)}",
+                    ),
+                ],
+            )
+            log_missing = []
+        elif log_missing:
             _emit(f"check: session log {rel} is missing: {', '.join(log_missing)}")
         else:
             _emit(f"check: session log {rel} complete.")

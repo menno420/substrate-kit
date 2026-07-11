@@ -60,6 +60,25 @@ HANDOFF_POINTER_MARKER = "<!-- substrate:handoff-pointer -->"
 HANDOFF_EXCERPT_CAP = 300
 # The drafted close-out's handoff field (engine.loop.handoff draft text).
 HANDOFF_NEEDLE = "next session should know"
+# Auto-derived trail (B1 run-8 content-gap fix): when the newest card's
+# pointer is still an unresolved draft slot, the pointer surfaces the card's
+# own auto-collected evidence bullets instead of pointing at a skeleton.
+# These prefixes are the draft's evidence-line shapes (engine.loop.handoff
+# ``_evidence_lines``) — nothing else in a card matches them.
+_TRAIL_PREFIXES = (
+    "- code touched",
+    "- tests touched",
+    "- docs touched",
+    "- sessions touched",
+    "- other touched",
+    "- git:",
+    "- commits this session",
+    "- previous session's pointer:",
+)
+# Caps keep the trail inside the pointer's lean-budget (the ~113-word push
+# footprint the bench pins): at most this many lines, each truncated.
+_TRAIL_LINE_CAP = 4
+_TRAIL_CHAR_CAP = 140
 
 
 def resolved_handoff_pointer(text: str) -> str:
@@ -87,6 +106,34 @@ def resolved_handoff_pointer(text: str) -> str:
     return pointer
 
 
+def evidence_trail(text: str) -> list[str]:
+    """Extract the auto-collected evidence bullets from a drafted card.
+
+    The B1 run-8 content-gap fix: run-8 was the family's first
+    card-continuity conversion — ON-T4 opened ``HANDOFF.md`` in its first
+    tool call and followed it to the card — and the payload was 8 unfilled
+    ``[[fill:]]`` slots, so "real context came from reading ``cli.py``"
+    (run-8 report §2) exactly as OFF re-derived it. The draft's EVIDENCE
+    half (files touched, HEAD movement, commit subjects) is real content the
+    engine already harvested; when the judgment half is still unresolved,
+    the pointer carries that evidence itself instead of pointing at a
+    skeleton. Only draft-shaped bullet lines match (:data:`_TRAIL_PREFIXES`);
+    lines still carrying an unresolved slot are skipped; caps keep the
+    pointer lean.
+    """
+    trail: list[str] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith(_TRAIL_PREFIXES) or DRAFT_FILL_TOKEN in stripped:
+            continue
+        if len(stripped) > _TRAIL_CHAR_CAP:
+            stripped = stripped[: _TRAIL_CHAR_CAP - 1].rstrip() + "…"
+        trail.append(stripped)
+        if len(trail) >= _TRAIL_LINE_CAP:
+            break
+    return trail
+
+
 def handoff_lines(root: Path, config: Config) -> list[str]:
     """Compose the handoff bullet lines, or ``[]`` when no session card exists.
 
@@ -111,6 +158,11 @@ def handoff_lines(root: Path, config: Config) -> list[str]:
     pointer = resolved_handoff_pointer(text)
     if pointer:
         lines.append(f"- Next session should know: {pointer}")
+    else:
+        # No resolved pointer (an unadopted draft, usually): surface the
+        # card's auto-collected evidence here so the arrival surface carries
+        # content, not a pointer to a skeleton (run-8 content-gap fix).
+        lines.extend(evidence_trail(text))
     lines.append(
         "- Open that card FIRST — it is the last session's record; prefer it "
         "over re-deriving history from `git log`/`git show`.",
