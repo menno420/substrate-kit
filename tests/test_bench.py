@@ -409,6 +409,70 @@ def test_score_m1_block_content_and_no_mutation(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# run_ab collect — the zero-events abort (run-9 convert-slip guard)
+# ---------------------------------------------------------------------------
+# Run-9 runner_notes (recorded deviation): the first convert_native.py
+# invocation omitted its dest argv and produced six EMPTY transcripts that
+# scored M1=0 — caught by hand at events_seen=0 before any number reached
+# the judge. This guard makes that catch structural: collect refuses an
+# empty transcript loudly, files nothing, writes no m1.json.
+
+
+def test_collect_aborts_loud_on_zero_events(tmp_path):
+    transcript = tmp_path / "empty.jsonl"
+    transcript.write_text("", encoding="utf-8")
+    run_dir = tmp_path / "run"
+    with pytest.raises(SystemExit, match="ZERO events"):
+        run_ab.main(
+            [
+                "collect",
+                "--run-dir",
+                str(run_dir),
+                "--arm",
+                "on",
+                "--task",
+                "T2",
+                "--transcript",
+                str(transcript),
+            ],
+        )
+    dest = run_dir / "on" / "T2"
+    assert not (dest / "m1.json").exists()  # no number can reach the judge
+    assert not (dest / "transcript.jsonl").exists()  # the empty copy is unfiled
+
+
+def test_collect_files_and_scores_a_real_transcript(tmp_path):
+    transcript = tmp_path / "real.jsonl"
+    _write_transcript(
+        transcript,
+        [
+            {"type": "tool_result", "content": "one two three"},
+            {"type": "tool_use", "name": "Edit", "input": {}},
+            {"type": "tool_result", "content": "ok"},
+        ],
+    )
+    run_dir = tmp_path / "run"
+    rc = run_ab.main(
+        [
+            "collect",
+            "--run-dir",
+            str(run_dir),
+            "--arm",
+            "off",
+            "--task",
+            "T4",
+            "--transcript",
+            str(transcript),
+        ],
+    )
+    assert rc == 0
+    dest = run_dir / "off" / "T4"
+    record = json.loads((dest / "m1.json").read_text(encoding="utf-8"))
+    assert record["events_seen"] == 3
+    assert record["m1_words_before_first_mutation"] == 3
+
+
+# ---------------------------------------------------------------------------
 # run_ab record — schema-checked, append-only, dedupe by run_id
 # ---------------------------------------------------------------------------
 

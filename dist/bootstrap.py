@@ -4958,6 +4958,33 @@ _TRAIL_PREFIXES = (
 _TRAIL_LINE_CAP = 4
 _TRAIL_CHAR_CAP = 140
 
+# Fresh-state fast path (B1 run-9 ON-T2 footprint cut). Run-9's sole failing
+# axis was ON-T2 M1 (2505 vs OFF 675 words), and the transcript locates the
+# cost: the previous session left NOTHING to hand off (a complete card with
+# no resolved pointer and no evidence trail — the scripted adoption card),
+# yet the handoff still said "Open that card FIRST", so the agent paid a
+# contentless card read; and 1724 of the 2505 words (69%) were ONE repo-wide
+# grep polluted by the vendored ``bootstrap.py`` (862w) plus its byte-copy
+# under ``<state_dir>/backup/`` (862w) after the agent's hand-rolled
+# exclusion filter failed. The kit's two existing countermeasures both
+# missed that path: the planted ``.ignore`` only covers ripgrep-family
+# tools (plain ``grep`` has no ignore protocol), and the CLAUDE.md hygiene
+# recipe rode the claudeMd channel measured ABSENT 0/6. So when the trail is
+# empty, the handoff (a) stops routing the session into history and (b)
+# carries the byte-exact WORKING exclusion recipe on the one surface run-9
+# proves is delivered (push 3/3) and read first (ON-T2's first tool call).
+# T4-shaped (in-progress + trail) and T5-shaped (complete + resolved
+# pointer) renderings are byte-equivalent to before — pinned by tests.
+_FRESH_START_LINE = (
+    "- Fresh start — nothing in flight: orient from the task and the code; "
+    "the card and `git log` history have nothing for you here."
+)
+_SEARCH_HYGIENE_LINE = (
+    "- Search hygiene: `bootstrap.py` + `.substrate/` are kit machinery, not "
+    "project code — exclude them: `grep -r --exclude=bootstrap.py "
+    "--exclude-dir=.substrate …` (ripgrep honors the planted `.ignore`)."
+)
+
 
 def resolved_handoff_pointer(text: str) -> str:
     """Extract the newest RESOLVED handoff pointer from a session card.
@@ -5019,7 +5046,9 @@ def handoff_lines(root: Path, config: Config) -> list[str]:
     orientation push (section 2) and the ``HANDOFF.md`` pointer file. Content:
     the newest card's path, its completion state, its unresolved auto-draft
     slot count, and the previous session's resolved "Next session should
-    know" pointer, capped terse (the M1 budget).
+    know" pointer, capped terse (the M1 budget). A complete card that left
+    neither pointer nor trail renders the fresh-state fast path instead
+    (run-9 ON-T2 footprint cut — see the constants above).
     """
     card = latest_session_log(root / config.sessions_dir)
     if card is None:
@@ -5029,7 +5058,8 @@ def handoff_lines(root: Path, config: Config) -> list[str]:
         rel = card.relative_to(root)
     except ValueError:
         rel = card
-    status = "in-progress/drafted" if status_in_progress(text) else "complete"
+    in_progress = status_in_progress(text)
+    status = "in-progress/drafted" if in_progress else "complete"
     slots = unresolved_fill_count(text)
     slot_note = f", {slots} unresolved [[fill:]] slot(s)" if slots else ""
     lines = [f"- Newest session card: `{rel}` — status: {status}{slot_note}."]
@@ -5040,7 +5070,17 @@ def handoff_lines(root: Path, config: Config) -> list[str]:
         # No resolved pointer (an unadopted draft, usually): surface the
         # card's auto-collected evidence here so the arrival surface carries
         # content, not a pointer to a skeleton (run-8 content-gap fix).
-        lines.extend(evidence_trail(text))
+        trail = evidence_trail(text)
+        if not trail and not in_progress:
+            # Fresh-state fast path (run-9 ON-T2 footprint cut): a COMPLETE
+            # card that left neither a pointer nor a trail has nothing to
+            # hand off — routing the session into it is pure orientation
+            # tax. Say so, and arm the session with the working search
+            # exclusion instead (the 1724-word grep-pollution class).
+            lines.append(_FRESH_START_LINE)
+            lines.append(_SEARCH_HYGIENE_LINE)
+            return lines
+        lines.extend(trail)
     lines.append(
         "- Open that card FIRST — it is the last session's record; prefer it "
         "over re-deriving history from `git log`/`git show`.",
