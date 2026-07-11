@@ -83,3 +83,11 @@ do: Quick self-review of this lane covering roughly the last 24h (2026-07-10 ~20
 why: owner-requested fleet-wide self-review (2026-07-11), relayed by the fleet-manager coordinator on the owner's in-session instruction.
 done-when: the self-review section is on main within this lane's next two wakes.
 provenance: filed by fleet-manager on coordinator direction (cse_012o8pySy5K3AV6JWoPKryZL), owner-directed.
+
+## ORDER 014 · 2026-07-11T23:45Z · status: new
+priority: P1
+executor: substrate-kit coordinator (next wake)
+do: Prompt-template hardening input for the 2026-07-12 fleet prompt rebuild. The fleet manager is building: one universal Project startup template, per-project startup prompts, per-project Custom Instructions (≤7,500 chars), and a universal session-ender prompt. As the owner of the portable doctrine templates (CONSTITUTION.md.tmpl, collaboration-model.md.tmpl, question-router.md.tmpl), deliver by morning 2026-07-12: (a) your list of doctrine items every seat prompt MUST carry to prevent known regression classes — routines/wake-chain arming incl. seat-dependence + worker-relay send_later fallback; PR landing path incl. permission grants + born-red gates; verify-don't-trust; heartbeat grammar; (b) which of those should graduate into kit templates so future repos get them at bootstrap; (c) any kit-side facts the fleet prompts state wrongly today. Deliverable: a committed doc in substrate-kit — a docs/ file plus a control/outbox.md pointer to it.
+why: the fleet-wide prompt rebuild lands 2026-07-12; the kit lane owns the portable doctrine and its input must arrive before the templates are frozen.
+done-when: doc committed + outbox pointer on main, by the 2026-07-12 morning sweep.
+provenance: ordered by fleet-manager coordinator, owner-directed, 2026-07-11.
