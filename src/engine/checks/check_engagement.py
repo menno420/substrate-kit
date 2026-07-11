@@ -48,7 +48,7 @@ from typing import Any
 
 from engine.adopt import ADOPT_PLAN, UNRENDERED_BANNER_FIRST_LINE, _adopt_dest
 from engine.checks.check_docs import Finding
-from engine.render import find_placeholders
+from engine.render import find_placeholders, find_placeholders_outside_code
 
 # Planted paths beyond the ADOPT_PLAN doc set that the unrendered scan covers.
 # project.index.json is planted by adopt; .claude/CLAUDE.md exists only after
@@ -102,10 +102,23 @@ def _unrendered_findings(
     config: Any,
     *,
     evidence: bool,
+    relpaths: list[str] | None = None,
 ) -> list[Finding]:
-    """Scan the planted docs for the UNRENDERED banner / leftover ``${...}``."""
+    """Scan the planted docs for the UNRENDERED banner / leftover ``${...}``.
+
+    The ``unrendered-slot`` finding is **code-span-aware** (queued fix 4, the
+    #148/#150 incident): planted docs the host maintains — the
+    ``control/status.md`` heartbeat above all — legitimately *mention*
+    ``${VAR}`` literals inside backticks or fenced blocks, and those are
+    prose about a token, never an unfilled interview slot. The banner branch
+    keeps the full-text slot listing: a doc still under the UNRENDERED banner
+    is kit output by construction, so a backticked slot there (e.g. the
+    ai-project-workflow template's `` `${verify_command}` ``) is a real slot
+    — and the banner itself (placed on full-text evidence) keeps holding the
+    gate until it renders away.
+    """
     findings: list[Finding] = []
-    for rel in scan_relpaths(config):
+    for rel in relpaths if relpaths is not None else scan_relpaths(config):
         path = target / rel
         if not path.is_file():
             continue
@@ -115,6 +128,10 @@ def _unrendered_findings(
             continue
         slots = sorted(find_placeholders(text))
         listed = ", ".join(slots[:5]) + (" …" if len(slots) > 5 else "")
+        live_slots = sorted(find_placeholders_outside_code(text))
+        live_listed = ", ".join(live_slots[:5]) + (
+            " …" if len(live_slots) > 5 else ""
+        )
         if text.startswith(UNRENDERED_BANNER_FIRST_LINE):
             detail = f" (unfilled: {listed})" if slots else ""
             findings.append(
@@ -126,16 +143,35 @@ def _unrendered_findings(
                     "<slot> <value>`), then `bootstrap.py render --live`.",
                 ),
             )
-        elif evidence and slots:
+        elif evidence and live_slots:
             findings.append(
                 Finding(
                     rel,
                     "unrendered-slot",
-                    f"{len(slots)} unfilled ${{...}} slot(s): {listed} — "
+                    f"{len(live_slots)} unfilled ${{...}} slot(s): "
+                    f"{live_listed} — "
                     "answer them, then `bootstrap.py render --live`.",
                 ),
             )
     return findings
+
+
+def check_engagement_control(target: Path, config: Any) -> list[Finding]:
+    """The unrendered scan scoped to control-plane planted docs (fast lane).
+
+    Queued fix 4's deeper-bug half (#148 root cause): the CI control fast
+    lane runs only ``check --strict --status-only``, so a control-only PR
+    that wrote a slot regression into ``control/status.md`` merged GREEN and
+    poisoned main — every SUBSEQUENT full-lane PR went red until a hand-fix
+    (#150). A control-only diff can only regress ``control/**`` files, so
+    the fast lane runs exactly this scoped scan: the same banner/slot logic,
+    restricted to the planted docs under ``control/``. Cheap by construction
+    (a handful of file reads, stdlib-only) — the lane stays fast.
+    """
+    state = _load_state(target, config)
+    evidence = _adoption_evidence(config, state)
+    control = [rel for rel in scan_relpaths(config) if rel.startswith("control/")]
+    return _unrendered_findings(target, config, evidence=evidence, relpaths=control)
 
 
 def _strip_comment(line: str) -> str:

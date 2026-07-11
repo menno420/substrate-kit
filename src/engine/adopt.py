@@ -225,6 +225,16 @@ def archive_dist(
     the archive exists from v1.0.0 onward. Pre-stamp dists archive as
     ``bootstrap-unknown.py``. Idempotent: an identical existing archive is
     left alone; None when there is no single file to archive (source layout).
+
+    **Never overwrite, never silently accept** (queued fix 2, wave B'
+    verification): a pre-existing archive at the target name is
+    hash-verified against the bytes about to be banked. Identical → the
+    explicit ``(already banked)`` line. Different → the earlier bank is a
+    rollback source someone may still need (two unstamped dists both name
+    ``bootstrap-unknown.py``; a re-tagged dist can collide on a version
+    name), so the new bytes bank under a content-hash-suffixed dedup name
+    and the collision is reported — the pre-existing archive is left
+    byte-untouched.
     """
     if not dist_file.is_file():
         return None
@@ -232,15 +242,31 @@ def archive_dist(
     version = dist_version(text) or "unknown"
     dest = root / config.state_dir / BACKUP_DIRNAME / f"bootstrap-{version}.py"
     rel = f"{config.state_dir}/{BACKUP_DIRNAME}/bootstrap-{version}.py"
-    if dest.exists() and dest.read_text(encoding="utf-8") == text:
-        # Never silent on the idempotent path: an upgrade whose OLD dist was
-        # already banked (a prior adopt/check pass, or a re-run) must still
-        # account for it explicitly, or the report's only `archived:` line
-        # names the NEW version and readers conclude the old dist was never
-        # banked — the exact doubt the archive-first covenant exists to remove
-        # (field-reported three times, v1.6.0 rollout).
-        report.append(f"archived: {rel} (already banked)")
-        return dest
+    if dest.exists():
+        if dest.read_text(encoding="utf-8") == text:
+            # Never silent on the idempotent path: an upgrade whose OLD dist
+            # was already banked (a prior adopt/check pass, or a re-run) must
+            # still account for it explicitly, or the report's only
+            # `archived:` line names the NEW version and readers conclude the
+            # old dist was never banked — the exact doubt the archive-first
+            # covenant exists to remove (field-reported three times, v1.6.0
+            # rollout).
+            report.append(f"archived: {rel} (already banked)")
+            return dest
+        digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:8]
+        dedup_name = f"bootstrap-{version}.{digest}.py"
+        dedup = dest.with_name(dedup_name)
+        dedup_rel = f"{config.state_dir}/{BACKUP_DIRNAME}/{dedup_name}"
+        if dedup.exists() and dedup.read_text(encoding="utf-8") == text:
+            report.append(f"archived: {dedup_rel} (already banked)")
+            return dedup
+        atomic_write_text(dedup, text)
+        report.append(
+            f"archived: {dedup_rel} (name collision: {rel} already exists "
+            "with DIFFERENT content — banked under a content-hash suffix; "
+            "the pre-existing archive was NOT overwritten)",
+        )
+        return dedup
     atomic_write_text(dest, text)
     report.append(f"archived: {rel}")
     return dest
@@ -487,7 +513,15 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
     this). A card **MODIFIED** by the PR (every session close-out flips one)
     keeps the full ``--require-session-log`` locked door, so a close-out that
     forgot to flip ``complete`` still reds. Both fixes validated live across
-    gba-homebrew PRs #3–#14.
+    gba-homebrew PRs #3–#14. One deliberate exception (queued fix 3,
+    venture-lab #14): a card ADDED by a PR that ALSO touches this gate
+    workflow file itself gates through the full locked door — GitHub runs a
+    ``pull_request`` workflow from the PR head, so the PR that regenerates
+    the gate runs the NEW gate mid-PR, and without the exception the regen
+    could silently flip an added born-red card from held-red (old gate
+    semantics) to advisory, auto-merging a partial session. Hold semantics
+    may only tighten, never loosen, within the PR that changes them; the
+    merge path is unchanged — flip the card ``complete``.
 
     **Control fast lane (KL-8):** a diff touching only ``control/**`` (a
     status heartbeat, a manager inbox append) short-circuits the job GREEN
@@ -640,7 +674,15 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         "        # judged on completeness); a card MODIFIED by the PR (every\n"
         "        # session close-out flips one) keeps the full locked-door\n"
         "        # gate, so a close-out that forgot to flip `complete` still\n"
-        "        # reds.\n"
+        "        # reds. EXCEPT: when this same PR also touches THIS gate\n"
+        "        # workflow file (an upgrade PR regenerating the kit-owned\n"
+        "        # gate), an ADDED card keeps the FULL locked door too — the\n"
+        "        # PR runs the NEW gate the moment the regen commit lands, so\n"
+        "        # without this the regen itself could flip an added card\n"
+        "        # from held-red to advisory MID-PR and auto-merge a partial\n"
+        "        # session (venture-lab #14). Hold semantics may only\n"
+        "        # tighten, never loosen, inside the PR that changes them;\n"
+        "        # the escape is the normal one — flip the card complete.\n"
         "        run: |\n"
         '          if [ -n "${{ github.base_ref }}" ]; then\n'
         '            range="origin/${{ github.base_ref }}...HEAD"\n'
@@ -653,8 +695,16 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         '          added="$(git diff --name-only --diff-filter=A "$range" -- '
         f"'{sessions_dir}/*.md' ':!{sessions_dir}/README.md' 2>/dev/null "
         '| tail -1)"\n'
+        '          gate_regen="$(git diff --name-only "$range" -- '
+        f"'{LIVE_CI_RELPATH}' 2>/dev/null | tail -1)\"\n"
         '          echo "session gate card: ${card:-<none - advisory sentinel>}"\n'
-        '          if [ -n "$card" ] && [ "$card" != "$added" ]; then\n'
+        '          if [ -n "$card" ] && { [ "$card" != "$added" ] || '
+        '[ -n "$gate_regen" ]; }; then\n'
+        '            if [ "$card" = "$added" ]; then\n'
+        '              echo "card $card is ADDED but this PR also touches the'
+        ' gate workflow itself — locked-door gate (mid-PR semantics may only'
+        ' tighten; flip the card complete to merge)"\n'
+        "            fi\n"
         f"            {interpreter} bootstrap.py check --strict --require-session-log"
         ' --session-log "$card"\n'
         "          elif [ -n \"$card\" ]; then\n"
@@ -971,9 +1021,19 @@ def _regen_kit_owned_workflow(
     if live_path.is_file():
         live_text = live_path.read_text(encoding="utf-8")
         if live_text == expected_text:
+            # Byte-identity IS a clean scan result — say so explicitly
+            # (queued fix 1): a report with no carve-out language at all is
+            # indistinguishable from "the detector never ran".
+            report.append(f"carve-out scan: {relpath} — ran, 0 found")
             report.append(f"kept: {relpath} (kit-owned, already current)")
             return
         carveouts = gate_carveouts(live_text, expected_text)
+        if not carveouts:
+            # Explicit-when-clean (queued fix 1, fleet-manager #40 finding):
+            # the scan ran and found no host additions — name that, so the
+            # upgrade report can prove the detector ran instead of leaving
+            # silence that also matches "never ran".
+            report.append(f"carve-out scan: {relpath} — ran, 0 found")
         if carveouts:
             digest = hashlib.sha256(live_text.encode("utf-8")).hexdigest()[:8]
             stem = relpath.rsplit("/", 1)[-1]

@@ -335,3 +335,127 @@ def test_cmd_adopt_prints_the_engagement_checklist(tmp_path, capsys):
     # KL-8 rider: the just-planted seed status.md joins the checklist —
     # writing the first real heartbeat is part of engaging.
     assert "[status-no-heartbeat]" in out
+
+
+# ---------------------------------------------------------------------------
+# Code-span-aware slot scan + the fast-lane control scope (queued fix 4 —
+# the #148/#150 dollar-brace poison)
+# ---------------------------------------------------------------------------
+
+
+def test_code_span_and_fence_slots_are_not_unrendered_slots(tmp_path):
+    # The #148 incident: a control/status.md heartbeat MENTIONING `${VAR}`
+    # inside backticks (or a fenced block) is prose about a token, never an
+    # unfilled interview slot — it must not red the engagement gate.
+    root = tmp_path / "repo"
+    config = Config()
+    config.kit_version = "1.0.0"
+    save_config(root, config)
+    doc = root / "control" / "status.md"
+    doc.parent.mkdir(parents=True)
+    doc.write_text(
+        "# kit · status\n\nnotes: the scanner once read `${VAR}` as a slot\n\n"
+        "```\nliteral ${fenced_example} inside a fence\n```\n",
+        encoding="utf-8",
+    )
+    kinds = {f.kind for f in check_engagement(root, config)}
+    assert "unrendered-slot" not in kinds
+    assert "unrendered-banner" not in kinds
+
+
+def test_bare_slot_outside_code_still_reds_and_span_slots_are_not_listed(
+    tmp_path,
+):
+    # Code-span awareness must not weaken the real gate: a bare ${slot} in
+    # the same doc still reds, and the finding lists ONLY the live slot.
+    root = tmp_path / "repo"
+    config = Config()
+    config.kit_version = "1.0.0"
+    save_config(root, config)
+    doc = root / "control" / "status.md"
+    doc.parent.mkdir(parents=True)
+    doc.write_text(
+        "# status\n\n${real_slot} next to a mention of `${span_only}`\n",
+        encoding="utf-8",
+    )
+    findings = [
+        f for f in check_engagement(root, config) if f.path == "control/status.md"
+    ]
+    assert [f.kind for f in findings] == ["unrendered-slot"]
+    assert "real_slot" in findings[0].message
+    assert "span_only" not in findings[0].message
+
+
+def test_banner_docs_still_flag_even_when_slots_hide_in_code_spans(tmp_path):
+    # Writer-side safety: a doc still under the UNRENDERED banner is kit
+    # output by construction — a template slot inside backticks (the
+    # ai-project-workflow `${verify_command}` shape) keeps the banner
+    # finding; code-span awareness applies to the slot scan, never to the
+    # banner hold.
+    root = tmp_path / "repo"
+    config = Config()
+    save_config(root, config)
+    doc = root / "docs" / "ai-project-workflow.md"
+    doc.parent.mkdir(parents=True)
+    doc.write_text(
+        "> ⚠️ **UNRENDERED SLOTS BELOW — run `python3 bootstrap.py ask`.**\n"
+        "> …\n\n# workflow\n\nrun `${verify_command}` before shipping\n",
+        encoding="utf-8",
+    )
+    findings = check_engagement(root, config)
+    assert [f.kind for f in findings] == ["unrendered-banner"]
+    assert "verify_command" in findings[0].message
+
+
+def test_check_engagement_control_scopes_to_control_docs(tmp_path):
+    # The fast-lane half (the #148 root cause): the scoped scan sees a slot
+    # regression in a control-plane planted doc and ONLY there — a poisoned
+    # docs/ file is the full lane's business.
+    from engine.checks.check_engagement import check_engagement_control
+
+    root = tmp_path / "repo"
+    config = Config()
+    config.kit_version = "1.0.0"
+    save_config(root, config)
+    status = root / "control" / "status.md"
+    status.parent.mkdir(parents=True)
+    status.write_text("# status\n\n${bare_regression}\n", encoding="utf-8")
+    arch = root / "docs" / "architecture.md"
+    arch.parent.mkdir(parents=True)
+    arch.write_text("# arch\n\n${also_bare}\n", encoding="utf-8")
+
+    control_findings = check_engagement_control(root, config)
+    assert [f.path for f in control_findings] == ["control/status.md"]
+    assert [f.kind for f in control_findings] == ["unrendered-slot"]
+    # The full gate still sees both.
+    full_paths = {f.path for f in check_engagement(root, config)}
+    assert {"control/status.md", "docs/architecture.md"} <= full_paths
+
+
+def test_cmd_check_status_only_gates_control_slot_regressions(tmp_path, capsys):
+    # cmd_check --status-only (the CI control fast lane) reds strict on a
+    # bare slot written into the heartbeat — the exact #148 shape merged
+    # green before this — and stays green when the dollar-brace literal is
+    # inside a code span.
+    config = Config()
+    config.kit_version = "1.0.0"
+    save_config(tmp_path, config)
+    status = tmp_path / "control" / "status.md"
+    status.parent.mkdir(parents=True)
+    heartbeat = (
+        "# x · status\nupdated: 2026-07-10T11:00Z\nphase: testing\n"
+        "health: green\nlast-shipped: none\nblockers: none\n"
+        "orders: acked= done=\n⚑ needs-owner: none\n"
+    )
+    status.write_text(
+        heartbeat + "notes: poisoned ${bare_regression}\n",
+        encoding="utf-8",
+    )
+    assert cmd_check(tmp_path, strict=True, status_only=True) == 1
+    assert "unrendered-slot" in capsys.readouterr().out
+
+    status.write_text(
+        heartbeat + "notes: safe mention of `${span_literal}`\n",
+        encoding="utf-8",
+    )
+    assert cmd_check(tmp_path, strict=True, status_only=True) == 0
