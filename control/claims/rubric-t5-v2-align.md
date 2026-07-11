@@ -1,0 +1,1 @@
+- `claude/rubric-t5-v2-align` · **scope** — align bench RUBRIC §3 T5 fire/obey block to ratified T5 v2 semantics (pin path, `do-not-automerge`, parks for owner ratification per #181/f7aa633; OA-13 follow-up) · expected files: bench/rubric/cold-start-rubric.md + its .sessions card · 2026-07-11
