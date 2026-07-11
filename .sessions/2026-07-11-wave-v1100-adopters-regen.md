@@ -1,6 +1,6 @@
 # 2026-07-11 — v1.10.0 wave close-out: adopters regen + findings intake
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** Claude (Fable family) · medium · docs-only — wave close-out
   (adopters registry regen + wave-findings idea intake)
