@@ -15,6 +15,80 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-07-11
+
+Capability release (MINOR) shipping the B1 run-8 content-gap
+countermeasure — the arrival surface a cold session opens now carries
+harvestable content instead of an empty skeleton: the auto-draft harvests
+commit subjects from the HEAD reflog and carries the previous card's
+resolved "Next session should know" pointer forward, `HANDOFF.md` and the
+SessionStart push surface the draft's evidence bullets as an auto-derived
+trail when the pointer is unresolved (one shared composer, two surfaces,
+within the 113-word pin), and the skeleton card drops 8 → 6 unresolved
+`[[fill:]]` slots — together with the planted-orientation boot-set trim
+(read-first shrinks to the three-surface boot set; CONSTITUTION condensed;
+CAPABILITIES/AGENT_ORIENTATION demoted to route-on-need), the
+unadopted-auto-draft advisory semantics in the bare strict lane (every
+merge-gate lane keeps the locked door), all #222, plus the carve-out
+scanner three-way compare fix (#210). MINOR per the header's contract:
+new capability plus fixes — no planted-doc, state schema, config schema,
+or CLI contract breaks; adopters inherit everything on `upgrade`.
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+**Benchmark outcome (KF-5 — travels into the next release's notes):** B1
+cold-start SEVENTH firing (`2026-07-11-run07`, seed 711701 mossreading, kit =
+vendored dist v1.11.0 — the first prepared arm carrying the #203 `HANDOFF.md`
+pointer; run dir committed, PR #211): **ABORTED (harness delegation-seam
+failure — environment, not kit)**. The runner environment's `claude -p`
+orchestrator decomposed every spawned task across multiple subagents (6/9/5
+subagents on ON-T2 attempt 1 / ON-T2 attempt 2 / the OFF-T2 diagnostic; **0/3
+spawns delivered the single verbatim-prompt worker** the protocol measures —
+run-6 was 6/6); ON's one reset-relaunch was exhausted, the OFF diagnostic
+proved the failure arm-independent, T4/T5 arms were never spawned; no collect,
+no M1, no judge, **no index row** (the row schema's measure keys have no
+honest values — run dir + trend homes carry the abort narratively). Named
+suspect (observed, cause unproven): async background-task delegation active
+in the runner env (`CLAUDE_AUTO_BACKGROUND_TASKS` inherited by spawned CLIs).
+Genuine recovered facts (evidence, not measures): the SessionStart push
+reached the orchestrator at both ON boots; the orchestrator's reader opened
+`HANDOFF.md` both attempts (first family observation of a spawned agent
+opening the pointer — under invalid protocol); `HANDOFF.md` 63 words ≤ the
+113-word pin; claudeMd injection absent at the worker seam (0/20 streams);
+planted-CLAUDE.md state ON slot-2 / OFF none. Deviations verbatim in the run
+dir manifest. **KF-8 scored trend UNCHANGED at 6 rows: 1 PASS / 5 FAIL.**
+Next: run-8 re-runs run-7's exact measures behind a NEW prepare-time
+delegation-seam smoke (assert the smoke worker arrives alone with the
+byte-verbatim prompt; abort before spawning the arms if it fails) in an
+environment reproducing run-6's single-worker seam.
+
+**Benchmark outcome (KF-5 — travels into the next release's notes):** B1
+cold-start EIGHTH firing (`2026-07-11-run08`, seed 711801 deltareading, kit =
+vendored dist v1.11.0, CLI 2.1.207; run dir + row committed, PR #215):
+**VERDICT FAIL (Reading A)** — fourth consecutive 0-of-3: M1 to OFF on T2/T4
+(2223/2506 vs 905/1628; ON wins the T5 pair 221 vs 240), M2 tie, M3 tie;
+budget met (max ON 2506 ≤ 7k), zero unrecoverable errors; judge
+claude-opus-4-8, arms claude-sonnet-5 ×6, all transcript-verified. First run
+behind the run-7 §6 preconditions — the delegation-seam smoke PASSED with the
+env mitigation (`CLAUDE_AUTO_BACKGROUND_TASKS` + 4 related delegation-policy
+vars stripped from every spawned CLI via `env -u`; an unmitigated control
+spawn still delegated a paraphrased-prompt worker — run-7's signature
+reproduced A/B), and the mitigated seam is FLAT: no delegation at all, the
+spawned session IS the measured cold session, byte-verbatim prompts 6/6.
+The #203 pointer headline: **`HANDOFF.md` was opened at the MEASURED seam for
+the first time** (ON-T2 + ON-T4, first tool call each) and ON-T4 opened the
+pointed session card (first family card-continuity conversion) — but the card
+was an unfilled auto-draft (8 `[[fill:]]` slots), so continuity added no
+marginal value and the write-back probe failed both arms; pointer 59 words ≤
+the 113 pin; push delivery 3/3 ON at the flat seam (run-6's delivery gap
+absent without the delegation layer); claudeMd channel still absent (0/6).
+T5 ran the RATIFIED v2 text natively (pin PR #181 owner-merged before any arm
+spawned; prompt bytes = v1 by design): signal-visibility MET for the first
+time and ON-T5 IGNORED the visible push (v2 items 1–3 not-met, item 4 met —
+no suppression); `check --strict` exit=1 at end. Deviations verbatim in the
+run dir manifest (12 entries). **KF-8 trend at 7 rows: 1 PASS / 6 FAIL.**
+
+
 ### Added
 
 - **Substantive auto-draft + handoff trail (B1 run-8 content-gap
@@ -99,58 +173,6 @@ workflow refuses to publish a version that has no section in this file.
   are still detected and banked exactly as before — regression trio in
   `tests/test_adopt.py` + the end-to-end pin-bump report shape in
   `tests/test_upgrade.py`.
-
-**Benchmark outcome (KF-5 — travels into the next release's notes):** B1
-cold-start SEVENTH firing (`2026-07-11-run07`, seed 711701 mossreading, kit =
-vendored dist v1.11.0 — the first prepared arm carrying the #203 `HANDOFF.md`
-pointer; run dir committed, PR #211): **ABORTED (harness delegation-seam
-failure — environment, not kit)**. The runner environment's `claude -p`
-orchestrator decomposed every spawned task across multiple subagents (6/9/5
-subagents on ON-T2 attempt 1 / ON-T2 attempt 2 / the OFF-T2 diagnostic; **0/3
-spawns delivered the single verbatim-prompt worker** the protocol measures —
-run-6 was 6/6); ON's one reset-relaunch was exhausted, the OFF diagnostic
-proved the failure arm-independent, T4/T5 arms were never spawned; no collect,
-no M1, no judge, **no index row** (the row schema's measure keys have no
-honest values — run dir + trend homes carry the abort narratively). Named
-suspect (observed, cause unproven): async background-task delegation active
-in the runner env (`CLAUDE_AUTO_BACKGROUND_TASKS` inherited by spawned CLIs).
-Genuine recovered facts (evidence, not measures): the SessionStart push
-reached the orchestrator at both ON boots; the orchestrator's reader opened
-`HANDOFF.md` both attempts (first family observation of a spawned agent
-opening the pointer — under invalid protocol); `HANDOFF.md` 63 words ≤ the
-113-word pin; claudeMd injection absent at the worker seam (0/20 streams);
-planted-CLAUDE.md state ON slot-2 / OFF none. Deviations verbatim in the run
-dir manifest. **KF-8 scored trend UNCHANGED at 6 rows: 1 PASS / 5 FAIL.**
-Next: run-8 re-runs run-7's exact measures behind a NEW prepare-time
-delegation-seam smoke (assert the smoke worker arrives alone with the
-byte-verbatim prompt; abort before spawning the arms if it fails) in an
-environment reproducing run-6's single-worker seam.
-
-**Benchmark outcome (KF-5 — travels into the next release's notes):** B1
-cold-start EIGHTH firing (`2026-07-11-run08`, seed 711801 deltareading, kit =
-vendored dist v1.11.0, CLI 2.1.207; run dir + row committed, PR #215):
-**VERDICT FAIL (Reading A)** — fourth consecutive 0-of-3: M1 to OFF on T2/T4
-(2223/2506 vs 905/1628; ON wins the T5 pair 221 vs 240), M2 tie, M3 tie;
-budget met (max ON 2506 ≤ 7k), zero unrecoverable errors; judge
-claude-opus-4-8, arms claude-sonnet-5 ×6, all transcript-verified. First run
-behind the run-7 §6 preconditions — the delegation-seam smoke PASSED with the
-env mitigation (`CLAUDE_AUTO_BACKGROUND_TASKS` + 4 related delegation-policy
-vars stripped from every spawned CLI via `env -u`; an unmitigated control
-spawn still delegated a paraphrased-prompt worker — run-7's signature
-reproduced A/B), and the mitigated seam is FLAT: no delegation at all, the
-spawned session IS the measured cold session, byte-verbatim prompts 6/6.
-The #203 pointer headline: **`HANDOFF.md` was opened at the MEASURED seam for
-the first time** (ON-T2 + ON-T4, first tool call each) and ON-T4 opened the
-pointed session card (first family card-continuity conversion) — but the card
-was an unfilled auto-draft (8 `[[fill:]]` slots), so continuity added no
-marginal value and the write-back probe failed both arms; pointer 59 words ≤
-the 113 pin; push delivery 3/3 ON at the flat seam (run-6's delivery gap
-absent without the delegation layer); claudeMd channel still absent (0/6).
-T5 ran the RATIFIED v2 text natively (pin PR #181 owner-merged before any arm
-spawned; prompt bytes = v1 by design): signal-visibility MET for the first
-time and ON-T5 IGNORED the visible push (v2 items 1–3 not-met, item 4 met —
-no suppression); `check --strict` exit=1 at end. Deviations verbatim in the
-run dir manifest (12 entries). **KF-8 trend at 7 rows: 1 PASS / 6 FAIL.**
 
 ## [1.11.0] - 2026-07-11
 
@@ -1580,6 +1602,7 @@ by real consumers, and now nameable, pinnable, verifiable, and upgradeable.
   `init --unpack` it served never shipped, and it doubled every consumer's
   vendored file for nothing.
 
+[1.12.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.12.0
 [1.11.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.11.0
 [1.10.1]: https://github.com/menno420/substrate-kit/releases/tag/v1.10.1
 [1.10.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.10.0
