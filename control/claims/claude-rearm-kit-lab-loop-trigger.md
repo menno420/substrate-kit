@@ -1,1 +1,0 @@
-- `claude/rearm-kit-lab-loop-trigger` · **routine-state** — record the daily kit-lab loop re-arm (new trigger trig_01Jm57GAjNCFrYJn1oLMiYGE, resolving PR #252's ⚑ REGISTRY DISCREPANCY) · control/status.md ROUTINE STATE + session card · 2026-07-11
