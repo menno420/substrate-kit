@@ -1,1 +1,0 @@
-- `claude/t5-v3-probe-reshape` · **T5 probe v3 re-shape (pin path)** — restore skip-vs-ritual tension post-#222 degeneracy · bench/tasks/T5.md + session card + control/status.md close-out · 2026-07-11
