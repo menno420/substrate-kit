@@ -2,7 +2,7 @@
 
 > **Status:** `complete`
 
-- **📊 Model:** fable-5 · medium · docs-only — wave close-out (adopters registry regen)
+- **📊 Model:** fable-5 · medium · docs-only
 
 ## Scope (what is about to happen)
 
