@@ -112,45 +112,17 @@
   label gate + append-aware results immutability), and the enabler's
   fresh-label race guard. Suite 587 → 609.
 
-- **B1's FIRST FIRING is RECORDED — VERDICT: PASS** (run `2026-07-09-run01`,
-  judge claude-opus-4-8; row 1 + run dir, PR #28). Caveats that travel:
-  ON wins M2 (handoff used) + M3 (durable write-back); **M1 unmeasurable**
-  (all 3 pairs scorer-tainted); T5 guard probe n/a (headless). **D5's
-  done-condition HOLDS** (≥1 row). Harness follow-ups filed in
-  `docs/ideas/` (`score-m1-mutation-artifacts` ·
-  `t5-headless-guard-surface` · `model-line-checker-false-red`).
-- **B1's SECOND FIRING is RECORDED — VERDICT: FAIL (strict F-5, advisory
-  per KF-5; RULED Reading A, ORDER 011 — un-caveated)** (run
-  `2026-07-09-run02`, judge claude-opus-4-8; row 2 + run
-  dir, PR #44). First **clean** M1 (the #40-fixed scorer): **M1
-  regressed** — OFF wins T2/T4, T5 near-tie — while ON wins M2 + M3,
-  in-budget (max 2,272), zero unrecoverable errors. Judge's shape:
-  continuity + write-back wins at bounded orientation cost. Run-2
-  follow-ups filed in `docs/ideas/` (F-5 wording brief — since RULED;
-  make_seed `yield` bug; prepare-engagement arc;
-  `t5-headless-guard-surface` evidence incl. the last-card gate gap).
-- **B1's THIRD FIRING is RECORDED — VERDICT: FAIL (strict F-5; RULED
-  Reading A, ORDER 011 — un-caveated)** (run `2026-07-10-run03`, seed
-  710301 northride, kit v1.6.0, judge claude-fable-5; row 3 + run dir,
-  PR #85). M1 to OFF on all pairs; **ON wins M2 + M3** (T4 resumed from
-  T2's card; durable write-back twice); max ON 2,521 ≪ 7k; family-first
-  session-time guard fire (mid-session red → repaired → green); first
-  legal KF-8 trend statement at 3 rows. Deviations verbatim in the run
-  dir (T5 n/a headless; harness ignored model orders — judge = arm
-  model).
-- **B1's FOURTH FIRING is RECORDED — VERDICT: FAIL under BOTH F-5
-  readings** (dual-scored pre-ruling — immaterial, both readings agree;
-  `2026-07-10-run04`, seed 710402 harborride, kit v1.7.0, judge
-  claude-opus-4-8 / arms claude-sonnet-5, transcript-verified; row 4 +
-  run dir, PR #116). **First 0-of-3 run:** M1 to OFF on T2/T4 (ON wins
-  the T5 pair — first clean ON M1 win); **M2 + M3 to OFF for the first
-  time** (auto-drafted card never opened, no durable write-back, T5
-  guard advisories IGNORED, RED close); in-budget max 2113, zero
-  unrecoverable errors. Family firsts: clean scripted prepare (#95
-  arc), hooks LIVE (T5 guard: fired yes, obeyed no), model orders
-  honored. Deviations verbatim in the run dir; confounds: 4 kit
-  versions, fresh seeds, judge drift, run-4 alone Sonnet-arms + live
-  hooks.
+- **B1 FIRINGS 1–4 (condensed ledger — rows + run dirs are the full
+  immutable record):** run-1 `2026-07-09-run01` **PASS** (PR #28; ON won
+  M2+M3, M1 unmeasurable — scorer-tainted; T5 n/a headless). run-2
+  `2026-07-09-run02` **FAIL** (PR #44; first clean M1 — regressed; ON won
+  M2+M3). run-3 `2026-07-10-run03` **FAIL** (PR #85; M1 to OFF all pairs;
+  ON won M2+M3; first legal KF-8 trend at 3 rows; judge = arm model that
+  run). run-4 `2026-07-10-run04` **FAIL, first 0-of-3** (PR #116; M2+M3 to
+  OFF for the first time; hooks LIVE family-first — T5 guard fired yes,
+  obeyed no; first clean scripted prepare). Runs 2–3 RULED Reading A
+  un-caveated (ORDER 011). Deviations verbatim in each run dir; confounds
+  travel (a fresh kit version every run, fresh seeds, judge drift).
 - **B1's FIFTH FIRING is RECORDED — VERDICT: FAIL (Reading A — the
   family's first Reading-A-only-scored row)** (run `2026-07-11-run05`,
   seed 711501 juniperharvest, kit v1.8.0, judge claude-opus-4-8 / arms
