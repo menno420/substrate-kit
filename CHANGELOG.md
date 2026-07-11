@@ -41,6 +41,32 @@ workflow refuses to publish a version that has no section in this file.
   `tests/test_adopt.py` + the end-to-end pin-bump report shape in
   `tests/test_upgrade.py`.
 
+**Benchmark outcome (KF-5 — travels into the next release's notes):** B1
+cold-start SEVENTH firing (`2026-07-11-run07`, seed 711701 mossreading, kit =
+vendored dist v1.11.0 — the first prepared arm carrying the #203 `HANDOFF.md`
+pointer; run dir committed, PR #211): **ABORTED (harness delegation-seam
+failure — environment, not kit)**. The runner environment's `claude -p`
+orchestrator decomposed every spawned task across multiple subagents (6/9/5
+subagents on ON-T2 attempt 1 / ON-T2 attempt 2 / the OFF-T2 diagnostic; **0/3
+spawns delivered the single verbatim-prompt worker** the protocol measures —
+run-6 was 6/6); ON's one reset-relaunch was exhausted, the OFF diagnostic
+proved the failure arm-independent, T4/T5 arms were never spawned; no collect,
+no M1, no judge, **no index row** (the row schema's measure keys have no
+honest values — run dir + trend homes carry the abort narratively). Named
+suspect (observed, cause unproven): async background-task delegation active
+in the runner env (`CLAUDE_AUTO_BACKGROUND_TASKS` inherited by spawned CLIs).
+Genuine recovered facts (evidence, not measures): the SessionStart push
+reached the orchestrator at both ON boots; the orchestrator's reader opened
+`HANDOFF.md` both attempts (first family observation of a spawned agent
+opening the pointer — under invalid protocol); `HANDOFF.md` 63 words ≤ the
+113-word pin; claudeMd injection absent at the worker seam (0/20 streams);
+planted-CLAUDE.md state ON slot-2 / OFF none. Deviations verbatim in the run
+dir manifest. **KF-8 scored trend UNCHANGED at 6 rows: 1 PASS / 5 FAIL.**
+Next: run-8 re-runs run-7's exact measures behind a NEW prepare-time
+delegation-seam smoke (assert the smoke worker arrives alone with the
+byte-verbatim prompt; abort before spawning the arms if it fails) in an
+environment reproducing run-6's single-worker seam.
+
 ## [1.11.0] - 2026-07-11
 
 Capability release (MINOR) shipping the run-6 delivery-gap fix — a new

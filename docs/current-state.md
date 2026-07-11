@@ -123,40 +123,38 @@
   obeyed no; first clean scripted prepare). Runs 2–3 RULED Reading A
   un-caveated (ORDER 011). Deviations verbatim in each run dir; confounds
   travel (a fresh kit version every run, fresh seeds, judge drift).
-- **B1's FIFTH FIRING is RECORDED — VERDICT: FAIL (Reading A — the
-  family's first Reading-A-only-scored row)** (run `2026-07-11-run05`,
-  seed 711501 juniperharvest, kit v1.8.0, judge claude-opus-4-8 / arms
-  claude-sonnet-5, transcript-verified; row 5 + run dir, PR #163).
-  **Second consecutive 0-of-3 run:** M1 to OFF on all pairs (1421/1589/931
-  vs 595/986/326), **M2 tie** (T4 continuity NULL again — auto-drafted
-  card ignored, empty-template ledger, both arms resumed via git),
-  **M3 to OFF** (T2 write-back failed + input-validation directive
-  skipped; T5 guard fired ~10× advisory, IGNORED — RED close). In-budget max 1589, zero unrecoverable
-  errors. Transcripts now carry verbatim task prompts (converter v3 —
-  run-4 judge limitation 1 closed). Deviations verbatim in the run dir
-  (OFF-T5 allowlist wall → reset-relaunch, run-4 precedent). **KF-8
-  trend at 5 rows:** headline **1 PASS / 4 FAIL**; the kit's continuity
-  surface has been ignored in two consecutive Sonnet-arm hook-live runs
-  — the SessionStart handoff-push idea is the queue's top answer;
-  confounds: 5 kit versions in 5 runs, fresh seeds, judge drift,
-  permission-surface drift.
-- **B1's SIXTH FIRING is RECORDED — VERDICT: FAIL (Reading A)** (run
-  `2026-07-11-run06`, seed 711601 brookdonation, kit v1.10.1, judge
-  claude-opus-4-8 / arms claude-sonnet-5, transcript-verified; row 6 +
-  run dir, PR #201). **Third consecutive 0-of-3, and the handoff-push
-  (#165) validation returned a precondition-NULL:** the SessionStart push
-  fired at 3/3 ON boots with the correct card pointer, but reached the
-  measured WORKER in **0/3** — a **delivery gap at the
-  orchestrator→worker harness seam, not a converter gap** — so no cold
-  session ever saw the signal. T4 continuity NULL again (the card was
-  never opened; both arms resumed via git); M1 to OFF on T2/T4, ON won
-  the T5 pair (216 vs 341); **M2 tie / M3 tie**; every ON session ended
-  `check --strict` RED. T5 ran v1 text (#181 unratified) + the v2
-  scripted facts (behavioral items precondition-NULL). In-budget max
-  1627; zero unrecoverable errors; zero reset-relaunches (family first —
-  the prepare-time permission smoke ran). **KF-8 trend at 6 rows: 1 PASS
-  / 5 FAIL.** Deviations verbatim in the run dir (OFF-T4 no-op-stub
-  harvest repoint; 7 self-corrected allowlist denials).
+- **B1 FIRINGS 5–6 (condensed — rows + run dirs, PRs #163/#201, are the
+  full immutable record):** run-5 `2026-07-11-run05` **FAIL** (first
+  Reading-A-only-scored row; second 0-of-3: M1 to OFF all pairs, M2 tie,
+  M3 OFF; T4 continuity NULL; T5 guard advisories IGNORED — RED close;
+  converter v3 put verbatim prompts in the transcripts). run-6
+  `2026-07-11-run06` **FAIL** (third 0-of-3; **the handoff-push (#165)
+  validation returned precondition-NULL:** the push fired at 3/3 ON boots
+  but reached the measured WORKER in **0/3** — a delivery gap at the
+  orchestrator→worker harness seam, not a converter gap; M1 to OFF on
+  T2/T4, ON won the T5 pair; M2/M3 tie; zero reset-relaunches, family
+  first). **KF-8 trend at 6 rows: 1 PASS / 5 FAIL.** Deviations verbatim
+  in each run dir.
+- **B1's SEVENTH FIRING is ABORTED — harness delegation-seam failure
+  (environment, not kit); NOT SCORED, no row** (run `2026-07-11-run07`,
+  seed 711701 mossreading, kit = vendored dist v1.11.0 — the first arm
+  carrying the #203 `HANDOFF.md` pointer; run dir committed WITHOUT an
+  index row, PR #211). The runner environment's `claude -p` orchestrator
+  decomposed every spawn across multiple subagents (6/9/5); **0/3 spawns
+  delivered the single verbatim-prompt worker** the protocol measures
+  (run-6: 6/6); ON's one reset-relaunch exhausted; failure arm-independent
+  (OFF decomposed too); T4/T5 never spawned; no collect, no M1, no judge.
+  Named suspect (observed, unproven): async background-task delegation
+  (`CLAUDE_AUTO_BACKGROUND_TASKS` inherited by spawned CLIs). Genuine
+  facts (evidence, not measures): the orchestrator's reader opened
+  `HANDOFF.md` both ON attempts (family first — under invalid protocol);
+  pointer 63 words ≤ the 113 pin; claudeMd injection absent at the worker
+  seam (0/20 streams). **Scored trend UNCHANGED: 1 PASS / 5 FAIL at 6
+  rows.** Next: run-8 = run-7's exact measures behind a prepare-time
+  delegation-seam smoke (the smoke worker must arrive ALONE with the
+  byte-verbatim prompt; abort before spawning the arms if not) in an
+  environment reproducing run-6's single-worker seam. Deviations verbatim
+  in the run dir manifest; full narrative in the run dir report.md.
 - **The F-5 RULING is DELIVERED — Reading A (strict), 2026-07-10**
   (ORDER 011, Q-0262.1; `bench/results/cold-start/f5-ruling-order-011.md`,
   PR #128): runs 2–3 stand as un-caveated FAILs (immutable rows
@@ -405,6 +403,13 @@ gap). Top buildable: close that delivery gap (or re-shape the bench arm
 so the measured session IS the hook-receiving session), then re-validate.
 B2/B3/B4 still need OWNER-ACTION 6; T5 v2 awaits the #181 click; the rest
 is owner-gated (OWNER-ACTION 2–13 in `control/status.md`).
+
+**→ Post-run-7 (2026-07-11):** the re-validation attempt (run-7, PR #211)
+ABORTED at spawn — the runner environment decomposed every `claude -p`
+spawn (0/3 verbatim single-worker spawns); NOT SCORED, no row, scored
+trend still 1 PASS / 5 FAIL at 6 rows. Top buildable: **run-8** — the
+seventh-firing bullet above has the spec (delegation-seam smoke +
+single-worker-seam environment).
 
 ### Owner gates — each with its one-line unblock
 

@@ -1,0 +1,52 @@
+{
+  "run_id": "2026-07-11-run07",
+  "date": "2026-07-11",
+  "seed": 711701,
+  "tasks": [
+    "T2",
+    "T4",
+    "T5"
+  ],
+  "wire_enforcement": true,
+  "kit": "/home/user/substrate-kit/dist/bootstrap.py",
+  "arms": {
+    "on": "/tmp/claude-0/-home-user/2568bc4d-6464-5fda-b39e-b82c5674376c/scratchpad/run07/2026-07-11-run07/on/repo",
+    "off": "/tmp/claude-0/-home-user/2568bc4d-6464-5fda-b39e-b82c5674376c/scratchpad/run07/2026-07-11-run07/off/repo"
+  },
+  "task_prompts": {
+    "T2": "/home/user/substrate-kit/bench/tasks/T2.md",
+    "T4": "/home/user/substrate-kit/bench/tasks/T4.md",
+    "T5": "/home/user/substrate-kit/bench/tasks/T5.md"
+  },
+  "rubric": "/home/user/substrate-kit/bench/rubric/cold-start-rubric.md",
+  "smoke": [
+    "seed suite (on): green",
+    "seed suite (off): green",
+    "engage: answered 13 slots (seed-derived, deterministic)",
+    "engage: render --live",
+    "engage: enforcement already wired (adopt --wire-enforcement)",
+    "engage: session card 2026-07-11-adoption.md",
+    "engage: control/status.md heartbeat",
+    "engage: committed",
+    "CONSTITUTION.md: present",
+    "docs/current-state.md: present",
+    ".sessions: present",
+    "check --strict exit=0"
+  ],
+  "aborted": true,
+  "cli_version": "2.1.207 (Claude Code)",
+  "kit_version": "1.11.0",
+  "runner_notes": [
+    "RUN ABORTED AT THE SPAWN STEP - the measured-worker protocol did not hold and the one-reset-per-arm budget was exhausted. No collect, no scripted M1, no judge invocation, no index row from this phase. Everything below is recorded verbatim per the deviation rules.",
+    "Prepare: CLEAN FIRST TRY (fourth consecutive clean scripted prepare in the family): seed 711701 -> mossreading, accepted first try; 13 deterministic slots, render --live, enforcement pre-wired (adopt --wire-enforcement), adoption card, heartbeat, commit; smoke green, check --strict exit=0; manifest written by prepare itself. Kit = dist/bootstrap.py v1.11.0 (first prepared arm carrying the #203 HANDOFF.md pointer surface). ON arm .claude/CLAUDE.md carries the HANDOFF.md slot-2 read-first line; OFF arm has no CLAUDE.md (verified on disk).",
+    "Permission-surface smoke (run-6 protocol, BEFORE any measured spawn): one trivial worker in a throwaway scratch repo exercised all four allowlisted command classes (python3 -m pytest, python -m pytest, acceptEdits file append, git add, git commit) - all five steps succeeded, zero walls. NOTE from the smoke worth keeping: the orchestrator PARAPHRASED the smoke meta-prompt rather than forwarding it verbatim - first observed hint that the delegation seam had changed since run-6.",
+    "DEVIATION 1 - ON-T2 attempt 1 (spawn window 2026-07-11T14:01:13Z..14:05:57Z, exit 0): headless `claude -p` (CLI 2.1.207) with the exact run-6 surface (--permission-mode acceptEdits + the four allowedTools + --model sonnet) delegated to SIX subagents instead of exactly one worker: three no-op stubs ('No task. Return immediately with an empty result.', 'No-op. Return immediately.', 'wait'), one read-only git/pytest checker, one read-only orientation reader whose orchestrator-authored prompt names '.sessions/2026-07-11-adoption.md (newest session card)', 'HANDOFF.md if present at repo root' and the planted docs, and one implementation worker whose prompt is an orchestrator-authored digest of the task text plus pre-digested repo orientation. ZERO of six first user messages are byte-identical to the T2 fenced text (run-6 fidelity was 6/6). The impl worker committed 0734051 'Add report CLI command with per-category totals'. As a measured cold session this spawn is INVALID: orientation happened at the orchestrator layer and in a separate reader agent, so M1/M2 on any single worker stream measures nothing comparable to rows 1-6.",
+    "DEVIATION 2 - the ONE allowed reset-relaunch (per-arm maximum, run-4/5 precedent): ON arm reset to pre-task SHA bb3f3da (git reset --hard + git clean -fd; attempt-1 evidence archived first: native streams, orchestrator stream, guard-fires.jsonl, auto-drafted card, HANDOFF.md snapshot), relaunched 14:07:57Z..14:16:54Z with the identical command. Attempt 2 ALSO decomposed - NINE subagents (one orientation/HANDOFF reader, one file-content dumper, one implementation worker, six ack/placeholder/no-op stubs); again ZERO byte-identical first user messages. ON arm reset budget EXHAUSTED.",
+    "DEVIATION 3 - diagnostic OFF-T2 spawn (the already-scheduled spawn, run once to localize the failure before stopping; 14:17:53Z start, exit 0): OFF-T2 ALSO decomposed - FIVE subagents (explorer, file reader, implementation worker, two placeholder stubs), zero byte-identical prompts. Decomposition is therefore ENVIRONMENT-WIDE (both arms, kit present or absent) - an orchestrator-policy change at the harness delegation seam, NOT a kit/pointer effect. The OFF arm's own reset-relaunch was NOT spent (the failure is not arm-state-dependent; nothing a reset could change).",
+    "ABORT DECISION (the briefing's stop rule, verbatim: 'If the harness fails in a way you cannot recover within the one-reset rule, STOP, record it verbatim, and report the failure - do not improvise a different methodology.'): with both ON attempts and the OFF diagnostic all decomposing, no spawn in this environment yields THE delegated worker as the measured cold session with byte-identical prompt fidelity. ON-T4/OFF-T4/ON-T5/OFF-T5 were NEVER SPAWNED. Scoring any decomposed spawn would be a different methodology (per-worker M1 is meaningless when a sibling agent did the orientation), so the run records no measures and no verdict.",
+    "Environment-delta context (observed, cause not proven): run-6 ran the SAME CLI version (2.1.207) earlier the same day (session windows 11:18-11:35Z) with clean single-worker delegation 6/6. This runner session's environment has background-task delegation machinery active (CLAUDE_AUTO_BACKGROUND_TASKS set and inherited by the spawned CLI; the orchestrator streams show its signature: queued_command/task-notification attachments, async 'Async agent launched successfully' tool_results, and the 'wait'/'no-op placeholder' stub spawns used to await async results). The spawned orchestrators and all substantive workers ran claude-sonnet-5 (verified from native transcript model fields; two 4-line placeholder stubs contain no assistant events and hence no model field).",
+    "GENUINE POINTER EVIDENCE FROM THE ABORTED ATTEMPTS (facts, NOT measures - the protocol was invalid): (1) HANDOFF.md was regenerated on disk at every ON boot by the SessionStart hook, 63 words <= the 113-word pin, marker line present ('<!-- substrate:handoff-pointer -->'). (2) The SessionStart push ('# Session orientation ... ## Handoff -') reached the ORCHESTRATOR at both ON boots (hook_success attachments, content verified). (3) NEW at this seam: the orchestrator CONVERTED the pointer both times - it instructed a delegated reader worker to open HANDOFF.md, and the reader actually did (attempt 1: Read tool on the exact HANDOFF.md path; attempt 2: `cat HANDOFF.md`) - the first time in the family any spawned agent layer opened the pointer file. (4) claudeMd-injection channel: ZERO of the 20 spawned worker streams (ON and OFF) carried a <system-reminder>/claudeMd block in their first user message - every HANDOFF.md mention in a worker first message was orchestrator-authored prompt text. The T5 zero-surface 'planted CLAUDE.md channel' does NOT exist at this delegation seam in this environment.",
+    "Artifacts staged (Phase-2.5 lost-artifacts rule, evidence for an aborted run per the run-2 lesson): harness-evidence/ holds all native worker streams (attempt1: 6, attempt2: 9, off-diagnostic: 5), orchestrator streams, HANDOFF.md snapshots, guard-fires archive, the verbatim spawn prompts (byte-validated against run-6's committed first user messages 6/6 BEFORE spawning), spawn.sh, the rebuilt convert_native.py v3, and the permission-smoke worker stream. Arm repos remain in the runner scratchpad (run07/2026-07-11-run07/) unmodified since the abort.",
+    "Recommendation flagged for Phase 3 (decide-and-flag): do NOT append an index row - the schema's m1/m2/m3/verdict/judge_model fields have no honest values (no judge ran; nothing was measured); record the abort in the trend homes narratively (trend stays 1 PASS / 5 FAIL at 6 rows) and route the harness-seam failure as its own finding. Re-run run-7 from a runner environment whose delegation seam reproduces the run-6 single-worker behavior (verify with the permission smoke, which now doubles as a delegation-seam smoke: check the smoke worker got the prompt verbatim and arrived alone)."
+  ]
+}
