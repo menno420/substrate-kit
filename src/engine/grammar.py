@@ -108,10 +108,19 @@ def updated_line_example() -> str:
 #   kit: v<X.Y.Z> · check: green|red · engaged: yes|no
 # Parsed leniently — real heartbeats decorate the line, so the version is the
 # first `v<digit...>` token after `kit:` and the check/engaged fields are
-# scanned anywhere on the line. Consumed by currency.parse_kit_line (the
-# fleet registry's self-report evidence).
+# scanned anywhere on the line. The line anchor is lenient too: adopters
+# embed the heartbeat as a markdown bullet with a bold label (venture-lab's
+# live shape, found at the v1.10.1 wave: `- **kit heartbeat:** kit: v… ·
+# check: … · engaged: …`), so an optional leading list marker and/or
+# `**bold label**` prefix is accepted before `kit:` — the old start-of-line
+# anchor silently degraded that row to "no `kit:` line" in the fleet
+# registry and lost its engaged signal. Consumed by currency.parse_kit_line
+# (the fleet registry's self-report evidence).
 
-KIT_LINE_RE = re.compile(r"^kit:\s*(.*)$", re.MULTILINE)
+KIT_LINE_RE = re.compile(
+    r"^(?:[-*+]\s+)?(?:\*\*[^*\n]+\*\*\s*)?kit:\s*(.*)$",
+    re.MULTILINE,
+)
 KIT_VERSION_TOKEN_RE = re.compile(r"\bv(\d[\w.\-]*)")
 KIT_CHECK_FIELD_RE = re.compile(r"\bcheck:\s*(green|red)\b")
 KIT_ENGAGED_FIELD_RE = re.compile(r"\bengaged:\s*(yes|no)\b")

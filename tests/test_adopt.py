@@ -842,7 +842,7 @@ def test_live_ci_workflow_wires_the_inbox_base_gate():
     text = live_ci_workflow()
     step = text.split("- name: inbox append-only gate", 1)
     assert len(step) == 2, "planted gate misses the inbox append-only step"
-    body = step[1].split("- uses: actions/setup-python@v5", 1)[0]
+    body = step[1].split("- uses: actions/setup-python@v6", 1)[0]
     assert "if: steps.lane.outputs" not in body  # both lanes
     assert "git merge-base" in body
     assert "git show" in body
@@ -861,10 +861,10 @@ def test_gate_carveouts_detects_host_added_job_and_step():
     assert gate_carveouts(expected, expected) == []
     # A host-added step inside a kit job (and kit steps are never flagged).
     live = expected.replace(
-        "      - uses: actions/setup-python@v5\n",
+        "      - uses: actions/setup-python@v6\n",
         "      - name: host coverage upload\n"
         "        run: echo host step\n"
-        "      - uses: actions/setup-python@v5\n",
+        "      - uses: actions/setup-python@v6\n",
     )
     assert gate_carveouts(live, expected) == [
         "host-added step 'host coverage upload' in job 'substrate-gate'",
@@ -875,7 +875,7 @@ def test_gate_carveouts_detects_host_added_job_and_step():
         "  pytest:\n"
         "    runs-on: ubuntu-latest\n"
         "    steps:\n"
-        "      - uses: actions/checkout@v4\n"
+        "      - uses: actions/checkout@v5\n"
         "      - name: host test suite\n"
         "        run: python3 -m pytest tests/ -q\n"
     )
@@ -885,7 +885,7 @@ def test_gate_carveouts_detects_host_added_job_and_step():
     # Kit content the host merely edited/removed is NOT a carve-out (the
     # regen restores it by design).
     stale = expected.replace(
-        "      - uses: actions/setup-python@v5\n"
+        "      - uses: actions/setup-python@v6\n"
         "        if: steps.lane.outputs.control_only != 'true'\n"
         "        with:\n"
         '          python-version: "3.x"\n',

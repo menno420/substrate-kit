@@ -39,6 +39,20 @@ from engine.checks.check_session_log import (
 GUARD_FIRES_FILENAME = "guard-fires.jsonl"
 MODEL_USAGE_RELPATH = "telemetry/model-usage.jsonl"
 
+# Guard-fire dedupe window (seconds): a re-run of the same guard over the
+# same unchanged finding within this window appends nothing. Provenance:
+# trading-strategy PR #57's session card — the born-red gate lane re-runs
+# `check` 2–3× per push, so `guard-fires.jsonl` was "dominated by duplicate
+# born-red heartbeat noise (same card, same message, seconds apart)" and
+# stopped being a signal ledger. Ten minutes covers a CI/gate re-run burst
+# while a *persisting* finding still re-records on the next real session
+# activity; a verdict-carrying record (allowlist suppression) is never
+# deduped — verdict events are data, not noise.
+GUARD_FIRES_DEDUPE_WINDOW_S = 600
+# How many tail records to scan for the dedupe key set — bounds the read on
+# a long-lived fires log; a burst larger than this simply dedupes less.
+_GUARD_FIRES_DEDUPE_SCAN = 200
+
 # The run-report needle. \N escape keeps the engine source ASCII-safe.
 MODEL_LINE_NEEDLE = "\N{BAR CHART} Model:"  # 📊 Model:
 
@@ -72,6 +86,49 @@ def _append_jsonl(path: Path, record: dict) -> None:
         handle.write(line + "\n")
 
 
+def _recent_fire_keys(path: Path, now: datetime) -> set[tuple[str, str, str]]:
+    """Dedupe keys ``(guard, path, message)`` of recent verdict-less records.
+
+    Scans the tail of the fires log for records whose ``ts`` falls inside
+    :data:`GUARD_FIRES_DEDUPE_WINDOW_S` of ``now``. Records carrying a
+    ``verdict`` (allowlist-suppression events) never enter the key set —
+    they are data points, not repeat noise, and must never swallow a later
+    plain fire. Fail-open: any unreadable/undecodable state returns what was
+    parsed so far (worst case: no dedupe, the pre-fix behavior).
+    """
+    keys: set[tuple[str, str, str]] = set()
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return keys
+    for line in lines[-_GUARD_FIRES_DEDUPE_SCAN:]:
+        try:
+            record = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(record, dict) or record.get("verdict") is not None:
+            continue
+        try:
+            ts = datetime.fromisoformat(str(record.get("ts")))
+        except ValueError:
+            continue
+        if ts.tzinfo is None:
+            continue
+        if (now - ts).total_seconds() > GUARD_FIRES_DEDUPE_WINDOW_S:
+            continue
+        finding = record.get("finding")
+        if not isinstance(finding, dict):
+            continue
+        keys.add(
+            (
+                str(record.get("guard")),
+                str(finding.get("path")),
+                str(finding.get("message")),
+            ),
+        )
+    return keys
+
+
 def record_guard_fires(
     root: Path,
     state_dir: str,
@@ -94,6 +151,14 @@ def record_guard_fires(
     and ``outcome`` always start null — a later, *different* party fills them
     (the grading-separation rule).
 
+    **Short-window dedupe** (trading-strategy #57's card): a verdict-less
+    fire whose ``(guard, path, message)`` already appears in a record from
+    the last :data:`GUARD_FIRES_DEDUPE_WINDOW_S` seconds is skipped — the
+    born-red gate lane re-runs ``check`` several times per push and was
+    filling the log with identical designed-hold echoes. Verdict-carrying
+    records (allowlist suppressions) always append: the verdict event is
+    the datum.
+
     Fail-open by contract: any failure (unwritable path, weird finding
     object) writes nothing and raises nothing — telemetry never blocks an
     agent-facing path. Writes only into an **existing** install
@@ -104,9 +169,16 @@ def record_guard_fires(
         if not (root / state_dir).is_dir():
             return 0
         path = guard_fires_path(root, state_dir)
-        ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        now = datetime.now(timezone.utc)
+        ts = now.isoformat(timespec="seconds")
+        recent = _recent_fire_keys(path, now) if verdict is None else set()
         written = 0
         for finding in findings:
+            if verdict is None:
+                key = (str(finding.kind), str(finding.path), str(finding.message))
+                if key in recent:
+                    continue
+                recent.add(key)
             record = {
                 "ts": ts,
                 "guard": str(finding.kind),

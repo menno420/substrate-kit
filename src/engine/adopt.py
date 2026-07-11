@@ -580,7 +580,7 @@ def ci_snippet() -> str:
         "#   substrate-check:\n"
         "#     runs-on: ubuntu-latest\n"
         "#     steps:\n"
-        "#       - uses: actions/checkout@v4\n"
+        "#       - uses: actions/checkout@v5\n"
         "#       - name: substrate checks\n"
         "#         run: python3 bootstrap.py check --strict\n"
     )
@@ -715,7 +715,7 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         "  substrate-gate:\n"
         "    runs-on: ubuntu-latest\n"
         "    steps:\n"
-        "      - uses: actions/checkout@v4\n"
+        "      - uses: actions/checkout@v5\n"
         "        with:\n"
         "          fetch-depth: 0\n"
         "      - name: control fast lane (control/**-only diff short-circuits green)\n"
@@ -781,7 +781,7 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         "            python3 bootstrap.py check --strict --status-only "
         '--inbox-base "$basefile"\n'
         "          fi\n"
-        "      - uses: actions/setup-python@v5\n"
+        "      - uses: actions/setup-python@v6\n"
         "        if: steps.lane.outputs.control_only != 'true'\n"
         "        with:\n"
         '          python-version: "3.x"\n'
