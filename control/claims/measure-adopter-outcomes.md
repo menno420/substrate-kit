@@ -1,0 +1,1 @@
+- `claude/adopter-outcomes-measurement-2026-07-11` · **measure adopter outcomes (before/after measurement report; coordinator slice)** — measure owner-steering, false-claim, and time-to-ship outcomes across adopters; honest nulls expected · docs/reports/2026-07-11-adopter-outcomes-measurement.md + .sessions/ + control/status.md · 2026-07-11
