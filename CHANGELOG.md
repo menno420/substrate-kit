@@ -86,6 +86,19 @@ handoff-push idea is the evidence-backed answer. Evidence:
   content is preserved byte-for-byte, missing entries append under one
   provenance marker comment, and repeat passes are idempotent. Plain
   `grep -r` has no ignore protocol and stays covered by the guidance note.
+- **Family-level model-attribution doctrine in the planted
+  `.sessions/README.md`** (inbox ORDER 012, the fleet standing rule from the
+  fm model matrix 2026-07): when the host's `session_markers` require the
+  `📊 Model:` line, the planted README now states the attribution ground
+  truth out loud — the model segment is the **family-level model name the
+  session's own harness/environment reports** (e.g. `fable-5`, `opus-4.8`,
+  `sonnet-5`); the committed card's self-report is the only reliable
+  attribution surface; external surfaces (schedule/Routines screens) are
+  evidenced to misattribute (websites #59: Routines said fable-5 while the
+  fired card said claude-sonnet-5); full dated model IDs never appear in
+  attribution. The template machinery itself (markers default, needle
+  byte-form plant, auto-draft stand-in, checker, telemetry harvest,
+  upgrade join) already carried the line and is unchanged.
 
 ### Fixed
 
