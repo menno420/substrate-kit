@@ -67,6 +67,32 @@ delegation-seam smoke (assert the smoke worker arrives alone with the
 byte-verbatim prompt; abort before spawning the arms if it fails) in an
 environment reproducing run-6's single-worker seam.
 
+**Benchmark outcome (KF-5 — travels into the next release's notes):** B1
+cold-start EIGHTH firing (`2026-07-11-run08`, seed 711801 deltareading, kit =
+vendored dist v1.11.0, CLI 2.1.207; run dir + row committed, PR #215):
+**VERDICT FAIL (Reading A)** — fourth consecutive 0-of-3: M1 to OFF on T2/T4
+(2223/2506 vs 905/1628; ON wins the T5 pair 221 vs 240), M2 tie, M3 tie;
+budget met (max ON 2506 ≤ 7k), zero unrecoverable errors; judge
+claude-opus-4-8, arms claude-sonnet-5 ×6, all transcript-verified. First run
+behind the run-7 §6 preconditions — the delegation-seam smoke PASSED with the
+env mitigation (`CLAUDE_AUTO_BACKGROUND_TASKS` + 4 related delegation-policy
+vars stripped from every spawned CLI via `env -u`; an unmitigated control
+spawn still delegated a paraphrased-prompt worker — run-7's signature
+reproduced A/B), and the mitigated seam is FLAT: no delegation at all, the
+spawned session IS the measured cold session, byte-verbatim prompts 6/6.
+The #203 pointer headline: **`HANDOFF.md` was opened at the MEASURED seam for
+the first time** (ON-T2 + ON-T4, first tool call each) and ON-T4 opened the
+pointed session card (first family card-continuity conversion) — but the card
+was an unfilled auto-draft (8 `[[fill:]]` slots), so continuity added no
+marginal value and the write-back probe failed both arms; pointer 59 words ≤
+the 113 pin; push delivery 3/3 ON at the flat seam (run-6's delivery gap
+absent without the delegation layer); claudeMd channel still absent (0/6).
+T5 ran the RATIFIED v2 text natively (pin PR #181 owner-merged before any arm
+spawned; prompt bytes = v1 by design): signal-visibility MET for the first
+time and ON-T5 IGNORED the visible push (v2 items 1–3 not-met, item 4 met —
+no suppression); `check --strict` exit=1 at end. Deviations verbatim in the
+run dir manifest (12 entries). **KF-8 trend at 7 rows: 1 PASS / 6 FAIL.**
+
 ## [1.11.0] - 2026-07-11
 
 Capability release (MINOR) shipping the run-6 delivery-gap fix — a new

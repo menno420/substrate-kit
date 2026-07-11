@@ -148,5 +148,30 @@
     "verdict": "FAIL",
     "judge_model": "claude-opus-4-8",
     "notes": "Reading A FAIL (third consecutive 0-of-3 run): M1 to OFF on T2/T4 (1157/1627 vs 588/1130; ON wins the T5 pair 216 vs 341 \u2014 the family second clean ON M1 pair win, both on T5), M2 tie + M3 tie (both arms shipped equivalent correct work by equivalent means; no durable write-back either arm on T2; T4 continuity NULL third run running \u2014 the card was never opened, both arms resumed via git). THE RUN-6 HEADLINE (handoff-push validation, #165): the SessionStart push FIRED at 3/3 ON boots with the correct card pointer (T4/T5 boots named the drafted card + 8 unresolved slots + open-FIRST) but reached the measured WORKER in 0/3 \u2014 a DELIVERY gap at the orchestrator->worker harness seam, NOT a converter gap (push text absent from worker native streams; converter v3 not the limitation); push M1 footprint at the worker layer = 0 words. T5 ran v1 text (pin PR #181 unratified) + v2 scripted facts per the #182/#183 disposition: signal-visibility precondition NOT met -> v2 behavioral items precondition-NULL; v1 items scored (fired=met scripted 2 fires, obeyed=not-met by outcome \u2014 committed straight, check --strict RED, card drafted with 8 unresolved slots). In-budget max 1627 <= 7k, zero unrecoverable errors; kit v1.10.1 (6 runs, 6 kit versions \u2014 confound travels); seed 711601 brookdonation (accepted first try); third clean scripted prepare; arms claude-sonnet-5 x6 + judge claude-opus-4-8, both transcript-verified; guard-fire windows 6/3/2 \u2014 lower than run-5 partly from the #195 dedupe (measurement-surface change travels with the trend); deviations: OFF-T4 no-op-stub harvest anomaly (harvest-layer repoint, no relaunch, no reset) + 7 in-session single-command allowlist denials (3 ON / 4 OFF, all self-corrected); FIRST family run with zero reset-relaunches (prepare-time permission-surface smoke executed \u2014 the run-5 session idea)."
+  },
+  {
+    "date": "2026-07-11",
+    "kit_version": "1.11.0",
+    "run_id": "2026-07-11-run08",
+    "tasks": [
+      "T2",
+      "T4",
+      "T5"
+    ],
+    "m1_on": {
+      "T2": 2223,
+      "T4": 2506,
+      "T5": 221
+    },
+    "m1_off": {
+      "T2": 905,
+      "T4": 1628,
+      "T5": 240
+    },
+    "m2": "tie",
+    "m3": "tie",
+    "verdict": "FAIL",
+    "judge_model": "claude-opus-4-8",
+    "notes": "Reading A FAIL (fourth consecutive 0-of-3): M1 to OFF on T2/T4 (2223/2506 vs 905/1628; ON wins the T5 pair 221 vs 240 \u2014 third family ON M1 pair win, all on T5), M2 tie + M3 tie. FIRST RUN BEHIND THE RUN-7 \u00a76 PRECONDITIONS: delegation-seam smoke PASSED with the env mitigation (spawned CLIs stripped of CLAUDE_AUTO_BACKGROUND_TASKS + BG_TASKS_REPORT_RUNNING + COORDINATOR_MODE + COORDINATOR_EXTRA_TOOLS + CHILD_SESSION via env -u; unmitigated control spawn still delegated a paraphrased-prompt worker \u2014 run-7 signature reproduced A/B); seam under mitigation is FLAT (no delegation; the spawned session IS the measured cold session; one stream + byte-verbatim prompt 6/6; segments cold-verified against CLAUDE_CODE_SESSION_ID stream-file sharing). THE RUN-8 HEADLINE (#203 pointer re-validation): HANDOFF.md was OPENED AT THE MEASURED SEAM for the first time \u2014 ON-T2 and ON-T4 both cat it in their FIRST tool call (convention-guess probes converted by the file existing; the push names the card, not the file), and ON-T4 opened the pointed card (first family card-continuity conversion) \u2014 but the card was an unfilled auto-draft (8 [[fill:]] slots), so continuity added no marginal value over OFF reading source, and the write-back probe failed both arms. Pointer footprint 59 words <= the 113 pin. Push delivery 3/3 ON at the flat seam (run-6 delivery gap absent without the delegation layer); claudeMd channel still absent 0/6. T5 ran the RATIFIED v2 text natively (PR #181 owner-merged pre-arm; prompt bytes = v1 by design; v2 items judged, rubric-alignment follow-up pin PR pending): signal-visibility MET first time \u2014 push named the drafted card + open-FIRST and ON-T5 IGNORED it (items 1-3 not-met, item 4 met \u2014 no suppression); check --strict exit=1 at end. Both T5 arms independently swept T2 uncommitted work into a mislabeled commit via git add cli.py, self-detected, ended asking headlessly (judge corrected the runner draft that OFF was clean). In-budget max 2506 <= 7k, zero unrecoverable errors; seed 711801 deltareading first try; fifth consecutive clean scripted prepare; arms claude-sonnet-5 x6 + judge claude-opus-4-8 transcript-verified; guard-fire windows 6/2/3 advisory, unacknowledged; ZERO reset-relaunches (second consecutive); deviations verbatim in manifest runner_notes (12 entries)."
   }
 ]

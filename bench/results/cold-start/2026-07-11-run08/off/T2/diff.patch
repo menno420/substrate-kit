@@ -1,0 +1,228 @@
+diff --git a/README.md b/README.md
+index 6143151..355af4f 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,6 @@
+ 
+ A tiny reading-log CLI: `note` records with a category and
+ value, then `list`, `total`, `filter <category>` (case-insensitive),
+-and `top` them.
++`top`, and `report` them.
+ 
+ Run the tests with `python3 -m pytest tests/`.
+diff --git a/deltareading/__pycache__/__init__.cpython-311.pyc b/deltareading/__pycache__/__init__.cpython-311.pyc
+new file mode 100644
+index 0000000..d618405
+Binary files /dev/null and b/deltareading/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/deltareading/__pycache__/cli.cpython-311.pyc b/deltareading/__pycache__/cli.cpython-311.pyc
+new file mode 100644
+index 0000000..9167d47
+Binary files /dev/null and b/deltareading/__pycache__/cli.cpython-311.pyc differ
+diff --git a/deltareading/__pycache__/ops.cpython-311.pyc b/deltareading/__pycache__/ops.cpython-311.pyc
+new file mode 100644
+index 0000000..bac6930
+Binary files /dev/null and b/deltareading/__pycache__/ops.cpython-311.pyc differ
+diff --git a/deltareading/__pycache__/store.cpython-311.pyc b/deltareading/__pycache__/store.cpython-311.pyc
+new file mode 100644
+index 0000000..91904fd
+Binary files /dev/null and b/deltareading/__pycache__/store.cpython-311.pyc differ
+diff --git a/deltareading/cli.py b/deltareading/cli.py
+index 4c9ab5b..d0103f2 100644
+--- a/deltareading/cli.py
++++ b/deltareading/cli.py
+@@ -1,27 +1,60 @@
+ """deltareading — a tiny reading-log CLI.
+ 
+-Commands: note (add a record) · list · total · filter <category> · top.
++Commands: note (add a record) · list · total · filter <category> · top ·
++report.
+ """
+ 
+ import argparse
++import math
+ import sys
+ 
+ from deltareading import ops, store
+ 
+ 
++def _category(raw):
++    """argparse type: a non-blank category name."""
++    value = raw.strip()
++    if not value:
++        raise argparse.ArgumentTypeError("category must not be empty")
++    return value
++
++
++def _finite_float(raw):
++    """argparse type: a finite (non-NaN/inf) float."""
++    try:
++        value = float(raw)
++    except ValueError:
++        raise argparse.ArgumentTypeError(f"invalid float value: {raw!r}")
++    if not math.isfinite(value):
++        raise argparse.ArgumentTypeError(f"value must be finite, got {raw!r}")
++    return value
++
++
++def _positive_int(raw):
++    """argparse type: an integer >= 1."""
++    try:
++        value = int(raw)
++    except ValueError:
++        raise argparse.ArgumentTypeError(f"invalid int value: {raw!r}")
++    if value < 1:
++        raise argparse.ArgumentTypeError("limit must be a positive integer")
++    return value
++
++
+ def main(argv=None):
+     parser = argparse.ArgumentParser(prog="deltareading")
+     sub = parser.add_subparsers(dest="command", required=True)
+     add_p = sub.add_parser("note", help="add a reading record")
+-    add_p.add_argument("category")
+-    add_p.add_argument("value", type=float)
++    add_p.add_argument("category", type=_category)
++    add_p.add_argument("value", type=_finite_float)
+     add_p.add_argument("--note", default="")
+     sub.add_parser("list", help="list all records")
+     sub.add_parser("total", help="sum the value field")
+     filter_p = sub.add_parser("filter", help="records in one category")
+-    filter_p.add_argument("category")
++    filter_p.add_argument("category", type=_category)
+     top_p = sub.add_parser("top", help="highest-value categories")
+-    top_p.add_argument("--limit", type=int, default=3)
++    top_p.add_argument("--limit", type=_positive_int, default=3)
++    sub.add_parser("report", help="per-category totals, highest first")
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -40,6 +73,10 @@ def main(argv=None):
+     elif args.command == "top":
+         for category, subtotal in ops.top_categories(records, args.limit):
+             print(f"{category}: {subtotal}")
++    elif args.command == "report":
++        for category, count, subtotal in ops.report_categories(records):
++            print(f"{category}: {count} records, {subtotal}")
++        print(f"overall: {len(records)} records, {ops.total_value(records)}")
+     return 0
+ 
+ 
+diff --git a/deltareading/ops.py b/deltareading/ops.py
+index 89d99df..f923906 100644
+--- a/deltareading/ops.py
++++ b/deltareading/ops.py
+@@ -29,3 +29,14 @@ def top_categories(records, limit=3):
+         totals[r["category"]] = totals.get(r["category"], 0.0) + r["value"]
+     ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
+     return ranked[:limit]
++
++
++def report_categories(records):
++    """Return (category, count, total) rows, sorted by total, highest first."""
++    counts = {}
++    totals = {}
++    for r in records:
++        counts[r["category"]] = counts.get(r["category"], 0) + 1
++        totals[r["category"]] = totals.get(r["category"], 0.0) + r["value"]
++    ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
++    return [(category, counts[category], total) for category, total in ranked]
+diff --git a/tests/__pycache__/__init__.cpython-311.pyc b/tests/__pycache__/__init__.cpython-311.pyc
+new file mode 100644
+index 0000000..16af188
+Binary files /dev/null and b/tests/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/tests/__pycache__/test_deltareading.cpython-311-pytest-9.1.1.pyc b/tests/__pycache__/test_deltareading.cpython-311-pytest-9.1.1.pyc
+new file mode 100644
+index 0000000..f66d691
+Binary files /dev/null and b/tests/__pycache__/test_deltareading.cpython-311-pytest-9.1.1.pyc differ
+diff --git a/tests/test_deltareading.py b/tests/test_deltareading.py
+index 186c937..4474718 100644
+--- a/tests/test_deltareading.py
++++ b/tests/test_deltareading.py
+@@ -1,6 +1,10 @@
+ """Tests for deltareading core operations."""
+ 
+-from deltareading import ops
++import argparse
++
++import pytest
++
++from deltareading import cli, ops
+ 
+ 
+ def _sample():
+@@ -37,3 +41,75 @@ def test_top_categories_ranked():
+ 
+ def test_top_categories_limit():
+     assert len(ops.top_categories(_sample(), limit=1)) == 1
++
++
++def test_report_categories_ranked_with_counts():
++    ranked = ops.report_categories(_sample())
++    assert ranked == [("travel", 1, 30.0), ("food", 2, 20.0)]
++
++
++def test_report_categories_empty():
++    assert ops.report_categories([]) == []
++
++
++def test_report_command_output(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["note", "food", "12.5", "--note", "lunch"])
++    cli.main(["note", "travel", "30"])
++    cli.main(["note", "food", "7.5"])
++    capsys.readouterr()  # discard the "recorded." lines
++
++    cli.main(["report"])
++    lines = capsys.readouterr().out.splitlines()
++    assert lines == [
++        "travel: 1 records, 30.0",
++        "food: 2 records, 20.0",
++        "overall: 3 records, 50.0",
++    ]
++
++
++def test_report_command_empty_data(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["report"])
++    lines = capsys.readouterr().out.splitlines()
++    assert lines == ["overall: 0 records, 0"]
++
++
++def test_category_type_rejects_blank():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._category("   ")
++
++
++def test_category_type_strips_whitespace():
++    assert cli._category("  food  ") == "food"
++
++
++def test_finite_float_rejects_non_numeric():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._finite_float("not-a-number")
++
++
++def test_finite_float_rejects_nan_and_inf():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._finite_float("nan")
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._finite_float("inf")
++
++
++def test_positive_int_rejects_zero_and_negative():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._positive_int("0")
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._positive_int("-1")
++
++
++def test_note_rejects_blank_category_at_cli_level(tmp_path, monkeypatch):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit):
++        cli.main(["note", "   ", "1.0"])
++
++
++def test_top_rejects_non_positive_limit_at_cli_level(tmp_path, monkeypatch):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit):
++        cli.main(["top", "--limit", "0"])

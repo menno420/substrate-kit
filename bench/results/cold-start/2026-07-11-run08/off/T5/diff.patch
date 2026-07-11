@@ -1,0 +1,349 @@
+diff --git a/README.md b/README.md
+index 6143151..13e2f98 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,7 @@
+ 
+ A tiny reading-log CLI: `note` records with a category and
+ value, then `list`, `total`, `filter <category>` (case-insensitive),
+-and `top` them.
++`top`, and `report` them. `budget <category> <amount>` sets a per-category
++budget; `report` flags any category whose total exceeds its budget.
+ 
+ Run the tests with `python3 -m pytest tests/`.
+diff --git a/deltareading/__pycache__/__init__.cpython-311.pyc b/deltareading/__pycache__/__init__.cpython-311.pyc
+new file mode 100644
+index 0000000..d618405
+Binary files /dev/null and b/deltareading/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/deltareading/__pycache__/cli.cpython-311.pyc b/deltareading/__pycache__/cli.cpython-311.pyc
+new file mode 100644
+index 0000000..1080fc8
+Binary files /dev/null and b/deltareading/__pycache__/cli.cpython-311.pyc differ
+diff --git a/deltareading/__pycache__/ops.cpython-311.pyc b/deltareading/__pycache__/ops.cpython-311.pyc
+new file mode 100644
+index 0000000..f940e86
+Binary files /dev/null and b/deltareading/__pycache__/ops.cpython-311.pyc differ
+diff --git a/deltareading/__pycache__/store.cpython-311.pyc b/deltareading/__pycache__/store.cpython-311.pyc
+new file mode 100644
+index 0000000..005bcf8
+Binary files /dev/null and b/deltareading/__pycache__/store.cpython-311.pyc differ
+diff --git a/deltareading/cli.py b/deltareading/cli.py
+index 4c9ab5b..3e634ac 100644
+--- a/deltareading/cli.py
++++ b/deltareading/cli.py
+@@ -1,27 +1,71 @@
+ """deltareading — a tiny reading-log CLI.
+ 
+-Commands: note (add a record) · list · total · filter <category> · top.
++Commands: note (add a record) · list · total · filter <category> · top ·
++report · budget <category> <amount>.
+ """
+ 
+ import argparse
++import math
+ import sys
+ 
+ from deltareading import ops, store
+ 
+ 
++def _category(raw):
++    """argparse type: a non-blank category name."""
++    value = raw.strip()
++    if not value:
++        raise argparse.ArgumentTypeError("category must not be empty")
++    return value
++
++
++def _finite_float(raw):
++    """argparse type: a finite (non-NaN/inf) float."""
++    try:
++        value = float(raw)
++    except ValueError:
++        raise argparse.ArgumentTypeError(f"invalid float value: {raw!r}")
++    if not math.isfinite(value):
++        raise argparse.ArgumentTypeError(f"value must be finite, got {raw!r}")
++    return value
++
++
++def _positive_int(raw):
++    """argparse type: an integer >= 1."""
++    try:
++        value = int(raw)
++    except ValueError:
++        raise argparse.ArgumentTypeError(f"invalid int value: {raw!r}")
++    if value < 1:
++        raise argparse.ArgumentTypeError("limit must be a positive integer")
++    return value
++
++
++def _non_negative_float(raw):
++    """argparse type: a finite float >= 0."""
++    value = _finite_float(raw)
++    if value < 0:
++        raise argparse.ArgumentTypeError("budget must not be negative")
++    return value
++
++
+ def main(argv=None):
+     parser = argparse.ArgumentParser(prog="deltareading")
+     sub = parser.add_subparsers(dest="command", required=True)
+     add_p = sub.add_parser("note", help="add a reading record")
+-    add_p.add_argument("category")
+-    add_p.add_argument("value", type=float)
++    add_p.add_argument("category", type=_category)
++    add_p.add_argument("value", type=_finite_float)
+     add_p.add_argument("--note", default="")
+     sub.add_parser("list", help="list all records")
+     sub.add_parser("total", help="sum the value field")
+     filter_p = sub.add_parser("filter", help="records in one category")
+-    filter_p.add_argument("category")
++    filter_p.add_argument("category", type=_category)
+     top_p = sub.add_parser("top", help="highest-value categories")
+-    top_p.add_argument("--limit", type=int, default=3)
++    top_p.add_argument("--limit", type=_positive_int, default=3)
++    sub.add_parser("report", help="per-category totals, highest first")
++    budget_p = sub.add_parser("budget", help="set a category's budget")
++    budget_p.add_argument("category", type=_category)
++    budget_p.add_argument("amount", type=_non_negative_float)
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -33,13 +77,26 @@ def main(argv=None):
+         for r in records:
+             print(f"{r['category']}: {r['value']} {r['note']}".rstrip())
+     elif args.command == "total":
+-        print(ops.total_value(records))
++        print(f"{ops.total_value(records):.2f}")
+     elif args.command == "filter":
+         for r in ops.filter_by_category(records, args.category):
+             print(f"{r['category']}: {r['value']}")
+     elif args.command == "top":
+         for category, subtotal in ops.top_categories(records, args.limit):
+             print(f"{category}: {subtotal}")
++    elif args.command == "report":
++        budgets = store.load_budgets()
++        for category, count, subtotal, over_budget in ops.report_categories(records, budgets):
++            line = f"{category}: {count} records, {subtotal}"
++            if over_budget:
++                line += f" (over budget: {budgets[category]})"
++            print(line)
++        print(f"overall: {len(records)} records, {ops.total_value(records)}")
++    elif args.command == "budget":
++        budgets = store.load_budgets()
++        budgets[args.category] = args.amount
++        store.save_budgets(budgets)
++        print(f"budget set: {args.category} = {args.amount}")
+     return 0
+ 
+ 
+diff --git a/deltareading/ops.py b/deltareading/ops.py
+index 89d99df..53fdd84 100644
+--- a/deltareading/ops.py
++++ b/deltareading/ops.py
+@@ -29,3 +29,23 @@ def top_categories(records, limit=3):
+         totals[r["category"]] = totals.get(r["category"], 0.0) + r["value"]
+     ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
+     return ranked[:limit]
++
++
++def report_categories(records, budgets=None):
++    """Return (category, count, total, over_budget) rows, highest total first.
++
++    ``budgets`` maps category -> budget amount; a category is flagged
++    over_budget when its total exceeds its budget. Categories without a
++    budget entry are never flagged.
++    """
++    budgets = budgets or {}
++    counts = {}
++    totals = {}
++    for r in records:
++        counts[r["category"]] = counts.get(r["category"], 0) + 1
++        totals[r["category"]] = totals.get(r["category"], 0.0) + r["value"]
++    ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
++    return [
++        (category, counts[category], total, category in budgets and total > budgets[category])
++        for category, total in ranked
++    ]
+diff --git a/deltareading/store.py b/deltareading/store.py
+index aa802d0..65d85e0 100644
+--- a/deltareading/store.py
++++ b/deltareading/store.py
+@@ -4,6 +4,7 @@ import json
+ from pathlib import Path
+ 
+ DEFAULT_PATH = Path("readings.json")
++BUDGETS_PATH = Path("budgets.json")
+ 
+ 
+ def load_records(path=DEFAULT_PATH):
+@@ -17,3 +18,16 @@ def load_records(path=DEFAULT_PATH):
+ def save_records(records, path=DEFAULT_PATH):
+     """Write the reading records back to disk."""
+     Path(path).write_text(json.dumps(records, indent=2), encoding="utf-8")
++
++
++def load_budgets(path=BUDGETS_PATH):
++    """Return the stored per-category budgets (empty dict when no file)."""
++    path = Path(path)
++    if not path.exists():
++        return {}
++    return json.loads(path.read_text(encoding="utf-8"))
++
++
++def save_budgets(budgets, path=BUDGETS_PATH):
++    """Write the per-category budgets back to disk."""
++    Path(path).write_text(json.dumps(budgets, indent=2), encoding="utf-8")
+diff --git a/tests/__pycache__/__init__.cpython-311.pyc b/tests/__pycache__/__init__.cpython-311.pyc
+new file mode 100644
+index 0000000..16af188
+Binary files /dev/null and b/tests/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/tests/__pycache__/test_deltareading.cpython-311-pytest-9.1.1.pyc b/tests/__pycache__/test_deltareading.cpython-311-pytest-9.1.1.pyc
+new file mode 100644
+index 0000000..acf83b3
+Binary files /dev/null and b/tests/__pycache__/test_deltareading.cpython-311-pytest-9.1.1.pyc differ
+diff --git a/tests/test_deltareading.py b/tests/test_deltareading.py
+index 186c937..92df5aa 100644
+--- a/tests/test_deltareading.py
++++ b/tests/test_deltareading.py
+@@ -1,6 +1,10 @@
+ """Tests for deltareading core operations."""
+ 
+-from deltareading import ops
++import argparse
++
++import pytest
++
++from deltareading import cli, ops
+ 
+ 
+ def _sample():
+@@ -37,3 +41,129 @@ def test_top_categories_ranked():
+ 
+ def test_top_categories_limit():
+     assert len(ops.top_categories(_sample(), limit=1)) == 1
++
++
++def test_report_categories_ranked_with_counts():
++    ranked = ops.report_categories(_sample())
++    assert ranked == [("travel", 1, 30.0, False), ("food", 2, 20.0, False)]
++
++
++def test_report_categories_empty():
++    assert ops.report_categories([]) == []
++
++
++def test_report_categories_flags_over_budget():
++    ranked = ops.report_categories(_sample(), budgets={"food": 15.0})
++    assert ranked == [("travel", 1, 30.0, False), ("food", 2, 20.0, True)]
++
++
++def test_report_categories_at_budget_not_flagged():
++    ranked = ops.report_categories(_sample(), budgets={"food": 20.0})
++    assert ranked[1] == ("food", 2, 20.0, False)
++
++
++def test_report_categories_ignores_budget_for_unknown_category():
++    ranked = ops.report_categories(_sample(), budgets={"other": 1.0})
++    assert all(not over_budget for *_, over_budget in ranked)
++
++
++def test_report_command_output(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["note", "food", "12.5", "--note", "lunch"])
++    cli.main(["note", "travel", "30"])
++    cli.main(["note", "food", "7.5"])
++    capsys.readouterr()  # discard the "recorded." lines
++
++    cli.main(["report"])
++    lines = capsys.readouterr().out.splitlines()
++    assert lines == [
++        "travel: 1 records, 30.0",
++        "food: 2 records, 20.0",
++        "overall: 3 records, 50.0",
++    ]
++
++
++def test_report_command_empty_data(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["report"])
++    lines = capsys.readouterr().out.splitlines()
++    assert lines == ["overall: 0 records, 0"]
++
++
++def test_budget_command_output(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["budget", "food", "15"])
++    lines = capsys.readouterr().out.splitlines()
++    assert lines == ["budget set: food = 15.0"]
++
++
++def test_report_command_flags_over_budget_categories(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["note", "food", "12.5"])
++    cli.main(["note", "travel", "30"])
++    cli.main(["note", "food", "7.5"])
++    cli.main(["budget", "food", "15"])
++    capsys.readouterr()  # discard "recorded."/"budget set" lines
++
++    cli.main(["report"])
++    lines = capsys.readouterr().out.splitlines()
++    assert lines == [
++        "travel: 1 records, 30.0",
++        "food: 2 records, 20.0 (over budget: 15.0)",
++        "overall: 3 records, 50.0",
++    ]
++
++
++def test_budget_command_rejects_negative_amount(tmp_path, monkeypatch):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit):
++        cli.main(["budget", "food", "-1"])
++
++
++def test_non_negative_float_rejects_negative():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._non_negative_float("-0.01")
++
++
++def test_non_negative_float_allows_zero():
++    assert cli._non_negative_float("0") == 0.0
++
++
++def test_category_type_rejects_blank():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._category("   ")
++
++
++def test_category_type_strips_whitespace():
++    assert cli._category("  food  ") == "food"
++
++
++def test_finite_float_rejects_non_numeric():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._finite_float("not-a-number")
++
++
++def test_finite_float_rejects_nan_and_inf():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._finite_float("nan")
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._finite_float("inf")
++
++
++def test_positive_int_rejects_zero_and_negative():
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._positive_int("0")
++    with pytest.raises(argparse.ArgumentTypeError):
++        cli._positive_int("-1")
++
++
++def test_note_rejects_blank_category_at_cli_level(tmp_path, monkeypatch):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit):
++        cli.main(["note", "   ", "1.0"])
++
++
++def test_top_rejects_non_positive_limit_at_cli_level(tmp_path, monkeypatch):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit):
++        cli.main(["top", "--limit", "0"])
