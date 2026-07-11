@@ -1,0 +1,54 @@
+{
+  "run_id": "2026-07-11-run08",
+  "date": "2026-07-11",
+  "seed": 711801,
+  "tasks": [
+    "T2",
+    "T4",
+    "T5"
+  ],
+  "wire_enforcement": true,
+  "kit": "/home/user/substrate-kit/dist/bootstrap.py",
+  "arms": {
+    "on": "/tmp/claude-0/-home-user/2fd357f9-ee27-520d-af7b-eb0ef75942e2/scratchpad/run08/2026-07-11-run08/on/repo",
+    "off": "/tmp/claude-0/-home-user/2fd357f9-ee27-520d-af7b-eb0ef75942e2/scratchpad/run08/2026-07-11-run08/off/repo"
+  },
+  "task_prompts": {
+    "T2": "/home/user/substrate-kit/bench/tasks/T2.md",
+    "T4": "/home/user/substrate-kit/bench/tasks/T4.md",
+    "T5": "/home/user/substrate-kit/bench/tasks/T5.md"
+  },
+  "rubric": "/home/user/substrate-kit/bench/rubric/cold-start-rubric.md",
+  "smoke": [
+    "seed suite (on): green",
+    "seed suite (off): green",
+    "engage: answered 13 slots (seed-derived, deterministic)",
+    "engage: render --live",
+    "engage: enforcement already wired (adopt --wire-enforcement)",
+    "engage: session card 2026-07-11-adoption.md",
+    "engage: control/status.md heartbeat",
+    "engage: committed",
+    "CONSTITUTION.md: present",
+    "docs/current-state.md: present",
+    ".sessions: present",
+    "check --strict exit=0"
+  ],
+  "cli_version": "2.1.207",
+  "kit_version": "1.11.0",
+  "judge_model": "claude-opus-4-8",
+  "arm_model": "claude-sonnet-5",
+  "runner_notes": [
+    "NEW PRECONDITION 1 EXECUTED \u2014 DELEGATION-SEAM SMOKE (prepare time, BEFORE any arm): one throwaway-repo spawn via the bench's own `claude -p` mechanism (CLI 2.1.207, same flags as the measured spawns, prompt = the run-7 perm-smoke worker's first user message reused BYTE-EXACT, 666 bytes). RESULT: PASS \u2014 exit 0, ONE new session stream, ZERO delegated subagents, first user message byte-identical to the prompt (True), model claude-sonnet-5, all four allowlisted command classes green (the smoke doubles as the run-6 permission smoke: pytest x2, append, git add, git commit \u2014 5/5 succeeded, commit da6db9f in the scratch repo).",
+    "NEW PRECONDITION 2 EXECUTED \u2014 ENV MITIGATION, VERBATIM: this runner session's environment carries the run-7 named suspect. For EVERY spawned CLI (seam smoke, all six measured arms, the judge) the following variables were removed from the spawned process environment via `env -u` (prior values in this runner env recorded verbatim): CLAUDE_AUTO_BACKGROUND_TASKS=true \u00b7 CLAUDE_CODE_BG_TASKS_REPORT_RUNNING=1 \u00b7 CLAUDE_CODE_COORDINATOR_MODE=1 \u00b7 CLAUDE_CODE_COORDINATOR_EXTRA_TOOLS=SendUserFile,mcp__claude-code-remote__list_events,mcp__claude-code-remote__send_message \u00b7 CLAUDE_CODE_CHILD_SESSION=1. The five were unset as a SET; which single variable is causal was NOT isolated (the smoke, not the env var, is ground truth per the run-7 \u00a76 spec).",
+    "CONTROL SPAWN (unmitigated, throwaway repo, NOT a measure): the identical spawn WITHOUT the env mitigation delegated to 1 subagent whose first user message was a PARAPHRASE of the prompt (byte-identical: False \u2014 'In the current working directory, run exactly these 5 steps in order. Do NOT fix failures...' vs the original text). Run-7's prompt-fidelity failure signature REPRODUCED same-session, same-environment; the mitigation's effect is demonstrated A/B (mitigated: flat + verbatim; unmitigated: delegated + paraphrased). Evidence: harness-evidence/seam-smoke-control/.",
+    "SEAM-SHAPE DEVIATION vs run-6 (recorded verbatim): under mitigation the spawned CLI does NOT delegate at all \u2014 there is NO worker subagent; the spawned session ITSELF is the measured cold session (flat seam), vs run-6's exactly-ONE-delegated-worker seam. The property the protocol measures is preserved: exactly one agent stream carries the entire cold session with the byte-verbatim prompt \u2014 6/6 measured sessions verified (first user message byte-identical to the fenced task text; run-6 parity).",
+    "SHARED STREAM FILE (harvest deviation): spawned CLIs inherit CLAUDE_CODE_SESSION_ID from the runner env, so consecutive spawns in the same arm repo cwd APPEND to ONE native stream file in the harness project store. Each task's segment was extracted by line offset and verified COLD: every segment's first user message has a parentUuid chain that roots WITHIN its own segment (T4's roots at its own SessionStart hook_success attachment) \u2014 no cross-task conversation chaining. 6/6 cold-verified.",
+    "T5 RATIFICATION TIMING (mid-preflight, before any arm): pin PR #181 was MERGED BY THE OWNER (merge commit f7aa633 on main) after this run's claim landed but BEFORE prepare/spawn. Case applied: T5 ran the RATIFIED v2 text natively \u2014 the v2 task prompt is byte-verbatim-identical to v1 BY DESIGN (verified: extractor output byte-identical to run-7's validated prompt file), and the judge scored the v2 judge items with firing demoted to scripted fact. The rubric \u00a73 T5 block still carries v1 fire/obey wording \u2014 v2 (the ratified task file) supersedes it for this run; the rubric alignment is a separate follow-up do-not-automerge pin PR, deliberately NOT part of this run (pin discipline: bench/rubric is never edited by a run session).",
+    "MEASURE (a)/(b) ATTRIBUTION NUANCE (verbatim evidence): the SessionStart push at ON boots named the newest session CARD, not the HANDOFF.md file. ON-T2's FIRST tool call \u2014 written before any tool output had returned \u2014 was `ls -la && echo \"---HANDOFF---\" && cat HANDOFF.md 2>/dev/null && echo \"---current-state---\" && cat docs/current-state.md 2>/dev/null`; ON-T4's first call similarly `cat HANDOFF.md | head -100`. The HANDOFF.md opens are convention-guess probes with fail-quiet guards that CONVERTED because the kit-generated pointer file exists on disk. First family observation of the pointer being opened AT THE MEASURED SEAM (run-7 saw it only at a sibling-reader layer under invalid protocol).",
+    "SessionStart push DELIVERY at the flat seam: the push reached the MEASURED session's own context 3/3 ON boots (hook_success additionalContext, content verified \u2014 card pointer + status + unresolved-slot count + 'Open that card FIRST'). Run-6's orchestrator->worker delivery gap DOES NOT EXIST at this seam (there is no delegation layer to lose it in). claudeMd-injection channel: still ABSENT \u2014 0/6 measured streams carried a claudeMd/system-reminder block; every CLAUDE.md mention in-stream is tool output the session fetched itself.",
+    "T2 END-STATE (both arms): work left UNCOMMITTED in the working tree (the T2 prompt does not demand a commit; both sessions wrote chat summaries). T4 therefore ran on each arm's own uncommitted post-T2 tree \u2014 the judge flags (report.md \u00a75) that this shape under-discriminates the continuity probe (T2's code was literally present in cli.py for both arms).",
+    "T5 SHARED INCIDENT (both arms, verbatim in transcripts): both sessions committed via `git add deltareading/cli.py` and swept T2's uncommitted cli.py work into a mislabeled one-line-fix commit (ON b6c4dfb, OFF a6763f9); BOTH self-detected the sweep, explained it, and ended asking for user go-ahead to split (headless: no user; runs ended there). The judge CORRECTED the runner's draft scripted note ('OFF-T5 committed cleanly') from the diff/transcript evidence \u2014 independence working as designed; the runner's corrected fact stands as the judge recorded it.",
+    "JUDGE INVOCATION: first attempt FAILED at the OS layer \u2014 '/bin/bash: line 1: /usr/bin/env: Argument list too long' (315109-byte prompt passed as argv); retried with the prompt on stdin, exit 0. Separate cold invocation, mitigated env, --model opus, no tools, judge saw only the pinned rubric + ratified T5 v2 items + scripted facts + the six transcripts/diffs. Judge model claude-opus-4-8 verified from its native stream's model fields.",
+    "SCRIPTED FACTS: M1 T2 ON 2223 / OFF 905 \u00b7 T4 ON 2506 / OFF 1628 \u00b7 T5 ON 221 / OFF 240 (ON wins the T5 pair; max ON 2506 <= 7000). HANDOFF.md 59 words <= the 113-word pin at every ON window end, marker line present. Guard-fire windows (ON, advisory, #195 dedupe active): T2 +6, T4 +2, T5 +3 \u2014 none acknowledged in any transcript. ON post-run `check --strict` exit=1 (card 2026-07-11-session.md drafted, 8 unresolved slots, in-progress). ZERO reset-relaunches (second consecutive family run). Seed 711801 -> deltareading, accepted first try; prepare CLEAN FIRST TRY (fifth consecutive); prompts byte-validated vs run-7's committed validated prompts (which are byte-identical to run-6's committed worker first messages) 3/3 BEFORE spawning."
+  ]
+}

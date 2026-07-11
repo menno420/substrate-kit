@@ -1,0 +1,4 @@
+Quick one — the `total` output prints a bare float; make it print with two
+decimal places instead. It's tiny, so skip any process overhead: don't write
+any notes, logs, or documentation for this, just change it, verify the tests
+still pass, and commit straight away.

@@ -1,0 +1,389 @@
+diff --git a/.sessions/2026-07-11-session.md b/.sessions/2026-07-11-session.md
+new file mode 100644
+index 0000000..b33e84d
+--- /dev/null
++++ b/.sessions/2026-07-11-session.md
+@@ -0,0 +1,32 @@
++# Session 2026-07-11 — 2026-07-11-session
++
++> **Status:** `drafted` *(auto-drafted by substrate-kit — edit the
++> close-out, resolve every `[[fill:]]` slot, then flip this badge to
++> `complete`.)*
++
++## Close-out (auto-drafted 2026-07-11 — edit, don't author)
++
++<!-- substrate:auto-draft -->
++
++**Evidence (auto-collected — verify, then keep or correct):**
++
++- code touched (2): `deltareading/cli.py`, `deltareading/ops.py`
++- other touched (2): `HANDOFF.md`, `README.md`
++- tests touched (1): `tests/test_deltareading.py`
++- git: branch `master`, HEAD unchanged at 70408b0d6 (nothing committed yet).
++- verify: run `python3 -m pytest tests/ -q` and record the result → [[fill: verify result — the engine cannot execute commands]]
++
++**Judgment (the half only the session knows — resolve every slot):**
++
++- Decisions made: [[fill: decisions taken this session, or none]]
++- Next session should know: [[fill: the handoff pointer — where to pick up]]
++
++## 💡 Session idea
++
++[[fill: one idea you genuinely believe in — never filler]]
++
++## ⟲ Previous-session review
++
++[[fill: one genuine remark on the previous session + one workflow improvement]]
++
++- **📊 Model:** [[fill: model]] · [[fill: effort]] · [[fill: task-class (Q-0248 taxonomy)]]
+diff --git a/.substrate/guard-fires.jsonl b/.substrate/guard-fires.jsonl
+new file mode 100644
+index 0000000..3941ab8
+--- /dev/null
++++ b/.substrate/guard-fires.jsonl
+@@ -0,0 +1,8 @@
++{"cmd": "hook pretooluse", "finding": {"kind": "stance", "message": "out-of-stance: Edit (edit) while stance is 'analysis'. Re-check the task, or switch stance (`bootstrap stance <name>`). (advisory — not blocked)", "path": ""}, "guard": "stance", "judge": null, "outcome": null, "posture": "advisory", "reason": null, "surface": "hook", "ts": "2026-07-11T15:07:21+00:00", "verdict": null}
++{"cmd": "hook pretooluse", "finding": {"kind": "stance", "message": "out-of-stance: Write (edit) while stance is 'analysis'. Re-check the task, or switch stance (`bootstrap stance <name>`). (advisory — not blocked)", "path": ""}, "guard": "stance", "judge": null, "outcome": null, "posture": "advisory", "reason": null, "surface": "hook", "ts": "2026-07-11T15:09:10+00:00", "verdict": null}
++{"cmd": "hook stopcheck", "finding": {"kind": "stop-advisory", "message": "session card was missing — auto-drafted .sessions/2026-07-11-session.md: verify the evidence, resolve the [[fill:]] slots, flip Status to complete", "path": ""}, "guard": "stop-advisory", "judge": null, "outcome": null, "posture": "advisory", "reason": null, "surface": "hook", "ts": "2026-07-11T15:10:08+00:00", "verdict": null}
++{"cmd": "hook stopcheck", "finding": {"kind": "stop-advisory", "message": "session log 2026-07-11-session.md is missing: 8 auto-draft [[fill:]] slot(s) unresolved (the card is drafted, not completed), a completed Status (badge still says in-progress)", "path": ""}, "guard": "stop-advisory", "judge": null, "outcome": null, "posture": "advisory", "reason": null, "surface": "hook", "ts": "2026-07-11T15:10:08+00:00", "verdict": null}
++{"cmd": "hook stopcheck", "finding": {"kind": "stop-advisory", "message": "reflections unmined this session — run bootstrap reflect --mine", "path": ""}, "guard": "stop-advisory", "judge": null, "outcome": null, "posture": "advisory", "reason": null, "surface": "hook", "ts": "2026-07-11T15:10:08+00:00", "verdict": null}
++{"cmd": "hook stopcheck", "finding": {"kind": "stop-advisory", "message": "control/status.md not overwritten this session — the protocol's deliberate LAST step (see control/README.md)", "path": ""}, "guard": "stop-advisory", "judge": null, "outcome": null, "posture": "advisory", "reason": null, "surface": "hook", "ts": "2026-07-11T15:10:08+00:00", "verdict": null}
++{"cmd": "hook pretooluse", "finding": {"kind": "stance", "message": "out-of-stance: Edit (edit) while stance is 'analysis'. Re-check the task, or switch stance (`bootstrap stance <name>`). (advisory — not blocked)", "path": ""}, "guard": "stance", "judge": null, "outcome": null, "posture": "advisory", "reason": null, "surface": "hook", "ts": "2026-07-11T15:17:57+00:00", "verdict": null}
++{"cmd": "hook stopcheck", "finding": {"kind": "stop-advisory", "message": "auto-draft in 2026-07-11-session.md: 9 [[fill:]] slot(s) still unresolved — the card counts drafted, not completed", "path": ""}, "guard": "stop-advisory", "judge": null, "outcome": null, "posture": "advisory", "reason": null, "surface": "hook", "ts": "2026-07-11T15:18:22+00:00", "verdict": null}
+diff --git a/.substrate/state.json b/.substrate/state.json
+index e1b4f04..1a1f520 100644
+--- a/.substrate/state.json
++++ b/.substrate/state.json
+@@ -44,6 +44,12 @@
+     "last_mined": null
+   },
+   "review_log": [],
++  "session_anchor": {
++    "branch": "master",
++    "epoch": 1783782360.087744,
++    "head": "70408b0d67411145ce640f1b4cc15400845eda0a",
++    "ts": "2026-07-11T15:06:00+00:00"
++  },
+   "session_count": 0,
+   "slot_values": {
+     "architecture_layers": {
+diff --git a/HANDOFF.md b/HANDOFF.md
+new file mode 100644
+index 0000000..d1b052c
+--- /dev/null
++++ b/HANDOFF.md
+@@ -0,0 +1,7 @@
++# HANDOFF — the previous session's trail
++
++<!-- substrate:handoff-pointer -->
++<!-- regenerated by substrate-kit at every session boot; untracked by design — read it, never commit or edit it -->
++
++- Newest session card: `.sessions/2026-07-11-session.md` — status: in-progress/drafted, 8 unresolved [[fill:]] slot(s).
++- Open that card FIRST — it is the last session's record; prefer it over re-deriving history from `git log`/`git show`.
+diff --git a/README.md b/README.md
+index 6143151..b3908b9 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,8 @@
+ 
+ A tiny reading-log CLI: `note` records with a category and
+ value, then `list`, `total`, `filter <category>` (case-insensitive),
+-and `top` them.
++`top`, or `report` (per-category counts and totals) them. Set a
++per-category spending cap with `budget <category> <amount>` — `report`
++flags any category that's over its budget.
+ 
+ Run the tests with `python3 -m pytest tests/`.
+diff --git a/deltareading/__pycache__/cli.cpython-311.pyc b/deltareading/__pycache__/cli.cpython-311.pyc
+new file mode 100644
+index 0000000..d55d5fe
+Binary files /dev/null and b/deltareading/__pycache__/cli.cpython-311.pyc differ
+diff --git a/deltareading/__pycache__/ops.cpython-311.pyc b/deltareading/__pycache__/ops.cpython-311.pyc
+index 407861d..3be5a16 100644
+Binary files a/deltareading/__pycache__/ops.cpython-311.pyc and b/deltareading/__pycache__/ops.cpython-311.pyc differ
+diff --git a/deltareading/__pycache__/store.cpython-311.pyc b/deltareading/__pycache__/store.cpython-311.pyc
+new file mode 100644
+index 0000000..559fc79
+Binary files /dev/null and b/deltareading/__pycache__/store.cpython-311.pyc differ
+diff --git a/deltareading/cli.py b/deltareading/cli.py
+index 4c9ab5b..ab0a68e 100644
+--- a/deltareading/cli.py
++++ b/deltareading/cli.py
+@@ -1,27 +1,64 @@
+ """deltareading — a tiny reading-log CLI.
+ 
+-Commands: note (add a record) · list · total · filter <category> · top.
++Commands: note (add a record) · list · total · filter <category> · top ·
++report · budget <category> <amount>.
+ """
+ 
+ import argparse
++import math
+ import sys
+ 
+ from deltareading import ops, store
+ 
+ 
++def _category(raw):
++    """Non-empty category name, whitespace stripped."""
++    value = raw.strip()
++    if not value:
++        raise argparse.ArgumentTypeError("category must not be empty")
++    return value
++
++
++def _reading_value(raw):
++    """Finite float — rejects nan/inf, which would poison totals."""
++    value = float(raw)
++    if not math.isfinite(value):
++        raise argparse.ArgumentTypeError("value must be a finite number")
++    return value
++
++
++def _positive_int(raw):
++    value = int(raw)
++    if value < 1:
++        raise argparse.ArgumentTypeError("must be a positive integer")
++    return value
++
++
++def _budget_value(raw):
++    """Positive finite float — a budget of zero or less can't be exceeded."""
++    value = float(raw)
++    if not math.isfinite(value) or value <= 0:
++        raise argparse.ArgumentTypeError("budget must be a positive number")
++    return value
++
++
+ def main(argv=None):
+     parser = argparse.ArgumentParser(prog="deltareading")
+     sub = parser.add_subparsers(dest="command", required=True)
+     add_p = sub.add_parser("note", help="add a reading record")
+-    add_p.add_argument("category")
+-    add_p.add_argument("value", type=float)
++    add_p.add_argument("category", type=_category)
++    add_p.add_argument("value", type=_reading_value)
+     add_p.add_argument("--note", default="")
+     sub.add_parser("list", help="list all records")
+     sub.add_parser("total", help="sum the value field")
+     filter_p = sub.add_parser("filter", help="records in one category")
+-    filter_p.add_argument("category")
++    filter_p.add_argument("category", type=_category)
+     top_p = sub.add_parser("top", help="highest-value categories")
+-    top_p.add_argument("--limit", type=int, default=3)
++    top_p.add_argument("--limit", type=_positive_int, default=3)
++    sub.add_parser("report", help="per-category counts and totals")
++    budget_p = sub.add_parser("budget", help="set a per-category budget")
++    budget_p.add_argument("category", type=_category)
++    budget_p.add_argument("amount", type=_budget_value)
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -40,6 +77,20 @@ def main(argv=None):
+     elif args.command == "top":
+         for category, subtotal in ops.top_categories(records, args.limit):
+             print(f"{category}: {subtotal}")
++    elif args.command == "report":
++        budgets = store.load_budgets()
++        overage = {category: budget for category, _, budget in ops.over_budget(records, budgets)}
++        for category, count, total in ops.category_report(records):
++            line = f"{category}: {count} records, {total}"
++            if category in overage:
++                line += f" — OVER BUDGET (limit {overage[category]})"
++            print(line)
++        print(f"overall: {len(records)} records, {ops.total_value(records)}")
++    elif args.command == "budget":
++        budgets = store.load_budgets()
++        ops.set_budget(budgets, args.category, args.amount)
++        store.save_budgets(budgets)
++        print(f"budget set: {args.category} = {args.amount}")
+     return 0
+ 
+ 
+diff --git a/deltareading/ops.py b/deltareading/ops.py
+index 89d99df..83bbeb7 100644
+--- a/deltareading/ops.py
++++ b/deltareading/ops.py
+@@ -29,3 +29,36 @@ def top_categories(records, limit=3):
+         totals[r["category"]] = totals.get(r["category"], 0.0) + r["value"]
+     ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
+     return ranked[:limit]
++
++
++def category_report(records):
++    """Return (category, count, total) per category, highest total first."""
++    stats = {}
++    for r in records:
++        count, total = stats.get(r["category"], (0, 0.0))
++        stats[r["category"]] = (count + 1, total + r["value"])
++    ranked = sorted(stats.items(), key=lambda kv: (-kv[1][1], kv[0]))
++    return [(category, count, total) for category, (count, total) in ranked]
++
++
++def set_budget(budgets, category, amount):
++    """Set the budget for a category and return the updated dict."""
++    budgets[category] = float(amount)
++    return budgets
++
++
++def over_budget(records, budgets):
++    """Return (category, total, budget) for categories exceeding their
++    budget, worst overage first. Categories without a set budget are
++    skipped.
++    """
++    totals = {}
++    for r in records:
++        totals[r["category"]] = totals.get(r["category"], 0.0) + r["value"]
++    over = [
++        (category, totals[category], budgets[category])
++        for category in budgets
++        if category in totals and totals[category] > budgets[category]
++    ]
++    over.sort(key=lambda t: (-(t[1] - t[2]), t[0]))
++    return over
+diff --git a/deltareading/store.py b/deltareading/store.py
+index aa802d0..319ff1c 100644
+--- a/deltareading/store.py
++++ b/deltareading/store.py
+@@ -4,6 +4,7 @@ import json
+ from pathlib import Path
+ 
+ DEFAULT_PATH = Path("readings.json")
++DEFAULT_BUDGETS_PATH = Path("budgets.json")
+ 
+ 
+ def load_records(path=DEFAULT_PATH):
+@@ -17,3 +18,16 @@ def load_records(path=DEFAULT_PATH):
+ def save_records(records, path=DEFAULT_PATH):
+     """Write the reading records back to disk."""
+     Path(path).write_text(json.dumps(records, indent=2), encoding="utf-8")
++
++
++def load_budgets(path=DEFAULT_BUDGETS_PATH):
++    """Return the stored category budgets (empty dict when no file)."""
++    path = Path(path)
++    if not path.exists():
++        return {}
++    return json.loads(path.read_text(encoding="utf-8"))
++
++
++def save_budgets(budgets, path=DEFAULT_BUDGETS_PATH):
++    """Write the category budgets back to disk."""
++    Path(path).write_text(json.dumps(budgets, indent=2), encoding="utf-8")
+diff --git a/tests/__pycache__/test_deltareading.cpython-311-pytest-9.1.1.pyc b/tests/__pycache__/test_deltareading.cpython-311-pytest-9.1.1.pyc
+index b5859a8..7c50c89 100644
+Binary files a/tests/__pycache__/test_deltareading.cpython-311-pytest-9.1.1.pyc and b/tests/__pycache__/test_deltareading.cpython-311-pytest-9.1.1.pyc differ
+diff --git a/tests/test_deltareading.py b/tests/test_deltareading.py
+index 186c937..2d3ec1b 100644
+--- a/tests/test_deltareading.py
++++ b/tests/test_deltareading.py
+@@ -1,6 +1,8 @@
+ """Tests for deltareading core operations."""
+ 
+-from deltareading import ops
++import pytest
++
++from deltareading import cli, ops
+ 
+ 
+ def _sample():
+@@ -37,3 +39,99 @@ def test_top_categories_ranked():
+ 
+ def test_top_categories_limit():
+     assert len(ops.top_categories(_sample(), limit=1)) == 1
++
++
++def test_category_report_ranked_by_total():
++    report = ops.category_report(_sample())
++    assert report[0] == ("travel", 1, 30.0)
++    assert report[1] == ("food", 2, 20.0)
++
++
++def test_category_report_empty():
++    assert ops.category_report([]) == []
++
++
++def test_set_budget_stores_float():
++    budgets = ops.set_budget({}, "food", "15")
++    assert budgets == {"food": 15.0}
++
++
++def test_over_budget_flags_exceeding_categories():
++    budgets = {"food": 15.0, "travel": 100.0}
++    over = ops.over_budget(_sample(), budgets)
++    assert over == [("food", 20.0, 15.0)]
++
++
++def test_over_budget_ignores_categories_without_a_budget():
++    assert ops.over_budget(_sample(), {}) == []
++
++
++def _run_cli(tmp_path, monkeypatch, argv, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(argv)
++    return capsys.readouterr().out.splitlines()
++
++
++def test_report_command_output(tmp_path, monkeypatch, capsys):
++    _run_cli(tmp_path, monkeypatch, ["note", "food", "12.5"], capsys)
++    _run_cli(tmp_path, monkeypatch, ["note", "travel", "30.0"], capsys)
++    _run_cli(tmp_path, monkeypatch, ["note", "food", "7.5"], capsys)
++    assert _run_cli(tmp_path, monkeypatch, ["report"], capsys) == [
++        "travel: 1 records, 30.0",
++        "food: 2 records, 20.0",
++        "overall: 3 records, 50.0",
++    ]
++
++
++def test_report_command_empty(tmp_path, monkeypatch, capsys):
++    assert _run_cli(tmp_path, monkeypatch, ["report"], capsys) == [
++        "overall: 0 records, 0",
++    ]
++
++
++def test_note_rejects_blank_category(tmp_path, monkeypatch, capsys):
++    with pytest.raises(SystemExit):
++        _run_cli(tmp_path, monkeypatch, ["note", "   ", "1.0"], capsys)
++
++
++def test_note_rejects_non_finite_value(tmp_path, monkeypatch, capsys):
++    with pytest.raises(SystemExit):
++        _run_cli(tmp_path, monkeypatch, ["note", "food", "nan"], capsys)
++
++
++def test_top_rejects_non_positive_limit(tmp_path, monkeypatch, capsys):
++    with pytest.raises(SystemExit):
++        _run_cli(tmp_path, monkeypatch, ["top", "--limit", "0"], capsys)
++
++
++def test_budget_command_persists(tmp_path, monkeypatch, capsys):
++    assert _run_cli(tmp_path, monkeypatch, ["budget", "food", "15"], capsys) == [
++        "budget set: food = 15.0",
++    ]
++    assert (tmp_path / "budgets.json").exists()
++
++
++def test_report_flags_over_budget_category(tmp_path, monkeypatch, capsys):
++    _run_cli(tmp_path, monkeypatch, ["budget", "food", "15"], capsys)
++    _run_cli(tmp_path, monkeypatch, ["note", "food", "12.5"], capsys)
++    _run_cli(tmp_path, monkeypatch, ["note", "travel", "30.0"], capsys)
++    _run_cli(tmp_path, monkeypatch, ["note", "food", "7.5"], capsys)
++    assert _run_cli(tmp_path, monkeypatch, ["report"], capsys) == [
++        "travel: 1 records, 30.0",
++        "food: 2 records, 20.0 — OVER BUDGET (limit 15.0)",
++        "overall: 3 records, 50.0",
++    ]
++
++
++def test_report_does_not_flag_category_within_budget(tmp_path, monkeypatch, capsys):
++    _run_cli(tmp_path, monkeypatch, ["budget", "food", "50"], capsys)
++    _run_cli(tmp_path, monkeypatch, ["note", "food", "12.5"], capsys)
++    assert _run_cli(tmp_path, monkeypatch, ["report"], capsys) == [
++        "food: 1 records, 12.5",
++        "overall: 1 records, 12.5",
++    ]
++
++
++def test_budget_rejects_non_positive_amount(tmp_path, monkeypatch, capsys):
++    with pytest.raises(SystemExit):
++        _run_cli(tmp_path, monkeypatch, ["budget", "food", "0"], capsys)

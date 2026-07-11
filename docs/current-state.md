@@ -135,26 +135,24 @@
   T2/T4, ON won the T5 pair; M2/M3 tie; zero reset-relaunches, family
   first). **KF-8 trend at 6 rows: 1 PASS / 5 FAIL.** Deviations verbatim
   in each run dir.
-- **B1's SEVENTH FIRING is ABORTED — harness delegation-seam failure
-  (environment, not kit); NOT SCORED, no row** (run `2026-07-11-run07`,
-  seed 711701 mossreading, kit = vendored dist v1.11.0 — the first arm
-  carrying the #203 `HANDOFF.md` pointer; run dir committed WITHOUT an
-  index row, PR #211). The runner environment's `claude -p` orchestrator
-  decomposed every spawn across multiple subagents (6/9/5); **0/3 spawns
-  delivered the single verbatim-prompt worker** the protocol measures
-  (run-6: 6/6); ON's one reset-relaunch exhausted; failure arm-independent
-  (OFF decomposed too); T4/T5 never spawned; no collect, no M1, no judge.
-  Named suspect (observed, unproven): async background-task delegation
-  (`CLAUDE_AUTO_BACKGROUND_TASKS` inherited by spawned CLIs). Genuine
-  facts (evidence, not measures): the orchestrator's reader opened
-  `HANDOFF.md` both ON attempts (family first — under invalid protocol);
-  pointer 63 words ≤ the 113 pin; claudeMd injection absent at the worker
-  seam (0/20 streams). **Scored trend UNCHANGED: 1 PASS / 5 FAIL at 6
-  rows.** Next: run-8 = run-7's exact measures behind a prepare-time
-  delegation-seam smoke (the smoke worker must arrive ALONE with the
-  byte-verbatim prompt; abort before spawning the arms if not) in an
-  environment reproducing run-6's single-worker seam. Deviations verbatim
-  in the run dir manifest; full narrative in the run dir report.md.
+- **B1 FIRINGS 7–8 (condensed — run dirs, PRs #211/#215, are the full
+  immutable record):** run-7 `2026-07-11-run07` **ABORTED, NO ROW**
+  (environment, not kit: the runner's `claude -p` orchestrator decomposed
+  every spawn — 6/9/5 subagents, 0/3 verbatim-prompt workers; suspect
+  `CLAUDE_AUTO_BACKGROUND_TASKS`; nothing measured). run-8
+  `2026-07-11-run08` **FAIL** (fourth 0-of-3; first run behind the §6
+  preconditions: delegation-seam smoke PASSED with the env mitigation —
+  suspect + 4 related vars stripped from spawned CLIs; unmitigated
+  control still paraphrased; mitigated seam FLAT, the spawned session IS
+  the measured cold session, verbatim 6/6; M1 to OFF T2/T4, ON wins the
+  T5 pair; M2/M3 tie; **the #203 `HANDOFF.md` pointer was OPENED at the
+  measured seam for the first time** (ON-T2 + ON-T4) and ON-T4 opened the
+  pointed card — first card-continuity conversion — but the card was an
+  unfilled auto-draft, so no marginal continuity value; pointer 59 ≤ 113;
+  push delivered 3/3 ON at the flat seam; claudeMd channel absent 0/6;
+  T5 v2 RATIFIED pre-arm via #181 and run natively — visible push
+  IGNORED, `check --strict` exit=1 at end). **KF-8 trend at 7 rows:
+  1 PASS / 6 FAIL.** Deviations verbatim in each run dir manifest.
 - **The F-5 RULING is DELIVERED — Reading A (strict), 2026-07-10**
   (ORDER 011, Q-0262.1; `bench/results/cold-start/f5-ruling-order-011.md`,
   PR #128): runs 2–3 stand as un-caveated FAILs (immutable rows
@@ -404,12 +402,12 @@ so the measured session IS the hook-receiving session), then re-validate.
 B2/B3/B4 still need OWNER-ACTION 6; T5 v2 awaits the #181 click; the rest
 is owner-gated (OWNER-ACTION 2–13 in `control/status.md`).
 
-**→ Post-run-7 (2026-07-11):** the re-validation attempt (run-7, PR #211)
-ABORTED at spawn — the runner environment decomposed every `claude -p`
-spawn (0/3 verbatim single-worker spawns); NOT SCORED, no row, scored
-trend still 1 PASS / 5 FAIL at 6 rows. Top buildable: **run-8** — the
-seventh-firing bullet above has the spec (delegation-seam smoke +
-single-worker-seam environment).
+**→ Post-run-8 (2026-07-11):** run-8 (PR #215) executed the §6 spec —
+smoke PASSED mitigated, scored, row 7: **FAIL, 1 PASS / 6 FAIL**. The
+pointer converts at the measured seam now; the gap is the CARD (unfilled
+auto-draft — conversions carry no content). Top buildable: real content
+in the auto-draft card, then re-validate; rubric §3 T5 v2-alignment pin
+PR (owner-review path).
 
 ### Owner gates — each with its one-line unblock
 
