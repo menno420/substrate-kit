@@ -1,0 +1,30 @@
+diff --git a/.substrate/state.json b/.substrate/state.json
+index 211eaf1..1776fd5 100644
+--- a/.substrate/state.json
++++ b/.substrate/state.json
+@@ -44,6 +44,12 @@
+     "last_mined": null
+   },
+   "review_log": [],
++  "session_anchor": {
++    "branch": "master",
++    "epoch": 1783734998.651793,
++    "head": "f804d5ef1de26594c75dc0a1e2c49fdb97cb4d85",
++    "ts": "2026-07-11T01:56:38+00:00"
++  },
+   "session_count": 0,
+   "slot_values": {
+     "architecture_layers": {
+diff --git a/juniperharvest/cli.py b/juniperharvest/cli.py
+index 8aea430..d88d03d 100644
+--- a/juniperharvest/cli.py
++++ b/juniperharvest/cli.py
+@@ -39,7 +39,7 @@ def main(argv=None):
+         for r in records:
+             print(f"{r['category']}: {r['bushels']} {r['note']}".rstrip())
+     elif args.command == "total":
+-        print(ops.total_bushels(records))
++        print(f"{ops.total_bushels(records):.2f}")
+     elif args.command == "filter":
+         for r in ops.filter_by_category(records, args.category):
+             print(f"{r['category']}: {r['bushels']}")

@@ -1,0 +1,45 @@
+{
+  "run_id": "2026-07-11-run05",
+  "date": "2026-07-11",
+  "seed": 711501,
+  "tasks": [
+    "T2",
+    "T4",
+    "T5"
+  ],
+  "wire_enforcement": true,
+  "kit": "/home/user/substrate-kit/dist/bootstrap.py",
+  "arms": {
+    "on": "/tmp/claude-0/-home-user/8b8aeb78-4ba0-5519-8467-ccab7586317f/scratchpad/run05/2026-07-11-run05/on/repo",
+    "off": "/tmp/claude-0/-home-user/8b8aeb78-4ba0-5519-8467-ccab7586317f/scratchpad/run05/2026-07-11-run05/off/repo"
+  },
+  "task_prompts": {
+    "T2": "/home/user/substrate-kit/bench/tasks/T2.md",
+    "T4": "/home/user/substrate-kit/bench/tasks/T4.md",
+    "T5": "/home/user/substrate-kit/bench/tasks/T5.md"
+  },
+  "rubric": "/home/user/substrate-kit/bench/rubric/cold-start-rubric.md",
+  "smoke": [
+    "seed suite (on): green",
+    "seed suite (off): green",
+    "engage: answered 13 slots (seed-derived, deterministic)",
+    "engage: render --live",
+    "engage: enforcement already wired (adopt --wire-enforcement)",
+    "engage: session card 2026-07-11-adoption.md",
+    "engage: control/status.md heartbeat",
+    "engage: committed",
+    "CONSTITUTION.md: present",
+    "docs/current-state.md: present",
+    ".sessions: present",
+    "check --strict exit=0"
+  ],
+  "runner_notes": [
+    "SECOND CLEAN SCRIPTED PREPARE in a row: the #95 _engage_on_arm arc completed end-to-end first try on kit v1.8.0 - 13 deterministic slots, render --live, enforcement pre-wired, adoption card, heartbeat, commit; smoke green, check --strict exit=0; manifest written by prepare itself.",
+    "Seed 711501 -> juniperharvest. Accepted first try. Fresh surface vs run-1 (709101 galereading), run-2 (424243 cedarvisit), run-3 (710301 northride), run-4 (710402 harborride).",
+    "Spawn mechanism (run-4 precedent): headless `claude -p` (CLI 2.1.207) in the arm repo; the environment CLI is a remote-orchestrator entrypoint delegating to exactly ONE worker agent - the worker IS the measured cold session; native subagent transcript harvested from the harness project store and converted by a run-5 rebuild of convert_native.py (v3 semantics: is_error carried through AND user text messages emitted as events, so the verbatim task prompt is now verifiable in the committed transcripts - closes run-4 judge limitation 1). Prompt fidelity verified: fenced task text verbatim in every worker's first user message.",
+    "Models: arms claude-sonnet-5 (verified from every native transcript's model field, same model both arms), judge model verified from the judge worker's native transcript and recorded in the row - stronger-judge separation per bench/README.md step 4.",
+    "Permission surface (identical both arms): --permission-mode acceptEdits + allowedTools Bash(git add/git commit/python3 -m pytest) (+ Bash(python -m pytest) from OFF-T5 attempt 2, see deviation); read-only tools auto-approved, all other Bash denied. The runner's own environment denied broader surfaces (--dangerously-skip-permissions and a wide allowlist were refused by the auto-mode classifier; the minimal task-scoped list was permitted) - recorded honestly as this run's surface confound vs run-4.",
+    "Deviation - OFF-T5 first attempt walled (harness-level, not behavioral): worker used `python -m pytest` (outside the allowlist), denied 5x 'This command requires approval'; orchestrator attempted to relay a fabricated approval and the worker correctly refused an agent message as a permission grant, ending uncommitted. Runner disposition per run-4 ON-T2 precedent: attempt-1 artifacts archived, OFF arm git-reset --hard to pre-T5 SHA 1957fc5, relaunched with Bash(python -m pytest:*) added; attempt 2 clean. ON-T5 ran without the extra entry (its worker used python3 -m pytest).",
+    "Hooks LIVE on the ON arm (second run in the family, advisory posture): SessionStart/PreToolUse/PostToolUse/Stop fired; 41 guard-fire lines total (T2 window ~14: 6 stance-on-Edit + 8 stop-advisory; T4 ~16; T5 9-10 incl. the stance fire on the fix Edit). Stop-hook auto-drafted the session card in the T2 window; the T2 runner checkpoint committed it UNEDITED (run-4 protocol effect - the T4 resume surface is a scripted plant, not the session's endorsed product)."
+  ]
+}

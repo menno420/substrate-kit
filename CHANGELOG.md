@@ -15,6 +15,20 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+**Benchmark outcome (KF-5 — travels into the next release's notes):** B1
+cold-start FIFTH firing (`2026-07-11-run05`, seed 711501 juniperharvest, kit
+v1.8.0, arms claude-sonnet-5, judge claude-opus-4-8, both transcript-verified;
+row 5 + run dir, PR #163): **FAIL** — the family's first Reading-A-only-scored
+row (dual-scoring ended with run-4 per ORDER 011). Second consecutive 0-of-3
+run: M1 to OFF on all pairs (1421/1589/931 vs 595/986/326), M2 tie (T4
+continuity NULL — the auto-drafted card ignored again, both arms resumed via
+git), M3 to OFF (T2 write-back failed; T5 guard fired ~10× advisory and was
+IGNORED, RED close). Max ON M1 1589 ≤ 7k, zero unrecoverable errors. **KF-8
+trend at 5 rows: 1 PASS / 4 FAIL.** The judge's core finding repeats run-4's:
+the kit's continuity surface is pull-only and goes unread — the SessionStart
+handoff-push idea is the evidence-backed answer. Evidence:
+`bench/results/cold-start/`.
+
 ## [1.8.0] - 2026-07-11
 
 Capability release (MINOR) shipping the EAP program-review §6 kit-owned

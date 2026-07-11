@@ -1,0 +1,129 @@
+diff --git a/.substrate/state.json b/.substrate/state.json
+index 211eaf1..1776fd5 100644
+--- a/.substrate/state.json
++++ b/.substrate/state.json
+@@ -44,6 +44,12 @@
+     "last_mined": null
+   },
+   "review_log": [],
++  "session_anchor": {
++    "branch": "master",
++    "epoch": 1783734998.651793,
++    "head": "f804d5ef1de26594c75dc0a1e2c49fdb97cb4d85",
++    "ts": "2026-07-11T01:56:38+00:00"
++  },
+   "session_count": 0,
+   "slot_values": {
+     "architecture_layers": {
+diff --git a/juniperharvest/__pycache__/ops.cpython-311.pyc b/juniperharvest/__pycache__/ops.cpython-311.pyc
+index aa0c0cc..8e9a1e9 100644
+Binary files a/juniperharvest/__pycache__/ops.cpython-311.pyc and b/juniperharvest/__pycache__/ops.cpython-311.pyc differ
+diff --git a/juniperharvest/cli.py b/juniperharvest/cli.py
+index 11bc585..0b49479 100644
+--- a/juniperharvest/cli.py
++++ b/juniperharvest/cli.py
+@@ -1,6 +1,7 @@
+ """juniperharvest — a tiny harvest-log CLI.
+ 
+-Commands: mark (add a record) · list · total · filter <category> · top.
++Commands: mark (add a record) · list · total · filter <category> · top ·
++report.
+ """
+ 
+ import argparse
+@@ -22,6 +23,7 @@ def main(argv=None):
+     filter_p.add_argument("category")
+     top_p = sub.add_parser("top", help="highest-bushels categories")
+     top_p.add_argument("--limit", type=int, default=3)
++    sub.add_parser("report", help="per-category counts and totals")
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -40,6 +42,10 @@ def main(argv=None):
+     elif args.command == "top":
+         for category, subtotal in ops.top_categories(records, args.limit):
+             print(f"{category}: {subtotal}")
++    elif args.command == "report":
++        for category, count, subtotal in ops.category_report(records):
++            print(f"{category}: {count} records, {subtotal}")
++        print(f"overall: {len(records)} records, {ops.total_bushels(records)}")
+     return 0
+ 
+ 
+diff --git a/juniperharvest/ops.py b/juniperharvest/ops.py
+index 59458d5..2316179 100644
+--- a/juniperharvest/ops.py
++++ b/juniperharvest/ops.py
+@@ -29,3 +29,13 @@ def top_categories(records, limit=3):
+         totals[r["category"]] = totals.get(r["category"], 0.0) + r["bushels"]
+     ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
+     return ranked[:limit]
++
++
++def category_report(records):
++    """Return ``(category, count, total)`` triples, highest total first."""
++    stats = {}
++    for r in records:
++        count, total = stats.get(r["category"], (0, 0.0))
++        stats[r["category"]] = (count + 1, total + r["bushels"])
++    ranked = sorted(stats.items(), key=lambda kv: (-kv[1][1], kv[0]))
++    return [(category, count, total) for category, (count, total) in ranked]
+diff --git a/tests/__pycache__/test_juniperharvest.cpython-311-pytest-9.1.1.pyc b/tests/__pycache__/test_juniperharvest.cpython-311-pytest-9.1.1.pyc
+index 2a31dea..09e31eb 100644
+Binary files a/tests/__pycache__/test_juniperharvest.cpython-311-pytest-9.1.1.pyc and b/tests/__pycache__/test_juniperharvest.cpython-311-pytest-9.1.1.pyc differ
+diff --git a/tests/test_juniperharvest.py b/tests/test_juniperharvest.py
+index cbadd7f..653a45d 100644
+--- a/tests/test_juniperharvest.py
++++ b/tests/test_juniperharvest.py
+@@ -1,6 +1,6 @@
+ """Tests for juniperharvest core operations."""
+ 
+-from juniperharvest import ops
++from juniperharvest import cli, ops
+ 
+ 
+ def _sample():
+@@ -37,3 +37,43 @@ def test_top_categories_ranked():
+ 
+ def test_top_categories_limit():
+     assert len(ops.top_categories(_sample(), limit=1)) == 1
++
++
++def test_category_report_counts_and_totals():
++    report = ops.category_report(_sample())
++    assert report == [("travel", 1, 30.0), ("food", 2, 20.0)]
++
++
++def test_category_report_sorted_by_total_desc():
++    report = ops.category_report(_sample())
++    totals = [total for _, _, total in report]
++    assert totals == sorted(totals, reverse=True)
++
++
++def test_category_report_empty():
++    assert ops.category_report([]) == []
++
++
++def test_report_command_prints_per_category_and_overall(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["mark", "food", "12.5", "--note", "lunch"])
++    cli.main(["mark", "travel", "30.0"])
++    cli.main(["mark", "food", "7.5"])
++    capsys.readouterr()  # discard "recorded." noise from the marks above
++
++    cli.main(["report"])
++    out = capsys.readouterr().out.splitlines()
++
++    assert out == [
++        "travel: 1 records, 30.0",
++        "food: 2 records, 20.0",
++        "overall: 3 records, 50.0",
++    ]
++
++
++def test_report_command_empty_data(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["report"])
++    out = capsys.readouterr().out.splitlines()
++
++    assert out == ["overall: 0 records, 0"]

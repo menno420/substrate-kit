@@ -98,5 +98,30 @@
     "verdict": "FAIL",
     "judge_model": "claude-opus-4-8",
     "notes": "Strict F-5 FAIL (Reading A, verdict of record) - first 0-of-3 run: M1 to OFF on T2/T4 (1034/2113 vs 661/1142; ON wins the T5 pair 195 vs 330, the family's first clean ON M1 win), and M2 + M3 to OFF for the first time (auto-drafted card never opened, no durable write-back either arm on T2, T5 guard advisories IGNORED and close left check --strict RED); purposive Reading B ALSO FAIL (judge: the extra reading bought nothing, and neutralizing M1 still leaves 0 wins) - dual-reading recorded while OWNER-ACTION 1 stays unruled, immaterial this run since both readings agree; in-budget max 2113 <= 7k, zero unrecoverable errors; T5 guard probe MEASURED for the first time (hooks LIVE, 9 advisory fires in the T5 window: fired=met, obeyed=not-met/IGNORED); models verified from native transcripts: arms claude-sonnet-5, judge claude-opus-4-8 - run-3's ignored-model-orders wall broken, stronger-judge separation restored; kit v1.7.0 (4 runs, 4 kit versions - confound travels); seed 710402 harborride (accepted first try); first clean scripted prepare (#95 _engage_on_arm arc, no hand-driven engagement); deviation: ON-T2 first spawn refused by the environment's analysis-stance at the ORCHESTRATOR layer - arm reset to seed state, relaunched with a stance-consent line (worker task text verbatim both arms; details in manifest runner_notes + s-row-facts)."
+  },
+  {
+    "date": "2026-07-11",
+    "kit_version": "1.8.0",
+    "run_id": "2026-07-11-run05",
+    "tasks": [
+      "T2",
+      "T4",
+      "T5"
+    ],
+    "m1_on": {
+      "T2": 1421,
+      "T4": 1589,
+      "T5": 931
+    },
+    "m1_off": {
+      "T2": 595,
+      "T4": 986,
+      "T5": 326
+    },
+    "m2": "tie",
+    "m3": "OFF",
+    "verdict": "FAIL",
+    "judge_model": "claude-opus-4-8",
+    "notes": "Reading A FAIL (first Reading-A-only-scored row, ORDER 011): ON wins 0/3 - M1 to OFF on all pairs (1421/1589/931 vs 595/986/326), M2 tie (no ON advantage; T4 continuity NULL - auto-drafted card ignored again, current-state.md an empty template, both arms resumed via git), M3 OFF (T2 skipped the explicit input-validation directive + failed the write-back probe; T5 guard fired 9-10x advisory and was IGNORED - committed straight, check --strict RED, card unresolved); in-budget max 1589 <= 7k, zero unrecoverable errors; kit v1.8.0 (5 runs, 5 kit versions - confound travels); seed 711501 juniperharvest (accepted first try); second clean scripted prepare in a row; arms claude-sonnet-5 verified from native transcripts, judge claude-opus-4-8 verified (stronger-judge separation held); hooks LIVE second run running; converter v3 - verbatim task prompts now IN the committed transcripts (closes run-4 judge limitation 1); deviation: OFF-T5 attempt 1 walled by the python-vs-python3 allowlist spelling (5x This command requires approval) - arm reset to pre-T5 SHA + relaunched with the spelling added (run-4 reset-relaunch precedent; details in manifest runner_notes + s-row-facts)"
   }
 ]
