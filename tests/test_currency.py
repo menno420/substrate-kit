@@ -345,3 +345,230 @@ def test_drift_report_lines_cover_every_repo():
     assert any(line.startswith("o/ok:") for line in lines)
     assert any(line.startswith("o/none:") for line in lines)
     assert any("DRIFT" in line for line in lines)
+
+
+# ---------------------------------------------------------------------------
+# default_fetcher — private-repo blindness fix (kit #230 headline)
+#
+# raw.githubusercontent.com returns 404 for EVERY path of a private repo, so
+# the old fetcher rendered an adopted private repo (pokemon-mod-lab, truly at
+# v1.6.0) as "not adopted / unknown". These tests pin the layered contract:
+# a 404 only ever becomes "truly absent" once the repo is proven readable
+# (API repo probe or branch tarball), and a repo readable by NO transport is
+# an *unreadable* row — loudly distinct from "not adopted".
+# ---------------------------------------------------------------------------
+
+import io
+import tarfile
+
+from engine.currency import (
+    CurrencyFetchError,
+    RepoUnreadableError,
+    default_fetcher,
+)
+
+RAW = "https://raw.githubusercontent.com"
+API = "https://api.github.com"
+CODELOAD = "https://codeload.github.com"
+
+
+def _http(routes: dict[str, tuple[int, bytes]]):
+    """Fake HttpGet seam: url -> (status, body); unlisted urls 404."""
+
+    def get(url: str, headers: dict[str, str]) -> tuple[int, bytes]:
+        get.calls.append(url)
+        get.headers.append(dict(headers))
+        return routes.get(url, (404, b""))
+
+    get.calls = []
+    get.headers = []
+    return get
+
+
+def _targz(root: str, files: dict[str, str]) -> bytes:
+    """In-memory codeload-shaped tarball (members under `<root>/`)."""
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tf:
+        for path, text in files.items():
+            data = text.encode("utf-8")
+            info = tarfile.TarInfo(f"{root}/{path}")
+            info.size = len(data)
+            tf.addfile(info, io.BytesIO(data))
+    return buf.getvalue()
+
+
+def test_fetcher_raw_200_needs_no_fallback():
+    get = _http({f"{RAW}/o/p/main/f.md": (200, b"body")})
+    fetch = default_fetcher(token="t", http_get=get)
+    assert fetch("o/p", "f.md") == "body"
+    assert get.calls == [f"{RAW}/o/p/main/f.md"]
+
+
+def test_fetcher_raw_404_api_success_reads_private_repo_as_adopted():
+    # The pokemon-mod-lab shape: raw is blind (404 everywhere), the
+    # authenticated contents endpoint serves the tree.
+    get = _http(
+        {
+            f"{API}/repos/o/p/contents/substrate.config.json?ref=main": (
+                200,
+                CONFIG_16.encode(),
+            ),
+            f"{API}/repos/o/p/contents/bootstrap.py?ref=main": (
+                200,
+                DIST_HEADER.encode(),
+            ),
+            f"{API}/repos/o/p/contents/control/status.md?ref=main": (
+                200,
+                STATUS_OK.encode(),
+            ),
+        },
+    )
+    scan = scan_repo("o/p", default_fetcher(token="t", http_get=get))
+    assert scan.unreadable is None
+    assert scan.adopted
+    assert scan.tree_version == "1.6.0"
+    assert scan.config_pin == "1.6.0"
+    assert scan.verdict("1.7.0") == "stale (v1.6.0 < v1.7.0)"
+
+
+def test_fetcher_api_404_on_proven_readable_repo_is_truly_absent():
+    # Repo probe says readable; contents 404s are then tree truth.
+    get = _http({f"{API}/repos/o/empty": (200, b"{}")})
+    scan = scan_repo("o/empty", default_fetcher(token="t", http_get=get))
+    assert scan.unreadable is None
+    assert not scan.adopted
+    assert scan.verdict("1.7.0") == "not adopted / unknown"
+
+
+def test_fetcher_auth_failure_is_unreadable_never_not_adopted():
+    # Every transport denied (403): the row must say unreadable — a
+    # transport failure must never masquerade as "not adopted".
+    get = _http(
+        {
+            f"{API}/repos/o/dark": (403, b"denied"),
+            f"{API}/repos/o/dark/contents/substrate.config.json?ref=main": (
+                403,
+                b"denied",
+            ),
+            f"{API}/repos/o/dark/contents/bootstrap.py?ref=main": (403, b"denied"),
+            f"{API}/repos/o/dark/contents/dist/bootstrap.py?ref=main": (
+                403,
+                b"denied",
+            ),
+            f"{API}/repos/o/dark/contents/control/status.md?ref=main": (
+                403,
+                b"denied",
+            ),
+            f"{CODELOAD}/o/dark/tar.gz/refs/heads/main": (403, b"denied"),
+        },
+    )
+    scan = scan_repo("o/dark", default_fetcher(token="t", http_get=get))
+    assert scan.unreadable is not None
+    assert "403" in scan.unreadable
+    verdict = scan.verdict("1.7.0")
+    assert "unreadable" in verdict
+    assert "not adopted" not in verdict
+
+
+def test_fetcher_tarball_fallback_reads_tree_and_proves_absence():
+    # API REST blocked (the proxy-mediated agent-seat shape) but the branch
+    # tarball serves: files read from it, and absence from it is definitive.
+    tar = _targz(
+        "p-main",
+        {
+            "substrate.config.json": CONFIG_16,
+            "bootstrap.py": DIST_HEADER,
+            # no control/status.md in the tree — truly absent
+        },
+    )
+    get = _http(
+        {
+            f"{API}/repos/o/p": (403, b"blocked"),
+            f"{CODELOAD}/o/p/tar.gz/refs/heads/main": (200, tar),
+        },
+    )
+    scan = scan_repo("o/p", default_fetcher(token="t", http_get=get))
+    assert scan.unreadable is None
+    assert scan.tree_version == "1.6.0"
+    assert scan.config_pin == "1.6.0"
+    assert scan.reports == [
+        SelfReport("control/status.md", None, None, None, found=False),
+    ]
+    # The tarball is fetched once per repo, not once per path.
+    assert get.calls.count(f"{CODELOAD}/o/p/tar.gz/refs/heads/main") == 1
+
+
+def test_fetcher_raw_non_404_still_aborts_the_run():
+    get = _http({f"{RAW}/o/p/main/f.md": (500, b"boom")})
+    fetch = default_fetcher(token="t", http_get=get)
+    with pytest.raises(CurrencyFetchError):
+        fetch("o/p", "f.md")
+
+
+def test_fetcher_unreadable_error_names_repo_and_reasons():
+    get = _http({})  # everything 404s, including probe + tarball
+    fetch = default_fetcher(token="", http_get=get)
+    with pytest.raises(RepoUnreadableError) as exc_info:
+        fetch("o/dark", "bootstrap.py")
+    assert exc_info.value.repo == "o/dark"
+    assert "unauthenticated" in exc_info.value.reason
+
+
+def test_fetcher_sends_bearer_token_on_api_calls_only():
+    get = _http({f"{API}/repos/o/p/contents/f.md?ref=main": (200, b"x")})
+    fetch = default_fetcher(token="sekret", http_get=get)
+    assert fetch("o/p", "f.md") == "x"
+    raw_headers, api_headers = get.headers
+    assert "Authorization" not in raw_headers
+    assert api_headers["Authorization"] == "Bearer sekret"
+
+
+def test_fetcher_reads_token_from_env_when_not_given(monkeypatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "env-tok")
+    get = _http({f"{API}/repos/o/p/contents/f.md?ref=main": (200, b"x")})
+    fetch = default_fetcher(http_get=get)
+    assert fetch("o/p", "f.md") == "x"
+    assert get.headers[1]["Authorization"] == "Bearer env-tok"
+
+
+def test_scan_fleet_one_unreadable_repo_does_not_black_out_the_rest():
+    tar_dark = f"{CODELOAD}/o/dark/tar.gz/refs/heads/main"
+    get = _http(
+        {
+            f"{RAW}/o/ok/main/bootstrap.py": (200, DIST_HEADER.encode()),
+            f"{RAW}/o/ok/main/substrate.config.json": (200, CONFIG_16.encode()),
+            f"{RAW}/o/ok/main/control/status.md": (200, STATUS_OK.encode()),
+            f"{API}/repos/o/dark": (403, b"denied"),
+            tar_dark: (403, b"denied"),
+        },
+    )
+    scans = scan_fleet(
+        [("o/ok", []), ("o/dark", [])],
+        default_fetcher(token="t", http_get=get),
+    )
+    ok, dark = scans
+    assert ok.adopted and ok.unreadable is None
+    assert dark.unreadable is not None
+    # The unreadable repo is probed once, then answered from cache.
+    assert get.calls.count(tar_dark) == 1
+
+
+def test_render_unreadable_row_is_loud_and_never_not_adopted():
+    scan = RepoCurrency(repo="o/dark", unreadable="API 403; tarball 403")
+    text = render_adopters([scan], "1.7.0", now=NOW)
+    row = next(line for line in text.splitlines() if line.startswith("| o/dark"))
+    assert "unreadable" in row
+    assert "not adopted" not in row
+    lines = drift_report_lines([scan], "1.7.0")
+    assert any("unreadable" in line for line in lines)
+
+
+def test_partial_evidence_before_unreadable_failure_is_kept():
+    scan = RepoCurrency(
+        repo="o/flaky",
+        config_pin="1.6.0",
+        unreadable="tarball HTTP 500",
+    )
+    verdict = scan.verdict("1.7.0")
+    assert "partially unreadable" in verdict
+    assert "stale" in verdict

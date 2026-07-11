@@ -28,8 +28,25 @@ currency``) is agent-side only, while CI validates just the committed
 output's format + staleness (``checks/check_adopters_current.py``, no
 network). All parse / drift / render logic here is pure and unit-testable:
 the network sits behind an injectable fetcher (``fetch(repo, path) -> str |
-None``); the default fetcher is stdlib ``urllib`` against
-``raw.githubusercontent.com`` (honours the environment's proxy settings).
+None``); the default fetcher is stdlib ``urllib`` (honours the
+environment's proxy settings), layered so PRIVATE repos read as tree
+truth, not as transport failure:
+
+1. ``raw.githubusercontent.com`` — primary; correct for public repos.
+2. The authenticated GitHub API contents endpoint (``GITHUB_TOKEN`` /
+   ``GH_TOKEN``) — a raw 404 is AMBIGUOUS (absent file, or a private repo
+   that 404s every unauthenticated path — the pokemon-mod-lab blindness,
+   kit #230), so a 404 only ever becomes ``None`` ("truly absent") once
+   the repo itself is proven readable.
+3. A ``codeload.github.com`` tarball of the branch — the whole committed
+   tree in one stdlib request; membership in it is definitive. This is
+   also the transport that works in proxy-mediated agent seats where
+   ``api.github.com`` REST is policy-blocked but GitHub credentials are
+   injected at the proxy.
+
+A repo readable by NO transport raises ``RepoUnreadableError``; the scan
+records the row as *unreadable* — loudly distinct from "not adopted",
+which is now always a statement about a tree we actually read.
 
 Read-only by law: the scanner only ever *reads* sibling repos (KF-2 — the
 lab never writes to consumers); the one file it writes is this repo's
@@ -38,8 +55,11 @@ lab never writes to consumers); the one file it writes is this repo's
 
 from __future__ import annotations
 
+import io
 import json
+import os
 import re
+import tarfile
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
@@ -61,8 +81,14 @@ from engine.grammar import (
 ADOPTERS_RELPATH = "docs/adopters.md"
 ROSTER_RELPATH = "docs/fleet-repos.txt"
 RAW_HOST = "https://raw.githubusercontent.com"
+API_HOST = "https://api.github.com"
+CODELOAD_HOST = "https://codeload.github.com"
 DEFAULT_BRANCH = "main"
 FETCH_TIMEOUT_S = 30
+# Env vars consulted (in order) for the authenticated API fallback. Optional:
+# without a token the API step still serves public repos and the codeload
+# step still serves proxy-credentialed agent seats.
+TOKEN_ENV_VARS = ("GITHUB_TOKEN", "GH_TOKEN")
 
 # The machine-readable proof that the file is generated output. The CI-side
 # format gate keys off this exact string; keep the two in lockstep (the
@@ -82,6 +108,30 @@ DEFAULT_HEARTBEAT = "control/status.md"
 _NUMERIC_RE = re.compile(r"\d+")
 
 Fetcher = Callable[[str, str], "str | None"]
+# The HTTP seam the layered default fetcher (and its tests) stand on:
+# ``(url, headers) -> (status, body_bytes)``. HTTP error statuses come back
+# as data; only genuine transport failures (connection refused, DNS) raise.
+HttpGet = Callable[[str, "dict[str, str]"], "tuple[int, bytes]"]
+
+
+class CurrencyFetchError(RuntimeError):
+    """Hard transport failure — aborts the run rather than faking evidence."""
+
+
+class RepoUnreadableError(RuntimeError):
+    """One repo is readable by NO transport — its evidence is UNKNOWN.
+
+    Raised per-repo (never aborts the whole scan): ``scan_repo`` catches it
+    and records the row as *unreadable*, which renders loudly distinct from
+    "not adopted" — a 404 from an unauthenticated transport must never
+    masquerade as "there is no tree" (the pokemon-mod-lab blindness,
+    kit #230).
+    """
+
+    def __init__(self, repo: str, reason: str) -> None:
+        self.repo = repo
+        self.reason = reason
+        super().__init__(f"{repo}: {reason}")
 
 
 @dataclass
@@ -104,10 +154,19 @@ class RepoCurrency:
     tree_source: str | None = None  # which vendored path carried it
     config_pin: str | None = None  # substrate.config.json kit_version
     reports: list[SelfReport] = field(default_factory=list)
+    # Transport verdict, not tree evidence: set when no transport could read
+    # the repo (RepoUnreadableError reason). An unreadable row must never
+    # render "not adopted" — we could not see the tree to say so.
+    unreadable: str | None = None
 
     @property
     def adopted(self) -> bool:
-        """Any kit artifact at all? No artifact = not adopted, not an error."""
+        """Any kit artifact at all? No artifact = not adopted, not an error.
+
+        Only meaningful for a repo the scan could actually read — verdict()
+        checks ``unreadable`` first, so transport failure never renders as
+        "not adopted".
+        """
         return bool(
             self.tree_version
             or self.config_pin
@@ -143,10 +202,18 @@ class RepoCurrency:
         return out
 
     def verdict(self, kit_version: str) -> str:
-        """One cell: current / stale / DRIFT / pin-only / not adopted."""
+        """One cell: current / stale / DRIFT / pin-only / not adopted /
+        unreadable."""
+        if self.unreadable and not self.adopted:
+            # No transport could read the repo and nothing was seen before
+            # the failure: adoption is UNKNOWN, never "not adopted".
+            return f"⚠️ unreadable — {self.unreadable}"
         if not self.adopted:
             return "not adopted / unknown"
         parts: list[str] = []
+        if self.unreadable:
+            # Partial evidence landed before the transport failed.
+            parts.append(f"⚠️ partially unreadable — {self.unreadable}")
         if self.drifts():
             parts.append("⚠️ DRIFT")
         tree = self.effective_tree
@@ -208,27 +275,145 @@ def parse_roster(text: str) -> list[tuple[str, list[str]]]:
     return out
 
 
+def _env_token() -> str:
+    """The GitHub token for the authenticated API fallback ('' = none)."""
+    for var in TOKEN_ENV_VARS:
+        value = os.environ.get(var)
+        if value:
+            return value
+    return ""
+
+
+def _urllib_get(url: str, headers: dict[str, str]) -> tuple[int, bytes]:
+    """Default ``HttpGet``: HTTP statuses are data, transport failures raise."""
+    request = urllib.request.Request(url, headers=headers)  # noqa: S310
+    try:
+        with urllib.request.urlopen(  # noqa: S310
+            request,
+            timeout=FETCH_TIMEOUT_S,
+        ) as resp:
+            return resp.status, resp.read()
+    except urllib.error.HTTPError as exc:
+        return exc.code, exc.read() or b""
+
+
+class _TarTree:
+    """A branch tarball held in memory — the committed tree, definitively.
+
+    Membership answers the absent-vs-unreadable question with the strongest
+    possible evidence: the whole tree is in hand, so a missing path IS a
+    missing file, not a transport artifact.
+    """
+
+    def __init__(self, data: bytes) -> None:
+        self._tar = tarfile.open(fileobj=io.BytesIO(data), mode="r:gz")
+        names = self._tar.getnames()
+        # codeload prefixes every member with `<repo>-<ref>/`.
+        self._root = names[0].split("/", 1)[0] if names else ""
+        self._names = set(names)
+
+    def read(self, path: str) -> str | None:
+        """File content at ``path``, or None when absent from the tree."""
+        member = f"{self._root}/{path}"
+        if member not in self._names:
+            return None
+        handle = self._tar.extractfile(member)
+        if handle is None:  # directory / link — no regular file at this path
+            return None
+        return handle.read().decode("utf-8", errors="replace")
+
+
 def default_fetcher(
     host: str = RAW_HOST,
     branch: str = DEFAULT_BRANCH,
+    api_host: str = API_HOST,
+    codeload_host: str = CODELOAD_HOST,
+    token: str | None = None,
+    http_get: HttpGet | None = None,
 ) -> Fetcher:
-    """Return a raw-content fetcher: 404 -> None, other failures raise.
+    """Return the layered fetcher: raw -> authenticated API -> tarball.
 
     The asymmetry is deliberate: a missing file is evidence ("not adopted"),
     but a network/auth failure must never masquerade as one — a proxy outage
     silently generating a "nobody adopted" registry would be worse than no
-    run at all.
+    run at all. Layering (per fetched path):
+
+    1. Raw content (unauthenticated). 200 is the answer; a non-404 failure
+       still raises (transport outage = abort). A 404 is AMBIGUOUS — absent
+       file, or a private repo that 404s every unauthenticated path — and
+       falls through.
+    2. GitHub API contents endpoint, ``Authorization`` from ``token`` (env
+       ``GITHUB_TOKEN``/``GH_TOKEN`` when None; works unauthenticated for
+       public repos). Used only once ``GET /repos/<repo>`` has proven the
+       repo readable — only then does a contents 404 mean "truly absent".
+    3. A ``codeload`` tarball of the branch (cached per repo): the whole
+       committed tree in one request; membership in it is definitive. Also
+       the transport that survives agent seats whose egress proxy blocks
+       ``api.github.com`` REST but injects GitHub credentials.
+
+    A repo no transport can read raises :class:`RepoUnreadableError` — the
+    scan records the row as *unreadable*, never as "not adopted".
     """
+    get = http_get or _urllib_get
+    auth = token if token is not None else _env_token()
+    api_headers = {"Accept": "application/vnd.github.raw+json"}
+    if auth:
+        api_headers["Authorization"] = f"Bearer {auth}"
+    # Per-repo resolution cache: "api" | _TarTree | RepoUnreadableError.
+    resolved: dict[str, object] = {}
+
+    def _resolve(repo: str, api_status: int) -> object:
+        """Prove the repo readable via API or tarball, else mark unreadable."""
+        reasons = [
+            f"raw 404 on every probe; API contents HTTP {api_status}"
+            + ("" if auth else " (unauthenticated — no GITHUB_TOKEN/GH_TOKEN)"),
+        ]
+        status, _body = get(f"{api_host}/repos/{repo}", api_headers)
+        if status == 200:
+            return "api"
+        reasons.append(f"API repo probe HTTP {status}")
+        status, body = get(
+            f"{codeload_host}/{repo}/tar.gz/refs/heads/{branch}",
+            api_headers,
+        )
+        if status == 200:
+            try:
+                return _TarTree(body)
+            except (tarfile.TarError, OSError) as exc:
+                reasons.append(f"codeload tarball unreadable: {exc}")
+        else:
+            reasons.append(f"codeload tarball HTTP {status}")
+        return RepoUnreadableError(repo, "; ".join(reasons))
 
     def fetch(repo: str, path: str) -> str | None:
         url = f"{host}/{repo}/{branch}/{path}"
-        try:
-            with urllib.request.urlopen(url, timeout=FETCH_TIMEOUT_S) as resp:  # noqa: S310
-                return resp.read().decode("utf-8", errors="replace")
-        except urllib.error.HTTPError as exc:
-            if exc.code == 404:
-                return None
-            raise
+        status, body = get(url, {})
+        if status == 200:
+            return body.decode("utf-8", errors="replace")
+        if status != 404:
+            raise CurrencyFetchError(f"GET {url} -> HTTP {status}")
+        # Raw 404: ambiguous. A previously-resolved repo answers instantly.
+        verdict = resolved.get(repo)
+        if isinstance(verdict, _TarTree):
+            return verdict.read(path)
+        if isinstance(verdict, RepoUnreadableError):
+            raise verdict
+        # Ask the API; trust its 404 only from a repo proven readable.
+        api_url = f"{api_host}/repos/{repo}/contents/{path}?ref={branch}"
+        api_status, api_body = get(api_url, api_headers)
+        if api_status == 200:
+            return api_body.decode("utf-8", errors="replace")
+        if verdict is None:
+            verdict = _resolve(repo, api_status)
+            resolved[repo] = verdict
+            if isinstance(verdict, _TarTree):
+                return verdict.read(path)
+            if isinstance(verdict, RepoUnreadableError):
+                raise verdict
+        # verdict == "api": the repo is API-readable, so its 404 is truth.
+        if api_status == 404:
+            return None  # truly absent from a readable repo's tree
+        raise CurrencyFetchError(f"GET {api_url} -> HTTP {api_status}")
 
     return fetch
 
@@ -238,8 +423,28 @@ def scan_repo(
     fetch: Fetcher,
     extra_heartbeats: list[str] | None = None,
 ) -> RepoCurrency:
-    """Scan one repo's committed tree for kit artifacts + self-reports."""
+    """Scan one repo's committed tree for kit artifacts + self-reports.
+
+    A :class:`RepoUnreadableError` from the fetcher marks the row
+    *unreadable* (keeping any evidence gathered before the failure) instead
+    of aborting the fleet scan — one dark repo must not black out the
+    registry, and its row must say "unreadable", never "not adopted".
+    """
     result = RepoCurrency(repo=repo)
+    try:
+        _scan_repo_evidence(result, fetch, extra_heartbeats)
+    except RepoUnreadableError as exc:
+        result.unreadable = exc.reason
+    return result
+
+
+def _scan_repo_evidence(
+    result: RepoCurrency,
+    fetch: Fetcher,
+    extra_heartbeats: list[str] | None,
+) -> None:
+    """Gather one repo's evidence, mutating ``result`` in place."""
+    repo = result.repo
     heartbeats = [DEFAULT_HEARTBEAT]
     config_text = fetch(repo, CONFIG_RELPATH)
     if config_text is not None:
@@ -268,7 +473,6 @@ def scan_repo(
             continue
         version, check, engaged = parse_kit_line(status_text)
         result.reports.append(SelfReport(rel, version, check, engaged, found=True))
-    return result
 
 
 def scan_fleet(
@@ -385,6 +589,10 @@ def render_adopters(
         "  — their channel is their own `control/status.md` `kit:` line.",
         "- **Staleness reads as dark**, not as wrong: the `Generated:` stamp",
         "  above is the evidence date; rerun the scan to refresh.",
+        "- **`unreadable` reads as dark too**: no transport (raw content,",
+        "  authenticated API, branch tarball) could see that repo's tree",
+        "  this run — adoption is UNKNOWN, deliberately never rendered as",
+        '  "not adopted" (private-repo 404s are transport, not evidence).',
         "- **Roster:** `docs/fleet-repos.txt` (one `owner/repo` per line;",
         "  extra tokens name per-lane heartbeat files).",
         "- **Releases point back here:** every release's notes carry the",
