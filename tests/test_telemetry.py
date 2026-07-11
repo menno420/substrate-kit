@@ -150,6 +150,83 @@ def test_record_guard_fires_carries_allowlist_verdict(tmp_path):
     assert record["reason"] == "legacy import, migrates at KL-5"
 
 
+def _fire_once(tmp_path, finding, posture="blocking", **kwargs):
+    return record_guard_fires(
+        tmp_path,
+        ".substrate",
+        cmd="check",
+        surface="check",
+        posture=posture,
+        findings=[finding],
+        **kwargs,
+    )
+
+
+def test_record_guard_fires_dedupes_identical_fire_within_window(tmp_path):
+    # trading-strategy #57's card: the gate lane re-runs `check` 2-3x per
+    # push, filling the log with identical designed-hold echoes seconds
+    # apart. An identical (guard, path, message) within the window skips.
+    (tmp_path / ".substrate").mkdir()
+    finding = Finding(".sessions/2026-07-11-x.md", "session-log", "in-progress")
+    assert _fire_once(tmp_path, finding) == 1
+    assert _fire_once(tmp_path, finding) == 0
+    # Posture is NOT in the key — the blocking/advisory re-run pair of the
+    # same finding is exactly the observed duplicate class.
+    assert _fire_once(tmp_path, finding, posture="advisory") == 0
+    assert len(_fires(tmp_path)) == 1
+
+
+def test_record_guard_fires_distinct_findings_not_deduped(tmp_path):
+    (tmp_path / ".substrate").mkdir()
+    assert _fire_once(tmp_path, Finding("a.md", "badge", "missing")) == 1
+    assert _fire_once(tmp_path, Finding("a.md", "badge", "stale")) == 1
+    assert _fire_once(tmp_path, Finding("b.md", "badge", "missing")) == 1
+    assert len(_fires(tmp_path)) == 3
+
+
+def test_record_guard_fires_dedupe_expires_outside_window(tmp_path):
+    # A record older than the window never suppresses a fresh fire — a
+    # PERSISTING finding still re-records on later real activity.
+    from datetime import datetime, timedelta, timezone
+
+    from engine.loop.telemetry import GUARD_FIRES_DEDUPE_WINDOW_S
+
+    (tmp_path / ".substrate").mkdir()
+    old_ts = (
+        datetime.now(timezone.utc)
+        - timedelta(seconds=GUARD_FIRES_DEDUPE_WINDOW_S + 60)
+    ).isoformat(timespec="seconds")
+    stale = {
+        "ts": old_ts,
+        "guard": "badge",
+        "cmd": "check",
+        "surface": "check",
+        "posture": "blocking",
+        "finding": {"path": "x.md", "kind": "badge", "message": "missing"},
+        "verdict": None,
+        "reason": None,
+        "judge": None,
+        "outcome": None,
+    }
+    fires = tmp_path / ".substrate" / GUARD_FIRES_FILENAME
+    fires.write_text(json.dumps(stale, sort_keys=True) + "\n", encoding="utf-8")
+    assert _fire_once(tmp_path, Finding("x.md", "badge", "missing")) == 1
+    assert len(_fires(tmp_path)) == 2
+
+
+def test_record_guard_fires_verdict_records_never_deduped(tmp_path):
+    # A verdict-carrying record (allowlist suppression) is a datum, not
+    # noise: it always appends, and it never swallows a later plain fire.
+    (tmp_path / ".substrate").mkdir()
+    finding = Finding("x.md", "badge", "missing")
+    assert _fire_once(tmp_path, finding, verdict="false_positive") == 1
+    assert _fire_once(tmp_path, finding, verdict="false_positive") == 1
+    # The plain fire after the verdict events still records once.
+    assert _fire_once(tmp_path, finding) == 1
+    assert _fire_once(tmp_path, finding) == 0
+    assert len(_fires(tmp_path)) == 3
+
+
 # ---------------------------------------------------------------------------
 # parse_model_line
 # ---------------------------------------------------------------------------

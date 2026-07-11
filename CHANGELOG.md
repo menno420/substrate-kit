@@ -15,6 +15,34 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fleet-currency `kit:` heartbeat parsing (v1.10.1-wave finding, the #192
+  regen card): the self-report grammar's start-of-line anchor silently
+  degraded a markdown-bullet-embedded heartbeat (venture-lab's live shape,
+  `- **kit heartbeat:** kit: v… · check: … · engaged: …`) to "no `kit:`
+  line" in the generated registry, losing the version and engaged signals.
+  `KIT_LINE_RE` (engine.grammar — the one home both writer and parser
+  consume) now accepts an optional leading list marker and/or bold label
+  before `kit:`. Tree-truth columns were always correct; this fixes the
+  self-report column.
+- `guard-fires.jsonl` duplicate designed-hold echoes (idea filed on
+  trading-strategy #57's session card): the born-red gate lane re-runs
+  `check` 2–3× per push, so the fires log was "dominated by duplicate
+  born-red heartbeat noise (same card, same message, seconds apart)".
+  `record_guard_fires` now skips a verdict-less fire whose
+  (guard, path, message) already appears in a record from the last 10
+  minutes; verdict-carrying records (allowlist suppressions) always append
+  and never suppress a later plain fire — the log stays a signal ledger.
+
+### Changed
+
+- Generated gate workflow (`substrate-gate.yml` + the commented `ci_snippet`
+  example) action pins bumped off the Node 20 deprecation:
+  `actions/checkout@v4` → `@v5`, `actions/setup-python@v5` → `@v6`.
+  Adopters inherit on `upgrade` (the gate file is kit-owned and regenerated
+  in place).
+
 ## [1.10.1] - 2026-07-11
 
 Fix release (PATCH) shipping the v1.10.0 tail findings (PR #187): the

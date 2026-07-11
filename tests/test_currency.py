@@ -70,6 +70,26 @@ def test_parse_kit_line_decorated_line_still_parses():
     assert (version, check, engaged) == ("1.7.0", "green", "yes")
 
 
+def test_parse_kit_line_bullet_embedded_heartbeat():
+    # venture-lab's live shape (v1.10.1 wave finding): the heartbeat line
+    # embedded as a markdown bullet with a bold label. The old start-of-line
+    # anchor read this as "no `kit:` line" and lost the engaged signal.
+    text = (
+        "# venture-lab · status\nupdated: 2026-07-11T09:00Z\n"
+        "- **kit heartbeat:** kit: v1.10.1 · check: green · engaged: yes\n"
+    )
+    version, check, engaged = parse_kit_line(text)
+    assert (version, check, engaged) == ("1.10.1", "green", "yes")
+
+
+def test_parse_kit_line_plain_bullet_prefix():
+    # A bare list-marker prefix (no bold label) parses too.
+    version, check, engaged = parse_kit_line(
+        "* kit: v1.9.0 · check: red · engaged: no\n",
+    )
+    assert (version, check, engaged) == ("1.9.0", "red", "no")
+
+
 def test_parse_kit_line_absent_returns_nones():
     assert parse_kit_line("# status\nupdated: 2026-07-10T12:00Z\n") == (
         None,
