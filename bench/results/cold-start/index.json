@@ -173,5 +173,30 @@
     "verdict": "FAIL",
     "judge_model": "claude-opus-4-8",
     "notes": "Reading A FAIL (fourth consecutive 0-of-3): M1 to OFF on T2/T4 (2223/2506 vs 905/1628; ON wins the T5 pair 221 vs 240 \u2014 third family ON M1 pair win, all on T5), M2 tie + M3 tie. FIRST RUN BEHIND THE RUN-7 \u00a76 PRECONDITIONS: delegation-seam smoke PASSED with the env mitigation (spawned CLIs stripped of CLAUDE_AUTO_BACKGROUND_TASKS + BG_TASKS_REPORT_RUNNING + COORDINATOR_MODE + COORDINATOR_EXTRA_TOOLS + CHILD_SESSION via env -u; unmitigated control spawn still delegated a paraphrased-prompt worker \u2014 run-7 signature reproduced A/B); seam under mitigation is FLAT (no delegation; the spawned session IS the measured cold session; one stream + byte-verbatim prompt 6/6; segments cold-verified against CLAUDE_CODE_SESSION_ID stream-file sharing). THE RUN-8 HEADLINE (#203 pointer re-validation): HANDOFF.md was OPENED AT THE MEASURED SEAM for the first time \u2014 ON-T2 and ON-T4 both cat it in their FIRST tool call (convention-guess probes converted by the file existing; the push names the card, not the file), and ON-T4 opened the pointed card (first family card-continuity conversion) \u2014 but the card was an unfilled auto-draft (8 [[fill:]] slots), so continuity added no marginal value over OFF reading source, and the write-back probe failed both arms. Pointer footprint 59 words <= the 113 pin. Push delivery 3/3 ON at the flat seam (run-6 delivery gap absent without the delegation layer); claudeMd channel still absent 0/6. T5 ran the RATIFIED v2 text natively (PR #181 owner-merged pre-arm; prompt bytes = v1 by design; v2 items judged, rubric-alignment follow-up pin PR pending): signal-visibility MET first time \u2014 push named the drafted card + open-FIRST and ON-T5 IGNORED it (items 1-3 not-met, item 4 met \u2014 no suppression); check --strict exit=1 at end. Both T5 arms independently swept T2 uncommitted work into a mislabeled commit via git add cli.py, self-detected, ended asking headlessly (judge corrected the runner draft that OFF was clean). In-budget max 2506 <= 7k, zero unrecoverable errors; seed 711801 deltareading first try; fifth consecutive clean scripted prepare; arms claude-sonnet-5 x6 + judge claude-opus-4-8 transcript-verified; guard-fire windows 6/2/3 advisory, unacknowledged; ZERO reset-relaunches (second consecutive); deviations verbatim in manifest runner_notes (12 entries)."
+  },
+  {
+    "date": "2026-07-11",
+    "kit_version": "1.12.0",
+    "run_id": "2026-07-11-run09",
+    "tasks": [
+      "T2",
+      "T4",
+      "T5"
+    ],
+    "m1_on": {
+      "T2": 2505,
+      "T4": 1759,
+      "T5": 214
+    },
+    "m1_off": {
+      "T2": 675,
+      "T4": 1672,
+      "T5": 294
+    },
+    "m2": "ON",
+    "m3": "ON",
+    "verdict": "FAIL",
+    "judge_model": "claude-opus-4-8",
+    "notes": "Reading A FAIL \u2014 but a NEAR-MISS and the family first ON M2+M3 double win earned by GENUINE BEHAVIOR: the v1.12.0 content-gap countermeasure (#222) validated end-to-end. (a) The evidence trail ARRIVED \u2014 ON-T4 boot push + HANDOFF.md (86w <= 113 pin) carried the drafted card + code/tests-touched + git state; ON-T4 first tool call cat HANDOFF.md + the card (263w). (b) Continuity came FROM the trail \u2014 ON-T4 ran git diff scoped to exactly the three files the trail named (547w) vs run-8 unscoped git log -p over an EMPTY card (486w), then AUTHORED the card: all [[fill:]] slots resolved with real content, stale auto-evidence corrected, genuine next-session pointer, Status flipped complete, plus a verified docs/CAPABILITIES.md append \u2014 FIRST family run with write-back on any arm. (c) T4 M1 collapsed to near-tie (1759 vs 1672; run-8 2506/1628); T5 ON (214 vs 294, fourth T5 pair win); T2 REGRESSED (2505 vs 675; run-8 2223/905) \u2014 aggregate M1 to OFF, the load-bearing FAIL axis under strict Reading A (judge: lenient M1-tie reading would PASS; T2 footprint gap needs a paired build-task tie-break to separate structural from seed noise). (d) bare check --strict exit=0 at ON arm end (run-8: 1) \u2014 MECHANISM NUANCE: realized via T4 genuine completion, NOT the #222 advisory lane (never exercised \u2014 card was no longer a draft). (e) T5 v2 gate MET but DEGENERATE: the push announced a COMPLETE card + resolved pointer (T4 pre-resolved), no unresolved tension existed \u2014 v2-1 not-met (silent, low-stakes), v2-2 n-a, v2-3 met (compliance genuine), v2-4 met; claudeMd absent 0/6. Both T5 arms repeated the run-8 git add cli.py sweep (ON 55fd1f7, OFF eceb1d0), self-detected, ended asking headlessly. Seam: smoke PASS mitigated (one stream, zero subagents, byte-verbatim, 5/5 perms) + unmitigated control DELEGATED a paraphrased-prompt worker (third A/B reproduction); flat seam verbatim 6/6, segments cold-verified; push delivered 3/3 ON; guard windows 5/1/0 advisory. In-budget max 2505 <= 7k; zero unrecoverable errors; zero reset-relaunches (third consecutive); sixth consecutive clean scripted prepare; seed 711901 cedardonation first try; arms claude-sonnet-5 x6 + judge claude-opus-4-8 transcript-verified; prompts byte-identical to run-8 committed set 3/3; PR #220 parked => rubric \u00a73 v1 wording, ratified v2 items applied (run-8 precedent); 14 deviations verbatim in manifest runner_notes. KF-8 trend at 8 rows: 1 PASS / 7 FAIL \u2014 first M2/M3 double since run-3, first ever from realized kit behavior."
   }
 ]

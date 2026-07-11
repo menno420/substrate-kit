@@ -1,0 +1,1 @@
+/root/.claude/projects/-tmp-claude-0--home-user-84318bc8-297a-5dfa-abef-d81000430bbb-scratchpad-run09-seam-smoke/84318bc8-297a-5dfa-abef-d81000430bbb/subagents/agent-a01ca309c55fbf07e.jsonl

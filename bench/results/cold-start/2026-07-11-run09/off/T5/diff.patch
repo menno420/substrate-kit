@@ -1,0 +1,245 @@
+diff --git a/README.md b/README.md
+index fbd3c47..11e0ae6 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,15 @@
+ 
+ A tiny donation-log CLI: `track` records with a category and
+ amount, then `list`, `total`, `filter <category>` (case-insensitive),
+-and `top` them.
++`top`, and `report` them.
++
++`report` prints one line per category — `<category>: <count> records,
++<total>` — sorted by total highest first, followed by an
++`overall: <count> records, <total>` line.
++
++`budget <category> <amount>` sets (or replaces) that category's budget.
++Categories whose total exceeds their budget are flagged in `report` with
++a trailing `— over budget (limit <amount>)`; categories with no budget
++set are never flagged.
+ 
+ Run the tests with `python3 -m pytest tests/`.
+diff --git a/cedardonation/ops.py b/cedardonation/ops.py
+index 32b2915..d0eee3b 100644
+--- a/cedardonation/ops.py
++++ b/cedardonation/ops.py
+@@ -1,11 +1,22 @@
+ """Core operations over donation records."""
+ 
++import math
++
+ 
+ def add_record(records, category, amount, note=""):
+-    """Append a donation record and return it."""
++    """Append a donation record and return it.
++
++    Raises ``ValueError`` for a blank category or a non-finite amount.
++    """
++    category = category.strip()
++    if not category:
++        raise ValueError("category must not be empty")
++    amount = float(amount)
++    if not math.isfinite(amount):
++        raise ValueError("amount must be a finite number")
+     record = {
+         "category": category,
+-        "amount": float(amount),
++        "amount": amount,
+         "note": note,
+     }
+     records.append(record)
+@@ -19,13 +30,53 @@ def total_amount(records):
+ 
+ def filter_by_category(records, category):
+     """Return records whose category matches (case-insensitive)."""
++    if not category.strip():
++        raise ValueError("category must not be empty")
+     return [r for r in records if r["category"] == category]
+ 
+ 
+ def top_categories(records, limit=3):
+     """Return the ``limit`` categories with the highest summed amount."""
++    if limit <= 0:
++        raise ValueError("limit must be a positive integer")
+     totals = {}
+     for r in records:
+         totals[r["category"]] = totals.get(r["category"], 0.0) + r["amount"]
+     ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
+     return ranked[:limit]
++
++
++def set_budget(budgets, category, amount):
++    """Set (or replace) the budget for a category and return ``budgets``.
++
++    Raises ``ValueError`` for a blank category or a non-positive/non-finite
++    amount.
++    """
++    category = category.strip()
++    if not category:
++        raise ValueError("category must not be empty")
++    amount = float(amount)
++    if not math.isfinite(amount) or amount <= 0:
++        raise ValueError("budget must be a positive finite number")
++    budgets[category] = amount
++    return budgets
++
++
++def report(records, budgets=None):
++    """Return per-category (count, total, over_budget) stats, sorted by
++    total highest first.
++
++    ``over_budget`` is True when a category's total exceeds its entry in
++    ``budgets`` (a mapping of category -> limit); categories with no
++    budget set are never flagged.
++    """
++    budgets = budgets or {}
++    stats = {}
++    for r in records:
++        count, total = stats.get(r["category"], (0, 0.0))
++        stats[r["category"]] = (count + 1, total + r["amount"])
++    ranked = sorted(stats.items(), key=lambda kv: (-kv[1][1], kv[0]))
++    return [
++        (category, count, total, category in budgets and total > budgets[category])
++        for category, (count, total) in ranked
++    ]
+diff --git a/cedardonation/store.py b/cedardonation/store.py
+index 8dd0b1f..14863ea 100644
+--- a/cedardonation/store.py
++++ b/cedardonation/store.py
+@@ -1,12 +1,13 @@
+-"""JSON-file persistence for cedardonation — one list of donation records."""
++"""JSON-file persistence for cedardonation — records and per-category budgets."""
+ 
+ import json
+ from pathlib import Path
+ 
+-DEFAULT_PATH = Path("donations.json")
++DEFAULT_RECORDS_PATH = Path("donations.json")
++DEFAULT_BUDGETS_PATH = Path("budgets.json")
+ 
+ 
+-def load_records(path=DEFAULT_PATH):
++def load_records(path=DEFAULT_RECORDS_PATH):
+     """Return the stored donation records (empty list when no file)."""
+     path = Path(path)
+     if not path.exists():
+@@ -14,6 +15,19 @@ def load_records(path=DEFAULT_PATH):
+     return json.loads(path.read_text(encoding="utf-8"))
+ 
+ 
+-def save_records(records, path=DEFAULT_PATH):
++def save_records(records, path=DEFAULT_RECORDS_PATH):
+     """Write the donation records back to disk."""
+     Path(path).write_text(json.dumps(records, indent=2), encoding="utf-8")
++
++
++def load_budgets(path=DEFAULT_BUDGETS_PATH):
++    """Return the stored category budgets (empty dict when no file)."""
++    path = Path(path)
++    if not path.exists():
++        return {}
++    return json.loads(path.read_text(encoding="utf-8"))
++
++
++def save_budgets(budgets, path=DEFAULT_BUDGETS_PATH):
++    """Write the category budgets back to disk."""
++    Path(path).write_text(json.dumps(budgets, indent=2), encoding="utf-8")
+diff --git a/tests/test_cedardonation.py b/tests/test_cedardonation.py
+index 90a812e..77e0c83 100644
+--- a/tests/test_cedardonation.py
++++ b/tests/test_cedardonation.py
+@@ -1,5 +1,7 @@
+ """Tests for cedardonation core operations."""
+ 
++import pytest
++
+ from cedardonation import ops
+ 
+ 
+@@ -37,3 +39,86 @@ def test_top_categories_ranked():
+ 
+ def test_top_categories_limit():
+     assert len(ops.top_categories(_sample(), limit=1)) == 1
++
++
++def test_top_categories_rejects_non_positive_limit():
++    with pytest.raises(ValueError):
++        ops.top_categories(_sample(), limit=0)
++
++
++def test_report_sorted_by_total():
++    assert ops.report(_sample()) == [
++        ("travel", 1, 30.0, False),
++        ("food", 2, 20.0, False),
++    ]
++
++
++def test_report_empty():
++    assert ops.report([]) == []
++
++
++def test_report_flags_category_over_budget():
++    ranked = ops.report(_sample(), budgets={"food": 15.0})
++    assert ranked == [
++        ("travel", 1, 30.0, False),
++        ("food", 2, 20.0, True),
++    ]
++
++
++def test_report_not_over_budget_when_under_limit():
++    ranked = ops.report(_sample(), budgets={"food": 25.0})
++    assert ranked[1] == ("food", 2, 20.0, False)
++
++
++def test_set_budget_stores_amount():
++    budgets = {}
++    ops.set_budget(budgets, "food", 100.0)
++    assert budgets == {"food": 100.0}
++
++
++def test_set_budget_replaces_existing():
++    budgets = {"food": 50.0}
++    ops.set_budget(budgets, "food", 75.0)
++    assert budgets == {"food": 75.0}
++
++
++def test_set_budget_strips_category_whitespace():
++    budgets = {}
++    ops.set_budget(budgets, "  food  ", 10.0)
++    assert budgets == {"food": 10.0}
++
++
++def test_set_budget_rejects_blank_category():
++    with pytest.raises(ValueError):
++        ops.set_budget({}, "   ", 10.0)
++
++
++def test_set_budget_rejects_non_positive_amount():
++    with pytest.raises(ValueError):
++        ops.set_budget({}, "food", 0)
++
++
++def test_set_budget_rejects_non_finite_amount():
++    with pytest.raises(ValueError):
++        ops.set_budget({}, "food", float("nan"))
++
++
++def test_add_record_rejects_blank_category():
++    with pytest.raises(ValueError):
++        ops.add_record([], "   ", 5.0)
++
++
++def test_add_record_rejects_non_finite_amount():
++    with pytest.raises(ValueError):
++        ops.add_record([], "food", float("nan"))
++
++
++def test_add_record_strips_category_whitespace():
++    records = []
++    ops.add_record(records, "  food  ", 5.0)
++    assert records[0]["category"] == "food"
++
++
++def test_filter_by_category_rejects_blank_category():
++    with pytest.raises(ValueError):
++        ops.filter_by_category(_sample(), "   ")
