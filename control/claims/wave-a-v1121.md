@@ -1,1 +1,0 @@
-- `claude/wave-a-v1121` · **v1.12.1 distribution wave A** — upgrade superbot-next, websites, superbot-games, trading-strategy (kit row already current) · target-repo upgrade PRs + control/status.md wave-A rows + .sessions card · 2026-07-11
