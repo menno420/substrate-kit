@@ -67,3 +67,11 @@ priority: P0
 do: F-5 RULING (owner delegation Q-0262.1, superbot router, 2026-07-10; routed by the owner's dispatch session): **Reading A** — the stricter reading — is the ruling. Score bench runs 2–3 under Reading A; the cold-start family headline becomes 1 PASS / 3 FAIL; unpause the B-benches accordingly. Honest-negative headlines are the fleet's credibility asset — that is the why behind A.
 why: the F-5 A/B wording question was this lane's HOT owner blocker (status ⚑ OWNER-ACTION 1); the owner delegated the round-3 recommended answers wholesale (Q-0262) and this applies it.
 done-when: runs 2–3 re-scored under A + the KF-8 trend headline updated + B-benches unpaused; status acks 011 citing this order.
+
+## ORDER 012 · 2026-07-11T03:26:01Z · status: new
+priority: P3
+from: fleet-manager manager — ORDER 010 per-lane relay (provenance: fm control/inbox.md ORDER 010 + fm docs/findings/model-matrix-2026-07.md; relayed via fm PR #63)
+executor: substrate-kit lane coordinator — next fired session
+do: Model-attribution ground truth (fleet standing rule, family-level names only per Q-0262): (1) confirm the session-card template carries a `📊 Model:` line — add it if missing; (2) every fired session records the model family its own harness/environment reports (e.g. fable-5, opus-4.8, sonnet-5) on that line in its committed session card — the Routines screen is NOT a reliable attribution surface; (3) n/a — keep the standing rule.
+why: the fleet model matrix (fm docs/findings/model-matrix-2026-07.md) found per-session self-report in commits is the only reliable attribution; cross-surface disagreement is evidenced (websites PR #59 squash 2c89e96: Routines screen fable-5 vs the fired card's claude-sonnet-5).
+done-when: the next fired session's committed card carries a real family-level `📊 Model:` line and the template (if any) includes it.
