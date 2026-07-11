@@ -15,6 +15,36 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Generated adopter gate: modified sibling cards now gate through the
+  locked door (external review #226 finding G-1).** When a PR ADDED session
+  card(s), sibling cards MODIFIED in the same diff were advisory-only —
+  logged, never grade-affecting — so a PR adding one good card could
+  silently break a modified sibling (flip it back to `in-progress`, strip
+  its markers) and still merge green. `live_ci_workflow()` now runs every
+  modified non-added sibling through the SAME
+  `check --strict --require-session-log --session-log` locked door the
+  modified-only branch uses. **This supersedes PR #187's deliberate
+  advisory-sibling design** (a decide-and-flag decision): grading siblings
+  is strictly tighter — the added card still gates via its own
+  `--added-card` lane, so a sibling verdict can only ADD red, never
+  substitute, and the tail-1 shadowing #187 fixed cannot be reintroduced.
+  The kit's own dogfood gate already graded every diff card; this was a
+  generated-adopter-gate gap only. Adopters inherit the regenerated gate
+  at the next release + distribution wave.
+
+- **Session-card deletions are now a hard red on both gate surfaces
+  (external review #226 finding G-2).** Both the generated adopter gate
+  (`live_ci_workflow()`) and the kit's own dogfood gate
+  (`.github/workflows/ci.yml` Session gate step) built their card lists
+  with `git diff --diff-filter=d` — which EXCLUDES deletions — so a PR
+  that only DELETED `.sessions/*.md` cards fell to the no-card path and
+  could merge while erasing session memory. Both gates now capture
+  `--diff-filter=D` deletions explicitly and fail (exit 1) when any
+  session card is deleted; behavioral deletion-shape tests cover both
+  surfaces. Adopters inherit at the next release + wave.
+
 ## [1.12.0] - 2026-07-11
 
 Capability release (MINOR) shipping the B1 run-8 content-gap
