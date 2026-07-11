@@ -1,1 +1,0 @@
-- `claude/wave-b-v1121` · **Wave B: distribute kit v1.12.1 to the last four registry-order adopters (gba-homebrew · pokemon-mod-lab · venture-lab · fleet-manager)** · adopter-repo upgrade PRs + kit-side .sessions/2026-07-11-wave-b-v1121-upgrades.md + this claim; no engine/dist changes · 2026-07-11
