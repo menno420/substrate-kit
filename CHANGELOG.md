@@ -15,6 +15,28 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+**Benchmark outcome (KF-5 — travels into the next release's notes):** B1
+cold-start SIXTH firing (`2026-07-11-run06`, seed 711601 brookdonation, kit
+v1.10.1, arms claude-sonnet-5 ×6, judge claude-opus-4-8, both
+transcript-verified; row 6 + run dir, PR #201): **FAIL** (Reading A) — third
+consecutive 0-of-3 run. **The run's whole point was validating the v1.9.0
+SessionStart handoff-push (#165), and the answer is a precondition-NULL with
+a named mechanism:** the push fired at 3/3 ON boots carrying the correct card
+pointer, but reached the measured WORKER in **0/3** — a **delivery gap at the
+orchestrator→worker harness seam, not a converter gap** (the push text never
+enters the worker's native stream; SessionStart does not re-fire for the
+delegated worker). No cold session ever saw the signal it was supposed to act
+on. T4 continuity NULL third run running (the card was never opened; both
+arms resumed via git); M1 to OFF on T2/T4 (ON won the T5 pair 216 vs 341);
+M2 tie / M3 tie; every ON session ended `check --strict` RED. T5 ran v1 text
+(pin PR #181 unratified) with the v2 scripted facts recorded
+(signal-visibility precondition NOT met → v2 behavioral items
+precondition-NULL). Max ON M1 1627 ≤ 7k; zero unrecoverable errors; zero
+reset-relaunches (family first — the prepare-time permission-surface smoke
+ran). **KF-8 trend at 6 rows: 1 PASS / 5 FAIL.** Deviations verbatim in the
+run dir (OFF-T4 no-op-stub harvest repoint; 7 self-corrected in-session
+allowlist denials, 3 ON / 4 OFF).
+
 ### Fixed
 
 - Fleet-currency `kit:` heartbeat parsing (v1.10.1-wave finding, the #192

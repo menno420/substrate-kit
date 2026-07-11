@@ -168,6 +168,23 @@
   — the SessionStart handoff-push idea is the queue's top answer;
   confounds: 5 kit versions in 5 runs, fresh seeds, judge drift,
   permission-surface drift.
+- **B1's SIXTH FIRING is RECORDED — VERDICT: FAIL (Reading A)** (run
+  `2026-07-11-run06`, seed 711601 brookdonation, kit v1.10.1, judge
+  claude-opus-4-8 / arms claude-sonnet-5, transcript-verified; row 6 +
+  run dir, PR #201). **Third consecutive 0-of-3, and the handoff-push
+  (#165) validation returned a precondition-NULL:** the SessionStart push
+  fired at 3/3 ON boots with the correct card pointer, but reached the
+  measured WORKER in **0/3** — a **delivery gap at the
+  orchestrator→worker harness seam, not a converter gap** — so no cold
+  session ever saw the signal. T4 continuity NULL again (the card was
+  never opened; both arms resumed via git); M1 to OFF on T2/T4, ON won
+  the T5 pair (216 vs 341); **M2 tie / M3 tie**; every ON session ended
+  `check --strict` RED. T5 ran v1 text (#181 unratified) + the v2
+  scripted facts (behavioral items precondition-NULL). In-budget max
+  1627; zero unrecoverable errors; zero reset-relaunches (family first —
+  the prepare-time permission smoke ran). **KF-8 trend at 6 rows: 1 PASS
+  / 5 FAIL.** Deviations verbatim in the run dir (OFF-T4 no-op-stub
+  harvest repoint; 7 self-corrected allowlist denials).
 - **The F-5 RULING is DELIVERED — Reading A (strict), 2026-07-10**
   (ORDER 011, Q-0262.1; `bench/results/cold-start/f5-ruling-order-011.md`,
   PR #128): runs 2–3 stand as un-caveated FAILs (immutable rows
@@ -409,12 +426,13 @@ still renders from superbot's committed `console.json`. Exact steps:
 on the next touch and never accretes here; adopted from the groomed-ideas-1
 ⟲ review, implemented at the run close-out.)*
 
-**→ Post-run-5 (2026-07-11):** B1 run-5 FIRED and RECORDED (FAIL, row 5,
-PR #163) — no B-bench is queued-and-runnable (run-6 needs the P4 loop;
-B2/B3/B4 need OWNER-ACTION 6). Top buildable: the SessionStart
-handoff-push idea (next-boot §0 item 1). T5 redesign awaits a daytime
-`do-not-automerge` PR (pin path); the rest is owner-gated (OWNER-ACTION
-2–12 in `control/status.md`).
+**→ Post-run-6 (2026-07-11):** B1 run-6 FIRED and RECORDED (FAIL, row 6,
+PR #201) — the handoff-push validation returned precondition-NULL: the
+push never reaches the measured worker (orchestrator→worker delivery
+gap). Top buildable: close that delivery gap (or re-shape the bench arm
+so the measured session IS the hook-receiving session), then re-validate.
+B2/B3/B4 still need OWNER-ACTION 6; T5 v2 awaits the #181 click; the rest
+is owner-gated (OWNER-ACTION 2–13 in `control/status.md`).
 
 ### Owner gates — each with its one-line unblock
 
@@ -422,8 +440,8 @@ handoff-push idea (next-boot §0 item 1). T5 redesign awaits a daytime
 D-0005; #26/#49 owner-merged 2026-07-10.)*
 
 1. ✅ **Rubric F-5 ruling — RESOLVED 2026-07-10: Reading A** (ORDER 011,
-   Q-0262.1): runs 2–3 un-caveated FAILs; B-benches unpaused (run-5
-   fired 2026-07-11 → **1 PASS / 4 FAIL** at 5 rows).
+   Q-0262.1): runs 2–3 un-caveated FAILs; B-benches unpaused (runs 5–6
+   fired 2026-07-11 → **1 PASS / 5 FAIL** at 6 rows).
 2. **👤 Ratify or veto PL-010 (#22)** — the `feature build` task-class
    ruling. ⚑ **#22 merged mechanically, not by review** (label-race
    incident — timeline in the #22 comment; fresh-label guard deployed).

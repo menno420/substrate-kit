@@ -1,0 +1,286 @@
+diff --git a/README.md b/README.md
+index 25f3c79..a719ee8 100644
+--- a/README.md
++++ b/README.md
+@@ -2,10 +2,12 @@
+ 
+ A tiny donation-log CLI: `mark` records with a category and
+ amount, then `list`, `total`, `filter <category>` (case-insensitive),
+-`top`, and `report` them.
++`top`, and `report` them. `budget <category> <amount>` sets a spending
++budget for a category.
+ 
+ `report` prints one line per category (`<category>: <count> records,
+ <total>`), sorted by total highest first, followed by an
+-`overall: <count> records, <total>` line.
++`overall: <count> records, <total>` line. Categories with a budget that
++has been exceeded get an ` — OVER BUDGET (budget: <amount>)` suffix.
+ 
+ Run the tests with `python3 -m pytest tests/`.
+diff --git a/brookdonation/cli.py b/brookdonation/cli.py
+index 52edfd8..ca2ebeb 100644
+--- a/brookdonation/cli.py
++++ b/brookdonation/cli.py
+@@ -1,7 +1,7 @@
+ """brookdonation — a tiny donation-log CLI.
+ 
+ Commands: mark (add a record) · list · total · filter <category> · top ·
+-report.
++report · budget <category> <amount>.
+ """
+ 
+ import argparse
+@@ -24,6 +24,9 @@ def main(argv=None):
+     top_p = sub.add_parser("top", help="highest-amount categories")
+     top_p.add_argument("--limit", type=int, default=3)
+     sub.add_parser("report", help="per-category totals, highest total first")
++    budget_p = sub.add_parser("budget", help="set a category's budget")
++    budget_p.add_argument("category")
++    budget_p.add_argument("amount", type=float)
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -44,9 +47,18 @@ def main(argv=None):
+             for category, subtotal in ops.top_categories(records, args.limit):
+                 print(f"{category}: {subtotal}")
+         elif args.command == "report":
+-            for category, count, total in ops.category_report(records):
+-                print(f"{category}: {count} records, {total}")
++            budgets = store.load_budgets()
++            for category, count, total, over_budget in ops.category_report(records, budgets):
++                line = f"{category}: {count} records, {total}"
++                if over_budget:
++                    line += f" — OVER BUDGET (budget: {budgets[category]})"
++                print(line)
+             print(f"overall: {len(records)} records, {ops.total_amount(records)}")
++        elif args.command == "budget":
++            budgets = store.load_budgets()
++            ops.set_budget(budgets, args.category, args.amount)
++            store.save_budgets(budgets)
++            print("budget set.")
+     except ValueError as exc:
+         parser.error(str(exc))
+     return 0
+diff --git a/brookdonation/ops.py b/brookdonation/ops.py
+index d20b306..5d355d9 100644
+--- a/brookdonation/ops.py
++++ b/brookdonation/ops.py
+@@ -19,6 +19,14 @@ def _validate_amount(amount):
+     return amount
+ 
+ 
++def _validate_budget_amount(amount):
++    """Return ``amount`` as a positive finite float, or raise if not."""
++    amount = _validate_amount(amount)
++    if amount <= 0:
++        raise ValueError("budget must be a positive number")
++    return amount
++
++
+ def add_record(records, category, amount, note=""):
+     """Append a donation record and return it."""
+     record = {
+@@ -52,8 +60,23 @@ def top_categories(records, limit=3):
+     return ranked[:limit]
+ 
+ 
+-def category_report(records):
+-    """Return ``(category, count, total)`` tuples, highest total first."""
++def set_budget(budgets, category, amount):
++    """Set (or replace) the budget for a category and return the amount."""
++    category = _validate_category(category)
++    amount = _validate_budget_amount(amount)
++    budgets[category] = amount
++    return amount
++
++
++def category_report(records, budgets=None):
++    """Return ``(category, count, total, over_budget)`` tuples, highest total first.
++
++    ``over_budget`` is ``True`` when the category has a budget (from
++    ``budgets``, a ``{category: amount}`` mapping) and its total exceeds it,
++    ``False`` when it has a budget and stays within it, and ``None`` when the
++    category has no budget set.
++    """
++    budgets = budgets or {}
+     totals = {}
+     counts = {}
+     for r in records:
+@@ -61,4 +84,9 @@ def category_report(records):
+         totals[category] = totals.get(category, 0.0) + r["amount"]
+         counts[category] = counts.get(category, 0) + 1
+     ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
+-    return [(category, counts[category], total) for category, total in ranked]
++    report = []
++    for category, total in ranked:
++        budget = budgets.get(category)
++        over_budget = None if budget is None else total > budget
++        report.append((category, counts[category], total, over_budget))
++    return report
+diff --git a/brookdonation/store.py b/brookdonation/store.py
+index 3ed21a0..faf8c58 100644
+--- a/brookdonation/store.py
++++ b/brookdonation/store.py
+@@ -1,9 +1,10 @@
+-"""JSON-file persistence for brookdonation — one list of donation records."""
++"""JSON-file persistence for brookdonation — donation records and budgets."""
+ 
+ import json
+ from pathlib import Path
+ 
+ DEFAULT_PATH = Path("donations.json")
++DEFAULT_BUDGETS_PATH = Path("budgets.json")
+ 
+ 
+ def load_records(path=DEFAULT_PATH):
+@@ -17,3 +18,16 @@ def load_records(path=DEFAULT_PATH):
+ def save_records(records, path=DEFAULT_PATH):
+     """Write the donation records back to disk."""
+     Path(path).write_text(json.dumps(records, indent=2), encoding="utf-8")
++
++
++def load_budgets(path=DEFAULT_BUDGETS_PATH):
++    """Return the stored category budgets (empty dict when no file)."""
++    path = Path(path)
++    if not path.exists():
++        return {}
++    return json.loads(path.read_text(encoding="utf-8"))
++
++
++def save_budgets(budgets, path=DEFAULT_BUDGETS_PATH):
++    """Write the category budgets back to disk."""
++    Path(path).write_text(json.dumps(budgets, indent=2), encoding="utf-8")
+diff --git a/tests/test_brookdonation.py b/tests/test_brookdonation.py
+index 0ee958d..fbfd4ae 100644
+--- a/tests/test_brookdonation.py
++++ b/tests/test_brookdonation.py
+@@ -71,18 +71,18 @@ def test_filter_by_category_rejects_empty_category():
+ 
+ def test_category_report_ranked_by_total():
+     report = ops.category_report(_sample())
+-    assert report[0] == ("travel", 1, 30.0)
+-    assert report[1] == ("food", 2, 20.0)
++    assert report[0] == ("travel", 1, 30.0, None)
++    assert report[1] == ("food", 2, 20.0, None)
+ 
+ 
+ def test_category_report_highest_total_first():
+     report = ops.category_report(_sample())
+-    totals = [total for _, _, total in report]
++    totals = [total for _, _, total, _ in report]
+     assert totals == sorted(totals, reverse=True)
+ 
+ 
+ def test_category_report_counts_and_totals():
+-    report = {category: (count, total) for category, count, total in ops.category_report(_sample())}
++    report = {category: (count, total) for category, count, total, _ in ops.category_report(_sample())}
+     assert report["food"] == (2, 20.0)
+     assert report["travel"] == (1, 30.0)
+ 
+@@ -91,6 +91,57 @@ def test_category_report_empty_data():
+     assert ops.category_report([]) == []
+ 
+ 
++def test_category_report_no_budget_is_none():
++    report = ops.category_report(_sample())
++    assert all(over_budget is None for _, _, _, over_budget in report)
++
++
++def test_category_report_flags_over_budget():
++    budgets = {"food": 10.0}
++    report = {category: over_budget for category, _, _, over_budget in ops.category_report(_sample(), budgets)}
++    assert report["food"] is True
++    assert report["travel"] is None
++
++
++def test_category_report_under_budget_not_flagged():
++    budgets = {"food": 100.0}
++    report = {category: over_budget for category, _, _, over_budget in ops.category_report(_sample(), budgets)}
++    assert report["food"] is False
++
++
++def test_set_budget_stores_amount():
++    budgets = {}
++    amount = ops.set_budget(budgets, "food", 50.0)
++    assert amount == 50.0
++    assert budgets["food"] == 50.0
++
++
++def test_set_budget_replaces_existing():
++    budgets = {"food": 10.0}
++    ops.set_budget(budgets, "food", 20.0)
++    assert budgets["food"] == 20.0
++
++
++def test_set_budget_rejects_empty_category():
++    with pytest.raises(ValueError):
++        ops.set_budget({}, "  ", 10.0)
++
++
++def test_set_budget_rejects_non_positive_amount():
++    with pytest.raises(ValueError):
++        ops.set_budget({}, "food", 0)
++
++
++def test_set_budget_rejects_negative_amount():
++    with pytest.raises(ValueError):
++        ops.set_budget({}, "food", -5.0)
++
++
++def test_set_budget_rejects_non_finite_amount():
++    with pytest.raises(ValueError):
++        ops.set_budget({}, "food", math.inf)
++
++
+ def test_report_command_output(tmp_path, monkeypatch, capsys):
+     monkeypatch.chdir(tmp_path)
+     cli.main(["mark", "food", "12.5", "--note", "lunch"])
+@@ -118,3 +169,48 @@ def test_mark_command_rejects_empty_category(tmp_path, monkeypatch):
+     monkeypatch.chdir(tmp_path)
+     with pytest.raises(SystemExit):
+         cli.main(["mark", "  ", "1.0"])
++
++
++def test_budget_command_sets_budget(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["budget", "food", "10"])
++    out = capsys.readouterr().out
++    assert out.splitlines() == ["budget set."]
++    assert (tmp_path / "budgets.json").exists()
++
++
++def test_budget_command_rejects_non_positive_amount(tmp_path, monkeypatch):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit):
++        cli.main(["budget", "food", "0"])
++
++
++def test_report_command_flags_over_budget(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["mark", "food", "12.5", "--note", "lunch"])
++    cli.main(["mark", "travel", "30.0"])
++    cli.main(["mark", "food", "7.5"])
++    cli.main(["budget", "food", "10"])
++    capsys.readouterr()  # discard "recorded."/"budget set." lines
++
++    cli.main(["report"])
++    out = capsys.readouterr().out
++    assert out.splitlines() == [
++        "travel: 1 records, 30.0",
++        "food: 2 records, 20.0 — OVER BUDGET (budget: 10.0)",
++        "overall: 3 records, 50.0",
++    ]
++
++
++def test_report_command_does_not_flag_within_budget(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["mark", "food", "12.5"])
++    cli.main(["budget", "food", "100"])
++    capsys.readouterr()
++
++    cli.main(["report"])
++    out = capsys.readouterr().out
++    assert out.splitlines() == [
++        "food: 1 records, 12.5",
++        "overall: 1 records, 12.5",
++    ]

@@ -1,0 +1,13 @@
+diff --git a/brookdonation/cli.py b/brookdonation/cli.py
+index ca2ebeb..fc813fa 100644
+--- a/brookdonation/cli.py
++++ b/brookdonation/cli.py
+@@ -39,7 +39,7 @@ def main(argv=None):
+             for r in records:
+                 print(f"{r['category']}: {r['amount']} {r['note']}".rstrip())
+         elif args.command == "total":
+-            print(ops.total_amount(records))
++            print(f"{ops.total_amount(records):.2f}")
+         elif args.command == "filter":
+             for r in ops.filter_by_category(records, args.category):
+                 print(f"{r['category']}: {r['amount']}")
