@@ -394,17 +394,16 @@ still renders from superbot's committed `console.json`. Exact steps:
 on the next touch and never accretes here; adopted from the groomed-ideas-1
 ⟲ review, implemented at the run close-out.)*
 
-**→ Post-runs 6–8 (condensed — run dirs are the record):** run-6 found
-the push delivery gap; run-8 proved the pointer converts at the measured
-seam but the card payload was empty; B2/B3/B4 still need OWNER-ACTION 6.
+**→ Post-runs 6–9 (condensed — run dirs are the record):** run-6 found
+the push delivery gap; run-8 proved the pointer converts but the card was
+empty; run-9 validated the #222 countermeasure (near-miss FAIL, sole gap
+ON-T2 M1) — countered by #236. B2/B3/B4 still need OWNER-ACTION 6.
 
-**→ Post-run-9 (2026-07-11):** run-9 (PR #233) validated the #222
-countermeasure: trail arrives, T4 continuity + write-back REAL, strict
-exit 0 — row 8 **FAIL (near-miss)** only on the T2 M1 gap (2505/675).
-Top buildable: cut ON-T2's first-session orientation footprint (the
-build task pays the whole boot cost with nothing to resume), then
-re-validate; a paired build-task tie-break would separate structural
-from seed noise. #220 still parks the rubric §3 alignment.
+**→ Post-archive (2026-07-11, the coordinator chat archived):** next =
+**cut v1.13.0** (payload #228+#232+#236 in CHANGELOG [Unreleased]) → the
+7-repo wave → **bench run-10** (ideally after pin PRs #220/#238 ratify —
+⚑ OA-14/15). The daily lab loop is armed (06:00Z). Resume path + true
+state: `docs/retro/archive-ready-2026-07-11.md`.
 
 ### Owner gates — each with its one-line unblock
 
@@ -468,6 +467,10 @@ D-0005; #26/#49 owner-merged 2026-07-10.)*
 
 ## Recently shipped (newest first)
 
+- **The Q-0265 continuous run, condensed (2026-07-10/11, PR band
+  #135–#239):** 6 releases v1.7.1→v1.12.0 + waves; 9 engaged trees
+  current; bench runs 5–9; tests 852→1057. Verified arc + self-review +
+  lessons: `docs/retro/2026-07-11-continuous-run-retro.md`.
 - **#108 — planted-gate template sentinel fixes (visiting gba-homebrew
   Track B lane; claim #105)**: no-card PRs and born-red ADDED cards now
   gate advisory via explicitly named absent sentinels instead of the
