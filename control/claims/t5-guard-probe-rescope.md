@@ -1,1 +1,0 @@
-- `claude/t5-guard-probe-rescope` · **T5 guard-probe re-scope** — bench/tasks/T5.md rewrite (pin path, daytime `do-not-automerge` PR for owner ratification) + supporting analysis doc + status close-out · bench/tasks/T5.md, docs/reports/, control/status.md · 2026-07-11
