@@ -355,6 +355,22 @@ def cmd_collect(args) -> int:
         text=True,
     )
     if score.returncode == 0 and score.stdout.strip():
+        record = json.loads(score.stdout)
+        if record.get("events_seen", 0) == 0:
+            # Run-9's harness bookkeeping deviation, made structural: a
+            # convert-step slip (convert_native.py invoked without its dest
+            # argv) produced six EMPTY transcripts that scored M1=0 — a
+            # number one unchecked step away from reaching s-row-facts, the
+            # judge, and the immutable index row. An empty transcript is
+            # never a valid measurement: refuse it, unfile it, fail loud.
+            (dest / "transcript.jsonl").unlink(missing_ok=True)
+            raise SystemExit(
+                f"collect: {args.transcript} contains ZERO events — an empty "
+                "transcript is a convert-step failure (the run-9 "
+                "convert_native argv-slip class), never a measurement. "
+                f"Nothing filed for {args.arm}/{args.task}; no m1.json "
+                "written; re-run the converter and collect again.",
+            )
         (dest / "m1.json").write_text(score.stdout, encoding="utf-8")
         print(score.stdout.strip())
     else:

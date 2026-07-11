@@ -15,6 +15,43 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Fresh-state fast path in the handoff surfaces (B1 run-9 ON-T2
+  footprint cut).** Run-9's sole failing axis was ON-T2's orientation
+  footprint (M1 2505 vs OFF 675 words). The transcript audit located the
+  cost: 1724 of the 2505 words (69%) were ONE repo-wide grep polluted by
+  the vendored `bootstrap.py` (75 lines, 862w) plus its byte-copy under
+  `.substrate/backup/` (75 identical lines, 862w) — zero project-code
+  matches — after the session's hand-rolled exclusion filter failed; the
+  planted `.ignore` (the #165 mechanical half) covers only ripgrep-family
+  tools, and the planted-CLAUDE.md hygiene recipe rode the claudeMd
+  channel measured ABSENT 0/6. Another ~224w were boot surfaces routing
+  the session into an empty adoption card ("Open that card FIRST") and
+  the empty current-state scaffold. `handoff_lines`
+  (`src/engine/loop/handoff_pointer.py` — one composer, two surfaces:
+  `HANDOFF.md` + the SessionStart push, the surfaces run-9 proves are
+  delivered 3/3 and read first) now renders a fresh-state fast path when
+  the newest card is complete AND leaves no resolved pointer AND no
+  evidence trail: "Fresh start — nothing in flight" (no card-read
+  routing) plus one search-hygiene line carrying the byte-exact working
+  exclusion (`grep -r --exclude=bootstrap.py --exclude-dir=.substrate` /
+  the planted `.ignore` for ripgrep). The converted paths are untouched
+  and PINNED: the T4-shaped rendering (in-progress/drafted + trail — the
+  run-9 M2/M3 double-win mechanism) and the T5-shaped rendering
+  (complete + resolved pointer) are byte-equality-pinned against
+  pre-change literals in `tests/test_handoff_pointer.py`. Run-10
+  re-measures; the probe notes live in
+  `bench/results/cold-start/run-10-spec-notes.md`.
+
+- **Bench collect refuses empty transcripts (`events_seen == 0` hard
+  abort).** Run-9's recorded harness deviation — a convert-step argv slip
+  produced six empty transcripts that scored M1=0 before the runner
+  caught it by hand — is now structural: `run_ab.py collect` parses the
+  M1 record and aborts loudly on zero events, unfiles the copied
+  transcript, and writes no `m1.json`, so a converter failure can never
+  put a number in front of the judge or the immutable index.
+
 ### Fixed
 
 - **Generated adopter gate: modified sibling cards now gate through the
