@@ -1,0 +1,15 @@
+Implementation complete and verified. Summary:
+
+**What was added** (commit `63d769d`, local only — repo has no configured remote):
+- `mossreading/ops.py`: new `category_report(records)` — groups by category, tracks count + total, returns `(category, count, total)` tuples sorted by total descending (reuses the existing `(-total, category)` tie-break idiom from `top_categories`).
+- `mossreading/cli.py`: new `report` subcommand (no extra args needed), prints one line per category then a final `overall: <count> records, <total>` line; updated the module docstring's command list.
+- `README.md`: added `report` to the command list sentence.
+- `tests/test_mossreading.py`: 4 new tests — two for `ops.category_report` (ranked output + empty-list case), two exercising the full CLI via `cli.main(["report"])` + `capsys` (populated data and empty data), isolated from the real `readings.json` via `monkeypatch.chdir(tmp_path)`.
+
+All 10 tests pass (6 pre-existing + 4 new). Empty-data case follows the codebase's existing implicit style — no special-cased branch, just prints `overall: 0 records, 0` because the aggregation naturally yields zero. No new input validation was needed since `report` takes no arguments; existing argparse `type=` conventions were left untouched elsewhere.
+
+**Worth knowing for next session:**
+- The subagent discovered a real gotcha: `store.load_records(path=DEFAULT_PATH)` binds its default at function-definition time, so `monkeypatch.setattr(store, "DEFAULT_PATH", ...)` alone would *not* isolate test data — `monkeypatch.chdir(tmp_path)` is required instead since `DEFAULT_PATH` is a relative `Path`. Same technique should be reused for any future CLI-level tests in this repo.
+- The change was committed locally as `63d769d` on `master`. Since there's no remote configured, nothing was pushed anywhere — let me know if you'd rather I not auto-commit in future turns.
+
+I didn't save anything to team memory since this `mossreading` repo is unrelated to the `substrate-kit` project already tracked there, and nothing here rose to a durable, non-obvious team-wide fact worth persisting.
