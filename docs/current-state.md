@@ -124,35 +124,35 @@
   un-caveated (ORDER 011). Deviations verbatim in each run dir; confounds
   travel (a fresh kit version every run, fresh seeds, judge drift).
 - **B1 FIRINGS 5–6 (condensed — rows + run dirs, PRs #163/#201, are the
-  full immutable record):** run-5 `2026-07-11-run05` **FAIL** (first
-  Reading-A-only-scored row; second 0-of-3: M1 to OFF all pairs, M2 tie,
-  M3 OFF; T4 continuity NULL; T5 guard advisories IGNORED — RED close;
-  converter v3 put verbatim prompts in the transcripts). run-6
-  `2026-07-11-run06` **FAIL** (third 0-of-3; **the handoff-push (#165)
-  validation returned precondition-NULL:** the push fired at 3/3 ON boots
-  but reached the measured WORKER in **0/3** — a delivery gap at the
-  orchestrator→worker harness seam, not a converter gap; M1 to OFF on
-  T2/T4, ON won the T5 pair; M2/M3 tie; zero reset-relaunches, family
-  first). **KF-8 trend at 6 rows: 1 PASS / 5 FAIL.** Deviations verbatim
-  in each run dir.
+  full immutable record):** run-5 **FAIL** (second 0-of-3; T4 continuity
+  NULL; T5 guard advisories IGNORED — RED close; converter v3 landed
+  verbatim prompts). run-6 **FAIL** (third 0-of-3; **the handoff-push
+  (#165) validation returned precondition-NULL** — the push fired 3/3 ON
+  boots but reached the measured WORKER 0/3, an orchestrator→worker
+  delivery gap; ON won the T5 M1 pair). Trend at 6 rows: 1 PASS / 5 FAIL.
 - **B1 FIRINGS 7–8 (condensed — run dirs, PRs #211/#215, are the full
-  immutable record):** run-7 `2026-07-11-run07` **ABORTED, NO ROW**
-  (environment, not kit: the runner's `claude -p` orchestrator decomposed
-  every spawn — 6/9/5 subagents, 0/3 verbatim-prompt workers; suspect
-  `CLAUDE_AUTO_BACKGROUND_TASKS`; nothing measured). run-8
-  `2026-07-11-run08` **FAIL** (fourth 0-of-3; first run behind the §6
-  preconditions: delegation-seam smoke PASSED with the env mitigation —
-  suspect + 4 related vars stripped from spawned CLIs; unmitigated
-  control still paraphrased; mitigated seam FLAT, the spawned session IS
-  the measured cold session, verbatim 6/6; M1 to OFF T2/T4, ON wins the
-  T5 pair; M2/M3 tie; **the #203 `HANDOFF.md` pointer was OPENED at the
-  measured seam for the first time** (ON-T2 + ON-T4) and ON-T4 opened the
-  pointed card — first card-continuity conversion — but the card was an
-  unfilled auto-draft, so no marginal continuity value; pointer 59 ≤ 113;
-  push delivered 3/3 ON at the flat seam; claudeMd channel absent 0/6;
-  T5 v2 RATIFIED pre-arm via #181 and run natively — visible push
-  IGNORED, `check --strict` exit=1 at end). **KF-8 trend at 7 rows:
-  1 PASS / 6 FAIL.** Deviations verbatim in each run dir manifest.
+  immutable record):** run-7 **ABORTED, NO ROW** (environment, not kit:
+  the orchestrator decomposed every spawn — 0/3 verbatim-prompt workers;
+  suspect `CLAUDE_AUTO_BACKGROUND_TASKS`). run-8 **FAIL** (fourth 0-of-3;
+  first run behind the §6 preconditions: seam smoke PASSED with the env
+  mitigation, seam FLAT, verbatim 6/6; M1 to OFF T2/T4, ON wins T5;
+  M2/M3 tie; **the #203 `HANDOFF.md` pointer was OPENED at the measured
+  seam for the first time** and ON-T4 opened the pointed card — first
+  card-continuity conversion — but the card was an unfilled auto-draft,
+  no marginal value; push delivered 3/3 ON; claudeMd absent 0/6; T5 v2
+  ratified pre-arm (#181), visible push IGNORED, `check --strict` exit=1
+  at end). Trend at 7 rows: 1 PASS / 6 FAIL.
+- **B1 FIRING 9 (condensed — run dir, PR #233, is the full record):**
+  run-9 **FAIL (near-miss) — first ON M2+M3 double win via GENUINE
+  behavior** (#222/v1.12.0 validated): the trail ARRIVED (push+HANDOFF
+  86w), ON-T4 diffed exactly the trail-named files and **AUTHORED the
+  card** (slots resolved, real pointer, flipped complete — family-first
+  write-back); bare `check --strict` exit **0** at arm end (genuine
+  completion; the advisory lane never exercised); T4 M1 near-tie
+  1759/1672, T5 ON 214/294, T2 regressed 2505/675 → strict Reading A
+  fails none-regressing (judge: lenient M1-tie would PASS); T5 v2 gate
+  met but DEGENERATE (push announced a COMPLETE card — no tension).
+  **KF-8 trend at 8 rows: 1 PASS / 7 FAIL.**
 - **The F-5 RULING is DELIVERED — Reading A (strict), 2026-07-10**
   (ORDER 011, Q-0262.1; `bench/results/cold-start/f5-ruling-order-011.md`,
   PR #128): runs 2–3 stand as un-caveated FAILs (immutable rows
@@ -394,20 +394,17 @@ still renders from superbot's committed `console.json`. Exact steps:
 on the next touch and never accretes here; adopted from the groomed-ideas-1
 ⟲ review, implemented at the run close-out.)*
 
-**→ Post-run-6 (2026-07-11):** B1 run-6 FIRED and RECORDED (FAIL, row 6,
-PR #201) — the handoff-push validation returned precondition-NULL: the
-push never reaches the measured worker (orchestrator→worker delivery
-gap). Top buildable: close that delivery gap (or re-shape the bench arm
-so the measured session IS the hook-receiving session), then re-validate.
-B2/B3/B4 still need OWNER-ACTION 6; T5 v2 awaits the #181 click; the rest
-is owner-gated (OWNER-ACTION 2–13 in `control/status.md`).
+**→ Post-runs 6–8 (condensed — run dirs are the record):** run-6 found
+the push delivery gap; run-8 proved the pointer converts at the measured
+seam but the card payload was empty; B2/B3/B4 still need OWNER-ACTION 6.
 
-**→ Post-run-8 (2026-07-11):** run-8 (PR #215) executed the §6 spec —
-smoke PASSED mitigated, scored, row 7: **FAIL, 1 PASS / 6 FAIL**. The
-pointer converts at the measured seam now; the gap is the CARD (unfilled
-auto-draft — conversions carry no content). Top buildable: real content
-in the auto-draft card, then re-validate; rubric §3 T5 v2-alignment pin
-PR (owner-review path).
+**→ Post-run-9 (2026-07-11):** run-9 (PR #233) validated the #222
+countermeasure: trail arrives, T4 continuity + write-back REAL, strict
+exit 0 — row 8 **FAIL (near-miss)** only on the T2 M1 gap (2505/675).
+Top buildable: cut ON-T2's first-session orientation footprint (the
+build task pays the whole boot cost with nothing to resume), then
+re-validate; a paired build-task tie-break would separate structural
+from seed noise. #220 still parks the rubric §3 alignment.
 
 ### Owner gates — each with its one-line unblock
 

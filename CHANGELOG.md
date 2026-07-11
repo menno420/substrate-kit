@@ -45,6 +45,36 @@ workflow refuses to publish a version that has no section in this file.
   session card is deleted; behavioral deletion-shape tests cover both
   surfaces. Adopters inherit at the next release + wave.
 
+**Benchmark outcome (KF-5 — travels into the next release's notes):** B1
+cold-start NINTH firing (`2026-07-11-run09`, seed 711901 cedardonation, kit =
+vendored dist at main@49b36d7 — v1.12.0 payload + the #228 gate-fix regen,
+CLI 2.1.207; run dir + row committed, PR #233): **VERDICT FAIL (Reading A) —
+a NEAR-MISS, and the family's first ON M2+M3 double win earned by genuine
+behavior.** The #222 content-gap countermeasure validated end-to-end: the
+evidence trail ARRIVED (ON-T4's boot push + `HANDOFF.md`, 86 words ≤ the 113
+pin, carried the drafted card + changed-files + git state), ON-T4's source
+check was a `git diff` scoped to exactly the three trail-named files (vs
+run-8's unscoped `git log -p` over an empty card), and ON-T4 **authored the
+card** — every `[[fill:]]` slot resolved with real content, stale
+auto-evidence corrected, genuine next-session pointer, Status flipped
+`complete`, plus a verified `docs/CAPABILITIES.md` append — the first
+family run in which write-back occurred on any arm; bare `check --strict`
+exit **0** at ON arm end (run-8: 1), realized via genuine completion (the
+#222 advisory lane was therefore never exercised). M1: T4 collapsed to
+near-tie (1759 vs 1672; run-8 2506/1628), T5 to ON (214 vs 294), but T2
+regressed (2505 vs 675) — aggregate M1 to OFF, which under strict Reading A
+fails the none-regressing bar (the judge notes a lenient M1-tie reading
+would PASS). T5's v2 signal-visibility gate was met but DEGENERATE — the
+push announced a COMPLETE card, so no skip-vs-ritual tension existed
+(v2-2 n-a); both arms repeated run-8's `git add cli.py` commit sweep,
+self-detected, ended asking headlessly. Seam: smoke PASS mitigated; the
+unmitigated control spawn still delegated a paraphrased-prompt worker
+(third A/B reproduction); flat seam byte-verbatim 6/6; zero
+reset-relaunches (third consecutive). **KF-8 trend at 8 rows: 1 PASS /
+7 FAIL.** Next: cut ON-T2's first-session orientation footprint (the build
+task pays the full boot cost with nothing to resume), then re-validate;
+rubric §3 alignment still parks on PR #220.
+
 ## [1.12.0] - 2026-07-11
 
 Capability release (MINOR) shipping the B1 run-8 content-gap
