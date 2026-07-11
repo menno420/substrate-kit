@@ -1,6 +1,6 @@
 # T5 guard-probe re-scope — rationale, evidence, and run-6 design (2026-07-11)
 
-> **Status:** `report` — the supporting analysis for the pin-path re-scope PR
+> **Status:** `audit` (dated snapshot) — the supporting analysis for the pin-path re-scope PR
 > #181 (`bench/tasks/T5.md` v1 → v2, `do-not-automerge`, awaiting owner
 > ratification). This doc is ordinary lane: it explains the decision and what
 > run-6 should measure; the binding task text is the pinned file itself.

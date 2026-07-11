@@ -38,6 +38,10 @@ results/<family>/<date>-runNN/ #   allocation, guards, ideas, friction) + commit
 - The twice-failed baseline this series starts from (and T5's motivation):
   <https://github.com/menno420/superbot/blob/main/docs/planning/phase-2.5-cold-start-report-2026-07-07.md>
 - The harness + integrity spec: `docs/planning/kit-lab-founding-plan-2026-07-07.md` §5.0–§5.1 (this repo).
+- The T5 v2 re-scope rationale + run-6 design (2026-07-11):
+  [`docs/reports/2026-07-11-t5-rescope-analysis.md`](../docs/reports/2026-07-11-t5-rescope-analysis.md)
+  — why guard-firing stopped discriminating (runs 4–5) and what the
+  response-to-visible-signal probe measures (pin PR #181, owner ratification).
 
 ## Running B1 (who does what)
 
