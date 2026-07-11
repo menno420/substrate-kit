@@ -151,6 +151,137 @@ def test_observe_no_proposal_before_due(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# Handoff push (the B1 run-4/run-5 continuity-null fix)
+# ---------------------------------------------------------------------------
+
+
+def _write_card(root, config, name, text):
+    sessions = root / config.sessions_dir
+    sessions.mkdir(parents=True, exist_ok=True)
+    (sessions / name).write_text(text, encoding="utf-8")
+
+
+def test_handoff_pushes_newest_card_with_status_and_slots(tmp_path):
+    config, backend = _init(tmp_path)
+    _write_card(
+        tmp_path,
+        config,
+        "2026-07-10-session.md",
+        "# Session\n\n> **Status:** `drafted`\n\n"
+        "- Decisions made: [[fill: decisions taken this session, or none]]\n"
+        "- Next session should know: [[fill: the handoff pointer]]\n",
+    )
+    text = compose_orientation(tmp_path, config, backend)
+    assert "## Handoff" in text
+    assert "`.sessions/2026-07-10-session.md`" in text
+    assert "status: in-progress/drafted" in text
+    assert "2 unresolved [[fill:]] slot(s)" in text
+    # The unresolved pointer slot is NOT pushed — a template slot is noise.
+    assert "Next session should know: [[fill:" not in text
+    assert "Open that card FIRST" in text
+
+
+def test_handoff_extracts_resolved_pointer_from_complete_card(tmp_path):
+    config, backend = _init(tmp_path)
+    _write_card(
+        tmp_path,
+        config,
+        "2026-07-10-session.md",
+        "# Session\n\n> **Status:** `complete`\n\n"
+        "- Next session should know: the budgets read-hook lives in store.py\n",
+    )
+    text = compose_orientation(tmp_path, config, backend)
+    assert "status: complete" in text
+    assert "unresolved [[fill:]]" not in text
+    assert "Next session should know: the budgets read-hook lives in store.py" in text
+
+
+def test_handoff_takes_last_resolved_pointer(tmp_path):
+    config, backend = _init(tmp_path)
+    _write_card(
+        tmp_path,
+        config,
+        "2026-07-10-session.md",
+        "# Session\n\n> **Status:** `complete`\n\n"
+        "- Next session should know: older pointer\n\n"
+        "- Next session should know: newest pointer wins\n",
+    )
+    text = compose_orientation(tmp_path, config, backend)
+    assert "Next session should know: newest pointer wins" in text
+    assert "older pointer" not in text
+
+
+def test_handoff_pointer_excerpt_is_capped(tmp_path):
+    config, backend = _init(tmp_path)
+    _write_card(
+        tmp_path,
+        config,
+        "2026-07-10-session.md",
+        "# Session\n\n> **Status:** `complete`\n\n"
+        f"- Next session should know: {'x' * 600}\n",
+    )
+    text = compose_orientation(tmp_path, config, backend)
+    line = next(l for l in text.splitlines() if "Next session should know:" in l)
+    assert len(line) < 350
+    assert line.endswith("…")
+
+
+def test_handoff_skipped_when_no_cards(tmp_path):
+    config, backend = _init(tmp_path)
+    text = compose_orientation(tmp_path, config, backend)
+    assert "## Handoff" not in text
+
+
+def test_handoff_skips_sessions_readme(tmp_path):
+    config, backend = _init(tmp_path)
+    _write_card(tmp_path, config, "README.md", "# how cards work\n")
+    text = compose_orientation(tmp_path, config, backend)
+    assert "## Handoff" not in text
+
+
+def test_handoff_renders_at_observe_minimal_depth(tmp_path):
+    config, backend = _init(tmp_path, mode="observe")
+    _write_card(
+        tmp_path,
+        config,
+        "2026-07-10-session.md",
+        "# Session\n\n> **Status:** `complete`\n",
+    )
+    text = compose_orientation(tmp_path, config, backend)
+    assert "## Handoff" in text
+    assert "In-scope actions" not in text  # minimal still omits imposing sections
+
+
+def test_handoff_renders_right_after_status_header(tmp_path):
+    config, backend = _init(tmp_path)
+    _write_card(
+        tmp_path,
+        config,
+        "2026-07-10-session.md",
+        "# Session\n\n> **Status:** `complete`\n",
+    )
+    text = compose_orientation(tmp_path, config, backend)
+    assert text.index("# Session orientation") < text.index("## Handoff")
+    assert text.index("## Handoff") < text.index("In-scope actions")
+
+
+def test_unreadable_card_drops_handoff_not_composition(tmp_path):
+    config, backend = _init(tmp_path)
+    _write_card(
+        tmp_path,
+        config,
+        "2026-07-10-session.md",
+        "# Session\n\n> **Status:** `complete`\n",
+    )
+    (tmp_path / config.sessions_dir / "2026-07-10-session.md").chmod(0o000)
+    try:
+        text = compose_orientation(tmp_path, config, backend)
+    finally:
+        (tmp_path / config.sessions_dir / "2026-07-10-session.md").chmod(0o644)
+    assert "# Session orientation" in text  # composition survives
+
+
+# ---------------------------------------------------------------------------
 # Section order + resilience
 # ---------------------------------------------------------------------------
 

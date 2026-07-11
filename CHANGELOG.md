@@ -29,6 +29,30 @@ the kit's continuity surface is pull-only and goes unread — the SessionStart
 handoff-push idea is the evidence-backed answer. Evidence:
 `bench/results/cold-start/`.
 
+### Added
+
+- **SessionStart handoff push** — `compose_orientation` gains a handoff
+  section (slot 2, right after the status header, rendered at EVERY depth
+  including observe/minimal — a pointer informs, it imposes nothing): the
+  newest session card's path, completion state, unresolved `[[fill:]]` slot
+  count, the previous session's resolved "Next session should know" pointer,
+  and a read-this-first line. The B1 run-4/run-5 continuity-null fix: both
+  hook-live bench runs showed cold sessions re-deriving history via
+  `git show` while the auto-drafted card sat unopened (run-4 report T4
+  item 5; run-5 report T4 item E) — the continuity surface was PULL-only,
+  and the SessionStart hook is the one kit surface the transcripts prove
+  fires in a cold session (run-5 manifest runner_notes: hooks LIVE on the ON
+  arm, SessionStart fired). The push is capped terse (300-char pointer
+  excerpt) per the M1 footprint lesson. Bench re-validation (run-6) pends
+  the P4 daily loop.
+- **Search-hygiene note in the planted `CLAUDE.md` template** — the cheap
+  half of the run-5 judge's grep-pollution finding (limitation 5: the
+  ~12k-line planted `bootstrap.py` + `.substrate/backup` copy pollute
+  repo-wide grep/find in adopter repos): the template now names the kit
+  machinery and the exclusion flags (`grep --exclude=bootstrap.py
+  --exclude-dir=.substrate` / `rg -g '!…'`). The mechanical fix (planted
+  ignore/attributes file) stays queued as a kit fix in `control/status.md`.
+
 ## [1.8.0] - 2026-07-11
 
 Capability release (MINOR) shipping the EAP program-review §6 kit-owned
