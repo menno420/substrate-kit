@@ -93,6 +93,19 @@ def test_claude_md_is_staged_not_planted(tmp_path):
     assert "CLAUDE.md.tmpl" not in {name for name, _ in ADOPT_PLAN}
 
 
+def test_claude_md_orientation_names_handoff_pointer(tmp_path):
+    # The B1 run-6 delivery-gap fix's #2 rider: the harness's claudeMd
+    # injection is the one channel run-6 proved reaches delegated workers
+    # (ON-T4 obeyed CLAUDE.md's verify instructions verbatim), so the planted
+    # CLAUDE.md's read-first list routes them to the HANDOFF.md pointer.
+    root, config, _ = _adopt_into(tmp_path)
+    staged = (root / config.state_dir / "claude" / "CLAUDE.md").read_text(
+        encoding="utf-8"
+    )
+    assert "`HANDOFF.md` at repo root" in staged
+    assert "never commit or edit it" in staged
+
+
 def test_unfilled_placeholders_stay_visible_under_banner(tmp_path):
     root, _, _ = _adopt_into(tmp_path)
     text = (root / "CONSTITUTION.md").read_text(encoding="utf-8")

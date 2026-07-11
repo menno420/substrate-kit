@@ -46,6 +46,7 @@ from engine.checks.check_session_log import (
 )
 from engine.lib.atomicio import atomic_write_text
 from engine.lib.config import Config
+from engine.loop.handoff_pointer import write_handoff_pointer
 
 # State key for the session-start evidence anchor.
 SESSION_ANCHOR_KEY = "session_anchor"
@@ -424,7 +425,20 @@ def ensure_draft(root: Path, config: Config, backend: Any) -> list[str]:
     drafted is only counted (unresolved slots); a completed card is never
     touched. Fail-open by contract — any failure returns ``[]`` rather than
     raising into a hook.
+
+    After drafting, the repo-root ``HANDOFF.md`` pointer is refreshed —
+    silently — so it names the just-drafted card (the B1 run-6 delivery-gap
+    fix: the pointer rides the working-tree surfaces delegated workers
+    actually touch). Silent by design: the refresh is bookkeeping, not an
+    advisory, and it must not change this seam's advisory contract.
     """
+    lines = _draft_advisories(root, config, backend)
+    write_handoff_pointer(root, config)
+    return lines
+
+
+def _draft_advisories(root: Path, config: Config, backend: Any) -> list[str]:
+    """The drafting body of ``ensure_draft`` (see its contract above)."""
     try:
         try:
             state = dict(backend.data) if backend.data else {}

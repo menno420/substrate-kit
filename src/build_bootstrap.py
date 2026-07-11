@@ -70,6 +70,10 @@ MODULE_ORDER = (
     "loop/reflections.py",
     "loop/friction.py",
     "loop/telemetry.py",
+    # Before loop/handoff.py + hooks/session_start.py: both import its
+    # shared handoff-lines composer / pointer writer (the B1 run-6
+    # delivery-gap fix — one composer, two delivery surfaces).
+    "loop/handoff_pointer.py",
     "loop/handoff.py",
     "loop/episodes.py",
     "loop/triggers.py",

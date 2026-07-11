@@ -37,6 +37,28 @@ ran). **KF-8 trend at 6 rows: 1 PASS / 5 FAIL.** Deviations verbatim in the
 run dir (OFF-T4 no-op-stub harvest repoint; 7 self-corrected in-session
 allowlist denials, 3 ON / 4 OFF).
 
+### Added
+
+- **Pull-visible handoff pointer — the run-6 delivery-gap fix.** The kit now
+  regenerates a lean, marker-guarded `HANDOFF.md` at repo root (newest
+  session card path + status + unresolved slot count + the resolved "next
+  session should know" pointer — the same shared composer as the #165
+  SessionStart push, so the two surfaces can never drift) at every
+  SessionStart-hook / `session-start` boot, refreshed by the `ensure_draft`
+  seam (Stop hook, `session-close`, `draft`). Untracked by design and
+  deliberately NOT gitignored: run-6 proved the push stops at the
+  orchestrator (worker delivery 0/3), while `git status`/`ls`/`find` ran
+  early in 4 of 6 measured workers and the run's one acknowledgment-adjacent
+  event was a worker noticing untracked paths in its own `git status` — the
+  pointer rides the surface workers demonstrably touch. A host-owned
+  `HANDOFF.md` (no marker) is never written, overwritten, or deleted.
+- Planted `CLAUDE.md` orientation list now routes sessions through
+  `HANDOFF.md` at slot 2 — the harness's claudeMd injection is the one
+  channel run-6 proved reaches and directs delegated workers (ON-T4 obeyed
+  CLAUDE.md's verify instructions verbatim). Adopters inherit on `upgrade`.
+  **Bench note: run-7 must re-validate AFTER this distributes to adopters**
+  — the ON arm measures the vendored dist, not kit HEAD.
+
 ### Fixed
 
 - Fleet-currency `kit:` heartbeat parsing (v1.10.1-wave finding, the #192
