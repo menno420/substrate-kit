@@ -45,6 +45,27 @@ workflow refuses to publish a version that has no section in this file.
   session card is deleted; behavioral deletion-shape tests cover both
   surfaces. Adopters inherit at the next release + wave.
 
+- **Currency scanner: private repos no longer render as "not adopted"
+  (kit #230 headline).** `default_fetcher` read a
+  raw.githubusercontent.com 404 as "file absent", but a PRIVATE repo
+  returns 404 for *every* unauthenticated path — so pokemon-mod-lab
+  (tree truly adopted at v1.6.0, pin + vendored dist) sat mislabeled
+  "not adopted / unknown" in the generated registry. The fetcher is now
+  layered: raw content (primary) → the authenticated GitHub API contents
+  endpoint (`GITHUB_TOKEN`/`GH_TOKEN`) → a `codeload` branch tarball
+  (whole tree in one stdlib request — also the transport that survives
+  proxy-mediated agent seats where `api.github.com` REST is
+  policy-blocked). A 404 only ever becomes "truly absent" once the repo
+  is proven readable (API repo probe 200 or tarball in hand); a repo no
+  transport can read raises `RepoUnreadableError`, and its row renders a
+  loud `⚠️ unreadable` verdict — tree truth, never transport failure,
+  and never "not adopted". `bootstrap currency` prints an UNREADABLE
+  summary line naming any such rows. Regression tests pin the seam:
+  raw 404 + API success → adopted; raw 404 + API 404 on a proven-readable
+  repo → truly absent; auth failure everywhere → unreadable, not
+  "not adopted"; tarball fallback reads + proves absence; one probe per
+  repo (cached).
+
 ## [1.12.0] - 2026-07-11
 
 Capability release (MINOR) shipping the B1 run-8 content-gap
