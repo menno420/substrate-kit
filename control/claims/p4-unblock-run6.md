@@ -1,1 +1,0 @@
-- `claude/p4-unblock-run6-2026-07-11` · **P4 investigation + run-6 unblock + v1.10.1-wave mechanical fixes** — identify/act on "the P4 loop" gating bench run-6; currency `kit:`-line bullet-embed leniency; generated-gate action major bumps; guard-fires dedupe · expected: src/engine/{grammar,adopt,loop/telemetry}.py + tests + dist + CHANGELOG + control/status.md · 2026-07-11
