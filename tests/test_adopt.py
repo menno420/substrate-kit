@@ -408,6 +408,34 @@ def test_sessions_readme_plants_each_marker_byte_form(tmp_path):
         assert f"{marker['label']} (`{marker['needle']}`)" in text, marker
 
 
+def test_sessions_readme_teaches_family_level_model_attribution(tmp_path):
+    # ORDER 012 (fleet standing rule, fm model matrix 2026-07): the model
+    # segment is the family-level name the session's OWN harness reports —
+    # the committed card's self-report is the attribution ground truth;
+    # external surfaces (schedule/Routines screens) are evidenced to
+    # misattribute, and full dated model IDs are banned from attribution.
+    root, config, _ = _adopt_into(tmp_path)
+    text = (root / config.sessions_dir / "README.md").read_text(encoding="utf-8")
+    assert "family-level model name your own harness" in text
+    assert "attribution ground truth" in text
+    assert "`fable-5`" in text
+    assert "family-level names only" in text
+
+
+def test_sessions_readme_model_doctrine_only_with_model_marker(tmp_path):
+    # A host whose markers don't require the Model line gets no model
+    # doctrine paragraph — the sentence is keyed to the configured needle.
+    from engine.adopt import _adopt_sessions_readme
+
+    without = _adopt_sessions_readme([{"label": "Status badge", "needle": "**Status:**"}])
+    assert "attribution ground truth" not in without
+    with_model = _adopt_sessions_readme(
+        [{"label": "Model line", "needle": "\N{BAR CHART} Model:"}],
+    )
+    assert "attribution ground truth" in with_model
+    assert "family-level names only" in with_model
+
+
 def test_planted_index_skeleton_is_valid_json(tmp_path):
     root, _, _ = _adopt_into(tmp_path)
     data = json.loads((root / "project.index.json").read_text(encoding="utf-8"))

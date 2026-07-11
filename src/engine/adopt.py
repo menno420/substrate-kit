@@ -36,6 +36,7 @@ from engine.hooks.settings import full_settings_template, hooks_fill_table
 from engine.lib.atomicio import atomic_write_text
 from engine.lib.config import KIT_VERSION, Config, save_config
 from engine.lib.guardrail import assert_safe_target
+from engine.loop.telemetry import MODEL_LINE_NEEDLE
 from engine.render import build_context, find_placeholders, load_templates, render
 from engine.skills.skills import SKILLS, skill_document, skill_relpath
 
@@ -406,6 +407,22 @@ def _adopt_sessions_readme(markers: list[dict[str, str]]) -> str:
         if m.get("label")
     )
     pairs = pairs or "(no markers configured)"
+    # Attribution ground truth (fleet standing rule, ORDER 012 / fm model
+    # matrix 2026-07): the model segment is the FAMILY-LEVEL name the
+    # session's own harness reports — self-report in the committed card is
+    # the only reliable attribution surface. Rendered only when the host's
+    # markers actually require the Model line.
+    model_doctrine = ""
+    if any(m.get("needle") == MODEL_LINE_NEEDLE for m in markers):
+        model_doctrine = (
+            f" The `{MODEL_LINE_NEEDLE}` model segment is the **family-level "
+            "model name your own harness/environment reports this session** "
+            "(e.g. `fable-5`, `opus-4.8`, `sonnet-5`) — the committed card's "
+            "self-report is the attribution ground truth. Never copy it from "
+            "an external surface (schedule/Routines screens are evidenced to "
+            "misattribute), and never record a full dated model ID — "
+            "family-level names only."
+        )
     return (
         "# Session logs\n\n"
         "Per-session logs live here as `<date>-<slug>.md`, newest first. "
@@ -415,7 +432,7 @@ def _adopt_sessions_readme(markers: list[dict[str, str]]) -> str:
         "step once the close-out is written — a half-done session never reads "
         "as finished. Before it counts as complete, a log must carry these "
         "markers, each written with its exact backticked byte-form: "
-        f"{pairs}.\n\n"
+        f"{pairs}.{model_doctrine}\n\n"
         "If the card is missing at session end, the kit **auto-drafts** one "
         "from evidence (files touched, git HEAD movement, the verify "
         "command); an in-progress card missing its close-out gets the "
