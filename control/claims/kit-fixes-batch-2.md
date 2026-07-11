@@ -1,0 +1,3 @@
+# Claim — kit-fixes-batch-2
+
+- `claude/kit-fixes-batch-2` · **scope** — queued kit fixes batch 2 (status QUEUED KIT FIXES items 1–5): gate added-card grammar lint (venture-lab #15 class) · build_bootstrap byte-count print · automerge required_context validation at plant (websites "quality" class) · born-red designed-hold signal (PL-006 noise) · grep-pollution mechanical plant (.ignore/.gitattributes) · expected files: `src/engine/adopt.py`, `src/engine/cli.py`, `src/engine/checks/check_session_log.py`, `src/build_bootstrap.py`, `tests/`, `CHANGELOG.md`, `dist/bootstrap.py`, `control/status.md` · 2026-07-11
