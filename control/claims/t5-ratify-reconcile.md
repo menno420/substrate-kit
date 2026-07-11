@@ -1,1 +1,0 @@
-- `t5-ratify-reconcile` · **control: OWNER-ACTION 13 reconciliation (T5 pin PR #181 ratified by owner merge)** — status.md-only fast-lane edit: mark item 13 RESOLVED (merge commit f7aa633) + record the rubric-§3 T5-v2 alignment follow-up as now due (record only, not executed) · expected: control/status.md + this claim file · 2026-07-11
