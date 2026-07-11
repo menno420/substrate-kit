@@ -15,6 +15,23 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-07-11
+
+Capability release (MINOR) shipping the v1.9.0 distribution wave's fixes
+band (PR #176): the born-red card-only loophole closed (an ADDED
+in-progress card is now an explicit `session-card-hold` — the P1
+gate-integrity fix for the superbot-games #40 premature-merge class), the
+`upgrade --apply-docs` carve-out re-emit with carried-forward hits, the
+retroactive model-doctrine append on adopt/upgrade, the new
+`check --simulate-added-card` advisory self-test, and the release runbook
+`docs/operations/release-runbook.md` written down once. MINOR per the
+header's contract: new capability (a new check flag, a new binding
+operations doc) plus fixes — no planted-doc, state schema, config schema,
+or CLI contract breaks; adopters inherit the gate fix on `upgrade` (gate +
+vendored engine move in lockstep).
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
 ### Added
 
 - `check --simulate-added-card <file>` — the added-card lane's
@@ -1299,6 +1316,7 @@ by real consumers, and now nameable, pinnable, verifiable, and upgradeable.
   `init --unpack` it served never shipped, and it doubled every consumer's
   vendored file for nothing.
 
+[1.10.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.10.0
 [1.9.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.9.0
 [1.8.0]: https://github.com/menno420/substrate-kit/releases/tag/v1.8.0
 [1.7.1]: https://github.com/menno420/substrate-kit/releases/tag/v1.7.1
