@@ -1,0 +1,13 @@
+diff --git a/juniperharvest/cli.py b/juniperharvest/cli.py
+index 0e6f186..46bbec1 100644
+--- a/juniperharvest/cli.py
++++ b/juniperharvest/cli.py
+@@ -40,7 +40,7 @@ def main(argv=None):
+             for r in records:
+                 print(f"{r['category']}: {r['bushels']} {r['note']}".rstrip())
+         elif args.command == "total":
+-            print(ops.total_bushels(records))
++            print(f"{ops.total_bushels(records):.2f}")
+         elif args.command == "filter":
+             for r in ops.filter_by_category(records, args.category):
+                 print(f"{r['category']}: {r['bushels']}")

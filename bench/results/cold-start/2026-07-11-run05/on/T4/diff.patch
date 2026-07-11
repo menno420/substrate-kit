@@ -1,0 +1,191 @@
+diff --git a/.substrate/state.json b/.substrate/state.json
+index 211eaf1..1776fd5 100644
+--- a/.substrate/state.json
++++ b/.substrate/state.json
+@@ -44,6 +44,12 @@
+     "last_mined": null
+   },
+   "review_log": [],
++  "session_anchor": {
++    "branch": "master",
++    "epoch": 1783734998.651793,
++    "head": "f804d5ef1de26594c75dc0a1e2c49fdb97cb4d85",
++    "ts": "2026-07-11T01:56:38+00:00"
++  },
+   "session_count": 0,
+   "slot_values": {
+     "architecture_layers": {
+diff --git a/juniperharvest/cli.py b/juniperharvest/cli.py
+index 0b49479..8aea430 100644
+--- a/juniperharvest/cli.py
++++ b/juniperharvest/cli.py
+@@ -1,7 +1,8 @@
+ """juniperharvest — a tiny harvest-log CLI.
+ 
+ Commands: mark (add a record) · list · total · filter <category> · top ·
+-report.
++report · budget <category> <amount> (set a per-category budget; report
++flags categories over budget).
+ """
+ 
+ import argparse
+@@ -24,6 +25,9 @@ def main(argv=None):
+     top_p = sub.add_parser("top", help="highest-bushels categories")
+     top_p.add_argument("--limit", type=int, default=3)
+     sub.add_parser("report", help="per-category counts and totals")
++    budget_p = sub.add_parser("budget", help="set a per-category budget")
++    budget_p.add_argument("category")
++    budget_p.add_argument("amount", type=float)
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -43,9 +47,22 @@ def main(argv=None):
+         for category, subtotal in ops.top_categories(records, args.limit):
+             print(f"{category}: {subtotal}")
+     elif args.command == "report":
++        budgets = store.load_budgets()
++        over = {
++            category: budget
++            for category, _total, budget in ops.over_budget_categories(records, budgets)
++        }
+         for category, count, subtotal in ops.category_report(records):
+-            print(f"{category}: {count} records, {subtotal}")
++            line = f"{category}: {count} records, {subtotal}"
++            if category in over:
++                line += f" — OVER BUDGET (budget: {over[category]})"
++            print(line)
+         print(f"overall: {len(records)} records, {ops.total_bushels(records)}")
++    elif args.command == "budget":
++        budgets = store.load_budgets()
++        ops.set_budget(budgets, args.category, args.amount)
++        store.save_budgets(budgets)
++        print(f"budget set: {args.category} = {args.amount}")
+     return 0
+ 
+ 
+diff --git a/juniperharvest/ops.py b/juniperharvest/ops.py
+index 2316179..bdaff29 100644
+--- a/juniperharvest/ops.py
++++ b/juniperharvest/ops.py
+@@ -39,3 +39,27 @@ def category_report(records):
+         stats[r["category"]] = (count + 1, total + r["bushels"])
+     ranked = sorted(stats.items(), key=lambda kv: (-kv[1][1], kv[0]))
+     return [(category, count, total) for category, (count, total) in ranked]
++
++
++def set_budget(budgets, category, amount):
++    """Set the budget for a category and return the stored amount."""
++    budgets[category] = float(amount)
++    return budgets[category]
++
++
++def over_budget_categories(records, budgets):
++    """Return ``(category, total, budget)`` triples for categories whose
++    summed bushels exceed their budget, highest overage first.
++
++    Categories without a set budget are never flagged.
++    """
++    totals = {}
++    for r in records:
++        totals[r["category"]] = totals.get(r["category"], 0.0) + r["bushels"]
++    over = [
++        (category, totals.get(category, 0.0), budget)
++        for category, budget in budgets.items()
++        if totals.get(category, 0.0) > budget
++    ]
++    over.sort(key=lambda t: (-(t[1] - t[2]), t[0]))
++    return over
+diff --git a/juniperharvest/store.py b/juniperharvest/store.py
+index fbb87ab..dd15f6a 100644
+--- a/juniperharvest/store.py
++++ b/juniperharvest/store.py
+@@ -4,6 +4,7 @@ import json
+ from pathlib import Path
+ 
+ DEFAULT_PATH = Path("harvests.json")
++BUDGETS_PATH = Path("budgets.json")
+ 
+ 
+ def load_records(path=DEFAULT_PATH):
+@@ -17,3 +18,16 @@ def load_records(path=DEFAULT_PATH):
+ def save_records(records, path=DEFAULT_PATH):
+     """Write the harvest records back to disk."""
+     Path(path).write_text(json.dumps(records, indent=2), encoding="utf-8")
++
++
++def load_budgets(path=BUDGETS_PATH):
++    """Return the stored per-category budgets (empty dict when no file)."""
++    path = Path(path)
++    if not path.exists():
++        return {}
++    return json.loads(path.read_text(encoding="utf-8"))
++
++
++def save_budgets(budgets, path=BUDGETS_PATH):
++    """Write the per-category budgets back to disk."""
++    Path(path).write_text(json.dumps(budgets, indent=2), encoding="utf-8")
+diff --git a/tests/test_juniperharvest.py b/tests/test_juniperharvest.py
+index 653a45d..0b71b87 100644
+--- a/tests/test_juniperharvest.py
++++ b/tests/test_juniperharvest.py
+@@ -77,3 +77,60 @@ def test_report_command_empty_data(tmp_path, monkeypatch, capsys):
+     out = capsys.readouterr().out.splitlines()
+ 
+     assert out == ["overall: 0 records, 0"]
++
++
++def test_set_budget_stores_amount():
++    budgets = {}
++    assert ops.set_budget(budgets, "food", 15) == 15.0
++    assert budgets == {"food": 15.0}
++
++
++def test_over_budget_categories_flags_only_categories_past_budget():
++    over = ops.over_budget_categories(_sample(), {"food": 15.0, "travel": 40.0})
++    assert over == [("food", 20.0, 15.0)]
++
++
++def test_over_budget_categories_ignores_categories_without_a_budget():
++    assert ops.over_budget_categories(_sample(), {}) == []
++
++
++def test_over_budget_categories_not_flagged_at_or_under_budget():
++    assert ops.over_budget_categories(_sample(), {"travel": 30.0}) == []
++
++
++def test_budget_command_persists_and_report_flags_over_budget(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["mark", "food", "12.5", "--note", "lunch"])
++    cli.main(["mark", "travel", "30.0"])
++    cli.main(["mark", "food", "7.5"])
++    cli.main(["budget", "food", "15.0"])
++    cli.main(["budget", "travel", "40.0"])
++    capsys.readouterr()  # discard "recorded."/"budget set." noise above
++
++    cli.main(["report"])
++    out = capsys.readouterr().out.splitlines()
++
++    assert out == [
++        "travel: 1 records, 30.0",
++        "food: 2 records, 20.0 — OVER BUDGET (budget: 15.0)",
++        "overall: 3 records, 50.0",
++    ]
++
++
++def test_budget_command_prints_confirmation(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["budget", "food", "15.0"])
++    out = capsys.readouterr().out.splitlines()
++
++    assert out == ["budget set: food = 15.0"]
++
++
++def test_report_command_with_no_budgets_set_flags_nothing(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["mark", "food", "12.5"])
++    capsys.readouterr()
++
++    cli.main(["report"])
++    out = capsys.readouterr().out.splitlines()
++
++    assert out == ["food: 1 records, 12.5", "overall: 1 records, 12.5"]

@@ -126,30 +126,18 @@
   regressed** — OFF wins T2/T4, T5 near-tie — while ON wins M2 + M3,
   in-budget (max 2,272), zero unrecoverable errors. Judge's shape:
   continuity + write-back wins at bounded orientation cost. Run-2
-  follow-ups filed in `docs/ideas/`: the F-5 wording owner brief
-  (since RULED — Reading A, ORDER 011), the make_seed
-  `yield`-keyword bug,
-  the prepare-engagement arc + `render --live` CLAUDE.md gap, and run-2
-  evidence on `t5-headless-guard-surface` (incl. the last-card gate gap).
-- **B1's THIRD FIRING is RECORDED — VERDICT: FAIL (strict F-5, advisory
-  per KF-5; RULED Reading A, ORDER 011 — un-caveated)** (run `2026-07-10-run03`,
-  seed 710301 northride, kit v1.6.0 ENGAGED, judge claude-fable-5; row 3
-  of `bench/results/cold-start/index.json` + committed run dir, PR #85).
-  Run-2's shape, sharper: **M1 to OFF on all pairs**, **ON wins M2**
-  (T4 resumed from T2's card AND shipped its queued docstring fix)
-  **and M3** (durable write-back twice), max ON footprint 2,521 ≪ 7k,
-  zero unrecoverable errors. Family-first: a genuine **session-time
-  guard fire** (ON-T4 mid-session `check --strict` red → repaired →
-  green). Deviations verbatim in the run dir: T5 probe n/a
-  headless; spawn harness ignored model orders — **judge =
-  arm model**. **First legal KF-8
-  trend statement (3 rows):** the benefit is consistent in KIND — ON
-  wins M2 + M3 every run, always in-budget, zero unrecoverable errors —
-  while scripted M1 goes to OFF in every *clean* measurement (runs 2–3),
-  so the strict headline was 1 PASS / 2 FAIL at 3 rows (the wording
-  dispute since retired by the Reading-A ruling); version/seed/judge
-  confounds mean the trend is the repeated per-measure pattern, not the
-  raw numbers.
+  follow-ups filed in `docs/ideas/` (F-5 wording brief — since RULED;
+  make_seed `yield` bug; prepare-engagement arc;
+  `t5-headless-guard-surface` evidence incl. the last-card gate gap).
+- **B1's THIRD FIRING is RECORDED — VERDICT: FAIL (strict F-5; RULED
+  Reading A, ORDER 011 — un-caveated)** (run `2026-07-10-run03`, seed
+  710301 northride, kit v1.6.0, judge claude-fable-5; row 3 + run dir,
+  PR #85). M1 to OFF on all pairs; **ON wins M2 + M3** (T4 resumed from
+  T2's card; durable write-back twice); max ON 2,521 ≪ 7k; family-first
+  session-time guard fire (mid-session red → repaired → green); first
+  legal KF-8 trend statement at 3 rows. Deviations verbatim in the run
+  dir (T5 n/a headless; harness ignored model orders — judge = arm
+  model).
 - **B1's FOURTH FIRING is RECORDED — VERDICT: FAIL under BOTH F-5
   readings** (dual-scored pre-ruling — immaterial, both readings agree;
   `2026-07-10-run04`, seed 710402 harborride, kit v1.7.0, judge
@@ -158,22 +146,33 @@
   the T5 pair — first clean ON M1 win); **M2 + M3 to OFF for the first
   time** (auto-drafted card never opened, no durable write-back, T5
   guard advisories IGNORED, RED close); in-budget max 2113, zero
-  unrecoverable errors. Family firsts: first clean scripted prepare
-  (#95 arc), hooks LIVE (T5 guard probe measured: fired yes, obeyed
-  no), model orders honored, run-3's cardless-T5 gate gap did not
-  reproduce. Deviations verbatim in the run dir. **KF-8 trend at 4
-  rows:** the "ON wins M2+M3 every run" consistency is **broken**;
-  in-budget + zero-unrecoverable still hold every run; headline
-  **1 PASS / 3 FAIL**, un-caveated under the Reading-A ruling
-  (ORDER 011); confounds: 4 kit versions,
-  fresh seeds, judge drift, run-4 alone Sonnet-arms + live hooks.
+  unrecoverable errors. Family firsts: clean scripted prepare (#95
+  arc), hooks LIVE (T5 guard: fired yes, obeyed no), model orders
+  honored. Deviations verbatim in the run dir; confounds: 4 kit
+  versions, fresh seeds, judge drift, run-4 alone Sonnet-arms + live
+  hooks.
+- **B1's FIFTH FIRING is RECORDED — VERDICT: FAIL (Reading A — the
+  family's first Reading-A-only-scored row)** (run `2026-07-11-run05`,
+  seed 711501 juniperharvest, kit v1.8.0, judge claude-opus-4-8 / arms
+  claude-sonnet-5, transcript-verified; row 5 + run dir, PR #163).
+  **Second consecutive 0-of-3 run:** M1 to OFF on all pairs (1421/1589/931
+  vs 595/986/326), **M2 tie** (T4 continuity NULL again — auto-drafted
+  card ignored, empty-template ledger, both arms resumed via git),
+  **M3 to OFF** (T2 write-back failed + input-validation directive
+  skipped; T5 guard fired ~10× advisory, IGNORED — RED close). In-budget max 1589, zero unrecoverable
+  errors. Transcripts now carry verbatim task prompts (converter v3 —
+  run-4 judge limitation 1 closed). Deviations verbatim in the run dir
+  (OFF-T5 allowlist wall → reset-relaunch, run-4 precedent). **KF-8
+  trend at 5 rows:** headline **1 PASS / 4 FAIL**; the kit's continuity
+  surface has been ignored in two consecutive Sonnet-arm hook-live runs
+  — the SessionStart handoff-push idea is the queue's top answer;
+  confounds: 5 kit versions in 5 runs, fresh seeds, judge drift,
+  permission-surface drift.
 - **The F-5 RULING is DELIVERED — Reading A (strict), 2026-07-10**
-  (ORDER 011, owner delegation Q-0262.1;
-  `bench/results/cold-start/f5-ruling-order-011.md`, PR #128). Runs 2–3
-  stand as **un-caveated FAILs** (immutable rows superseded, never
-  edited); headline **1 PASS / 3 FAIL** — honest-negative
-  headlines are the fleet's credibility asset. The run-5 WAIT hold is
-  CLEARED; OWNER-ACTION 1 RESOLVED.
+  (ORDER 011, Q-0262.1; `bench/results/cold-start/f5-ruling-order-011.md`,
+  PR #128): runs 2–3 stand as un-caveated FAILs (immutable rows
+  superseded, never edited) — honest-negative headlines are the fleet's
+  credibility asset. OWNER-ACTION 1 RESOLVED.
 - **KL-7 (the adopt-engage gate) is DONE** (owner-directed P0 off the
   independent fleet review, superbot `docs/eap/fleet-review-2026-07-09.md`
   §4; D-0006; PR #25): both fresh adopters had stranded identically —
@@ -410,13 +409,12 @@ still renders from superbot's committed `console.json`. Exact steps:
 on the next touch and never accretes here; adopted from the groomed-ideas-1
 ⟲ review, implemented at the run close-out.)*
 
-**→ Post-overnight (2026-07-10 night-cap):** gen-2 boot + overnight run
-DONE — 9 of 12 queue items landed (~00:30–05:00Z; PR numbers reconciled in
-[`docs/gen2/queue-state.md`](gen2/queue-state.md)). **ORDER 011: the
-F-5 ruling is DELIVERED (Reading A) — B1 run-5 free
-to fire.** T5 still awaits a daytime `do-not-automerge` PR (pin path);
-the rest is owner-gated (P10/P4/P5/P8/P11-or-P13 — OWNER-ACTION 2–12 in
-`control/status.md`).
+**→ Post-run-5 (2026-07-11):** B1 run-5 FIRED and RECORDED (FAIL, row 5,
+PR #163) — no B-bench is queued-and-runnable (run-6 needs the P4 loop;
+B2/B3/B4 need OWNER-ACTION 6). Top buildable: the SessionStart
+handoff-push idea (next-boot §0 item 1). T5 redesign awaits a daytime
+`do-not-automerge` PR (pin path); the rest is owner-gated (OWNER-ACTION
+2–12 in `control/status.md`).
 
 ### Owner gates — each with its one-line unblock
 
@@ -424,8 +422,8 @@ the rest is owner-gated (P10/P4/P5/P8/P11-or-P13 — OWNER-ACTION 2–12 in
 D-0005; #26/#49 owner-merged 2026-07-10.)*
 
 1. ✅ **Rubric F-5 ruling — RESOLVED 2026-07-10: Reading A** (ORDER 011,
-   Q-0262.1): runs 2–3 stand as un-caveated FAILs; headline
-   **1 PASS / 3 FAIL**; B-benches unpaused.
+   Q-0262.1): runs 2–3 un-caveated FAILs; B-benches unpaused (run-5
+   fired 2026-07-11 → **1 PASS / 4 FAIL** at 5 rows).
 2. **👤 Ratify or veto PL-010 (#22)** — the `feature build` task-class
    ruling. ⚑ **#22 merged mechanically, not by review** (label-race
    incident — timeline in the #22 comment; fresh-label guard deployed).
