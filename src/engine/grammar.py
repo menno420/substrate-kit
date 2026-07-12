@@ -116,6 +116,14 @@ def updated_line_example() -> str:
 # anchor silently degraded that row to "no `kit:` line" in the fleet
 # registry and lost its engaged signal. Consumed by currency.parse_kit_line
 # (the fleet registry's self-report evidence).
+#
+# The leniency has a hard edge (hardening report 2026-07-12 §a.4, map §(b)
+# row 8): the optional bold group cannot contain the `kit:` token itself, so
+# the bold-label form `- **kit:** v…` does NOT parse — pokemon-mod-lab's live
+# heartbeat wrote exactly that shape and the registry read "no `kit:` line".
+# The negative renderer below is the taught counter-example; the control
+# templates carry it verbatim (test-pinned, the shared-pin precedent) so the
+# writer-side warning and the enforcer's rejection cannot drift.
 
 KIT_LINE_RE = re.compile(
     r"^(?:[-*+]\s+)?(?:\*\*[^*\n]+\*\*\s*)?kit:\s*(.*)$",
@@ -129,6 +137,20 @@ KIT_ENGAGED_FIELD_RE = re.compile(r"\bengaged:\s*(yes|no)\b")
 def kit_line_example(version: str = "1.2.3") -> str:
     """Canonical ``kit:`` self-report line for ``version``."""
     return f"kit: v{version} · check: green · engaged: yes\n"
+
+
+def kit_line_negative_example(version: str = "1.2.3") -> str:
+    """The bold-label form ``KIT_LINE_RE`` REJECTS — the taught negative.
+
+    The ``kit:`` token itself sits inside the bold, and the optional bold
+    group cannot contain the token, so the registry reads the row as "no
+    ``kit:`` line" and the lane's engaged signal silently vanishes (the
+    pokemon-mod-lab live incident). A bold label *before* a plain ``kit:``
+    token stays valid — see the leniency note above. Carried verbatim by
+    the control templates; ``tests/test_grammar.py`` pins both that the
+    templates teach this exact string and that it never parses.
+    """
+    return f"- **kit:** v{version} · check: green · engaged: yes\n"
 
 
 # ── control/status*.md — the six-field ⚑ OWNER-ACTION format (ORDER 008) ────

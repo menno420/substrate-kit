@@ -17,6 +17,22 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- Heartbeat-grammar hardening row (PR #289 — the LAST open graduation-map
+  row of the grounded-skills program; hardening-input map §(b) row 8): the
+  control template family now teaches the NEGATIVE `kit:` line example —
+  the bold-label form `- **kit:** v1.2.3 · check: green · engaged: yes`,
+  which `KIT_LINE_RE` rejects (the optional bold group cannot contain the
+  `kit:` token; the pokemon-mod-lab live incident, report §a.4) — via a
+  new grammar renderer `kit_line_negative_example()` carried verbatim by
+  `control-README.md.tmpl` + `control-status.md.tmpl` (writer↔enforcer
+  shared pin, `tests/test_grammar.py`; the valid
+  bold-label-before-plain-token contrast shape is pinned too), plus the
+  adopters.md deference doctrine in the same two templates: heartbeat
+  `kit:` self-reports chronically lag 1–3 releases; the generated
+  `docs/adopters.md` / the committed tree is version truth — never
+  hand-assert a fleet version spread from heartbeats (template-direct, no
+  enforcer consumes the doctrine prose). Suite 1198 → 1203 (+5,
+  `tests/test_grammar.py`).
 - Grounded-skills §7 tail (PR #287): the three graduation-map ❌ rows the
   program's 8 slices left as "a small follow-on" (plan §6/§7 tail; map:
   `docs/reports/2026-07-12-prompt-template-hardening-input.md` §(b)).
