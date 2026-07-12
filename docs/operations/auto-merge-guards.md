@@ -86,11 +86,23 @@ lifecycled exactly like `substrate-gate.yml` (§6.1 mechanism):
   content-hash-named under `<state_dir>/backup/`, each carve-out reported
   and surfaced in `upgrade-report.md`).
 - **Parameterized** via `substrate.config.json` → `automerge`:
-  `branch_patterns` (default `["claude/*"]`; trailing `*` = prefix match;
-  empty / bare-`*` lists fall back to the default — misconfiguration must
-  not silently widen arming) and `required_context` (default
-  `substrate-gate`; informational — the refuse-to-arm guard counts the base
-  branch's required contexts generically via the rules API).
+  `branch_patterns` (default `["claude/*", "claim/*"]`; trailing `*` =
+  prefix match; empty / bare-`*` lists fall back to the default —
+  misconfiguration must not silently widen arming) and `required_context`
+  (default `substrate-gate`; informational — the refuse-to-arm guard counts
+  the base branch's required contexts generically via the rules API).
+- **Branch-prefix stall gotcha (kit #293, 2026-07-12):** a PR whose head
+  branch matches NO arming pattern sits **green+clean forever, unarmed** —
+  the enabler job is skipped, nothing errors, and nothing merges. Live hit:
+  the wave-A v1.15.0 work claim landed on a `claim/*` head while the enabler
+  armed `claude/*` only; #293 stalled ~2 h until closed superseded and
+  re-landed on claude/* as #297. The default now carries both prefixes
+  (kit workflow + generated adopter enabler). Two residual edges: (1) an
+  adopter whose `substrate.config.json` bakes an explicit
+  `automerge.branch_patterns` keeps its own list — widen it there if its
+  seats open PRs from other prefixes; (2) any NEW seat branch-prefix
+  convention must be added to the patterns the day it enters use, or its
+  PRs inherit this stall class.
 - **Carve-out label**: `do-not-automerge` (guards 1–2 above travel into the
   planted file: the job-level skip AND the fresh-API-re-read race guard).
 - **Repo-settings one-time checklist**: adopt prints it whenever the live

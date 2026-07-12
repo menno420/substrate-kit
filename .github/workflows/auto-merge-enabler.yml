@@ -43,10 +43,15 @@ concurrency:
 
 jobs:
   enable-auto-merge:
+    # claim/ rides alongside claude/: control fast-lane claim PRs land on
+    # claim/* heads, and a claude/-only condition left them green+clean but
+    # unarmed forever (live hit: PR #293 stalled ~2 h during the v1.15.0
+    # wave-A distribution until re-landed on claude/* as #297).
     if: >-
       github.repository == 'menno420/substrate-kit' &&
       github.event.pull_request.draft == false &&
-      startsWith(github.head_ref, 'claude/') &&
+      (startsWith(github.head_ref, 'claude/') ||
+       startsWith(github.head_ref, 'claim/')) &&
       !contains(github.event.pull_request.labels.*.name, 'do-not-automerge')
     runs-on: ubuntu-latest
     steps:

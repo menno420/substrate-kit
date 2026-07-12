@@ -21,6 +21,7 @@ from engine.adopt import (
     ADOPT_PLAN,
     AUTOMERGE_CARVEOUT_LABEL,
     AUTOMERGE_ENABLER_RELPATH,
+    DEFAULT_AUTOMERGE_BRANCH_PATTERNS,
     DOC_HASHES_STATE_KEY,
     LIVE_CI_RELPATH,
     UNRENDERED_BANNER_FIRST_LINE,
@@ -1183,8 +1184,11 @@ def test_automerge_enabler_workflow_shape():
     # A real live workflow, not a commented example.
     assert "\nname: auto-merge-enabler\n" in text
     assert "on:\n" in text and "jobs:\n" in text
-    # Arms only agent branches (default claude/*), same-repo PRs, non-draft.
+    # Arms only agent branches (default claude/* + claim/* — the control
+    # fast-lane claim convention; the kit #293 stall regression), same-repo
+    # PRs, non-draft.
     assert "startsWith(github.head_ref, 'claude/')" in text
+    assert "startsWith(github.head_ref, 'claim/')" in text
     assert (
         "github.event.pull_request.head.repo.full_name == github.repository"
         in text
@@ -1223,6 +1227,26 @@ def test_automerge_enabler_workflow_parameterization():
     for degenerate in ([], [""], ["*"], ["  "]):
         text = automerge_enabler_workflow(degenerate)
         assert "startsWith(github.head_ref, 'claude/')" in text
+        assert "startsWith(github.head_ref, 'claim/')" in text
+
+
+def test_automerge_enabler_default_arms_claim_branches():
+    # Regression for the kit #293 stall: control fast-lane claim PRs land on
+    # claim/* heads, and a claude/-only default left them green+clean but
+    # unarmed forever (stalled ~2 h during the v1.15.0 wave-A distribution
+    # until re-landed on claude/* as #297). The default MUST carry both
+    # prefixes — in the constant, the generated workflow, and the config
+    # default that parameterizes adopter regens.
+    assert "claude/*" in DEFAULT_AUTOMERGE_BRANCH_PATTERNS
+    assert "claim/*" in DEFAULT_AUTOMERGE_BRANCH_PATTERNS
+    text = automerge_enabler_workflow()
+    assert (
+        "(startsWith(github.head_ref, 'claude/') || "
+        "startsWith(github.head_ref, 'claim/'))" in text
+    )
+    # The config default (what a fresh Config carries when the adopter's
+    # substrate.config.json has no automerge key) matches the constant.
+    assert Config().automerge["branch_patterns"] == ["claude/*", "claim/*"]
 
 
 def test_adopt_stages_the_enabler_and_never_installs_it_by_default(tmp_path):
