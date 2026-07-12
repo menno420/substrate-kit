@@ -41,6 +41,7 @@ def test_starter_pack_present_and_ordered():
         "session-close",
         "upgrade-distribution",
         "release",
+        "intake",
         "quality-gate",
         "review",
         "repo-health",
@@ -217,6 +218,107 @@ def test_playbook_bodies_have_no_multiline_command_spans():
     for name in PLAYBOOK_SKILLS:
         for ground in get_skill(name)["grounds"]:
             assert "\n" not in ground, name
+
+
+# ---------------------------------------------------------------------------
+# Intake — the owner-request skill (grounded-skills slice 3, plan §5/§7.3):
+# superbot's Q-0254 understand-and-reflect doctrine made executable.
+# ---------------------------------------------------------------------------
+
+
+def test_intake_is_the_understand_and_reflect_playbook():
+    # The five §5 steps ship verbatim as the numbered instruction titles, in
+    # the plan's order — consolidate, restate, map, possibility space,
+    # decide-and-flag.
+    body = get_skill("intake")["body"]
+    for step, title in enumerate(
+        [
+            "CONSOLIDATE",
+            "RESTATE",
+            "MAP",
+            "POSSIBILITY SPACE",
+            "DECIDE-AND-FLAG",
+        ],
+        start=1,
+    ):
+        assert f"{step}. {title} —" in body, title
+
+
+def test_intake_maps_ideas_through_the_skill_index():
+    # Step 3 routes through docs/SKILLS.md (the slice-1 index) — the "map
+    # each idea to known step patterns" half of the directive — and checks
+    # the capability ledger before assuming a wall.
+    body = get_skill("intake")["body"]
+    assert "docs/SKILLS.md" in body
+    assert "docs/CAPABILITIES.md" in body
+
+
+def test_intake_carries_the_q0254_doctrine_content():
+    # The owner's own mechanism, from the router entry: fragments by design,
+    # inline restate (never a blocking question), the two payoffs, the
+    # feasibility-first shape, and the simplest-implementation target.
+    body = get_skill("intake")["body"]
+    assert "iteratively and in fragments by design" in body
+    assert "separate blocking question" in body
+    assert "idea-expansion" in body
+    assert "most advanced capability" in body
+    assert "simplest, most efficient implementation" in body
+    # Calibration: trivial asks stay exempt; big ideas escalate to research.
+    assert 'one-line "doing X' in body
+    assert "dedicated research pass" in body
+    # Provenance is cited, not paraphrased from memory.
+    assert "Q-0254" in body
+    assert "Q-0263.2" in body
+
+
+def test_intake_owner_questions_are_structured_choices():
+    # Q-0263.2: owner questions ONLY as structured choices with a bolded
+    # recommendation, answerable with one letter; derivable values never
+    # route to the owner; unattended sessions route to the question router.
+    body = get_skill("intake")["body"]
+    assert "structured" in body and "choice" in body
+    assert "**bolded recommendation**" in body
+    assert "answerable with one letter" in body
+    assert "parse, derive, or transform" in body
+    assert "docs/question-router.md" in body
+
+
+def test_intake_report_format_matches_plan_section_5():
+    # §7.3 accept criterion: report format matches §5 — the six ·-separated
+    # sections, verbatim.
+    body = get_skill("intake")["body"]
+    for section in [
+        "MAIN IDEAS (numbered)",
+        "FULLER PICTURE (short prose)",
+        "skill/pattern/new",
+        "[POSSIBILITY SPACE if triggered]",
+        "DECISIONS FLAGGED",
+        "QUESTIONS FOR OWNER",
+    ]:
+        assert section in body, section
+
+
+def test_intake_is_read_only_and_grounds_nothing():
+    # §5: "Declared capabilities: read." — read is implicit, nothing beyond
+    # it declared; the procedure runs no commands, so grounds is [] (the
+    # slice-2 rule: read-only skills ground nothing).
+    assert get_skill("intake")["capabilities"] == []
+    assert skill_capabilities("intake") == [READ]
+    assert get_skill("intake")["grounds"] == []
+
+
+def test_intake_grounded_at_kit_root_and_on_empty_target(tmp_path):
+    # Every backticked span in the intake body resolves under the slice-2
+    # grounds checker — at the kit root AND on a bare adopter tree (its doc
+    # references are all ADOPT_PLAN destinations / kit-shipped paths).
+    from pathlib import Path
+
+    from engine.checks.check_skill_grounds import check_skill_grounds
+
+    kit_root = Path(__file__).resolve().parents[1]
+    intake = [get_skill("intake")]
+    assert check_skill_grounds(kit_root, skills=intake) == []
+    assert check_skill_grounds(tmp_path, skills=intake) == []
 
 
 # ---------------------------------------------------------------------------
