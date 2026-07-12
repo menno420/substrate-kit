@@ -15,6 +15,24 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-07-12
+
+Capability release (MINOR) shipping the grounded-skills program slices 3–5:
+the `/intake` owner-request skill, the owner-assist output standard
+(templates + shared grammar constants + advisory checker extension), and
+the venue-scoped capability ledger (extended append grammar, fenced seed
+block + posture + staleness rules, the upgrade-time capability-seed fence
+refresh, advisory checker extension). MINOR per the header's contract: new
+capability (new skill, new grammar surface, new upgrade mechanism, extended
+advisory checkers) — no planted-doc, state schema, config schema, or CLI
+contract breaks; adopters inherit everything on `upgrade` (+
+`upgrade --apply-docs` for consumer-untouched planted docs). Freeze
+provenance: the grounded-skills program supersedes the 2026-07-11 template
+freeze (owner directive 2026-07-12 via coordinator; plan §8 Q4=A default,
+flagged).
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
 ### Added
 
 - Grounded-skills slice 5 (PR #274): capability refresh + venue-scoping +
