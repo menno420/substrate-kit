@@ -346,6 +346,46 @@ def test_harvest_warns_on_off_taxonomy_class_but_records(tmp_path):
     assert record["task_class"] == "vibes"
 
 
+def test_harvest_warns_on_exact_model_id_token_but_records(tmp_path):
+    # Fleet reporting bar (ORDER 012, widened 2026-07-12): family-level model
+    # names only in repo artifacts — a provider-prefixed exact model-ID token
+    # draws the advisory (the websites #178 cleanup class), but the row still
+    # records verbatim (advisories never gate, same contract as task_class).
+    log = _write_log(
+        tmp_path,
+        "2026-07-12-exact-id.md",
+        model_line="📊 Model: claude-fable-5 · high · test writing\n",
+    )
+    lines = harvest_model_usage(tmp_path, log)
+    assert any("exact model-ID token" in line for line in lines)
+    (record,) = _read_jsonl(tmp_path / MODEL_USAGE_RELPATH)
+    assert record["model"] == "claude-fable-5"
+
+
+def test_harvest_warns_on_dated_model_id_suffix(tmp_path):
+    # The dated-suffix shape is still caught too — the widened rule is a
+    # superset of the old "no full dated model ID" wording.
+    log = _write_log(
+        tmp_path,
+        "2026-07-12-dated-id.md",
+        model_line="📊 Model: sonnet-4-5-20250929 · high · test writing\n",
+    )
+    lines = harvest_model_usage(tmp_path, log)
+    assert any("exact model-ID token" in line for line in lines)
+
+
+def test_harvest_family_level_model_draws_no_exact_id_advisory(tmp_path):
+    # Family-level names (the doctrine's own examples) must never false-fire.
+    for i, model in enumerate(("fable-5", "opus-4.8", "sonnet-5")):
+        log = _write_log(
+            tmp_path,
+            f"2026-07-12-family-{i}.md",
+            model_line=f"📊 Model: {model} · high · test writing\n",
+        )
+        lines = harvest_model_usage(tmp_path, log)
+        assert not any("exact model-ID token" in line for line in lines), model
+
+
 def test_harvest_none_log_is_an_advisory(tmp_path):
     lines = harvest_model_usage(tmp_path, None)
     assert lines and "no session log" in lines[0]
