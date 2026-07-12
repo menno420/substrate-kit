@@ -205,9 +205,11 @@ one place. Citations per item.
   `docs/ideas/` file yet.
 - **Enabler claim/\* prefix fix** — the #293 stall class
   (`auto-merge-enabler.yml:49` arms `claude/*` only). Update to the earlier
-  verification (no fix in flight as of 18:35Z): a fix lane opened during this
-  report's writing — claim kit PR #299 @ f9eb3a1 (18:45Z), fix PR **#300
-  open** (widens the prefix condition kit-side + adopter default, born-red).
+  verification (no fix in flight as of 18:35Z): a fix lane opened AND landed
+  during this report's writing — claim kit PR #299 @ f9eb3a1 (18:45Z), fix PR
+  **#300 merged @ 18e5adc** (widens the prefix condition in the kit's own
+  workflow AND the generated adopter enabler default; adopters inherit at the
+  next release wave). This backlog item is now closed kit-side.
 - **Host-enabler regen class** — the v1.15.0 upgrade regenerated
   `auto-merge-enabler.yml` as kit-owned on websites, with the host's
   arm-on-open + sweep jobs preserved in a new

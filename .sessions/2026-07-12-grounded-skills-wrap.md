@@ -32,8 +32,12 @@ at close (within-lane claim, the slice-lane precedent).
   pointer fix (v1.13.0) + fixture-backed gate-integrity retraction (card
   .sessions/2026-07-12-order-015-boot-pointer.md).
 - **Mid-writing update caught**: the enabler claim/* prefix fix went in
-  flight on a parallel lane while this report was being written (claim #299 @
-  f9eb3a1, fix PR #300 open) — §3c reports it as in-flight, not open.
+  flight AND landed on a parallel lane while this report was being written
+  (claim #299 @ f9eb3a1, fix PR #300 merged @ 18e5adc) — §3c reports it as
+  closed kit-side, not open. The #300 merge conflicted with this lane's
+  status overwrite; resolved by layering this wrap's phase record above the
+  ENABLER record (both kept verbatim, the slice-6 rebase-then-overwrite
+  precedent), and the stale in-flight sentences updated.
 - **Reachability**: the report linked from `docs/operations/README.md` (the
   reports reachability root) — the `[reachable]` orphan finding fired on the
   pre-link check and was cleared.

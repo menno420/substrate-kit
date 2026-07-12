@@ -15,6 +15,24 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Auto-merge enabler arms `claim/*` branches (the kit #293 stall class).**
+  The enabler's branch-prefix condition armed `claude/*` heads only, so a
+  control fast-lane claim PR on a `claim/*` head sat green+clean but unarmed
+  forever (live hit: kit #293 stalled ~2 h during the v1.15.0 wave-A
+  distribution until re-landed on claude/* as #297). The default branch
+  patterns are now `["claude/*", "claim/*"]` in all three homes: the kit's
+  own `.github/workflows/auto-merge-enabler.yml`, the generated adopter
+  enabler (`engine.adopt.DEFAULT_AUTOMERGE_BRANCH_PATTERNS` — every
+  adopt/upgrade regen carries the fix fleet-wide at the next release wave),
+  and the config default (`engine.lib.config._default_automerge`). An
+  adopter whose `substrate.config.json` bakes an explicit
+  `automerge.branch_patterns` keeps its own list — widen it there. Gotcha
+  recorded in `docs/operations/auto-merge-guards.md`; regression tests pin
+  both prefixes in the constant, the generated workflow, and the config
+  default.
+
 ## [1.15.0] - 2026-07-12
 
 Capability release (MINOR) closing out the grounded-skills program's kit
