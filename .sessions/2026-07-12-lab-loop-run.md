@@ -1,6 +1,6 @@
 # 2026-07-12 — lab-loop: friction-inbox clear (stopgap run)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 Run type: routine · lab
 
