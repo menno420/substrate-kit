@@ -17,6 +17,42 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- Grounded-skills slice 5 (PR #274): capability refresh + venue-scoping +
+  staleness + enforcement (plan §4.2/§7.5). **Grammar**
+  (`src/engine/grammar.py`, new capability-ledger section — one home,
+  writer and enforcer both consume it): venue tokens `owner-live ·
+  autonomous-project · routine-fired · subagent · any`, the extended
+  append-line grammar `- YYYY-MM-DD · capability|wall · <venue> · finding ·
+  evidence · workaround` (BACKWARD-COMPATIBLE — old five-field lines read
+  as venue `any`, never flagged), the seed-fence BEGIN/END markers, the
+  `LAST-VERIFIED:` freshness stamp, and a canonical example renderer.
+  **Template** (`CAPABILITIES.md.tmpl`): marker-fenced kit-owned SEED block
+  (the consumer `## Append log` stays outside, never touched), seed rows as
+  (venue × operation) records with LAST-VERIFIED dates, the two-line
+  posture decision rule (owner-live = assume no special limitations, act
+  and merge directly, superbot Q-0269; autonomous/routine-fired = pre-route
+  around known stall classes, park only on a real denial, Q-0270), and
+  DISCOVERY RULE step 5 (staleness: an entry older than
+  `cadence.staleness_days`, default 14, that your work depends on is a
+  claim, not a fact — re-verify with one cheap attempt; re-verifications
+  APPEND, never edit). **Upgrade** (`src/engine/upgrade.py`,
+  `refresh_capability_seed`): a consumer-edited/diverged
+  `docs/CAPABILITIES.md` gets ONLY its fenced seed block re-rendered at
+  upgrade — everything outside the fence preserved byte-for-byte; a
+  consumer-modified fence downgrades to an upgrade-report line (never
+  clobbered); a pre-fence ledger whose seed region matches the old template
+  adopts the fence automatically; the report carries the Q-0270 collapse
+  note in the new "Capability-ledger seed refresh" section; mirrored in the
+  post-hoc `--apply-docs` path. This fence refresh is the ONLY channel that
+  reaches consumer-edited ledgers (`--apply-docs` never covers them).
+  **Checker** (`check_capability_xref`, extended in place, advisory-only
+  per §8 Q2=B, PL-008 unverified header): `capability-log-malformed` +
+  `capability-log-venue-unknown` (append-log grammar) and
+  `capability-entry-stale` (a dated entry older than `staleness_days` that
+  the newest session card cites); the existing OWNER-ACTION xref is
+  unchanged and `_ledger_sides` tag attribution is pinned safe with the
+  venue column. Suite 1116 → 1147.
+
 - Grounded-skills slice 4 (PR #272): the owner-assist output standard
   (plan §3/§7.4) — every owner-facing output, not just asks. Templates:
   `control-README.md.tmpl` gains the canonical "Owner-assist output

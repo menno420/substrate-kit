@@ -786,9 +786,13 @@ def cmd_check(
     # close the discovery-rule loop, never reds a required check (see the
     # checker docstring). Runs on both lanes: the asks live in the heartbeat
     # files the fast lane already validates.
+    # Slice-5 extensions ride the same call (grounded-skills §4.2d): the
+    # config hands the checker its staleness window (cadence.staleness_days,
+    # default-on-missing) + sessions_dir for the newest-card citation scan.
     xref_advisories = check_capability_xref(
         target,
         status_files=config.heartbeat_files,
+        config=config,
     )
     # Setup-script contract (EAP §6.5): advisory-only, like every nudge
     # above — the planted scripts/env-setup.sh is host-owned after adopt,

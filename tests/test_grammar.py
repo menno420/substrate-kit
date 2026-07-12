@@ -279,3 +279,118 @@ def test_kit_repos_own_inbox_satisfies_the_taught_grammar():
     assert headers, "the kit's own inbox carries orders"
     for header in headers:
         assert grammar.ORDER_HEADER_RE.match(header), header
+
+
+# ── capability ledger (grounded-skills slice 5): writer↔enforcer agreement ──
+
+
+def test_capability_enforcer_consumes_the_grammar_module_objects():
+    """Slice-5 one-home pin: the xref checker keeps no copy of the ledger
+    grammar — venue tokens, tags, regexes, and the taught format all resolve
+    to the grammar module's own objects."""
+    from engine.checks import check_capability_xref as xref_mod
+
+    assert xref_mod.CAPABILITY_VENUE_TOKENS is grammar.CAPABILITY_VENUE_TOKENS
+    assert xref_mod.CAPABILITY_ENTRY_TAGS is grammar.CAPABILITY_ENTRY_TAGS
+    assert xref_mod.CAPABILITY_LOG_LINE_RE is grammar.CAPABILITY_LOG_LINE_RE
+    assert xref_mod.CAPABILITY_VENUE_SHAPE_RE is grammar.CAPABILITY_VENUE_SHAPE_RE
+    assert (
+        xref_mod.CAPABILITY_LAST_VERIFIED_RE is grammar.CAPABILITY_LAST_VERIFIED_RE
+    )
+    assert (
+        xref_mod.CAPABILITY_LOG_TAUGHT_FORMAT is grammar.CAPABILITY_LOG_TAUGHT_FORMAT
+    )
+
+
+def test_upgrade_refresher_consumes_the_grammar_fence_markers():
+    from engine import upgrade as upgrade_mod
+
+    assert (
+        upgrade_mod.CAPABILITY_SEED_BEGIN_PREFIX
+        is grammar.CAPABILITY_SEED_BEGIN_PREFIX
+    )
+    assert (
+        upgrade_mod.CAPABILITY_SEED_END_PREFIX is grammar.CAPABILITY_SEED_END_PREFIX
+    )
+
+
+def test_capabilities_template_carries_the_grammar_text_verbatim():
+    """Template↔grammar pinning (the owner-assist shared-pin precedent): the
+    planted ledger teaches exactly what the grammar module owns — fence
+    markers, the taught append format, and every venue token."""
+    tmpl = _template("CAPABILITIES.md.tmpl")
+    assert grammar.CAPABILITY_SEED_BEGIN in tmpl
+    assert grammar.CAPABILITY_SEED_END in tmpl
+    assert grammar.CAPABILITY_LOG_TAUGHT_FORMAT in tmpl
+    for token in grammar.CAPABILITY_VENUE_TOKENS:
+        assert f"`{token}`" in tmpl, token
+    # The staleness clause names the real config knob + the real default.
+    assert "cadence.staleness_days" in tmpl
+    assert "default 14" in tmpl
+    # The two-line posture decision rule carries its provenance.
+    assert "Q-0269" in tmpl
+    assert "Q-0270" in tmpl
+    # The fence begins AFTER the append log's own heading? No — the append
+    # log stays OUTSIDE (below) the fence: heading appears after END marker.
+    assert tmpl.index(grammar.CAPABILITY_SEED_END) < tmpl.index(
+        "\n## Append log"
+    )
+
+
+def test_capabilities_template_seed_rows_carry_venue_and_freshness():
+    tmpl = _template("CAPABILITIES.md.tmpl")
+    fence = tmpl[
+        tmpl.index(grammar.CAPABILITY_SEED_BEGIN) : tmpl.index(
+            grammar.CAPABILITY_SEED_END
+        )
+    ]
+    seed_rows = [
+        ln for ln in fence.splitlines() if ln.startswith("- `")
+    ]
+    assert seed_rows, "the fence carries venue-scoped seed rows"
+    for row in seed_rows:
+        token = row.split("`")[1]
+        assert token in grammar.CAPABILITY_VENUE_TOKENS, row
+    # Every seed row block carries a LAST-VERIFIED stamp (§4.2b freshness).
+    assert len(grammar.CAPABILITY_LAST_VERIFIED_RE.findall(fence)) >= len(
+        seed_rows
+    )
+
+
+def test_capability_log_line_example_parses_both_forms():
+    venue_line = grammar.capability_log_line_example()
+    assert grammar.CAPABILITY_LOG_LINE_RE.match(venue_line)
+    fields = [f.strip() for f in venue_line.split("·")]
+    assert fields[1] in grammar.CAPABILITY_ENTRY_TAGS
+    assert fields[2] in grammar.CAPABILITY_VENUE_TOKENS
+    legacy_line = grammar.capability_log_line_example(venue=None)
+    assert grammar.CAPABILITY_LOG_LINE_RE.match(legacy_line)
+    legacy_fields = [f.strip() for f in legacy_line.split("·")]
+    assert legacy_fields[1] in grammar.CAPABILITY_ENTRY_TAGS
+    assert len(legacy_fields) == 5  # the backward-compatible five-field form
+
+
+def test_every_venue_token_is_venue_shaped():
+    """The enforcer's venue-shape gate must accept every real venue token —
+    otherwise a valid token could never be judged (or flagged) coherently."""
+    for token in grammar.CAPABILITY_VENUE_TOKENS:
+        assert grammar.CAPABILITY_VENUE_SHAPE_RE.match(token), token
+
+
+def test_capability_log_examples_pass_the_enforcer(tmp_path):
+    from engine.checks.check_capability_xref import check_capability_xref
+
+    ledger = tmp_path / "docs" / "CAPABILITIES.md"
+    ledger.parent.mkdir(parents=True)
+    ledger.write_text(
+        "# demo — session capabilities & walls\n\n"
+        "## Append log — newest first\n\n"
+        + grammar.capability_log_line_example()
+        + grammar.capability_log_line_example(venue=None),
+        encoding="utf-8",
+    )
+    status = tmp_path / "control" / "status.md"
+    status.parent.mkdir(parents=True)
+    status.write_text("# demo · status\n" + grammar.updated_line_example(),
+                      encoding="utf-8")
+    assert check_capability_xref(tmp_path) == []

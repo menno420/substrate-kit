@@ -18,6 +18,7 @@ from dataclasses import asdict, dataclass, field, fields
 from dataclasses import dataclass, field
 from datetime import date
 from datetime import date as _led_date
+from datetime import date, datetime
 from datetime import date, datetime, timezone
 from datetime import datetime, timedelta, timezone
 from datetime import datetime, timezone
@@ -844,6 +845,70 @@ def structured_choice_example() -> str:
         "  A) Rendered link + 3-line digest in chat.\n"
         "  B) Full text in chat every time.\n"
         "  RECOMMENDATION: A — one tap on a phone; B stays the fallback.\n"
+    )
+
+
+# ── docs/CAPABILITIES.md — the venue-scoped capability ledger (§4.2) ─────────
+#
+# Taught in the planted ledger (CAPABILITIES.md.tmpl § "Append log"):
+#   - YYYY-MM-DD · capability|wall · <venue> · finding · evidence · workaround
+# The `·` is U+00B7 (the protocol's separator). The venue token scopes a
+# finding to where it was verified — the grounded-skills evidence base
+# (fleet night review 2026-07-12) saw ONE operation behave three ways in one
+# night depending on venue, so a flat CAN/CANNOT ledger is wrong somewhere by
+# construction. BACKWARD-COMPATIBLE: the older five-field form without a
+# venue token stays valid — readers treat it as venue `any` and enforcers
+# never flag it (an old line must not become advisory noise). Enforced
+# (advisory-only) by check_capability_xref; the kit-owned seed block between
+# the fence markers below is refreshed at upgrade by
+# engine.upgrade.refresh_capability_seed — the ONLY channel that reaches a
+# consumer-edited ledger (--apply-docs never covers one).
+
+CAPABILITY_VENUE_TOKENS = (
+    "owner-live",
+    "autonomous-project",
+    "routine-fired",
+    "subagent",
+    "any",
+)
+CAPABILITY_ENTRY_TAGS = ("capability", "wall")
+# The taught append-line format — the template carries this string verbatim
+# (test-pinned agreement, the owner-assist shared-pin precedent), so the
+# writer half and the enforcer half cannot drift.
+CAPABILITY_LOG_TAUGHT_FORMAT = (
+    "- YYYY-MM-DD · capability|wall · <venue> · finding · evidence · workaround"
+)
+# An append-log entry line: a leading ISO date, then the ·-separated fields.
+CAPABILITY_LOG_LINE_RE = re.compile(r"^- (20\d{2}-\d{2}-\d{2}) · (.+)$")
+# What field 3 looks like when the writer MEANT a venue: one lowercase
+# hyphenated token, no spaces. A field-3 value with spaces is an old-format
+# finding and is never judged (fail open).
+CAPABILITY_VENUE_SHAPE_RE = re.compile(r"^[a-z][a-z-]{2,}$")
+# Seed rows carry a per-row freshness stamp (§4.2b) — no freshness data
+# means confidently stale, which is worse than ignorant.
+CAPABILITY_LAST_VERIFIED_RE = re.compile(r"LAST-VERIFIED:\s*(20\d{2}-\d{2}-\d{2})")
+# The kit-owned seed fence (§4.2c): upgrade re-renders ONLY the block between
+# these markers inside a consumer-edited ledger; everything outside — the
+# append log, all consumer text — is preserved byte-for-byte. Prefix-matched
+# by the refresher so a future tweak to the warning wording cannot orphan an
+# existing fence.
+CAPABILITY_SEED_BEGIN_PREFIX = "<!-- substrate-kit:capability-seed BEGIN"
+CAPABILITY_SEED_END_PREFIX = "<!-- substrate-kit:capability-seed END"
+CAPABILITY_SEED_BEGIN = (
+    CAPABILITY_SEED_BEGIN_PREFIX
+    + " — kit-owned, refreshed at upgrade. Append your findings BELOW the"
+    " fence (## Append log), never inside it. -->"
+)
+CAPABILITY_SEED_END = CAPABILITY_SEED_END_PREFIX + " -->"
+
+
+def capability_log_line_example(*, venue: str | None = "routine-fired") -> str:
+    """Canonical append-log entry (``venue=None`` renders the legacy 5-field form)."""
+    venue_field = f" {venue} ·" if venue else ""
+    return (
+        f"- 2026-07-12 · wall ·{venue_field} fire_trigger on a cross-session"
+        " binding refused · exact error: not enabled for this organization ·"
+        " workaround: fire from the owning session\n"
     )
 
 
@@ -3333,6 +3398,30 @@ Input-gated on the ``control/`` protocol and per heartbeat file, like
 every control-band checker. Pure stdlib — no ``subprocess`` (§3.2); it
 only reads the heartbeat files the fast lane already validates plus the
 planted capability ledger. Unreadable files fail open (no verdict).
+
+**Slice-5 extensions (grounded-skills plan §4.2d, added 2026-07-12;
+§8 Q2=B advisory-first).** Two more advisory families, extending this
+checker IN PLACE (the twice-proven pattern — slice 2 check_skill_grounds,
+slice 4 check_owner_actions):
+
+- **Append-log grammar** (the writer half is the planted template; both
+  consume ``engine.grammar``'s capability-ledger constants):
+  ``capability-log-malformed`` — an append-log bullet that does not open
+  ``- YYYY-MM-DD · capability|wall · …``; ``capability-log-venue-unknown``
+  — a venue-shaped field-3 token that is not one of the grammar's venue
+  tokens. BACKWARD-COMPATIBLE by contract: an old five-field line without
+  a venue token is read as venue ``any`` and NEVER flagged.
+- **Staleness** (§4.2b): ``capability-entry-stale`` — a dated ledger entry
+  (append-log line, or a seed row's ``LAST-VERIFIED:`` stamp) older than
+  the config's ``cadence.staleness_days`` (default 14) whose surface the
+  NEWEST session card cites — a claim, not a fact; re-verify with one
+  cheap attempt and APPEND the result (THE DISCOVERY RULE step 5).
+
+Reliability of the slice-5 checks (PL-008): UNVERIFIED — confirm their
+findings against ground truth a few times across sessions before trusting
+them; **delete these checks if they prove unreliable over multiple
+sessions.** They are advisory-only by the same contract as the original
+xref and must never count toward an exit code.
 """
 
 
@@ -3523,11 +3612,193 @@ def _ledger_sides(text: str) -> tuple[set[str], set[str]]:
     return _tokens("\n".join(wall_parts)), _tokens("\n".join(cap_parts))
 
 
+def _log_grammar_findings(rel: str, text: str) -> list[Finding]:
+    """Grammar-check the ledger's append-log bullets (slice 5, advisory).
+
+    Old-format compatibility is a hard contract: a five-field line without a
+    venue token parses clean (field 3 carries spaces → an old-format finding,
+    never judged as a venue). Only a venue-SHAPED field-3 token outside the
+    grammar's venue set flags, and only date/tag misses flag as malformed.
+    Continuation lines (indented wraps) are skipped like ``_ledger_sides``
+    skips nothing — they never start ``- ``.
+    """
+    findings: list[Finding] = []
+    in_log = False
+    for line in text.splitlines():
+        if line.startswith("## "):
+            in_log = "append log" in line.lower()
+            continue
+        if not in_log or not line.startswith("- "):
+            continue
+        match = CAPABILITY_LOG_LINE_RE.match(line)
+        if not match:
+            findings.append(
+                Finding(
+                    rel,
+                    "capability-log-malformed",
+                    "append-log entry does not open `- YYYY-MM-DD · "
+                    "capability|wall · …` — the taught grammar is "
+                    f"`{CAPABILITY_LOG_TAUGHT_FORMAT}` "
+                    "(src/engine/grammar.py); date the entry so the "
+                    f"staleness rule can read it: {line[:60]!r}",
+                ),
+            )
+            continue
+        fields = [f.strip() for f in line.split("·")]
+        tag = fields[1].lower() if len(fields) > 1 else ""
+        if not any(t in tag for t in CAPABILITY_ENTRY_TAGS):
+            findings.append(
+                Finding(
+                    rel,
+                    "capability-log-malformed",
+                    "append-log entry's second field names neither "
+                    "`capability` nor `wall` — the ledger's two sides key on "
+                    f"that tag ({CAPABILITY_LOG_TAUGHT_FORMAT}): "
+                    f"{line[:60]!r}",
+                ),
+            )
+            continue
+        if len(fields) > 2:
+            candidate = fields[2]
+            if (
+                CAPABILITY_VENUE_SHAPE_RE.match(candidate)
+                and candidate not in CAPABILITY_VENUE_TOKENS
+            ):
+                findings.append(
+                    Finding(
+                        rel,
+                        "capability-log-venue-unknown",
+                        f"append-log entry names venue {candidate!r}, which "
+                        "is not a grammar venue token "
+                        f"({' · '.join(CAPABILITY_VENUE_TOKENS)}) — fix the "
+                        "token, or drop the field to write the legacy "
+                        "five-field form (read as venue `any`).",
+                    ),
+                )
+    return findings
+
+
+def _dated_entries(text: str) -> list[tuple[date, str]]:
+    """Return ``(date, entry_text)`` per dated ledger bullet.
+
+    Two dated shapes exist: append-log bullets (leading ISO date) and seed
+    rows carrying a ``LAST-VERIFIED: YYYY-MM-DD`` stamp (§4.2b). A bullet's
+    indented continuation lines belong to it — the distinctive tokens the
+    citation scan matches usually live there. Unparseable dates are skipped
+    (fail open — a malformed date is the grammar check's finding, never
+    fabricated staleness).
+    """
+    entries: list[tuple[date, str]] = []
+
+    def flush(bullet: list[str]) -> None:
+        if not bullet:
+            return
+        block = "\n".join(bullet)
+        match = CAPABILITY_LOG_LINE_RE.match(bullet[0])
+        if match is not None:
+            stamp = match.group(1)
+        else:
+            verified = CAPABILITY_LAST_VERIFIED_RE.search(block)
+            if verified is None:
+                return
+            stamp = verified.group(1)
+        try:
+            entry_date = datetime.strptime(stamp, "%Y-%m-%d").date()
+        except ValueError:
+            return
+        entries.append((entry_date, block))
+
+    bullet: list[str] = []
+    for line in text.splitlines():
+        if line.startswith("- "):
+            flush(bullet)
+            bullet = [line]
+        elif bullet and line.strip() and line[:1] in (" ", "\t"):
+            bullet.append(line)  # indented continuation of the bullet above
+        else:
+            flush(bullet)
+            bullet = []
+    flush(bullet)
+    return entries
+
+
+def _newest_session_card(target: Path, sessions_dir: str) -> tuple[str, str] | None:
+    """Return ``(relpath, text)`` of the newest date-named session card.
+
+    Newest by FILENAME (cards are ``YYYY-MM-DD-<slug>.md``, so lexicographic
+    order is date order) — never by mtime, which a fresh CI checkout
+    flattens. ``None`` when no card exists or the newest is unreadable
+    (fail open).
+    """
+    root = target / sessions_dir
+    if not root.is_dir():
+        return None
+    cards = sorted(
+        p for p in root.glob("*.md") if re.match(r"20\d{2}-\d{2}-\d{2}", p.name)
+    )
+    if not cards:
+        return None
+    newest = cards[-1]
+    try:
+        text = newest.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+    rel = (
+        str(newest.relative_to(target))
+        if newest.is_relative_to(target)
+        else str(newest)
+    )
+    return rel, text
+
+
+def _stale_citation_findings(
+    ledger_rel: str,
+    ledger_text: str,
+    card: tuple[str, str] | None,
+    staleness_days: int,
+    today: date,
+) -> list[Finding]:
+    """Flag stale ledger entries the newest session card cites (§4.2d ii).
+
+    Coarse by the module's own contract: "cites" is distinctive-token
+    overlap between the entry and the card (the same ``_anchors`` machinery
+    as the OWNER-ACTION xref), so a false nudge costs one glance. No card,
+    no dated entries, or nothing distinctive → no verdict.
+    """
+    if card is None:
+        return []
+    card_rel, card_text = card
+    card_tokens = _tokens(card_text)
+    findings: list[Finding] = []
+    for entry_date, entry_text in _dated_entries(ledger_text):
+        if (today - entry_date).days <= staleness_days:
+            continue
+        anchors = _anchors(entry_text)
+        if not anchors:
+            continue
+        if len(anchors & card_tokens) >= min(2, len(anchors)):
+            findings.append(
+                Finding(
+                    ledger_rel,
+                    "capability-entry-stale",
+                    f"ledger entry dated {entry_date.isoformat()} is older "
+                    f"than the staleness window ({staleness_days}d) and "
+                    f"{card_rel} cites its surface — an aged entry is a "
+                    "claim, not a fact (THE DISCOVERY RULE step 5): "
+                    "re-verify with one cheap attempt and APPEND the "
+                    "result (re-verifications append, never edit).",
+                ),
+            )
+    return findings
+
+
 def check_capability_xref(
     target: Path,
     *,
     status_files: Sequence[str] | None = None,
     capabilities_relpath: str = CAPABILITIES_RELPATH,
+    config: Any = None,
+    today: date | None = None,
 ) -> list[Finding]:
     """Return advisory findings cross-referencing owner asks vs the ledger.
 
@@ -3536,6 +3807,16 @@ def check_capability_xref(
     ledger's Walls/Capabilities sides. Emits ``owner-ask-wall-unrecorded``
     when the wall is nowhere in the ledger (or the ledger is absent), and
     ``owner-ask-capability-resolved`` when only the capability side matches.
+
+    Slice-5 extensions (see module docstring): the ledger's append-log lines
+    are grammar-checked against ``engine.grammar``'s capability constants
+    (``capability-log-malformed`` / ``capability-log-venue-unknown``; old
+    five-field lines are never flagged), and dated entries older than
+    ``config.cadence['staleness_days']`` (default 14, the triggers.py
+    default-on-missing pattern) that the newest session card in
+    ``config.sessions_dir`` cites emit ``capability-entry-stale``. ``today``
+    is injectable for tests.
+
     Advisory by contract — callers must never count these toward an exit
     code (see module docstring). Empty when the ``control/`` protocol is
     absent; fail-open on unreadable files and anchor-less asks.
@@ -3557,6 +3838,21 @@ def check_capability_xref(
     )
 
     findings: list[Finding] = []
+    if ledger_text is not None:
+        findings += _log_grammar_findings(capabilities_relpath, ledger_text)
+        staleness_days = 14
+        sessions_dir = ".sessions"
+        if config is not None:
+            cadence = getattr(config, "cadence", None) or {}
+            staleness_days = int(cadence.get("staleness_days", 14))
+            sessions_dir = getattr(config, "sessions_dir", "") or ".sessions"
+        findings += _stale_citation_findings(
+            capabilities_relpath,
+            ledger_text,
+            _newest_session_card(target, sessions_dir),
+            staleness_days,
+            today if today is not None else date.today(),
+        )
     for rel in relpaths:
         path = target / rel
         if not path.is_file():
@@ -8374,7 +8670,8 @@ checks). Everything else is ordered steps.
    commit (superseded CI runs are the dominant Actions cost).
 5. Close-out docs, into the SAME card: what shipped (paths + commits);
    Capability delta — new capability or wall discovered? Append it to
-   `docs/CAPABILITIES.md` (dated, exact error or proof, workaround); every
+   `docs/CAPABILITIES.md` (dated, with its venue token, exact error or
+   proof, workaround — below the seed fence, never inside it); every
    ⚑ needs-owner ask carries the OWNER-ACTION fields (WHAT / WHERE / HOW /
    WHY-IT-MATTERS / UNBLOCKS / VERIFIED-NEEDED — attempted, or the exact
    wall; see `control/README.md`) — Withdraw stale asks; groom one idea
@@ -13534,11 +13831,239 @@ def apply_doc_improvements(
     return lines
 
 
+# ── Capability-ledger seed refresh (grounded-skills slice 5, plan §4.2c) ────
+#
+# docs/CAPABILITIES.md is consumer-edited BY DESIGN (appending findings is
+# the point), so hash classification parks it `consumer-edited`/`diverged`
+# forever and --apply-docs never reaches it. The marker-fenced kit-owned
+# SEED block is the answer: upgrade re-renders ONLY the block between the
+# grammar.py fence markers, preserving every byte outside the fence (the
+# append log, all consumer prose). A fence the consumer modified is NEVER
+# clobbered — it downgrades to an upgrade-report line telling them what to
+# do. This is the ONLY channel by which new fleet-wide seeds reach an
+# adopter's ledger.
+
+CAPABILITIES_TEMPLATE = "CAPABILITIES.md.tmpl"
+
+# The Q-0270 collapse note (plan §7.5 accept criterion): travels on the
+# upgrade report whenever the seed-refresh step ran.
+CAPABILITY_POSTURE_COLLAPSE_NOTE = (
+    "This upgrade ships the venue-scoped capability ledger (grounded-skills "
+    "§4.2): entries carry a venue token (owner-live · autonomous-project · "
+    "routine-fired · subagent · any) and the ledger's kit-owned seed block "
+    "carries the posture decision rule. If this repo carries a local prose "
+    "copy of the boot-triad/venue-posture rule (superbot Q-0270), that copy "
+    "is now superseded by docs/CAPABILITIES.md's posture rule — collapse the "
+    "local copy into a pointer."
+)
+
+
+def _capability_fence(text: str) -> str | None:
+    """Return the marker-fenced seed block of ``text`` (markers inclusive).
+
+    Markers are matched by their grammar.py prefixes (never the full warning
+    wording, so a future tweak cannot orphan an existing fence). ``None``
+    when either marker is absent or they are out of order — an unmatched
+    fence is treated exactly like no fence (fail safe, never a guess).
+    """
+    lines = text.splitlines(keepends=True)
+    begin = end = None
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if begin is None and stripped.startswith(CAPABILITY_SEED_BEGIN_PREFIX):
+            begin = i
+        elif begin is not None and stripped.startswith(CAPABILITY_SEED_END_PREFIX):
+            end = i
+            break
+    if begin is None or end is None:
+        return None
+    return "".join(lines[begin : end + 1])
+
+
+_LEGACY_SEED_START = "## THE DISCOVERY RULE"
+_APPEND_LOG_HEADING = "## Append log"
+
+
+def _line_start_index(text: str, prefix: str, from_index: int = 0) -> int:
+    """Index of the first LINE starting with ``prefix``, at/after ``from_index``.
+
+    Line-anchored on purpose: the fence's own warning text names
+    ``## Append log`` mid-line, so a bare ``find`` would anchor inside the
+    BEGIN marker instead of at the heading.
+    """
+    if from_index == 0 and text.startswith(prefix):
+        return 0
+    idx = text.find("\n" + prefix, from_index)
+    return -1 if idx == -1 else idx + 1
+
+
+def _legacy_seed_segment(rendered: str) -> str | None:
+    """Return a pre-fence template render's kit-owned seed segment.
+
+    The pre-slice-5 ledger had no fence; its kit-owned region ran from the
+    discovery rule through the seeded Capabilities/Walls rows, i.e. from
+    ``## THE DISCOVERY RULE`` up to (not including) ``## Append log``. A
+    consumer who only ever appended below (the designed edit pattern) still
+    carries this segment byte-for-byte, which is what lets the first
+    post-fence upgrade adopt the fence automatically.
+    """
+    start = _line_start_index(rendered, _LEGACY_SEED_START)
+    if start == -1:
+        return None
+    end = _line_start_index(rendered, _APPEND_LOG_HEADING, start)
+    if end == -1 or end <= start:
+        return None
+    return rendered[start:end]
+
+
+def _fence_replacement(new_render: str) -> str | None:
+    """Return the new render's fence block plus its trailing separator.
+
+    Runs from the BEGIN-marker line, past the END-marker line, up to (not
+    including) the ``## Append log`` heading line — so a legacy-segment
+    replacement lands with the same blank-line spacing the template ships.
+    """
+    begin = _line_start_index(new_render, CAPABILITY_SEED_BEGIN_PREFIX)
+    if begin == -1:
+        return None
+    end_marker = _line_start_index(new_render, CAPABILITY_SEED_END_PREFIX, begin)
+    if end_marker == -1:
+        return None
+    end = _line_start_index(new_render, _APPEND_LOG_HEADING, end_marker)
+    if end == -1 or end <= begin:
+        return None
+    return new_render[begin:end]
+
+
+def refresh_capability_seed(
+    root: Path,
+    config: Config,
+    backend: Any,
+    rows: list[dict[str, str]],
+    old_templates: dict[str, str] | None,
+    new_templates: dict[str, str] | None = None,
+) -> list[str]:
+    """Refresh the kit-owned fenced seed block of a consumer-edited ledger.
+
+    Covenant (plan §4.2c): ONLY the block between the grammar.py fence
+    markers is ever rewritten; everything outside — the ``## Append log``
+    and all consumer text — is preserved byte-for-byte. Cases:
+
+    - doc fence == new template's fence → already current (report line).
+    - doc fence == OLD template's fence (consumer never touched inside) →
+      refreshed in place.
+    - doc fence differs from both → consumer modified inside the fence, or
+      the old templates are unavailable — DOWNGRADE to a report line, never
+      clobber.
+    - no fence at all (pre-slice-5 ledger): when the doc still carries the
+      old template's rendered seed segment verbatim, the fence is adopted
+      automatically (segment → new fenced block); otherwise a report line
+      explains the one-time hand-adoption.
+
+    Only ``consumer-edited``/``diverged`` classifications are touched:
+    ``unchanged``/``missing`` need nothing (identical render / replanted by
+    adopt) and ``template-improved`` is consumer-untouched, covered whole-file
+    by ``--apply-docs``. The consumer's recorded doc hash is deliberately NOT
+    re-recorded after a fence refresh — the file remains consumer-owned and
+    must keep classifying that way.
+    """
+    row = next(
+        (r for r in rows if r.get("template") == CAPABILITIES_TEMPLATE),
+        None,
+    )
+    if row is None:
+        return []
+    rel = row["relpath"]
+    if row["class"] in (CLASS_UNCHANGED, CLASS_MISSING):
+        return []
+    if row["class"] == CLASS_IMPROVED:
+        return [
+            f"capability-seed: {rel} is consumer-untouched — the whole file "
+            "(fence included) refreshes via `upgrade --apply-docs`; no "
+            "fence-only refresh needed.",
+        ]
+    path = root / rel
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return [
+            f"capability-seed: {rel} unreadable — fence refresh skipped.",
+        ]
+    context = _upgrade_context(root, backend)
+    templates = new_templates if new_templates is not None else load_templates()
+    if CAPABILITIES_TEMPLATE not in templates:
+        return []
+    new_render = _render_planted(
+        templates[CAPABILITIES_TEMPLATE],
+        CAPABILITIES_TEMPLATE,
+        context,
+    )
+    new_fence = _capability_fence(new_render)
+    if new_fence is None:
+        return []  # template carries no fence — nothing kit-owned to refresh
+    old_render = None
+    if old_templates and CAPABILITIES_TEMPLATE in old_templates:
+        old_render = _render_planted(
+            old_templates[CAPABILITIES_TEMPLATE],
+            CAPABILITIES_TEMPLATE,
+            context,
+        )
+    doc_fence = _capability_fence(text)
+    if doc_fence is not None:
+        if doc_fence == new_fence:
+            return [
+                f"capability-seed: {rel} fence already current — nothing to "
+                "refresh.",
+            ]
+        old_fence = _capability_fence(old_render) if old_render else None
+        if old_fence is not None and doc_fence == old_fence:
+            atomic_write_text(root / rel, text.replace(doc_fence, new_fence, 1))
+            return [
+                f"capability-seed: refreshed the kit-owned fenced seed block "
+                f"in {rel} (venue-scoped seeds at template@new); everything "
+                "outside the fence — the append log and all consumer text — "
+                "preserved byte-for-byte.",
+            ]
+        return [
+            f"capability-seed: NOT refreshed — the fenced seed block in {rel} "
+            "differs from the kit-form fence (edited inside the fence, or the "
+            "old templates are unavailable). The fence is kit-owned: move "
+            "your own findings BELOW the fence into the append log, restore "
+            "the block between the BEGIN/END markers to kit form (copy it "
+            "from the new template render), and the next upgrade refreshes "
+            "it automatically.",
+        ]
+    # No fence — a pre-slice-5 ledger. Adopt the fence when the old seed
+    # segment survives verbatim (the designed append-only edit pattern).
+    old_segment = _legacy_seed_segment(old_render) if old_render else None
+    replacement = _fence_replacement(new_render)
+    if old_segment and replacement and old_segment in text:
+        atomic_write_text(
+            root / rel,
+            text.replace(old_segment, replacement, 1),
+        )
+        return [
+            f"capability-seed: adopted the marker fence in {rel} — the "
+            "pre-fence kit seed section matched the old template exactly and "
+            "was replaced by the new fenced block; the append log and all "
+            "consumer text preserved byte-for-byte.",
+        ]
+    return [
+        f"capability-seed: {rel} carries no kit-owned seed fence and its "
+        "seed section does not match the old template — hand-adopt once: "
+        "replace your discovery-rule + Capabilities/Walls seed sections with "
+        "the fenced block (BEGIN/END markers) from the new template, keeping "
+        "your append log below it; afterwards upgrades refresh the fence "
+        "automatically.",
+    ]
+
+
 def upgrade_report_text(
     old_version: str,
     rows: list[dict[str, str]],
     applied: list[str],
     carveouts: list[str] | None = None,
+    capability_seed: list[str] | None = None,
 ) -> str:
     """Compose ``<state_dir>/upgrade-report.md``.
 
@@ -13600,6 +14125,15 @@ def upgrade_report_text(
                 "- carve-out scan: ran — no kit-owned live workflow "
                 "installed, nothing to scan.",
             ]
+    if capability_seed:
+        # Grounded-skills slice 5 (§4.2c): the fence-refresh outcome is
+        # report-file evidence like the carve-outs — a stdout-only line is
+        # too easy to lose, and the modified-fence downgrade instruction
+        # must reach the upgrade PR's body. The Q-0270 collapse note travels
+        # with the section (plan §7.5 accept criterion).
+        lines += ["", "## Capability-ledger seed refresh", ""]
+        lines += [f"- {line}" for line in capability_seed]
+        lines += ["", CAPABILITY_POSTURE_COLLAPSE_NOTE]
     if applied:
         lines += ["", "## Applied (--apply-docs)", ""]
         lines += [f"- {line}" for line in applied]
@@ -13752,6 +14286,12 @@ def run_apply_docs_posthoc(
             "apply-docs: no template-improved docs to apply — every planted "
             "doc is already current or consumer-owned.",
         )
+    # Mirror the in-run capability-seed refresh (grounded-skills slice 5,
+    # decide-and-flag: YES — an operator who skipped the in-run window must
+    # recover the fence refresh the same way they recover --apply-docs;
+    # idempotent, so a re-run reports "already current" and writes nothing).
+    seed_lines = refresh_capability_seed(root, config, backend, rows, old_templates)
+    report += seed_lines
     # The report rewrite must not drop the carve-out section (websites,
     # v1.9.0 wave): re-emit it from a read-only rescan of the installed
     # kit-owned workflows, and carry forward hits recorded in the report
@@ -13774,6 +14314,7 @@ def run_apply_docs_posthoc(
             rows,
             applied,
             carveout_lines,
+            capability_seed=seed_lines,
         ),
     )
     report.append(f"report: {report_rel}")
@@ -13896,6 +14437,15 @@ def run_upgrade(
             "post-hoc from the banked pre-upgrade archive (no rollback needed).",
         )
 
+    # (4b) Capability-ledger fenced-seed refresh (grounded-skills slice 5,
+    # §4.2c): runs UNCONDITIONALLY at upgrade (the way staged artifacts
+    # regenerate), because a consumer-edited docs/CAPABILITIES.md — every
+    # good adopter's, by design — is out of --apply-docs' reach forever.
+    # Only the marker-fenced kit-owned block is ever rewritten; a modified
+    # fence downgrades to a report line (see refresh_capability_seed).
+    seed_lines = refresh_capability_seed(root, config, backend, rows, old_templates)
+    report += seed_lines
+
     # (5) Replace the vendored file with the running (new) one — only when the
     # running entry actually IS a stamped single-file bootstrap (in the
     # source/pip layouts there is no single file to install).
@@ -13974,7 +14524,13 @@ def run_upgrade(
     report_rel = f"{config.state_dir}/{UPGRADE_REPORT_FILENAME}"
     atomic_write_text(
         root / report_rel,
-        upgrade_report_text(old_version, rows, applied, gate_carveout_lines),
+        upgrade_report_text(
+            old_version,
+            rows,
+            applied,
+            gate_carveout_lines,
+            capability_seed=seed_lines,
+        ),
     )
     report.append(f"report: {report_rel}")
 
@@ -14694,9 +15250,13 @@ def cmd_check(
     # close the discovery-rule loop, never reds a required check (see the
     # checker docstring). Runs on both lanes: the asks live in the heartbeat
     # files the fast lane already validates.
+    # Slice-5 extensions ride the same call (grounded-skills §4.2d): the
+    # config hands the checker its staleness window (cadence.staleness_days,
+    # default-on-missing) + sessions_dir for the newest-card citation scan.
     xref_advisories = check_capability_xref(
         target,
         status_files=config.heartbeat_files,
+        config=config,
     )
     # Setup-script contract (EAP §6.5): advisory-only, like every nudge
     # above — the planted scripts/env-setup.sh is host-owned after adopt,
@@ -16395,7 +16955,7 @@ def main(argv: list[str] | None = None) -> int:
 
 _TEMPLATES = {
     'AGENT_ORIENTATION.md.tmpl': '# ${project_name} — agent orientation & reading order\n\n> **Status:** `reference`\n>\n> Generated by substrate-kit. The task reading-router: start here to find which\n> docs a given task needs. **NOT SOURCE OF TRUTH** — the binding contracts win.\n\n## Start every session\n\nThe boot set lives in the working agreement — `${agreement_home}` — and its\norientation guidance (one list, one home). This file is not boot reading —\nopen it when a task needs a route into the deeper docs.\n\n## Binding contracts\n\n- **Architecture / layering:** ${architecture_layers}\n- **Ownership** (who owns each write path): ${ownership_model}\n- **Mutation seam** (how writes are gated): ${mutation_seam}\n\n## Where things live\n\nDocumentation root(s): ${doc_roots}\n\nThe planted doc set (this router reaches every live doc — keep it that way):\n`docs/architecture.md` · `docs/ownership.md` · `docs/runtime_contracts.md` ·\n`docs/collaboration-model.md` · `docs/helper-policy.md` ·\n`docs/repo-navigation-map.md` · `docs/ai-project-workflow.md` ·\n`docs/owner-profile.md` · `docs/current-state.md` · `docs/decisions.md` ·\n`docs/question-router.md` · `docs/CAPABILITIES.md` · `docs/SKILLS.md` ·\n`docs/ideas/README.md` — plus the root\n`CONSTITUTION.md` (the working agreement) and `.session-journal.md`.\n\nRecurring action? **`docs/SKILLS.md`** — the skill index — names every\nkit-shipped skill and when to reach for it; check it before improvising a\nprocedure.\n\n## Verifying any change\n\nSee the working agreement (`${agreement_home}`) and its verify guidance\n(one home, never two copies).\n',
-    'CAPABILITIES.md.tmpl': '# ${project_name} — session capabilities & walls\n\n> **Status:** `living-ledger`\n>\n> Generated by substrate-kit. What agent sessions in THIS environment can and\n> cannot do — **verified findings, never assumptions**. Read at session start\n> (it is in the orientation reading order); append at session close. Fleet\n> master copy: `menno420/fleet-manager` → `docs/capabilities.md` — sync new\n> fleet-wide findings there via the manager when cross-repo access allows.\n\n## Why this file exists\n\nSessions repeatedly fail to discover what they CAN do (claiming `.mp4`s\nunviewable though ffmpeg frame-extraction is standard; forgetting provisioned\nenv tokens exist) and stall on imagined walls — burning owner attention as\nhand reminders. This ledger makes capability knowledge durable across\nsessions: one session\'s discovery is every later session\'s starting fact.\n\n## THE DISCOVERY RULE\n\nBefore declaring anything impossible, and before assuming a tool or\ncredential is missing:\n\n1. **Check this file** — the capability or wall may already be recorded.\n2. **Check the environment** — `printenv` / list the available tools BEFORE\n   assuming no credentials exist (provisioned env tokens are routinely\n   forgotten, not absent).\n3. **Attempt once** — try the operation and capture the **exact** error text;\n   a guessed wall and a verified wall are different facts.\n4. **Append the finding same session** — capability or wall, dated, with the\n   evidence (exact error, or proof it worked) and the workaround if one was\n   found. An unrecorded discovery is re-paid by every future session.\n\n## Capabilities — verified working\n\n- **Media is readable**: a video is never "unviewable" — extract frames\n  (`ffmpeg -i in.mp4 -vf fps=1 frame_%04d.png`) and read the images; same\n  idea for audio (transcribe) and PDFs (render pages). Try the recipe before\n  reporting a format wall.\n- **Provisioned credentials**: the environment often carries tokens/keys as\n  env vars — `printenv` first; a missing-looking credential is usually a\n  missing *look*.\n- **Release cutting despite the tag wall**: `workflow_dispatch` on the\n  release workflow (with a version input) creates the tag in-Actions —\n  proven repeatedly fleet-wide after direct tag pushes 403\'d.\n\n## Walls — verified blocked (use the workaround; don\'t rediscover)\n\n- **Tag push / release create via git**: HTTP 403 from the environment\'s git\n  proxy → use the workflow_dispatch release path.\n- **Branch deletion**: 403 on every path (git push `:branch` and API) →\n  owner deletes by hand / enables "Automatically delete head branches".\n- **`api.github.com` direct HTTP**: blocked → GitHub access is MCP-tools-only.\n- **Environment / routine / Project creation**: owner-click actions in the\n  console — queue them under `⚑ needs-owner`, never wait silently.\n- **Self-merge classifier**: sessions can be refused merging owner-gated PRs\n  while their other capabilities work — and the boundary differs by session\n  kind (a child session was refused where a coordinator was not). Record\n  which kind of session hit which boundary.\n- **GraphQL API quota**: tight — batch queries and prefer the REST-backed\n  MCP tools for bulk reads.\n\n## Append log — newest first\n\nFormat: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.\n\n(Hand-filled by sessions, per the discovery rule. Seed walls/capabilities\nabove came from the fleet\'s lived 2026-07 findings; local ones go here.)\n',
+    'CAPABILITIES.md.tmpl': '# ${project_name} — session capabilities & walls\n\n> **Status:** `living-ledger`\n>\n> Generated by substrate-kit. What agent sessions in THIS environment can and\n> cannot do — **verified findings, never assumptions**. Read at session start\n> (it is in the orientation reading order); append at session close. Fleet\n> master copy: `menno420/fleet-manager` → `docs/capabilities.md` — sync new\n> fleet-wide findings there via the manager when cross-repo access allows.\n\n## Why this file exists\n\nSessions repeatedly fail to discover what they CAN do (claiming `.mp4`s\nunviewable though ffmpeg frame-extraction is standard; forgetting provisioned\nenv tokens exist) and stall on imagined walls — burning owner attention as\nhand reminders. This ledger makes capability knowledge durable across\nsessions: one session\'s discovery is every later session\'s starting fact.\n\n<!-- substrate-kit:capability-seed BEGIN — kit-owned, refreshed at upgrade. Append your findings BELOW the fence (## Append log), never inside it. -->\n\n## Posture decision rule — establish your venue first\n\n- **Owner-live session:** assume NO special limitations apply — act and merge\n  directly (superbot Q-0269).\n- **Autonomous / routine-fired seat:** pre-route around every known stall\n  class recorded below; park only on a REAL denial, never preemptively\n  (superbot Q-0270 boot triad: model · venue · ability envelope).\n\nVenue tokens (every entry names where it was verified): `owner-live` ·\n`autonomous-project` · `routine-fired` · `subagent` · `any`. Capabilities are\n**venue-scoped, not global** — the same operation can work owner-live, be\norg-refused on a cross-session binding, and prompt-stall in a plain-started\nseat while never prompting in a Routine-spawned one (fleet night review,\n2026-07-12). A flat CAN/CANNOT ledger is wrong somewhere by construction.\n\n## THE DISCOVERY RULE\n\nBefore declaring anything impossible, and before assuming a tool or\ncredential is missing:\n\n1. **Check this file** — the capability or wall may already be recorded for\n   your venue.\n2. **Check the environment** — `printenv` / list the available tools BEFORE\n   assuming no credentials exist (provisioned env tokens are routinely\n   forgotten, not absent).\n3. **Attempt once** — try the operation and capture the **exact** error text;\n   a guessed wall and a verified wall are different facts.\n4. **Append the finding same session** — capability or wall, dated, with the\n   venue token, the evidence (exact error, or proof it worked) and the\n   workaround if one was found. An unrecorded discovery is re-paid by every\n   future session.\n5. **Staleness — re-verify what you build on**: an entry older than the\n   staleness window (config `cadence.staleness_days`, default 14) that your\n   work depends on is a **claim, not a fact** — re-verify it with one cheap\n   attempt and append the result. Re-verifications APPEND, never edit: a\n   refuted wall can self-resolve platform-side, and a ledger with no\n   freshness data is confidently stale — worse than ignorant.\n\n## Capabilities — verified working\n\n- `any` · **Media is readable**: a video is never "unviewable" — extract\n  frames (`ffmpeg -i in.mp4 -vf fps=1 frame_%04d.png`) and read the images;\n  same idea for audio (transcribe) and PDFs (render pages). Try the recipe\n  before reporting a format wall. — LAST-VERIFIED: 2026-07-10\n- `any` · **Provisioned credentials**: the environment often carries\n  tokens/keys as env vars — `printenv` first; a missing-looking credential is\n  usually a missing *look*. — LAST-VERIFIED: 2026-07-10\n- `any` · **Release cutting despite the tag wall**: `workflow_dispatch` on\n  the release workflow (with a version input) creates the tag in-Actions —\n  proven repeatedly fleet-wide after direct tag pushes 403\'d.\n  — LAST-VERIFIED: 2026-07-12\n\n## Walls — verified blocked (use the workaround; don\'t rediscover)\n\n- `any` · **Tag push / release create via git**: HTTP 403 from the\n  environment\'s git proxy → use the workflow_dispatch release path.\n  — LAST-VERIFIED: 2026-07-12\n- `any` · **Branch deletion**: 403 on every path (git push `:branch` and\n  API) → owner deletes by hand / enables "Automatically delete head\n  branches". — LAST-VERIFIED: 2026-07-10\n- `any` · **`api.github.com` direct HTTP**: blocked → GitHub access is\n  MCP-tools-only. — LAST-VERIFIED: 2026-07-10\n- `any` · **Environment / Project creation**: owner-click actions in the\n  console — queue them as structured owner asks, never wait silently.\n  Routine/schedule creation is NO LONGER a blanket wall: `create_trigger`\n  arms routines agent-side (proven 2026-07-11); the console-only knobs\n  (model class, branch-push, auto-fix PRs) remain owner-only.\n  — LAST-VERIFIED: 2026-07-11\n- `subagent` · **Self-merge classifier**: sessions can be refused merging\n  owner-gated PRs while their other capabilities work — and the boundary\n  differs by venue (a child session was refused where a coordinator was\n  not). Record which venue hit which boundary. — LAST-VERIFIED: 2026-07-10\n- `any` · **GraphQL API quota**: tight — batch queries and prefer the\n  REST-backed MCP tools for bulk reads. — LAST-VERIFIED: 2026-07-10\n- `routine-fired` · **Silent prompt-stalls**: a permission prompt in an\n  unattended seat is a silent stall, and grant boundaries differ by venue —\n  the same tool call can be pre-granted in a Routine-spawned seat and prompt\n  in a plain-started one. Pre-route around recorded stall classes; verify\n  grants per venue, never globally. — LAST-VERIFIED: 2026-07-12\n\n<!-- substrate-kit:capability-seed END -->\n\n## Append log — newest first\n\nFormat: `- YYYY-MM-DD · capability|wall · <venue> · finding · evidence · workaround`\n(venue ∈ `owner-live` · `autonomous-project` · `routine-fired` · `subagent` ·\n`any`; older five-field lines without a venue token stay valid — read them\nas venue `any`.)\n\n(Hand-filled by sessions, per the discovery rule. Seed rows above are\nkit-owned — they refresh at upgrade between the fence markers; local\nfindings go here, below the fence.)\n',
     'CLAUDE.md.tmpl': "# ${project_name} — agent working agreement\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit from the staged interview. **NOT SOURCE OF TRUTH**\n> for code — source files always win. Re-render (`bootstrap render`) after the\n> interview fills more slots.\n\n## What this project is\n\n${project_name} is built in ${primary_language}.\n\n## Orientation — read first, in order\n\n1. This file — the working agreement.\n2. `HANDOFF.md` at repo root (when present) — the previous session's trail:\n   newest session card + where to pick up. Regenerated at every session\n   boot, untracked by design — read it before re-deriving history from\n   `git log`/`git show`; never commit or edit it.\n3. `docs/current-state.md` — what is true right now.\n\nThat is the whole boot set. Everything else is routed, **not front-loaded**\n(reading every planted doc up front buys ceremony, not context — measured):\nopen `docs/AGENT_ORIENTATION.md` when a task needs its reading route,\n`docs/SKILLS.md` (the skill index) **before improvising a procedure for a\nrecurring action**, and\n`docs/CAPABILITIES.md` (the verified can/cannot ledger) **before declaring\nany wall or missing credential** — its discovery rule: check the file →\ncheck the env → attempt once + capture the exact error → append the finding\nsame session.\n\n## Kit machinery — search hygiene\n\n`bootstrap.py` (~12k generated lines) and `.substrate/` (kit state + a byte\nbackup of the previous dist) are substrate-kit machinery, not project code.\nExclude them from repo-wide searches: `grep -r --exclude=bootstrap.py\n--exclude-dir=.substrate …`, or ripgrep `rg -g '!bootstrap.py' -g\n'!.substrate' …`.\n\n## Architecture — layers & import rules\n\n${architecture_layers}\n\n## Verifying a change\n\nRun before every push:\n\n```\n${verify_command}\n```\n\n## How the maintainer works\n\n${owner_profile}\n\n## Workflow adoption\n\nCurrent adoption pace for the substrate workflow: **${integration_mode}**.\n",
     'CONSTITUTION.md.tmpl': '# ${project_name} — constitution\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. The working agreement + autonomy rails. **NOT\n> SOURCE OF TRUTH** for code — source files always win. Rules state their\n> **current value only**; provenance lives in `docs/decisions.md` as [D-NNNN]\n> links and is never narrated inline.\n\n## Working agreement\n\n- **The goal comes first.** Achieve the session\'s goal end-to-end; don\'t ship\n  the smallest safe slice.\n- **Session prompts are guidance, not orders.** Weigh every prompt (and every\n  cross-agent report) against source and the binding docs before acting.\n- **Approved plan = execute.** Once a plan is approved, finish it in the same\n  session, with the planning context still loaded — no re-confirming.\n- **Understand-and-reflect.** The owner hands over fragments, not full\n  specs. Before substantive work, restate the fuller picture built from the\n  ask — the implied specs, and the possibility space when feasibility is\n  uncertain — inline in the first substantive response, never as a blocking\n  question. It catches a misread early, and the filled-in picture is itself\n  new material the owner redirects.\n- **Capabilities are discovered, never assumed.** Before declaring a wall or\n  a missing credential: check `docs/CAPABILITIES.md` (the verified ledger) →\n  check the environment → attempt once and capture the exact error → append\n  the finding same session.\n- **Recurring actions run through the skill index.** `docs/SKILLS.md` names\n  every kit-shipped skill and when to reach for it — check it before\n  improvising a procedure or repo-searching "how do we do X here".\n- When a doc and a source file disagree: ${drift_resolution}\n\n## Autonomy rails — act vs. ask\n\n- **Act** on contained, reversible, verifiable changes — including a\n  root-cause fix discovered mid-task.\n- **Ask** before anything irreversible (data loss, external publish),\n  large / cross-cutting (architectural), or when the goal itself is\n  genuinely ambiguous. No live owner to ask? Record the question in\n  `docs/question-router.md` instead of skipping it or guessing.\n- **Owner attention is the scarcest resource.** Before routing anything to\n  the owner: attempt it yourself, or cite the exact wall — assumption-based\n  asks are banned. Every ask carries the OWNER-ACTION fields — WHAT / WHERE\n  / HOW / WHY-IT-MATTERS / UNBLOCKS / VERIFIED-NEEDED (format:\n  `control/README.md`) — phrased so a non-technical owner can act directly.\n  Expire stale asks; fewer, clearer asks beat complete lists. Owner-facing\n  output follows the owner-assist standard — paste-ready finished values, a\n  risk class (✅ / ↩️ / ⚠️) on every manual step, decisions as structured\n  choices with a **bolded recommendation**, answerable with one letter\n  (standard: `control/README.md`).\n\n## Changing the rules — propose, don\'t apply\n\n- A binding rule in this file changes by **proposal**, never by silent edit:\n  record the decision in `docs/decisions.md`, cite it here as its [D-NNNN]\n  id, and let the owner (or the review ritual) confirm before the rule text\n  changes.\n- Every rule change ships with its provenance id. This file carries **no\n  history** — the ledger does; superseded rules are looked up there.\n\n## Program law\n\nRulings that bind **every** repo in this program live canonically in the\nsubstrate-kit repo at `docs/program/rulings.md` — the [PL-NNN] register\n(https://github.com/menno420/substrate-kit/blob/main/docs/program/rulings.md),\ne.g. PL-001 decide-and-flag · PL-006 source-wins / false-green.\n**Cite PL-IDs — never copy ruling bodies into this repo** (the register is\nthe one home; a local copy is drift by construction). Repo-local rulings\nstay in `docs/decisions.md` / `docs/question-router.md`.\n\n## Rails specific to ${project_name}\n\n(Hand-filled: the project\'s own hard rules, one bullet each, each citing its\n[D-NNNN]. Keep the whole hand-filled file under 150 lines.)\n',
     'SKILLS-index.md.tmpl': '# ${project_name} — skill index\n\n> **Status:** `reference`\n>\n> Generated by substrate-kit. The table below renders FROM the kit\'s\n> `SKILLS` list — the same source that emits the skills — and regenerates\n> at adopt/upgrade, so it cannot hand-drift. **NOT SOURCE OF TRUTH** for\n> skill bodies: the installed `.claude/skills/<name>/SKILL.md` wins.\n\n## What this is\n\nThe registered skill set for ${project_name}: every recurring action that\nhas a defined, kit-shipped procedure. **Check this index before improvising\na workflow or repo-searching "how do we do X here"** — when a row covers\nthe action, invoke the skill (or read its installed body) instead of\nderiving the procedure from scratch.\n\n## The skills\n\n${skills_index}\n\n## Where the bodies live\n\n- **Installed (live):** `.claude/skills/<name>/SKILL.md` — invoke as\n  `/<name>`.\n- **Staged (regenerated at every adopt/upgrade):** the kit state dir\'s\n  `skills/` tree (default `.substrate/skills/`); install with\n  `python3 bootstrap.py skills --build`.\n- **Precedence:** a skill\'s declared capability **wins over the ambient\n  stance** (an invoked `session-close` may write the session log even under\n  a `review` stance); stances stay advisory for anything a skill has not\n  declared.\n\n## Growing the set\n\nThe skill set is kit-owned (the `SKILLS` list in the kit\'s\n`src/engine/skills/skills.py`) and this index regenerates from it — never\nhand-edit the table. A recurring action without a row here is a candidate\nskill: capture it as an idea (`docs/ideas/README.md`) or propose it\nupstream to the kit, and it reaches every adopter at the next release.\n',

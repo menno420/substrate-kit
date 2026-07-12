@@ -213,6 +213,70 @@ def structured_choice_example() -> str:
     )
 
 
+# ── docs/CAPABILITIES.md — the venue-scoped capability ledger (§4.2) ─────────
+#
+# Taught in the planted ledger (CAPABILITIES.md.tmpl § "Append log"):
+#   - YYYY-MM-DD · capability|wall · <venue> · finding · evidence · workaround
+# The `·` is U+00B7 (the protocol's separator). The venue token scopes a
+# finding to where it was verified — the grounded-skills evidence base
+# (fleet night review 2026-07-12) saw ONE operation behave three ways in one
+# night depending on venue, so a flat CAN/CANNOT ledger is wrong somewhere by
+# construction. BACKWARD-COMPATIBLE: the older five-field form without a
+# venue token stays valid — readers treat it as venue `any` and enforcers
+# never flag it (an old line must not become advisory noise). Enforced
+# (advisory-only) by check_capability_xref; the kit-owned seed block between
+# the fence markers below is refreshed at upgrade by
+# engine.upgrade.refresh_capability_seed — the ONLY channel that reaches a
+# consumer-edited ledger (--apply-docs never covers one).
+
+CAPABILITY_VENUE_TOKENS = (
+    "owner-live",
+    "autonomous-project",
+    "routine-fired",
+    "subagent",
+    "any",
+)
+CAPABILITY_ENTRY_TAGS = ("capability", "wall")
+# The taught append-line format — the template carries this string verbatim
+# (test-pinned agreement, the owner-assist shared-pin precedent), so the
+# writer half and the enforcer half cannot drift.
+CAPABILITY_LOG_TAUGHT_FORMAT = (
+    "- YYYY-MM-DD · capability|wall · <venue> · finding · evidence · workaround"
+)
+# An append-log entry line: a leading ISO date, then the ·-separated fields.
+CAPABILITY_LOG_LINE_RE = re.compile(r"^- (20\d{2}-\d{2}-\d{2}) · (.+)$")
+# What field 3 looks like when the writer MEANT a venue: one lowercase
+# hyphenated token, no spaces. A field-3 value with spaces is an old-format
+# finding and is never judged (fail open).
+CAPABILITY_VENUE_SHAPE_RE = re.compile(r"^[a-z][a-z-]{2,}$")
+# Seed rows carry a per-row freshness stamp (§4.2b) — no freshness data
+# means confidently stale, which is worse than ignorant.
+CAPABILITY_LAST_VERIFIED_RE = re.compile(r"LAST-VERIFIED:\s*(20\d{2}-\d{2}-\d{2})")
+# The kit-owned seed fence (§4.2c): upgrade re-renders ONLY the block between
+# these markers inside a consumer-edited ledger; everything outside — the
+# append log, all consumer text — is preserved byte-for-byte. Prefix-matched
+# by the refresher so a future tweak to the warning wording cannot orphan an
+# existing fence.
+CAPABILITY_SEED_BEGIN_PREFIX = "<!-- substrate-kit:capability-seed BEGIN"
+CAPABILITY_SEED_END_PREFIX = "<!-- substrate-kit:capability-seed END"
+CAPABILITY_SEED_BEGIN = (
+    CAPABILITY_SEED_BEGIN_PREFIX
+    + " — kit-owned, refreshed at upgrade. Append your findings BELOW the"
+    " fence (## Append log), never inside it. -->"
+)
+CAPABILITY_SEED_END = CAPABILITY_SEED_END_PREFIX + " -->"
+
+
+def capability_log_line_example(*, venue: str | None = "routine-fired") -> str:
+    """Canonical append-log entry (``venue=None`` renders the legacy 5-field form)."""
+    venue_field = f" {venue} ·" if venue else ""
+    return (
+        f"- 2026-07-12 · wall ·{venue_field} fire_trigger on a cross-session"
+        " binding refused · exact error: not enabled for this organization ·"
+        " workaround: fire from the owning session\n"
+    )
+
+
 # ── control/claims/ — the work-claim bullet (EAP §6.4) ───────────────────────
 #
 # Taught in control/claims/README.md: one file per claim, a single bullet

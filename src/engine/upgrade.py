@@ -70,6 +70,10 @@ from engine.adopt import (
     record_doc_hash,
     with_unrendered_banner,
 )
+from engine.grammar import (
+    CAPABILITY_SEED_BEGIN_PREFIX,
+    CAPABILITY_SEED_END_PREFIX,
+)
 from engine.lib.atomicio import atomic_write_text
 from engine.lib.config import KIT_VERSION, Config, save_config
 from engine.lib.state import STATE_SCHEMA_VERSION
@@ -299,11 +303,239 @@ def apply_doc_improvements(
     return lines
 
 
+# ── Capability-ledger seed refresh (grounded-skills slice 5, plan §4.2c) ────
+#
+# docs/CAPABILITIES.md is consumer-edited BY DESIGN (appending findings is
+# the point), so hash classification parks it `consumer-edited`/`diverged`
+# forever and --apply-docs never reaches it. The marker-fenced kit-owned
+# SEED block is the answer: upgrade re-renders ONLY the block between the
+# grammar.py fence markers, preserving every byte outside the fence (the
+# append log, all consumer prose). A fence the consumer modified is NEVER
+# clobbered — it downgrades to an upgrade-report line telling them what to
+# do. This is the ONLY channel by which new fleet-wide seeds reach an
+# adopter's ledger.
+
+CAPABILITIES_TEMPLATE = "CAPABILITIES.md.tmpl"
+
+# The Q-0270 collapse note (plan §7.5 accept criterion): travels on the
+# upgrade report whenever the seed-refresh step ran.
+CAPABILITY_POSTURE_COLLAPSE_NOTE = (
+    "This upgrade ships the venue-scoped capability ledger (grounded-skills "
+    "§4.2): entries carry a venue token (owner-live · autonomous-project · "
+    "routine-fired · subagent · any) and the ledger's kit-owned seed block "
+    "carries the posture decision rule. If this repo carries a local prose "
+    "copy of the boot-triad/venue-posture rule (superbot Q-0270), that copy "
+    "is now superseded by docs/CAPABILITIES.md's posture rule — collapse the "
+    "local copy into a pointer."
+)
+
+
+def _capability_fence(text: str) -> str | None:
+    """Return the marker-fenced seed block of ``text`` (markers inclusive).
+
+    Markers are matched by their grammar.py prefixes (never the full warning
+    wording, so a future tweak cannot orphan an existing fence). ``None``
+    when either marker is absent or they are out of order — an unmatched
+    fence is treated exactly like no fence (fail safe, never a guess).
+    """
+    lines = text.splitlines(keepends=True)
+    begin = end = None
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if begin is None and stripped.startswith(CAPABILITY_SEED_BEGIN_PREFIX):
+            begin = i
+        elif begin is not None and stripped.startswith(CAPABILITY_SEED_END_PREFIX):
+            end = i
+            break
+    if begin is None or end is None:
+        return None
+    return "".join(lines[begin : end + 1])
+
+
+_LEGACY_SEED_START = "## THE DISCOVERY RULE"
+_APPEND_LOG_HEADING = "## Append log"
+
+
+def _line_start_index(text: str, prefix: str, from_index: int = 0) -> int:
+    """Index of the first LINE starting with ``prefix``, at/after ``from_index``.
+
+    Line-anchored on purpose: the fence's own warning text names
+    ``## Append log`` mid-line, so a bare ``find`` would anchor inside the
+    BEGIN marker instead of at the heading.
+    """
+    if from_index == 0 and text.startswith(prefix):
+        return 0
+    idx = text.find("\n" + prefix, from_index)
+    return -1 if idx == -1 else idx + 1
+
+
+def _legacy_seed_segment(rendered: str) -> str | None:
+    """Return a pre-fence template render's kit-owned seed segment.
+
+    The pre-slice-5 ledger had no fence; its kit-owned region ran from the
+    discovery rule through the seeded Capabilities/Walls rows, i.e. from
+    ``## THE DISCOVERY RULE`` up to (not including) ``## Append log``. A
+    consumer who only ever appended below (the designed edit pattern) still
+    carries this segment byte-for-byte, which is what lets the first
+    post-fence upgrade adopt the fence automatically.
+    """
+    start = _line_start_index(rendered, _LEGACY_SEED_START)
+    if start == -1:
+        return None
+    end = _line_start_index(rendered, _APPEND_LOG_HEADING, start)
+    if end == -1 or end <= start:
+        return None
+    return rendered[start:end]
+
+
+def _fence_replacement(new_render: str) -> str | None:
+    """Return the new render's fence block plus its trailing separator.
+
+    Runs from the BEGIN-marker line, past the END-marker line, up to (not
+    including) the ``## Append log`` heading line — so a legacy-segment
+    replacement lands with the same blank-line spacing the template ships.
+    """
+    begin = _line_start_index(new_render, CAPABILITY_SEED_BEGIN_PREFIX)
+    if begin == -1:
+        return None
+    end_marker = _line_start_index(new_render, CAPABILITY_SEED_END_PREFIX, begin)
+    if end_marker == -1:
+        return None
+    end = _line_start_index(new_render, _APPEND_LOG_HEADING, end_marker)
+    if end == -1 or end <= begin:
+        return None
+    return new_render[begin:end]
+
+
+def refresh_capability_seed(
+    root: Path,
+    config: Config,
+    backend: Any,
+    rows: list[dict[str, str]],
+    old_templates: dict[str, str] | None,
+    new_templates: dict[str, str] | None = None,
+) -> list[str]:
+    """Refresh the kit-owned fenced seed block of a consumer-edited ledger.
+
+    Covenant (plan §4.2c): ONLY the block between the grammar.py fence
+    markers is ever rewritten; everything outside — the ``## Append log``
+    and all consumer text — is preserved byte-for-byte. Cases:
+
+    - doc fence == new template's fence → already current (report line).
+    - doc fence == OLD template's fence (consumer never touched inside) →
+      refreshed in place.
+    - doc fence differs from both → consumer modified inside the fence, or
+      the old templates are unavailable — DOWNGRADE to a report line, never
+      clobber.
+    - no fence at all (pre-slice-5 ledger): when the doc still carries the
+      old template's rendered seed segment verbatim, the fence is adopted
+      automatically (segment → new fenced block); otherwise a report line
+      explains the one-time hand-adoption.
+
+    Only ``consumer-edited``/``diverged`` classifications are touched:
+    ``unchanged``/``missing`` need nothing (identical render / replanted by
+    adopt) and ``template-improved`` is consumer-untouched, covered whole-file
+    by ``--apply-docs``. The consumer's recorded doc hash is deliberately NOT
+    re-recorded after a fence refresh — the file remains consumer-owned and
+    must keep classifying that way.
+    """
+    row = next(
+        (r for r in rows if r.get("template") == CAPABILITIES_TEMPLATE),
+        None,
+    )
+    if row is None:
+        return []
+    rel = row["relpath"]
+    if row["class"] in (CLASS_UNCHANGED, CLASS_MISSING):
+        return []
+    if row["class"] == CLASS_IMPROVED:
+        return [
+            f"capability-seed: {rel} is consumer-untouched — the whole file "
+            "(fence included) refreshes via `upgrade --apply-docs`; no "
+            "fence-only refresh needed.",
+        ]
+    path = root / rel
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return [
+            f"capability-seed: {rel} unreadable — fence refresh skipped.",
+        ]
+    context = _upgrade_context(root, backend)
+    templates = new_templates if new_templates is not None else load_templates()
+    if CAPABILITIES_TEMPLATE not in templates:
+        return []
+    new_render = _render_planted(
+        templates[CAPABILITIES_TEMPLATE],
+        CAPABILITIES_TEMPLATE,
+        context,
+    )
+    new_fence = _capability_fence(new_render)
+    if new_fence is None:
+        return []  # template carries no fence — nothing kit-owned to refresh
+    old_render = None
+    if old_templates and CAPABILITIES_TEMPLATE in old_templates:
+        old_render = _render_planted(
+            old_templates[CAPABILITIES_TEMPLATE],
+            CAPABILITIES_TEMPLATE,
+            context,
+        )
+    doc_fence = _capability_fence(text)
+    if doc_fence is not None:
+        if doc_fence == new_fence:
+            return [
+                f"capability-seed: {rel} fence already current — nothing to "
+                "refresh.",
+            ]
+        old_fence = _capability_fence(old_render) if old_render else None
+        if old_fence is not None and doc_fence == old_fence:
+            atomic_write_text(root / rel, text.replace(doc_fence, new_fence, 1))
+            return [
+                f"capability-seed: refreshed the kit-owned fenced seed block "
+                f"in {rel} (venue-scoped seeds at template@new); everything "
+                "outside the fence — the append log and all consumer text — "
+                "preserved byte-for-byte.",
+            ]
+        return [
+            f"capability-seed: NOT refreshed — the fenced seed block in {rel} "
+            "differs from the kit-form fence (edited inside the fence, or the "
+            "old templates are unavailable). The fence is kit-owned: move "
+            "your own findings BELOW the fence into the append log, restore "
+            "the block between the BEGIN/END markers to kit form (copy it "
+            "from the new template render), and the next upgrade refreshes "
+            "it automatically.",
+        ]
+    # No fence — a pre-slice-5 ledger. Adopt the fence when the old seed
+    # segment survives verbatim (the designed append-only edit pattern).
+    old_segment = _legacy_seed_segment(old_render) if old_render else None
+    replacement = _fence_replacement(new_render)
+    if old_segment and replacement and old_segment in text:
+        atomic_write_text(
+            root / rel,
+            text.replace(old_segment, replacement, 1),
+        )
+        return [
+            f"capability-seed: adopted the marker fence in {rel} — the "
+            "pre-fence kit seed section matched the old template exactly and "
+            "was replaced by the new fenced block; the append log and all "
+            "consumer text preserved byte-for-byte.",
+        ]
+    return [
+        f"capability-seed: {rel} carries no kit-owned seed fence and its "
+        "seed section does not match the old template — hand-adopt once: "
+        "replace your discovery-rule + Capabilities/Walls seed sections with "
+        "the fenced block (BEGIN/END markers) from the new template, keeping "
+        "your append log below it; afterwards upgrades refresh the fence "
+        "automatically.",
+    ]
+
+
 def upgrade_report_text(
     old_version: str,
     rows: list[dict[str, str]],
     applied: list[str],
     carveouts: list[str] | None = None,
+    capability_seed: list[str] | None = None,
 ) -> str:
     """Compose ``<state_dir>/upgrade-report.md``.
 
@@ -365,6 +597,15 @@ def upgrade_report_text(
                 "- carve-out scan: ran — no kit-owned live workflow "
                 "installed, nothing to scan.",
             ]
+    if capability_seed:
+        # Grounded-skills slice 5 (§4.2c): the fence-refresh outcome is
+        # report-file evidence like the carve-outs — a stdout-only line is
+        # too easy to lose, and the modified-fence downgrade instruction
+        # must reach the upgrade PR's body. The Q-0270 collapse note travels
+        # with the section (plan §7.5 accept criterion).
+        lines += ["", "## Capability-ledger seed refresh", ""]
+        lines += [f"- {line}" for line in capability_seed]
+        lines += ["", CAPABILITY_POSTURE_COLLAPSE_NOTE]
     if applied:
         lines += ["", "## Applied (--apply-docs)", ""]
         lines += [f"- {line}" for line in applied]
@@ -517,6 +758,12 @@ def run_apply_docs_posthoc(
             "apply-docs: no template-improved docs to apply — every planted "
             "doc is already current or consumer-owned.",
         )
+    # Mirror the in-run capability-seed refresh (grounded-skills slice 5,
+    # decide-and-flag: YES — an operator who skipped the in-run window must
+    # recover the fence refresh the same way they recover --apply-docs;
+    # idempotent, so a re-run reports "already current" and writes nothing).
+    seed_lines = refresh_capability_seed(root, config, backend, rows, old_templates)
+    report += seed_lines
     # The report rewrite must not drop the carve-out section (websites,
     # v1.9.0 wave): re-emit it from a read-only rescan of the installed
     # kit-owned workflows, and carry forward hits recorded in the report
@@ -539,6 +786,7 @@ def run_apply_docs_posthoc(
             rows,
             applied,
             carveout_lines,
+            capability_seed=seed_lines,
         ),
     )
     report.append(f"report: {report_rel}")
@@ -661,6 +909,15 @@ def run_upgrade(
             "post-hoc from the banked pre-upgrade archive (no rollback needed).",
         )
 
+    # (4b) Capability-ledger fenced-seed refresh (grounded-skills slice 5,
+    # §4.2c): runs UNCONDITIONALLY at upgrade (the way staged artifacts
+    # regenerate), because a consumer-edited docs/CAPABILITIES.md — every
+    # good adopter's, by design — is out of --apply-docs' reach forever.
+    # Only the marker-fenced kit-owned block is ever rewritten; a modified
+    # fence downgrades to a report line (see refresh_capability_seed).
+    seed_lines = refresh_capability_seed(root, config, backend, rows, old_templates)
+    report += seed_lines
+
     # (5) Replace the vendored file with the running (new) one — only when the
     # running entry actually IS a stamped single-file bootstrap (in the
     # source/pip layouts there is no single file to install).
@@ -739,7 +996,13 @@ def run_upgrade(
     report_rel = f"{config.state_dir}/{UPGRADE_REPORT_FILENAME}"
     atomic_write_text(
         root / report_rel,
-        upgrade_report_text(old_version, rows, applied, gate_carveout_lines),
+        upgrade_report_text(
+            old_version,
+            rows,
+            applied,
+            gate_carveout_lines,
+            capability_seed=seed_lines,
+        ),
     )
     report.append(f"report: {report_rel}")
 
