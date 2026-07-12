@@ -1,3 +1,0 @@
-# Claim — distribution wave A, kit v1.13.0
-
-- `claude/wave-a-v1130` · **wave-a-v1.13.0-distribution** — Distribution Wave A: kit release v1.13.0 to the first five vendored registry adopters: **menno420/substrate-kit** (row 1, verify no-op — dist already v1.13.0 at HEAD), **menno420/superbot-next**, **menno420/websites**, **menno420/superbot-games**, **menno420/trading-strategy** (superbot skipped — deliberate v1.0.0 pin; wave B owns gba-homebrew / pokemon-mod-lab / venture-lab / fleet-manager) · expected files: control/claims/wave-a-v1130.md, .sessions/2026-07-12-wave-a-v1130-distribution.md, control/status.md wave-A rows at close · 2026-07-12
