@@ -46,7 +46,10 @@ from engine.checks.check_inbox_append import check_inbox_append
 from engine.checks.check_namespace import check_namespace
 from engine.checks.check_owner_actions import check_owner_actions
 from engine.checks.check_status_current import check_status_current
-from engine.checks.check_orientation_budget import check_orientation_budget
+from engine.checks.check_orientation_budget import (
+    check_orientation_budget,
+    check_orientation_headroom,
+)
 from engine.checks.check_seam_authority import check_seam_authority
 from engine.checks.check_session_log import (
     BORN_RED_HOLD_MESSAGE,
@@ -829,6 +832,15 @@ def cmd_check(
         config,
         context=build_context(digest_backend.data) if digest_backend.data else {},
     )
+    # K0 headroom gauge (PR #308, the nightcap-card 💡 spec): advisory-only
+    # by contract, like every nudge above — the boot set nearing (but not
+    # over) the orientation budget warns with the exact headroom + per-doc
+    # split, so a docs session sees the pressure BEFORE the cliff reds
+    # `check --strict` (UNVERIFIED per its PL-008 provenance header;
+    # graduation is a later, deliberate step). Full lane only: boot docs are
+    # not control-lane traffic. Over-budget stays the gate's verdict — the
+    # advisory self-silences there (see the checker docstring).
+    headroom_advisories = check_orientation_headroom(target, config)
     # The inbox append-only gate (issue #36 report 2): a control/inbox.md
     # change must be pure-append vs the merge-base + ORDER-grammar shaped.
     # Rides the finding loop like every checker; engages only when CI handed
@@ -1111,6 +1123,25 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=digest_advisories,
+        )
+    if headroom_advisories and not status_only:
+        # Same warn-only contract as the advisories above (PR #308): the
+        # near-budget boot set is a trim-early nudge — surfaced + telemetry-
+        # recorded, never counted toward the exit code; the cliff itself
+        # (over budget) stays the exit-affecting orientation-budget gate.
+        _emit(
+            f"check: {len(headroom_advisories)} orientation-headroom advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in headroom_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=headroom_advisories,
         )
     if adopters_advisories and not status_only:
         # Same warn-only contract as the advisories above (EAP §6.3): a

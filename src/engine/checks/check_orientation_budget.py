@@ -15,6 +15,29 @@ Finding kinds: ``orientation-missing`` (a boot doc is absent),
 ``orientation-budget`` (the total blows the budget), ``orientation-doc-cap``
 (a self-capped doc outgrew its declared cap). Findings reuse the ``Finding``
 record from ``engine.checks.check_docs``.
+
+Headroom advisory (the K0 headroom gauge — seat-baton item, spec of record
+``.sessions/2026-07-10-nightcap-docs-reconcile.md`` § 💡): the budget gate
+used to bite silently — no signal until ``check --strict`` went red, then an
+iterative trim loop, one full check run per guess (the 7,250-word live hit;
+a second live hit sat at 6,992/7,000 with 8 words of headroom and no
+warning). :func:`check_orientation_headroom` turns the cliff into a gauge:
+when the boot-set total reaches ``orientation["headroom_warn_ratio"]``
+(default 0.95) of the budget without exceeding it, it emits ONE
+``orientation-headroom`` advisory naming total/budget, the exact words of
+headroom, and the per-doc word split (largest first) so a docs session sees
+the pressure — and where the weight is — BEFORE committing. The same split
+now rides the over-budget ``orientation-budget`` finding, so the trim loop
+is targeted, not guess-and-recheck.
+
+Added 2026-07-12 (K0 headroom advisory, PR #308). Reliability (PL-008):
+UNVERIFIED — confirm its findings against ground truth a few times across
+sessions before trusting it; **delete the advisory if it proves unreliable
+over multiple sessions.** Posture is **advisory-only, never
+exit-affecting** (§8 Q2=B advisory-first) — the same nudge-never-door
+contract as ``check_claims`` / ``check_skill_grounds`` /
+``check_seat_digest``. The budget gate itself is unchanged and still
+exit-affecting.
 """
 
 from __future__ import annotations
@@ -74,6 +97,21 @@ def orientation_word_count(root: Path, boot_docs: list[Path]) -> dict[str, int]:
     return counts
 
 
+def _ob_split(counts: dict[str, int]) -> str:
+    """Return the per-doc word split, largest first, as one message segment.
+
+    ``"docs/current-state.md 3850 · docs/AGENT_ORIENTATION.md 3100"`` — the
+    gauge half of the headroom advisory: which docs carry the weight. The
+    ``_total`` row is excluded; ties break alphabetically for a stable
+    message.
+    """
+    docs = sorted(
+        (item for item in counts.items() if item[0] != _OB_TOTAL_KEY),
+        key=lambda item: (-item[1], item[0]),
+    )
+    return " · ".join(f"{path} {words}" for path, words in docs)
+
+
 def _ob_boot_paths(root: Path, config: Config) -> list[Path]:
     """Resolve the configured boot set to concrete paths.
 
@@ -116,6 +154,7 @@ def check_orientation_budget(root: Path, config: Config) -> list[Finding]:
         msg = (
             f"boot-read set totals {total} words, over the "
             f"{budget}-word orientation budget — trim or demote a boot doc"
+            f" (split: {_ob_split(counts)})"
         )
         findings.append(Finding(_OB_TOTAL_KEY, "orientation-budget", msg))
 
@@ -128,3 +167,40 @@ def check_orientation_budget(root: Path, config: Config) -> list[Finding]:
             msg = f"doc is {words} words, over its {cap}-word self-cap"
             findings.append(Finding(_ob_rel(doc, root), "orientation-doc-cap", msg))
     return findings
+
+
+def check_orientation_headroom(root: Path, config: Config) -> list[Finding]:
+    """Warn when the boot set nears the budget — the K0 headroom gauge.
+
+    Emits at most ONE ``orientation-headroom`` finding, when the boot-set
+    total is at or above ``orientation["headroom_warn_ratio"]`` (default
+    0.95) of ``budget_words`` but not over it — over-budget is the gate's
+    verdict (:func:`check_orientation_budget`), not this advisory's; firing
+    both would double-report one condition. The message names total/budget,
+    the exact words of headroom, and the per-doc split (largest first).
+
+    **Advisory-only by contract, never exit-affecting** — the caller prints
+    it in a warn-only block and never counts it toward the exit code (see
+    the module docstring's PL-008 header). A ``headroom_warn_ratio`` at or
+    above 1 disables the gauge (the cliff itself is the gate's job); at or
+    below 0 it warns on every run — a host can pin either extreme.
+    """
+    orientation = config.orientation or {}
+    try:
+        ratio = float(orientation.get("headroom_warn_ratio", 0.95))
+    except (TypeError, ValueError):
+        ratio = 0.95
+    budget = int(orientation.get("budget_words", 7000))
+    if ratio >= 1 or budget <= 0:
+        return []
+    boot_paths = _ob_boot_paths(root, config)
+    counts = orientation_word_count(root, boot_paths)
+    total = counts[_OB_TOTAL_KEY]
+    if not (budget * ratio <= total <= budget):
+        return []
+    msg = (
+        f"boot-read set at {total}/{budget} words — {budget - total} words "
+        f"of headroom (>={ratio:.0%} of budget; trim before the cliff) "
+        f"(split: {_ob_split(counts)})"
+    )
+    return [Finding(_OB_TOTAL_KEY, "orientation-headroom", msg)]

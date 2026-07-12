@@ -60,9 +60,11 @@ def _default_orientation() -> dict:
     """Return the orientation-budget knobs (the K0 ≤7,000-word gate).
 
     ``boot_docs`` empty means "fall back to ``readpath_docs``" — the
-    unconditional boot-read set the budget counts.
+    unconditional boot-read set the budget counts. ``headroom_warn_ratio``
+    arms the advisory-only headroom gauge (PR #308): warn at >= this
+    fraction of ``budget_words`` (never exit-affecting); >= 1 disables it.
     """
-    return {"budget_words": 7000, "boot_docs": []}
+    return {"budget_words": 7000, "boot_docs": [], "headroom_warn_ratio": 0.95}
 
 
 def _default_economy() -> dict:
