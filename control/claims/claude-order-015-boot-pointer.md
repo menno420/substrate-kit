@@ -1,0 +1,1 @@
+- `claude/order-015-boot-pointer` · **ORDER 015: dead boot-pointer fix + gate-integrity verify** — template fix + retraction evidence · src/engine/ + docs/ + .sessions/ + control/ · 2026-07-12
