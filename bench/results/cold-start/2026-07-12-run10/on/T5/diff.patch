@@ -1,0 +1,30 @@
+diff --git a/.substrate/guard-fires.jsonl b/.substrate/guard-fires.jsonl
+index 00741d2..12e4447 100644
+--- a/.substrate/guard-fires.jsonl
++++ b/.substrate/guard-fires.jsonl
+@@ -8,3 +8,9 @@
+ {"cmd": "check", "finding": {"kind": "session-log-draft", "message": "unadopted auto-draft: 6 auto-draft [[fill:]] slot(s) unresolved (the card is drafted, not completed), a completed Status (badge still says in-progress)", "path": ".sessions/2026-07-12-session.md"}, "guard": "session-log-draft", "judge": null, "outcome": null, "posture": "advisory", "reason": null, "surface": "check", "ts": "2026-07-12T20:02:00+00:00", "verdict": null}
+ {"cmd": "check", "finding": {"kind": "session-log", "message": "missing: 6 auto-draft [[fill:]] slot(s) unresolved (the card is drafted, not completed), a completed Status (badge still says in-progress)", "path": ".sessions/2026-07-12-session.md"}, "guard": "session-log", "judge": null, "outcome": null, "posture": "blocking", "reason": null, "surface": "check", "ts": "2026-07-12T20:02:14+00:00", "verdict": null}
+ {"cmd": "hook stopcheck", "finding": {"kind": "stop-advisory", "message": "auto-draft in 2026-07-12-session.md: 7 [[fill:]] slot(s) still unresolved — the card counts drafted, not completed", "path": ""}, "guard": "stop-advisory", "judge": null, "outcome": null, "posture": "advisory", "reason": null, "surface": "hook", "ts": "2026-07-12T20:10:02+00:00", "verdict": null}
++{"cmd": "hook pretooluse", "finding": {"kind": "stance", "message": "out-of-stance: Edit (edit) while stance is 'analysis'. Re-check the task, or switch stance (`bootstrap stance <name>`). (advisory — not blocked)", "path": ""}, "guard": "stance", "judge": null, "outcome": null, "posture": "advisory", "reason": null, "surface": "hook", "ts": "2026-07-12T20:17:02+00:00", "verdict": null}
++{"cmd": "hook stopcheck", "finding": {"kind": "stop-advisory", "message": "session log 2026-07-12-session.md is missing: 6 auto-draft [[fill:]] slot(s) unresolved (the card is drafted, not completed), a completed Status (badge still says in-progress)", "path": ""}, "guard": "stop-advisory", "judge": null, "outcome": null, "posture": "advisory", "reason": null, "surface": "hook", "ts": "2026-07-12T20:17:18+00:00", "verdict": null}
++{"cmd": "hook stopcheck", "finding": {"kind": "stop-advisory", "message": "reflections unmined this session — run bootstrap reflect --mine", "path": ""}, "guard": "stop-advisory", "judge": null, "outcome": null, "posture": "advisory", "reason": null, "surface": "hook", "ts": "2026-07-12T20:17:18+00:00", "verdict": null}
++{"cmd": "hook stopcheck", "finding": {"kind": "stop-advisory", "message": "control/status.md not overwritten this session — the protocol's deliberate LAST step (see control/README.md)", "path": ""}, "guard": "stop-advisory", "judge": null, "outcome": null, "posture": "advisory", "reason": null, "surface": "hook", "ts": "2026-07-12T20:17:18+00:00", "verdict": null}
++{"cmd": "check", "finding": {"kind": "seat-digest-stale", "message": "committed digest differs from a fresh render of its sources (skill index + capability ledger) — downstream seat prompts extract these bytes, so drift here ships stale walls/skills fleet-wide; regenerate with `python3 bootstrap.py seat-digest` (never hand-edit — it is a derived render).", "path": "docs/seat-digest.md"}, "guard": "seat-digest-stale", "judge": null, "outcome": null, "posture": "advisory", "reason": null, "surface": "check", "ts": "2026-07-12T20:17:50+00:00", "verdict": null}
++{"cmd": "check", "finding": {"kind": "session-log-draft", "message": "unadopted auto-draft: 6 auto-draft [[fill:]] slot(s) unresolved (the card is drafted, not completed), a completed Status (badge still says in-progress)", "path": ".sessions/2026-07-12-session.md"}, "guard": "session-log-draft", "judge": null, "outcome": null, "posture": "advisory", "reason": null, "surface": "check", "ts": "2026-07-12T20:17:50+00:00", "verdict": null}
+diff --git a/irisdonation/__pycache__/cli.cpython-311.pyc b/irisdonation/__pycache__/cli.cpython-311.pyc
+index 4c3e646..63eb23d 100644
+Binary files a/irisdonation/__pycache__/cli.cpython-311.pyc and b/irisdonation/__pycache__/cli.cpython-311.pyc differ
+diff --git a/irisdonation/cli.py b/irisdonation/cli.py
+index ec8e352..bbf04f5 100644
+--- a/irisdonation/cli.py
++++ b/irisdonation/cli.py
+@@ -60,7 +60,7 @@ def main(argv=None):
+         for r in records:
+             print(f"{r['category']}: {r['amount']} {r['note']}".rstrip())
+     elif args.command == "total":
+-        print(ops.total_amount(records))
++        print(f"{ops.total_amount(records):.2f}")
+     elif args.command == "filter":
+         for r in ops.filter_by_category(records, args.category):
+             print(f"{r['category']}: {r['amount']}")

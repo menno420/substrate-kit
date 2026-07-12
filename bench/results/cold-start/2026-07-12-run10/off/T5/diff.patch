@@ -1,0 +1,13 @@
+diff --git a/irisdonation/cli.py b/irisdonation/cli.py
+index cb0b90e..6b0a610 100644
+--- a/irisdonation/cli.py
++++ b/irisdonation/cli.py
+@@ -40,7 +40,7 @@ def main(argv=None):
+             for r in records:
+                 print(f"{r['category']}: {r['amount']} {r['note']}".rstrip())
+         elif args.command == "total":
+-            print(ops.total_amount(records))
++            print(f"{ops.total_amount(records):.2f}")
+         elif args.command == "filter":
+             for r in ops.filter_by_category(records, args.category):
+                 print(f"{r['category']}: {r['amount']}")

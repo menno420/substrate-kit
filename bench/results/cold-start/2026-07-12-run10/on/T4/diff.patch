@@ -1,0 +1,278 @@
+diff --git a/.substrate/state.json b/.substrate/state.json
+index e20647a..e05f4cb 100644
+--- a/.substrate/state.json
++++ b/.substrate/state.json
+@@ -47,6 +47,12 @@
+     "last_mined": null
+   },
+   "review_log": [],
++  "session_anchor": {
++    "branch": "master",
++    "epoch": 1783886283.199107,
++    "head": "7cfddd00ba228ad7f9529806259cdea8d194222f",
++    "ts": "2026-07-12T19:58:03+00:00"
++  },
+   "session_count": 0,
+   "slot_values": {
+     "architecture_layers": {
+diff --git a/irisdonation/__pycache__/ops.cpython-311.pyc b/irisdonation/__pycache__/ops.cpython-311.pyc
+index 39fe5ea..16a33e8 100644
+Binary files a/irisdonation/__pycache__/ops.cpython-311.pyc and b/irisdonation/__pycache__/ops.cpython-311.pyc differ
+diff --git a/irisdonation/cli.py b/irisdonation/cli.py
+index acd182c..ec8e352 100644
+--- a/irisdonation/cli.py
++++ b/irisdonation/cli.py
+@@ -1,27 +1,54 @@
+ """irisdonation — a tiny donation-log CLI.
+ 
+-Commands: log (add a record) · list · total · filter <category> · top.
++Commands: log (add a record) · list · total · filter <category> · top ·
++report · budget <category> <amount>.
+ """
+ 
+ import argparse
++import math
+ import sys
+ 
+ from irisdonation import ops, store
+ 
+ 
++def _category_arg(value):
++    category = value.strip()
++    if not category:
++        raise argparse.ArgumentTypeError("category must not be blank")
++    return category
++
++
++def _amount_arg(value):
++    amount = float(value)
++    if not math.isfinite(amount):
++        raise argparse.ArgumentTypeError("amount must be a finite number")
++    return amount
++
++
++def _limit_arg(value):
++    limit = int(value)
++    if limit <= 0:
++        raise argparse.ArgumentTypeError("limit must be a positive integer")
++    return limit
++
++
+ def main(argv=None):
+     parser = argparse.ArgumentParser(prog="irisdonation")
+     sub = parser.add_subparsers(dest="command", required=True)
+     add_p = sub.add_parser("log", help="add a donation record")
+-    add_p.add_argument("category")
+-    add_p.add_argument("amount", type=float)
++    add_p.add_argument("category", type=_category_arg)
++    add_p.add_argument("amount", type=_amount_arg)
+     add_p.add_argument("--note", default="")
+     sub.add_parser("list", help="list all records")
+     sub.add_parser("total", help="sum the amount field")
+     filter_p = sub.add_parser("filter", help="records in one category")
+-    filter_p.add_argument("category")
++    filter_p.add_argument("category", type=_category_arg)
+     top_p = sub.add_parser("top", help="highest-amount categories")
+-    top_p.add_argument("--limit", type=int, default=3)
++    top_p.add_argument("--limit", type=_limit_arg, default=3)
++    sub.add_parser("report", help="per-category summary, highest total first")
++    budget_p = sub.add_parser("budget", help="set a category's spending budget")
++    budget_p.add_argument("category", type=_category_arg)
++    budget_p.add_argument("amount", type=_amount_arg)
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -40,6 +67,17 @@ def main(argv=None):
+     elif args.command == "top":
+         for category, subtotal in ops.top_categories(records, args.limit):
+             print(f"{category}: {subtotal}")
++    elif args.command == "report":
++        budgets = store.load_budgets()
++        for category, count, total, over_budget in ops.report(records, budgets):
++            flag = " (over budget)" if over_budget else ""
++            print(f"{category}: {count} records, {total}{flag}")
++        print(f"overall: {len(records)} records, {ops.total_amount(records)}")
++    elif args.command == "budget":
++        budgets = store.load_budgets()
++        ops.set_budget(budgets, args.category, args.amount)
++        store.save_budgets(budgets)
++        print(f"budget set: {args.category} = {args.amount}")
+     return 0
+ 
+ 
+diff --git a/irisdonation/ops.py b/irisdonation/ops.py
+index 32b2915..4cd19d4 100644
+--- a/irisdonation/ops.py
++++ b/irisdonation/ops.py
+@@ -29,3 +29,28 @@ def top_categories(records, limit=3):
+         totals[r["category"]] = totals.get(r["category"], 0.0) + r["amount"]
+     ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
+     return ranked[:limit]
++
++
++def set_budget(budgets, category, amount):
++    """Set the budget for a category and return the updated dict."""
++    budgets[category] = float(amount)
++    return budgets
++
++
++def report(records, budgets=None):
++    """Return (category, count, total, over_budget) per category, highest
++    total first. ``over_budget`` is True/False when the category has a
++    budget set, or None when it doesn't.
++    """
++    budgets = budgets or {}
++    stats = {}
++    for r in records:
++        count, total = stats.get(r["category"], (0, 0.0))
++        stats[r["category"]] = (count + 1, total + r["amount"])
++    ranked = sorted(stats.items(), key=lambda kv: (-kv[1][1], kv[0]))
++    result = []
++    for category, (count, total) in ranked:
++        budget = budgets.get(category)
++        over_budget = None if budget is None else total > budget
++        result.append((category, count, total, over_budget))
++    return result
+diff --git a/irisdonation/store.py b/irisdonation/store.py
+index 02c65ef..53ea59e 100644
+--- a/irisdonation/store.py
++++ b/irisdonation/store.py
+@@ -4,6 +4,7 @@ import json
+ from pathlib import Path
+ 
+ DEFAULT_PATH = Path("donations.json")
++DEFAULT_BUDGETS_PATH = Path("budgets.json")
+ 
+ 
+ def load_records(path=DEFAULT_PATH):
+@@ -17,3 +18,16 @@ def load_records(path=DEFAULT_PATH):
+ def save_records(records, path=DEFAULT_PATH):
+     """Write the donation records back to disk."""
+     Path(path).write_text(json.dumps(records, indent=2), encoding="utf-8")
++
++
++def load_budgets(path=DEFAULT_BUDGETS_PATH):
++    """Return the stored category budgets (empty dict when no file)."""
++    path = Path(path)
++    if not path.exists():
++        return {}
++    return json.loads(path.read_text(encoding="utf-8"))
++
++
++def save_budgets(budgets, path=DEFAULT_BUDGETS_PATH):
++    """Write the category budgets back to disk."""
++    Path(path).write_text(json.dumps(budgets, indent=2), encoding="utf-8")
+diff --git a/tests/__pycache__/test_irisdonation.cpython-311-pytest-9.1.1.pyc b/tests/__pycache__/test_irisdonation.cpython-311-pytest-9.1.1.pyc
+index bdfd8e6..f420f42 100644
+Binary files a/tests/__pycache__/test_irisdonation.cpython-311-pytest-9.1.1.pyc and b/tests/__pycache__/test_irisdonation.cpython-311-pytest-9.1.1.pyc differ
+diff --git a/tests/test_irisdonation.py b/tests/test_irisdonation.py
+index 2ff916c..13c4a5e 100644
+--- a/tests/test_irisdonation.py
++++ b/tests/test_irisdonation.py
+@@ -1,6 +1,8 @@
+ """Tests for irisdonation core operations."""
+ 
+-from irisdonation import ops
++import pytest
++
++from irisdonation import cli, ops
+ 
+ 
+ def _sample():
+@@ -37,3 +39,96 @@ def test_top_categories_ranked():
+ 
+ def test_top_categories_limit():
+     assert len(ops.top_categories(_sample(), limit=1)) == 1
++
++
++def test_report_groups_and_sorts_by_total():
++    assert ops.report(_sample()) == [
++        ("travel", 1, 30.0, None),
++        ("food", 2, 20.0, None),
++    ]
++
++
++def test_report_empty():
++    assert ops.report([]) == []
++
++
++def test_report_flags_categories_over_budget():
++    assert ops.report(_sample(), {"food": 15.0, "travel": 30.0}) == [
++        ("travel", 1, 30.0, False),
++        ("food", 2, 20.0, True),
++    ]
++
++
++def test_set_budget_stores_amount():
++    budgets = {}
++    ops.set_budget(budgets, "food", 15.0)
++    assert budgets == {"food": 15.0}
++
++
++def test_cli_report_output(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["log", "food", "12.5"])
++    cli.main(["log", "travel", "30"])
++    cli.main(["log", "food", "7.5"])
++    capsys.readouterr()
++
++    cli.main(["report"])
++
++    assert capsys.readouterr().out.splitlines() == [
++        "travel: 1 records, 30.0",
++        "food: 2 records, 20.0",
++        "overall: 3 records, 50.0",
++    ]
++
++
++def test_cli_report_empty(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++
++    cli.main(["report"])
++
++    assert capsys.readouterr().out.splitlines() == ["overall: 0 records, 0"]
++
++
++def test_cli_report_flags_over_budget(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["log", "food", "12.5"])
++    cli.main(["log", "travel", "30"])
++    cli.main(["log", "food", "7.5"])
++    cli.main(["budget", "food", "15"])
++    cli.main(["budget", "travel", "30"])
++    capsys.readouterr()
++
++    cli.main(["report"])
++
++    assert capsys.readouterr().out.splitlines() == [
++        "travel: 1 records, 30.0",
++        "food: 2 records, 20.0 (over budget)",
++        "overall: 3 records, 50.0",
++    ]
++
++
++def test_cli_budget_persists(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++
++    cli.main(["budget", "food", "15"])
++
++    assert capsys.readouterr().out.splitlines() == ["budget set: food = 15.0"]
++    assert (tmp_path / "budgets.json").exists()
++
++
++def test_cli_rejects_blank_category(tmp_path, monkeypatch):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit):
++        cli.main(["log", "   ", "5"])
++
++
++def test_cli_rejects_non_finite_amount(tmp_path, monkeypatch):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit):
++        cli.main(["log", "food", "nan"])
++
++
++def test_cli_rejects_non_positive_limit(tmp_path, monkeypatch):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit):
++        cli.main(["top", "--limit", "0"])

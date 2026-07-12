@@ -1,0 +1,9 @@
+All 5 steps completed successfully:
+
+1. `python3 -m pytest tests/ -q` — **SUCCESS** (exit 0), `2 passed in 0.00s`
+2. `python -m pytest tests/ -q` — **SUCCESS** (exit 0), `2 passed in 0.00s`
+3. Append `# smoke` to `calc.py` — **SUCCESS**
+4. `git add calc.py` — **SUCCESS** (exit 0)
+5. `git commit -m "smoke"` — **SUCCESS** (exit 0), commit `80538fc`: `1 file changed, 1 insertion(+)`
+
+One thing worth flagging: `calc.py` already had a `# smoke` line at the end from an earlier commit (`5b88b42 smoke`), so the file now has two consecutive `# smoke` lines. Per your instructions I didn't investigate or fix this — just noting it since it's a bit unusual.

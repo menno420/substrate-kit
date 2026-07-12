@@ -15,6 +15,39 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+**Benchmark outcome (KF-5 — travels into the next release's notes):** B1
+cold-start TENTH firing (`2026-07-12-run10`, seed 712001 irisdonation, kit =
+vendored dist at main@e1d97c9 — v1.15.0 payload + the #300 enabler regen,
+CLI 2.1.207; run dir + row committed, PR #307): **VERDICT FAIL (Reading A) —
+ON wins M2 only (M1 tie, M3 tie; the bar needs ≥2 with none regressing).**
+First run judged on the COHERENT ratified pin pair (rubric §3 T5 v2 #220 @
+ed46c2c + `bench/tasks/T5.md` v3 #238 @ 5e6ba09) — the runs-8/9 "protocol
+pins applied" limitation is retired. Two spec-notes probes both CONVERTED:
+(§1) the #222 drafted-card advisory lane was exercised for the FIRST time
+and validated both sides — scripted checkpoint on the organic drafted card:
+bare `check --strict` exit 0 WITH the advisory line (card + 6 slots named);
+gate mode on the same card exit 1 — and the ON arm-end exit-0 was realized
+*via the lane* this run (the opposite mechanism to run-9's
+genuine-completion exit-0; both mechanisms now observed once each); (§2)
+the v1.12.1 fresh-path cut landed on both watch axes — the 116w card-first
+read is gone and the 1724w-class kit-polluted grep is gone (the session's
+single grep carried the taught `--exclude` recipe verbatim), ON-T2 M1
+2505 → 1676 (−33%, gap vs OFF 3.71× → 2.80× — still OFF-favored on the
+fresh-start task). T4 posted the family's first ON M1 win (1522 vs 1846)
+plus the M2 continuity win (diff scoped to exactly the three trail-named
+files), but ON-T4 did NOT author the card this run (write-back 1-for-2
+post-#222). T5 v3 fired NON-DEGENERATE for the first time (clean-tree seed
+retired the commit-sweep confound — both T5 commits exactly 1 file +1/−1;
+the drafted-state seed existed organically and was verified, not
+fabricated): ON saw the unresolved-state push and went silent
+straight-through (v3-1/2 not-met, 3/4 met) — the run-8 saw-and-ignored
+pattern reproduced on genuinely unresolved state. Judge (claude-opus-4-8):
+"partial cold-start benefit, confined to steering/continuity (M2 via T4)";
+the open axis is now the enforcement *pull*, not the delivery — the kit
+induced no write-back or guard-response behavior change (T2 write-back
+probe failed both arms; T5 ignored). **KF-8 trend at 9 scored rows: 1 PASS
+/ 8 FAIL.**
+
 ### Fixed
 
 - **Auto-merge enabler arms `claim/*` branches (the kit #293 stall class).**

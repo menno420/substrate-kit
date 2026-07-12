@@ -1,0 +1,184 @@
+diff --git a/.substrate/state.json b/.substrate/state.json
+index e20647a..e05f4cb 100644
+--- a/.substrate/state.json
++++ b/.substrate/state.json
+@@ -47,6 +47,12 @@
+     "last_mined": null
+   },
+   "review_log": [],
++  "session_anchor": {
++    "branch": "master",
++    "epoch": 1783886283.199107,
++    "head": "7cfddd00ba228ad7f9529806259cdea8d194222f",
++    "ts": "2026-07-12T19:58:03+00:00"
++  },
+   "session_count": 0,
+   "slot_values": {
+     "architecture_layers": {
+diff --git a/irisdonation/__pycache__/ops.cpython-311.pyc b/irisdonation/__pycache__/ops.cpython-311.pyc
+index 39fe5ea..8d8e46b 100644
+Binary files a/irisdonation/__pycache__/ops.cpython-311.pyc and b/irisdonation/__pycache__/ops.cpython-311.pyc differ
+diff --git a/irisdonation/cli.py b/irisdonation/cli.py
+index acd182c..a6a3369 100644
+--- a/irisdonation/cli.py
++++ b/irisdonation/cli.py
+@@ -1,27 +1,51 @@
+ """irisdonation — a tiny donation-log CLI.
+ 
+-Commands: log (add a record) · list · total · filter <category> · top.
++Commands: log (add a record) · list · total · filter <category> · top ·
++report.
+ """
+ 
+ import argparse
++import math
+ import sys
+ 
+ from irisdonation import ops, store
+ 
+ 
++def _category_arg(value):
++    category = value.strip()
++    if not category:
++        raise argparse.ArgumentTypeError("category must not be blank")
++    return category
++
++
++def _amount_arg(value):
++    amount = float(value)
++    if not math.isfinite(amount):
++        raise argparse.ArgumentTypeError("amount must be a finite number")
++    return amount
++
++
++def _limit_arg(value):
++    limit = int(value)
++    if limit <= 0:
++        raise argparse.ArgumentTypeError("limit must be a positive integer")
++    return limit
++
++
+ def main(argv=None):
+     parser = argparse.ArgumentParser(prog="irisdonation")
+     sub = parser.add_subparsers(dest="command", required=True)
+     add_p = sub.add_parser("log", help="add a donation record")
+-    add_p.add_argument("category")
+-    add_p.add_argument("amount", type=float)
++    add_p.add_argument("category", type=_category_arg)
++    add_p.add_argument("amount", type=_amount_arg)
+     add_p.add_argument("--note", default="")
+     sub.add_parser("list", help="list all records")
+     sub.add_parser("total", help="sum the amount field")
+     filter_p = sub.add_parser("filter", help="records in one category")
+-    filter_p.add_argument("category")
++    filter_p.add_argument("category", type=_category_arg)
+     top_p = sub.add_parser("top", help="highest-amount categories")
+-    top_p.add_argument("--limit", type=int, default=3)
++    top_p.add_argument("--limit", type=_limit_arg, default=3)
++    sub.add_parser("report", help="per-category summary, highest total first")
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+@@ -40,6 +64,10 @@ def main(argv=None):
+     elif args.command == "top":
+         for category, subtotal in ops.top_categories(records, args.limit):
+             print(f"{category}: {subtotal}")
++    elif args.command == "report":
++        for category, count, total in ops.report(records):
++            print(f"{category}: {count} records, {total}")
++        print(f"overall: {len(records)} records, {ops.total_amount(records)}")
+     return 0
+ 
+ 
+diff --git a/irisdonation/ops.py b/irisdonation/ops.py
+index 32b2915..aa3e00e 100644
+--- a/irisdonation/ops.py
++++ b/irisdonation/ops.py
+@@ -29,3 +29,13 @@ def top_categories(records, limit=3):
+         totals[r["category"]] = totals.get(r["category"], 0.0) + r["amount"]
+     ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
+     return ranked[:limit]
++
++
++def report(records):
++    """Return (category, count, total) per category, highest total first."""
++    stats = {}
++    for r in records:
++        count, total = stats.get(r["category"], (0, 0.0))
++        stats[r["category"]] = (count + 1, total + r["amount"])
++    ranked = sorted(stats.items(), key=lambda kv: (-kv[1][1], kv[0]))
++    return [(category, count, total) for category, (count, total) in ranked]
+diff --git a/tests/__pycache__/test_irisdonation.cpython-311-pytest-9.1.1.pyc b/tests/__pycache__/test_irisdonation.cpython-311-pytest-9.1.1.pyc
+index bdfd8e6..b99d13a 100644
+Binary files a/tests/__pycache__/test_irisdonation.cpython-311-pytest-9.1.1.pyc and b/tests/__pycache__/test_irisdonation.cpython-311-pytest-9.1.1.pyc differ
+diff --git a/tests/test_irisdonation.py b/tests/test_irisdonation.py
+index 2ff916c..dee3cb1 100644
+--- a/tests/test_irisdonation.py
++++ b/tests/test_irisdonation.py
+@@ -1,6 +1,8 @@
+ """Tests for irisdonation core operations."""
+ 
+-from irisdonation import ops
++import pytest
++
++from irisdonation import cli, ops
+ 
+ 
+ def _sample():
+@@ -37,3 +39,56 @@ def test_top_categories_ranked():
+ 
+ def test_top_categories_limit():
+     assert len(ops.top_categories(_sample(), limit=1)) == 1
++
++
++def test_report_groups_and_sorts_by_total():
++    assert ops.report(_sample()) == [
++        ("travel", 1, 30.0),
++        ("food", 2, 20.0),
++    ]
++
++
++def test_report_empty():
++    assert ops.report([]) == []
++
++
++def test_cli_report_output(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++    cli.main(["log", "food", "12.5"])
++    cli.main(["log", "travel", "30"])
++    cli.main(["log", "food", "7.5"])
++    capsys.readouterr()
++
++    cli.main(["report"])
++
++    assert capsys.readouterr().out.splitlines() == [
++        "travel: 1 records, 30.0",
++        "food: 2 records, 20.0",
++        "overall: 3 records, 50.0",
++    ]
++
++
++def test_cli_report_empty(tmp_path, monkeypatch, capsys):
++    monkeypatch.chdir(tmp_path)
++
++    cli.main(["report"])
++
++    assert capsys.readouterr().out.splitlines() == ["overall: 0 records, 0"]
++
++
++def test_cli_rejects_blank_category(tmp_path, monkeypatch):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit):
++        cli.main(["log", "   ", "5"])
++
++
++def test_cli_rejects_non_finite_amount(tmp_path, monkeypatch):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit):
++        cli.main(["log", "food", "nan"])
++
++
++def test_cli_rejects_non_positive_limit(tmp_path, monkeypatch):
++    monkeypatch.chdir(tmp_path)
++    with pytest.raises(SystemExit):
++        cli.main(["top", "--limit", "0"])
