@@ -13,7 +13,11 @@ outcome: shipped
 >
 > **State:** captured (v1.6.0 fleet rollout — the recovery path the
 > misleading `--apply-docs` hint points at was walked mentally on both
-> consumer runs, superbot-next#96 + websites#45, and it costs provenance).
+> consumer runs, superbot-next#96 + websites#45, and it costs provenance)
+> → **shipped** (kit PR #92, merged 2026-07-10, gen-2 upgrade-UX batch:
+> self-heal in `classify_planted_docs` — a doc that byte-matches the new
+> template render provably stayed kit-form, so its hash is recorded from
+> ground truth; a rollback + re-run round-trip regains the coverage).
 
 ## The finding
 

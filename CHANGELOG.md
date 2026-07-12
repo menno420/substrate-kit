@@ -50,6 +50,21 @@ probe failed both arms; T5 ignored). **KF-8 trend at 9 scored rows: 1 PASS
 
 ### Added
 
+- **Idea-file body-state drift guard (`check_idea_index` item 5, PR #312).**
+  Friction→guard from PR #311: an idea file's frontmatter said
+  `shipped_pr: 187` while its body still read "captured", misdirecting
+  dispatch into a redundant fix task. `scripts/check_idea_index.py` (kit-repo
+  tooling, ci.yml kit-quality lane — NOT wired into `bootstrap check` or any
+  adopter surface) now hard-fails when the frontmatter asserts a ship
+  (`outcome` shipped/survived/reverted or non-null `shipped_pr`) but the
+  body's `> **State:**` line still opens captured/routed without a
+  recognized reconciliation marker: an arrow-chain reaching `shipped`, a
+  `## Shipped` section, or a RULED/preserved-as-written banner (all designed
+  from the real corpus; a body with no State line predates the convention
+  and is skipped). The 4 drifted files (#187: model-doctrine-emphasis;
+  #92: upgrade-archive/checklist/rollback trio) are reconciled in the same
+  PR with #311-pattern arrow-chains citing their verified shipping PRs.
+
 - **K0 headroom advisory — the orientation word-budget gauge (PR #308).**
   The K0 budget gate used to bite silently: no signal until the boot set
   crossed `orientation.budget_words` and `check --strict` went red, then an

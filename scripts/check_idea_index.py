@@ -35,6 +35,18 @@ What it enforces (exit 1 on any finding, 0 clean):
 4. **Index consistency** — every idea file is linked from
    ``docs/ideas/README.md``, and every relative ``*.md`` link in the README
    resolves to a file on disk.
+5. **Body-state drift** (friction→guard from PR #311, 2026-07-12: a file's
+   frontmatter said ``shipped_pr: 187`` while its body still read
+   "captured", misdirecting dispatch into a redundant fix task) — when the
+   frontmatter asserts a ship (``outcome`` in shipped/survived/reverted, or
+   a non-null ``shipped_pr``) but the body's ``> **State:**`` line still
+   opens ``captured``/``routed`` **without** a recognized reconciliation
+   marker, that file fails. Recognized markers (designed from the real
+   corpus): an arrow-chain State blockquote that reaches ``shipped``
+   anywhere in the chain; a ``## Shipped`` section; a ``RULED`` /
+   "preserved as written" banner (historical bodies kept verbatim on
+   purpose). A body with **no** State line at all predates the convention
+   and is skipped — the frontmatter is authoritative there.
 
 Repo-level tooling, not engine code: lives in scripts/, uses print, never
 ships in dist/bootstrap.py. Stdlib only (no PyYAML — the frontmatter is a
@@ -76,6 +88,17 @@ _COHORT_FILENAME_RE = re.compile(r"-\d{4}-\d{2}-\d{2}\.md$")
 _KV_RE = re.compile(r"^([A-Za-z_][\w-]*):\s*(.*)$")
 # Relative markdown links in the README ([text](file.md) — never absolute URLs).
 _MD_LINK_RE = re.compile(r"\]\((?!https?://)([^)#]+\.md)\)")
+
+# --- body-state drift (enforcement item 5) -------------------------------
+# The body `> **State:** <word> …` line; the first word is the body's state.
+_STATE_LINE_RE = re.compile(r"^>\s*\*\*State:\*\*\s*[*_`\s]*([A-Za-z-]+)")
+# Body states that contradict a shipped frontmatter unless reconciled.
+DRIFT_BODY_STATES = ("captured", "routed")
+# Reconciliation markers (recognized from the real docs/ideas/ corpus):
+_SHIPPED_WORD_RE = re.compile(r"\bshipped\b", re.IGNORECASE)  # arrow-chain tail
+_SHIPPED_HEADING_RE = re.compile(r"^#{2,}\s+Shipped\b", re.MULTILINE)
+_RULED_BANNER_RE = re.compile(r"^>\s*\*\*RULED\b", re.MULTILINE)
+_PRESERVED_RE = re.compile(r"preserved[\s-]as[\s-]written", re.IGNORECASE)
 
 
 class Finding(NamedTuple):
@@ -184,6 +207,64 @@ def validate_fields(
     return findings
 
 
+def _state_blockquote(text: str) -> tuple[str | None, str]:
+    """Return ``(first_state_word, blockquote)`` for the body's State line.
+
+    The blockquote is the contiguous run of ``>`` lines starting at the
+    ``> **State:**`` line — the arrow-chain lives inside it. ``(None, "")``
+    when the body has no State line (pre-convention bodies: frontmatter is
+    authoritative, no drift signal).
+    """
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        match = _STATE_LINE_RE.match(line)
+        if not match:
+            continue
+        block = [line]
+        for nxt in lines[i + 1 :]:
+            if not nxt.startswith(">"):
+                break
+            block.append(nxt)
+        return match.group(1).lower(), "\n".join(block)
+    return None, ""
+
+
+def check_body_state_drift(relpath: str, fields: dict[str, str], text: str) -> list[Finding]:
+    """Enforcement item 5 — shipped frontmatter vs. a stale body State line.
+
+    Fails (hard error, like every other finding) when the frontmatter says
+    shipped but the body State line still opens captured/routed and no
+    reconciliation marker is present. See the module docstring for the
+    marker set and the PR #311 provenance.
+    """
+    outcome = fields.get("outcome", "")
+    pr_raw = fields.get("shipped_pr", "null")
+    fm_shipped = outcome in SHIPPED_OUTCOMES or not _is_null(pr_raw)
+    if not fm_shipped:
+        return []
+    state_word, blockquote = _state_blockquote(text)
+    if state_word is None or state_word not in DRIFT_BODY_STATES:
+        return []
+    # Recognized reconciliation markers, cheapest first:
+    if _SHIPPED_WORD_RE.search(blockquote):  # arrow-chain reaches `shipped`
+        return []
+    if _SHIPPED_HEADING_RE.search(text):  # a `## Shipped` section documents it
+        return []
+    if _RULED_BANNER_RE.search(text) or _PRESERVED_RE.search(text):  # historical
+        return []
+    return [
+        Finding(
+            relpath,
+            "body-state-drift",
+            f"frontmatter says outcome=`{outcome}` / shipped_pr=`{pr_raw}` but the body "
+            f"`> **State:**` line still reads `{state_word}` with no reconciliation "
+            "marker (arrow-chain → shipped, a `## Shipped` section, or a "
+            "RULED/preserved-as-written banner) — reconcile the body citing the "
+            "shipping PR (the PR #311 pattern)",
+        ),
+    ]
+
+
 def check_ideas(root: Path, today: _dt.date | None = None) -> list[Finding]:
     today = today or _dt.date.today()
     findings: list[Finding] = []
@@ -208,11 +289,13 @@ def check_ideas(root: Path, today: _dt.date | None = None) -> list[Finding]:
             findings.append(
                 Finding(rel, "bad-filename", "filename must end `-YYYY-MM-DD.md` (the B4 cohort key)"),
             )
-        fields, error = parse_frontmatter(path.read_text(encoding="utf-8"))
+        text = path.read_text(encoding="utf-8")
+        fields, error = parse_frontmatter(text)
         if fields is None:
             findings.append(Finding(rel, "no-frontmatter", error or "unparseable frontmatter"))
         else:
             findings.extend(validate_fields(rel, fields, today))
+            findings.extend(check_body_state_drift(rel, fields, text))
         if readme_text and path.name not in readme_text:
             findings.append(
                 Finding(rel, "not-indexed", "idea file is not linked from docs/ideas/README.md"),
