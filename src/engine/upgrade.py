@@ -79,6 +79,11 @@ from engine.lib.config import KIT_VERSION, Config, save_config
 from engine.lib.state import STATE_SCHEMA_VERSION
 from engine.loop.telemetry import MODEL_LINE_NEEDLE
 from engine.render import agreement_home, build_context, load_templates, render
+from engine.seatdigest import (
+    seat_digest_relpath,
+    seat_digest_text,
+    walls_digest_venues,
+)
 
 LAST_UPGRADE_FILENAME = "last-upgrade.json"
 UPGRADE_REPORT_FILENAME = "upgrade-report.md"
@@ -530,12 +535,68 @@ def refresh_capability_seed(
     ]
 
 
+def refresh_seat_digest(
+    root: Path,
+    config: Config,
+    backend: Any,
+) -> list[str]:
+    """Regenerate the planted seat-digest doc (grounded-skills slice 6).
+
+    ``docs/seat-digest.md`` is a DERIVED RENDER of live tree content (the
+    SKILLS list + the capability ledger), so — unlike a slot template — it
+    goes stale whenever the LEDGER moves, not when a template does; the
+    upgrade must re-render it (with the committed doc's own venue filter
+    preserved) or every wave ships yesterday's walls. Covenant, mirroring
+    the fence refresh above: only a copy the kit last wrote
+    (:func:`doc_is_untouched`) is ever overwritten — the derived-render
+    contract says hand edits are drift, but clobbering them silently would
+    destroy the evidence; a hand-edited copy downgrades to a report line
+    naming the regenerate command. The refreshed write re-records the doc
+    hash (the file is kit-owned wholly, unlike the consumer-owned ledger).
+    Missing file → nothing here (the adopt pass replants it).
+    """
+    rel = seat_digest_relpath(config)
+    path = root / rel
+    if not path.is_file():
+        return []
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return [f"seat-digest: {rel} unreadable — refresh skipped."]
+    context = _upgrade_context(root, backend)
+    fresh = seat_digest_text(
+        root,
+        config,
+        context,
+        venues=walls_digest_venues(text),
+    )
+    if text == fresh:
+        return [f"seat-digest: {rel} already current — nothing to refresh."]
+    if doc_is_untouched(backend, rel, text):
+        atomic_write_text(path, fresh)
+        record_doc_hash(backend, rel, fresh)
+        return [
+            f"seat-digest: regenerated {rel} (derived render — skills index "
+            "+ venue-filtered walls re-rendered from the current tree; "
+            "venue filter preserved from the committed doc).",
+        ]
+    return [
+        f"seat-digest: NOT regenerated — {rel} differs from the last "
+        "kit-written render (hand-edited, or no hash recorded). It is a "
+        "derived render, never a copy of record: move any real finding into "
+        "the capability ledger / skill index, then regenerate with "
+        "`python3 bootstrap.py seat-digest` (overwrites this file only; "
+        "the sources are untouched).",
+    ]
+
+
 def upgrade_report_text(
     old_version: str,
     rows: list[dict[str, str]],
     applied: list[str],
     carveouts: list[str] | None = None,
     capability_seed: list[str] | None = None,
+    seat_digest: list[str] | None = None,
 ) -> str:
     """Compose ``<state_dir>/upgrade-report.md``.
 
@@ -606,6 +667,13 @@ def upgrade_report_text(
         lines += ["", "## Capability-ledger seed refresh", ""]
         lines += [f"- {line}" for line in capability_seed]
         lines += ["", CAPABILITY_POSTURE_COLLAPSE_NOTE]
+    if seat_digest:
+        # Grounded-skills slice 6: the derived-render refresh outcome is
+        # report-file evidence like the seed refresh above — the
+        # hand-edited downgrade's regenerate instruction must reach the
+        # upgrade PR's body, not only stdout.
+        lines += ["", "## Seat-digest refresh", ""]
+        lines += [f"- {line}" for line in seat_digest]
     if applied:
         lines += ["", "## Applied (--apply-docs)", ""]
         lines += [f"- {line}" for line in applied]
@@ -764,6 +832,11 @@ def run_apply_docs_posthoc(
     # idempotent, so a re-run reports "already current" and writes nothing).
     seed_lines = refresh_capability_seed(root, config, backend, rows, old_templates)
     report += seed_lines
+    # Mirror the in-run seat-digest refresh too (slice 6, same rationale):
+    # the post-hoc window must recover the derived render the same way it
+    # recovers doc improvements and the fence refresh; idempotent.
+    digest_lines = refresh_seat_digest(root, config, backend)
+    report += digest_lines
     # The report rewrite must not drop the carve-out section (websites,
     # v1.9.0 wave): re-emit it from a read-only rescan of the installed
     # kit-owned workflows, and carry forward hits recorded in the report
@@ -787,6 +860,7 @@ def run_apply_docs_posthoc(
             applied,
             carveout_lines,
             capability_seed=seed_lines,
+            seat_digest=digest_lines,
         ),
     )
     report.append(f"report: {report_rel}")
@@ -963,6 +1037,15 @@ def run_upgrade(
         if line.startswith(("carve-out:", "carve-out scan:"))
     ]
 
+    # (6c) Seat-digest derived-render refresh (grounded-skills slice 6):
+    # AFTER the adopt pass on purpose — a missing digest (or ledger) has
+    # been replanted by now, and the ledger's fenced seed was refreshed in
+    # (4b), so the re-render reads the post-upgrade tree. Kit-written
+    # copies only; a hand-edited derived render downgrades to a report
+    # line (see refresh_seat_digest).
+    digest_lines = refresh_seat_digest(root, config, backend)
+    report += digest_lines
+
     # (6b) KL-3: the 📊 Model needle joins session_markers at upgrade time —
     # a consumer's gate only tightens when it upgrades, never mid-version
     # (founding plan §5.2); the report says so out loud.
@@ -1002,6 +1085,7 @@ def run_upgrade(
             applied,
             gate_carveout_lines,
             capability_seed=seed_lines,
+            seat_digest=digest_lines,
         ),
     )
     report.append(f"report: {report_rel}")

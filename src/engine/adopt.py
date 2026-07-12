@@ -44,6 +44,7 @@ from engine.render import (
     load_templates,
     render,
 )
+from engine.seatdigest import seat_digest_relpath, seat_digest_text
 from engine.skills.skills import SKILLS, skill_document, skill_relpath
 
 # Template filename -> planted relpath. CLAUDE.md.tmpl is deliberately absent:
@@ -1688,6 +1689,20 @@ def adopt(
         if _adopt_plant(root / rel, rel, final, report):
             # Provenance for the upgrade diff (§4.3): hash what the kit wrote.
             record_doc_hash(backend, rel, final)
+
+    # (1b) The seat-digest render surface (grounded-skills slice 6, §8
+    # Q3=A): one GENERATED planted doc — both fence-marked digest blocks
+    # (skills index + venue-filtered walls), rendered AFTER the plan loop so
+    # a fresh adopt reads the just-planted capability ledger. Deliberately
+    # outside ADOPT_PLAN: it is a derived render of live tree content, so
+    # template hash-classification would misread every ledger append as doc
+    # drift — upgrade refreshes it via refresh_seat_digest (kit-written
+    # copies only) and `bootstrap.py seat-digest` regenerates on demand;
+    # check_seat_digest (advisory) byte-compares it against a fresh render.
+    digest_rel = seat_digest_relpath(config)
+    digest_text = seat_digest_text(root, config, context)
+    if _adopt_plant(root / digest_rel, digest_rel, digest_text, report):
+        record_doc_hash(backend, digest_rel, digest_text)
 
     # (2) Session-log scaffolding. A pre-existing README (skip-if-exists
     # keeps it) still receives the model-attribution doctrine append-only

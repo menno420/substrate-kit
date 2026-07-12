@@ -277,6 +277,55 @@ def capability_log_line_example(*, venue: str | None = "routine-fired") -> str:
     )
 
 
+# ── docs/seat-digest.md — the seat-digest blocks (grounded-skills §7.6) ──────
+#
+# The kit-generated seat-prompt-feeding render surface (plan §7 slice 6,
+# §8 Q3=A): ONE planted doc carrying two fence-marked digest blocks — the
+# skills-index digest and the venue-filtered WALLS digest — that
+# fleet-manager's seat-prompt regen tool extracts WITHOUT executing kit code
+# (tree scan + fence-prefix match + byte compare, its v3.3 consumption
+# model). Together with the capability-seed pair above, these fence-prefix
+# pairs are THE machine extraction contract: consumers match the PREFIX only
+# (never the full marker wording, so a future tweak to the trailing warning
+# text cannot orphan a fence), and the bytes BETWEEN a BEGIN/END pair are the
+# canonical block. Design invariant (plan §2): digest + pointer, never
+# inline — every block ends with a pointer line to its source doc and stays
+# within SEAT_DIGEST_BLOCK_BUDGET, because the downstream seat-prompt pastes
+# sit at 7,943–7,998 of 8,000 chars (effectively zero headroom).
+
+SEAT_DIGEST_BLOCK_BUDGET = 1500
+SKILLS_DIGEST_BEGIN_PREFIX = "<!-- substrate-kit:skills-digest BEGIN"
+SKILLS_DIGEST_END_PREFIX = "<!-- substrate-kit:skills-digest END"
+WALLS_DIGEST_BEGIN_PREFIX = "<!-- substrate-kit:walls-digest BEGIN"
+WALLS_DIGEST_END_PREFIX = "<!-- substrate-kit:walls-digest END"
+SKILLS_DIGEST_BEGIN = (
+    SKILLS_DIGEST_BEGIN_PREFIX
+    + " — derived render, kit-generated; regenerate with `python3 bootstrap.py"
+    " seat-digest`, never edit. -->"
+)
+SKILLS_DIGEST_END = SKILLS_DIGEST_END_PREFIX + " -->"
+WALLS_DIGEST_END = WALLS_DIGEST_END_PREFIX + " -->"
+# The walls-digest BEGIN marker carries the venue filter it was rendered
+# with (`venues=<comma-joined tokens>`), so a regen or drift check re-renders
+# with the SAME venues the committed doc chose — the venue set is
+# parameterizable per seat (Project-seat default below), never hardcoded.
+WALLS_DIGEST_VENUES_RE = re.compile(r"venues=([a-z][a-z,-]*)")
+# Project seats read entries verified in their own venue plus the
+# venue-agnostic ones (slice-5 prerequisite: the venue column makes the
+# {{WALLS}}-class filter mechanical instead of editorial).
+SEAT_DIGEST_DEFAULT_VENUES = ("autonomous-project", "any")
+
+
+def walls_digest_begin_marker(venues: tuple[str, ...]) -> str:
+    """Compose the walls-digest BEGIN marker carrying ``venues``."""
+    return (
+        WALLS_DIGEST_BEGIN_PREFIX
+        + f" venues={','.join(venues)}"
+        + " — derived render, kit-generated; regenerate with `python3"
+        " bootstrap.py seat-digest`, never edit. -->"
+    )
+
+
 # ── control/claims/ — the work-claim bullet (EAP §6.4) ───────────────────────
 #
 # Taught in control/claims/README.md: one file per claim, a single bullet

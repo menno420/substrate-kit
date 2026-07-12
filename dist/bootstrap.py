@@ -912,6 +912,55 @@ def capability_log_line_example(*, venue: str | None = "routine-fired") -> str:
     )
 
 
+# ── docs/seat-digest.md — the seat-digest blocks (grounded-skills §7.6) ──────
+#
+# The kit-generated seat-prompt-feeding render surface (plan §7 slice 6,
+# §8 Q3=A): ONE planted doc carrying two fence-marked digest blocks — the
+# skills-index digest and the venue-filtered WALLS digest — that
+# fleet-manager's seat-prompt regen tool extracts WITHOUT executing kit code
+# (tree scan + fence-prefix match + byte compare, its v3.3 consumption
+# model). Together with the capability-seed pair above, these fence-prefix
+# pairs are THE machine extraction contract: consumers match the PREFIX only
+# (never the full marker wording, so a future tweak to the trailing warning
+# text cannot orphan a fence), and the bytes BETWEEN a BEGIN/END pair are the
+# canonical block. Design invariant (plan §2): digest + pointer, never
+# inline — every block ends with a pointer line to its source doc and stays
+# within SEAT_DIGEST_BLOCK_BUDGET, because the downstream seat-prompt pastes
+# sit at 7,943–7,998 of 8,000 chars (effectively zero headroom).
+
+SEAT_DIGEST_BLOCK_BUDGET = 1500
+SKILLS_DIGEST_BEGIN_PREFIX = "<!-- substrate-kit:skills-digest BEGIN"
+SKILLS_DIGEST_END_PREFIX = "<!-- substrate-kit:skills-digest END"
+WALLS_DIGEST_BEGIN_PREFIX = "<!-- substrate-kit:walls-digest BEGIN"
+WALLS_DIGEST_END_PREFIX = "<!-- substrate-kit:walls-digest END"
+SKILLS_DIGEST_BEGIN = (
+    SKILLS_DIGEST_BEGIN_PREFIX
+    + " — derived render, kit-generated; regenerate with `python3 bootstrap.py"
+    " seat-digest`, never edit. -->"
+)
+SKILLS_DIGEST_END = SKILLS_DIGEST_END_PREFIX + " -->"
+WALLS_DIGEST_END = WALLS_DIGEST_END_PREFIX + " -->"
+# The walls-digest BEGIN marker carries the venue filter it was rendered
+# with (`venues=<comma-joined tokens>`), so a regen or drift check re-renders
+# with the SAME venues the committed doc chose — the venue set is
+# parameterizable per seat (Project-seat default below), never hardcoded.
+WALLS_DIGEST_VENUES_RE = re.compile(r"venues=([a-z][a-z,-]*)")
+# Project seats read entries verified in their own venue plus the
+# venue-agnostic ones (slice-5 prerequisite: the venue column makes the
+# {{WALLS}}-class filter mechanical instead of editorial).
+SEAT_DIGEST_DEFAULT_VENUES = ("autonomous-project", "any")
+
+
+def walls_digest_begin_marker(venues: tuple[str, ...]) -> str:
+    """Compose the walls-digest BEGIN marker carrying ``venues``."""
+    return (
+        WALLS_DIGEST_BEGIN_PREFIX
+        + f" venues={','.join(venues)}"
+        + " — derived render, kit-generated; regenerate with `python3"
+        " bootstrap.py seat-digest`, never edit. -->"
+    )
+
+
 # ── control/claims/ — the work-claim bullet (EAP §6.4) ───────────────────────
 #
 # Taught in control/claims/README.md: one file per claim, a single bullet
@@ -10465,6 +10514,420 @@ def pack_index_skeleton(project_name: str) -> str:
     }
     return json.dumps(skeleton, indent=2) + "\n"
 
+# --- engine/seatdigest.py ---
+"""The seat-digest render surface (grounded-skills plan §7 slice 6, §8 Q3=A).
+
+Why + provenance: the grounded-skills program's slice 6
+(``docs/planning/2026-07-12-grounded-skills-program.md`` §7.6, owner default
+Q3=A) makes the kit the single source for the fleet-manager seat prompts'
+skill-index and WALLS content — the drift class it kills (a seat prompt
+contradicting kit truth) is the hardening report's "highest-leverage single
+change". Fleet-manager's prompt system v3.3 consumes committed files by tree
+scan + fence extraction + byte match (its ``regen_b_files.py``
+``--check-registry`` model), never by executing kit code — so the kit ships
+ONE generated planted doc, ``docs/seat-digest.md``, carrying two
+fence-marked blocks (``engine.grammar``'s ``substrate-kit:skills-digest`` /
+``substrate-kit:walls-digest`` prefix pairs):
+
+- **Skills digest** — one line per registered skill, rendered FROM the
+  :data:`engine.skills.skills.SKILLS` list (the same source that emits the
+  skills — the "render from ONE source" rule), pointer to the full index.
+- **Walls digest** — the capability ledger's verified walls, filtered
+  mechanically by venue token (Project-seat default
+  ``autonomous-project`` + ``any``; the slice-5 venue column makes this a
+  filter, not an editorial pass), pointer to the full ledger.
+
+Design invariants: **digest + pointer, never inline** (plan §2 — the
+consuming seat pastes sit at 7,943–7,998 of 8,000 chars); every block stays
+within :data:`engine.grammar.SEAT_DIGEST_BLOCK_BUDGET` by truncating rows
+into an explicit "+N more — read the source" overflow line, never by
+silently overflowing. **No third copy** (plan §4.2e): the adopter's
+``docs/CAPABILITIES.md`` ledger is the seat-local source of truth; this doc
+is a DERIVED RENDER of it (regenerated — by adopt, upgrade, or
+``bootstrap.py seat-digest`` — never edited, never a copy of record);
+fleet-manager's ``docs/capabilities.md`` master is the fleet aggregation
+point; no third authored copy is ever minted.
+
+Layering: below ``adopt.py`` on purpose (adopt plants the doc, upgrade
+refreshes it, the checker byte-compares it — all import from here; this
+module imports only grammar/skills/config). Pure stdlib.
+"""
+
+
+
+
+# Max characters for one digest row (unwrapped, before the truncation
+# ellipsis) — compact enough that ~8 rows + fences + pointer stay inside the
+# block budget, long enough to keep a wall's workaround arrow readable.
+_ROW_LIMIT = 160
+
+_WALLS_HEADING = "## Walls"
+_LEDGER_APPEND_LOG_HEADING = "## Append log"
+
+
+def seat_digest_relpath(config: Config) -> str:
+    """Return the planted seat-digest relpath under the host's docs root."""
+    return f"{config.docs_root}/seat-digest.md"
+
+
+def _truncate(text: str, limit: int = _ROW_LIMIT) -> str:
+    """Collapse whitespace and word-boundary-truncate ``text`` to ``limit``."""
+    flat = " ".join(text.split())
+    if len(flat) <= limit:
+        return flat
+    cut = flat[: limit - 1].rsplit(" ", 1)[0].rstrip(" ·—-")
+    return cut + "…"
+
+
+def _fit_rows(
+    header: list[str],
+    rows: list[str],
+    footer: list[str],
+    more_pointer: str,
+) -> str:
+    """Compose a fenced block, truncating ``rows`` into the budget.
+
+    The budget is enforced mechanically (never trusted to content size): rows
+    are added while the assembled block stays within
+    :data:`SEAT_DIGEST_BLOCK_BUDGET`; the remainder collapses into one
+    "+N more" overflow line pointing at the source doc — digest + pointer,
+    never inline (plan §2).
+    """
+
+    def compose(kept: list[str], extra: list[str]) -> str:
+        return "\n".join(header + kept + extra + footer)
+
+    for drop in range(len(rows) + 1):
+        kept = rows[: len(rows) - drop]
+        extra = (
+            [f"- …plus {drop} more — {more_pointer}"] if drop else []
+        )
+        block = compose(kept, extra)
+        if len(block) <= SEAT_DIGEST_BLOCK_BUDGET:
+            return block
+    return compose([], [f"- …plus {len(rows)} more — {more_pointer}"])
+
+
+def skills_digest_block(docs_root: str = "docs") -> str:
+    """Render the fenced skills-index digest block from :data:`SKILLS`.
+
+    One row per registered skill — name + when-to-reach-for-it one-liner,
+    never the grounds column (that detail is the index's job; the digest's
+    job is "these procedures exist, don't improvise"). Deterministic given
+    the SKILLS list.
+    """
+    index_path = f"{docs_root}/SKILLS.md"
+    header = [SKILLS_DIGEST_BEGIN, "## Skills digest", ""]
+    rows = [
+        f"- `{skill['name']}` — {_truncate(skill['description'], 120)}"
+        for skill in SKILLS
+    ]
+    footer = [
+        "",
+        f"Full index (grounds + capabilities): `{index_path}` — the source "
+        "this block derives from.",
+        SKILLS_DIGEST_END,
+    ]
+    return _fit_rows(header, rows, footer, f"read `{index_path}`.")
+
+
+def _unwrapped_bullets(lines: list[str]) -> list[str]:
+    """Join ``- `` bullets with their indented continuation lines."""
+    bullets: list[str] = []
+    for line in lines:
+        if line.startswith("- "):
+            bullets.append(line[2:].strip())
+        elif bullets and line.startswith((" ", "\t")) and line.strip():
+            bullets[-1] += " " + line.strip()
+    return bullets
+
+
+def _section_lines(lines: list[str], heading: str) -> list[str]:
+    """Return the lines under ``heading`` up to the next ``## ``/fence-END."""
+    out: list[str] = []
+    inside = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith(heading):
+            inside = True
+            continue
+        if inside and (
+            stripped.startswith("## ")
+            or stripped.startswith(CAPABILITY_SEED_END_PREFIX)
+        ):
+            break
+        if inside:
+            out.append(line)
+    return out
+
+
+def _seed_wall_rows(ledger_text: str) -> list[tuple[str, str]]:
+    """Return ``(venue, text)`` rows from the seed fence's Walls section.
+
+    Seed rows are `` - `venue` · finding … — LAST-VERIFIED: date`` bullets
+    (possibly wrapped); the freshness stamp is stripped for the digest (the
+    ledger keeps it — the digest points there). A bullet without a leading
+    backticked venue token fails open as venue ``any`` (the ledger's own
+    backward-compatibility rule).
+    """
+    lines = ledger_text.splitlines()
+    begin = next(
+        (
+            i
+            for i, line in enumerate(lines)
+            if line.strip().startswith(CAPABILITY_SEED_BEGIN_PREFIX)
+        ),
+        None,
+    )
+    if begin is None:
+        return []
+    rows: list[tuple[str, str]] = []
+    for bullet in _unwrapped_bullets(_section_lines(lines[begin:], _WALLS_HEADING)):
+        venue = "any"
+        text = bullet
+        if bullet.startswith("`"):
+            token, sep, rest = bullet[1:].partition("`")
+            if sep and token in CAPABILITY_VENUE_TOKENS:
+                venue = token
+                text = rest.lstrip(" ·")
+        stamp = text.find("— LAST-VERIFIED:")
+        if stamp != -1:
+            text = text[:stamp].rstrip()
+        rows.append((venue, text))
+    return rows
+
+
+def _append_wall_rows(ledger_text: str) -> list[tuple[str, str]]:
+    """Return ``(venue, text)`` rows for ``wall``-tagged append-log entries.
+
+    Consumes the grammar's taught line format (``- YYYY-MM-DD · tag ·
+    <venue> · finding · evidence · workaround``); a legacy five-field line
+    without a venue token reads as venue ``any`` and is never dropped
+    (the pinned backward-compatibility contract). ``capability`` entries are
+    not walls and stay out of this digest.
+    """
+    lines = ledger_text.splitlines()
+    heading = next(
+        (
+            i
+            for i, line in enumerate(lines)
+            if line.strip().startswith(_LEDGER_APPEND_LOG_HEADING)
+        ),
+        None,
+    )
+    if heading is None:
+        return []
+    rows: list[tuple[str, str]] = []
+    for bullet in _unwrapped_bullets(lines[heading:]):
+        match = CAPABILITY_LOG_LINE_RE.match(f"- {bullet}")
+        if not match:
+            continue
+        fields = [f.strip() for f in match.group(2).split(" · ")]
+        if not fields or fields[0] != "wall":
+            continue
+        rest = fields[1:]
+        venue = "any"
+        if (
+            rest
+            and CAPABILITY_VENUE_SHAPE_RE.match(rest[0])
+            and rest[0] in CAPABILITY_VENUE_TOKENS
+        ):
+            venue = rest[0]
+            rest = rest[1:]
+        if rest:
+            rows.append((venue, " · ".join(rest)))
+    return rows
+
+
+def walls_digest_block(
+    ledger_text: str | None,
+    venues: tuple[str, ...] = SEAT_DIGEST_DEFAULT_VENUES,
+    docs_root: str = "docs",
+) -> str:
+    """Render the fenced venue-filtered walls digest block.
+
+    ``ledger_text`` is the adopter's planted ``docs/CAPABILITIES.md`` — the
+    seat-local source of truth this block derives from (``None`` renders an
+    honest placeholder, never a guess). Filtering is mechanical: a row ships
+    when its venue token is in ``venues`` (seed fence Walls rows + append-log
+    ``wall`` entries; legacy venue-less lines count as ``any``).
+    """
+    ledger_path = f"{docs_root}/CAPABILITIES.md"
+    header = [
+        walls_digest_begin_marker(venues),
+        f"## Walls digest (venues: {', '.join(venues)})",
+        "",
+    ]
+    if ledger_text is None:
+        rows = [
+            f"- (no capability ledger found at `{ledger_path}` — walls "
+            "unknown; plant the ledger, then regenerate this digest)",
+        ]
+    else:
+        rows = [
+            f"- `{venue}` · {_truncate(text)}"
+            for venue, text in _seed_wall_rows(ledger_text)
+            + _append_wall_rows(ledger_text)
+            if venue in venues
+        ]
+        if not rows:
+            rows = [f"- (no walls recorded for these venues in `{ledger_path}`)"]
+    footer = [
+        "",
+        f"Full ledger (all venues, evidence, freshness): `{ledger_path}` — "
+        "the seat-local source of truth; append findings THERE, never here.",
+        WALLS_DIGEST_END,
+    ]
+    return _fit_rows(header, rows, footer, f"read `{ledger_path}`.")
+
+
+def walls_digest_venues(text: str) -> tuple[str, ...]:
+    """Parse the venue filter off a committed doc's walls-digest BEGIN line.
+
+    Regens and drift checks must re-render with the SAME venues the
+    committed doc chose; an absent/unparseable marker falls back to the
+    Project-seat default (never a crash, never a silent venue reset to
+    something the doc did not say).
+    """
+    match = WALLS_DIGEST_VENUES_RE.search(text)
+    if not match:
+        return SEAT_DIGEST_DEFAULT_VENUES
+    venues = tuple(
+        token
+        for token in match.group(1).split(",")
+        if token in CAPABILITY_VENUE_TOKENS
+    )
+    return venues or SEAT_DIGEST_DEFAULT_VENUES
+
+
+def seat_digest_document(
+    project_name: str,
+    ledger_text: str | None,
+    venues: tuple[str, ...] = SEAT_DIGEST_DEFAULT_VENUES,
+    docs_root: str = "docs",
+) -> str:
+    """Compose the full ``docs/seat-digest.md`` text (deterministic).
+
+    Both fenced blocks plus the two contracts a consumer needs stated where
+    the artifact lives: the machine extraction contract (the three
+    fence-prefix pairs) and the no-third-copy deferral chain (plan §4.2e).
+    No dates, no environment reads — the render is a pure function of the
+    SKILLS list, the ledger text, the venue filter, and ``project_name``,
+    so a byte-compare drift guard is meaningful.
+    """
+    index_path = f"{docs_root}/SKILLS.md"
+    ledger_path = f"{docs_root}/CAPABILITIES.md"
+    return "\n".join(
+        [
+            f"# {project_name} — seat digest",
+            "",
+            "> **Status:** `reference`",
+            ">",
+            "> Generated by substrate-kit — a **derived render**, never a "
+            "copy of record.",
+            f"> Sources: `{index_path}` (skill index) + `{ledger_path}` "
+            "(capability ledger).",
+            "> NEVER edit this file: regenerate with `python3 bootstrap.py "
+            "seat-digest`",
+            "> (adopt and upgrade also refresh it). Hand edits are drift by "
+            "definition.",
+            "",
+            "## What this is",
+            "",
+            "The seat-prompt-feeding digest (grounded-skills plan §7 slice "
+            "6): the two",
+            "fence-marked blocks below are canonical, machine-extractable "
+            "renders of this",
+            "repo's registered skills and its venue-relevant verified walls "
+            "— sized for",
+            "prompt budgets that have no headroom. **Digest + pointer, "
+            "never inline**:",
+            "each block ends with a pointer to the full source doc.",
+            "",
+            skills_digest_block(docs_root),
+            "",
+            walls_digest_block(ledger_text, venues, docs_root),
+            "",
+            "## Extraction contract — the machine interface",
+            "",
+            "Consumers (fleet-manager's seat-prompt regen tool above all) "
+            "extract blocks",
+            "by fence-prefix match + byte compare — never by executing kit "
+            "code, never by",
+            "parsing prose. The contract is the three HTML-comment prefix "
+            "pairs (match the",
+            "PREFIX only; trailing marker wording may evolve without "
+            "orphaning a fence):",
+            "",
+            "| block | BEGIN prefix | END prefix | lives in |",
+            "|---|---|---|---|",
+            "| skills digest | `<!-- substrate-kit:skills-digest BEGIN` | "
+            "`<!-- substrate-kit:skills-digest END` | this file |",
+            "| walls digest | `<!-- substrate-kit:walls-digest BEGIN` | "
+            "`<!-- substrate-kit:walls-digest END` | this file |",
+            "| capability seed | `<!-- substrate-kit:capability-seed BEGIN` "
+            f"| `<!-- substrate-kit:capability-seed END` | `{ledger_path}` |",
+            "",
+            "The walls-digest BEGIN marker carries its venue filter "
+            "(`venues=<tokens>`);",
+            "regens preserve it. The bytes between a BEGIN/END pair are the "
+            "canonical",
+            "block — a consumer's byte-match drift guard compares against "
+            "exactly them.",
+            "",
+            "## No third copy — which record defers to which",
+            "",
+            f"1. **`{ledger_path}` (this repo)** — the seat-local source of "
+            "truth for",
+            "   capabilities and walls; sessions append verified findings "
+            "there.",
+            "2. **This file** — a derived render of that ledger (walls) and "
+            "the kit's",
+            "   `SKILLS` list (skills). Regenerated, never edited; never a "
+            "copy of record.",
+            "3. **fleet-manager `docs/capabilities.md`** — the fleet "
+            "aggregation point;",
+            "   cross-repo findings are consolidated there by the manager.",
+            "",
+            "No third authored copy is ever minted (grounded-skills plan "
+            "§4.2e). A prompt",
+            "block, a seat paste, or any downstream copy is a RENDER of "
+            "step 2 and is",
+            "regenerated from it — divergence between them is drift to fix "
+            "at the source,",
+            "never content to merge back by hand.",
+            "",
+        ],
+    )
+
+
+def seat_digest_text(
+    root: Path,
+    config: Config,
+    context: dict[str, str],
+    venues: tuple[str, ...] = SEAT_DIGEST_DEFAULT_VENUES,
+) -> str:
+    """Render the seat-digest doc for ``root`` (reads the planted ledger).
+
+    The ONE render path every surface shares — adopt's plant, upgrade's
+    refresh, the ``seat-digest`` CLI regen, and the drift checker's fresh
+    render all call this, so "planted file == fresh render" is a meaningful
+    byte contract. A missing/unreadable ledger renders the honest
+    placeholder (fail open, never a crash).
+    """
+    ledger_path = root / config.docs_root / "CAPABILITIES.md"
+    try:
+        ledger_text: str | None = ledger_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        ledger_text = None
+    project_name = context.get("project_name") or root.name
+    return seat_digest_document(
+        project_name,
+        ledger_text,
+        venues,
+        config.docs_root,
+    )
+
 # --- engine/adopt.py ---
 """One-step adopt flow — plant the workflow docs, stage the packs (Lane B8).
 
@@ -12134,6 +12597,20 @@ def adopt(
             # Provenance for the upgrade diff (§4.3): hash what the kit wrote.
             record_doc_hash(backend, rel, final)
 
+    # (1b) The seat-digest render surface (grounded-skills slice 6, §8
+    # Q3=A): one GENERATED planted doc — both fence-marked digest blocks
+    # (skills index + venue-filtered walls), rendered AFTER the plan loop so
+    # a fresh adopt reads the just-planted capability ledger. Deliberately
+    # outside ADOPT_PLAN: it is a derived render of live tree content, so
+    # template hash-classification would misread every ledger append as doc
+    # drift — upgrade refreshes it via refresh_seat_digest (kit-written
+    # copies only) and `bootstrap.py seat-digest` regenerates on demand;
+    # check_seat_digest (advisory) byte-compares it against a fresh render.
+    digest_rel = seat_digest_relpath(config)
+    digest_text = seat_digest_text(root, config, context)
+    if _adopt_plant(root / digest_rel, digest_rel, digest_text, report):
+        record_doc_hash(backend, digest_rel, digest_text)
+
     # (2) Session-log scaffolding. A pre-existing README (skip-if-exists
     # keeps it) still receives the model-attribution doctrine append-only
     # under a provenance marker — the PR #170 render was fresh-plant-only,
@@ -12817,6 +13294,130 @@ def check_skill_grounds(
                         "session inherits it.",
                     ),
                 )
+    return findings
+
+# --- engine/checks/check_seat_digest.py ---
+"""check_seat_digest — seat-digest drift guard (grounded-skills slice 6, §7.6).
+
+Why + provenance: slice 6's accept criterion is a ``--check-registry``-style
+drift guard "proving prompt blocks equal kit truth"
+(``docs/planning/2026-07-12-grounded-skills-program.md`` §7.6, §8 Q3=A).
+Fleet-manager's seat-prompt regen consumes the planted
+``docs/seat-digest.md`` by fence extraction + byte match — so the kit-side
+guard is a byte compare of the committed doc against a fresh
+:func:`engine.seatdigest.seat_digest_text` render (the ONE render path
+adopt/upgrade/CLI share), re-rendered with the committed doc's own venue
+filter. A stale digest means every downstream seat prompt ships yesterday's
+walls or a retired skill; the finding names the exact regenerate command.
+Added 2026-07-12 (grounded-skills slice 6, §8 Q2=B advisory-first).
+Reliability (PL-008): UNVERIFIED — confirm its findings against ground
+truth a few times across sessions before trusting it; **delete this if it
+proves unreliable over multiple sessions.**
+
+Posture is **advisory-only, never exit-affecting** (§8 Q2=B: no CI-red
+until proven; graduation is a later, deliberate step) — the same
+nudge-never-door contract as ``check_claims`` / ``check_skill_grounds`` /
+``check_capability_xref``. Input-gated: engages only when the planted
+digest exists (a bare or pre-slice-6 tree adds nothing); unreadable files
+fail open (no verdict). Pure stdlib, no ``subprocess`` (§3.2) — the fresh
+render is a pure function of tree content.
+
+What it flags:
+
+- ``seat-digest-stale`` — the committed doc's bytes differ from a fresh
+  render (ledger appends, skill-set changes, or a hand edit — the doc is a
+  derived render either way). Fix: ``python3 bootstrap.py seat-digest``.
+- ``seat-digest-over-budget`` — a fenced block exceeds
+  :data:`engine.grammar.SEAT_DIGEST_BLOCK_BUDGET`. A fresh render can never
+  overflow (the renderer truncates into a "+N more" pointer row), so this
+  only fires on hand-grown blocks — but it is the one drift class that
+  breaks the downstream 8,000-char seat-prompt budget outright, so it gets
+  its own sharper finding on top of the stale nudge.
+"""
+
+
+
+
+
+def _fenced_block(text: str, begin_prefix: str, end_prefix: str) -> str | None:
+    """Return the fenced block (markers inclusive), or None when unmatched.
+
+    Prefix-matched line-anchored, exactly like the upgrade refresher's
+    ``_capability_fence`` — an unmatched fence is no verdict, never a guess.
+    """
+    lines = text.splitlines(keepends=True)
+    begin = end = None
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if begin is None and stripped.startswith(begin_prefix):
+            begin = i
+        elif begin is not None and stripped.startswith(end_prefix):
+            end = i
+            break
+    if begin is None or end is None:
+        return None
+    return "".join(lines[begin : end + 1])
+
+
+def check_seat_digest(
+    target: Path,
+    config: Any,
+    *,
+    context: dict[str, str] | None = None,
+) -> list[Finding]:
+    """Return advisory drift findings for the planted seat-digest doc.
+
+    ``context`` is the caller's render context (``build_context`` output);
+    only ``project_name`` matters to the render. Advisory by contract:
+    callers must NEVER count these findings toward an exit code (§8 Q2=B —
+    see module docstring).
+    """
+    rel = seat_digest_relpath(config)
+    path = target / rel
+    if not path.is_file():
+        return []
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return []  # fail open — an unreadable file is not a verdict
+    findings: list[Finding] = []
+    fresh = seat_digest_text(
+        target,
+        config,
+        context or {},
+        venues=walls_digest_venues(text),
+    )
+    if text != fresh:
+        findings.append(
+            Finding(
+                rel,
+                "seat-digest-stale",
+                "committed digest differs from a fresh render of its "
+                "sources (skill index + capability ledger) — downstream "
+                "seat prompts extract these bytes, so drift here ships "
+                "stale walls/skills fleet-wide; regenerate with "
+                "`python3 bootstrap.py seat-digest` (never hand-edit — it "
+                "is a derived render).",
+            ),
+        )
+    for label, begin_prefix, end_prefix in (
+        ("skills", SKILLS_DIGEST_BEGIN_PREFIX, SKILLS_DIGEST_END_PREFIX),
+        ("walls", WALLS_DIGEST_BEGIN_PREFIX, WALLS_DIGEST_END_PREFIX),
+    ):
+        block = _fenced_block(text, begin_prefix, end_prefix)
+        if block is not None and len(block) > SEAT_DIGEST_BLOCK_BUDGET:
+            findings.append(
+                Finding(
+                    rel,
+                    "seat-digest-over-budget",
+                    f"the {label}-digest block is {len(block)} chars "
+                    f"(budget {SEAT_DIGEST_BLOCK_BUDGET}) — the consuming "
+                    "seat-prompt pastes have no headroom (digest + "
+                    "pointer, never inline); regenerate with "
+                    "`python3 bootstrap.py seat-digest` (a fresh render "
+                    "truncates into a '+N more' pointer row).",
+                ),
+            )
     return findings
 
 # --- engine/currency.py ---
@@ -14058,12 +14659,68 @@ def refresh_capability_seed(
     ]
 
 
+def refresh_seat_digest(
+    root: Path,
+    config: Config,
+    backend: Any,
+) -> list[str]:
+    """Regenerate the planted seat-digest doc (grounded-skills slice 6).
+
+    ``docs/seat-digest.md`` is a DERIVED RENDER of live tree content (the
+    SKILLS list + the capability ledger), so — unlike a slot template — it
+    goes stale whenever the LEDGER moves, not when a template does; the
+    upgrade must re-render it (with the committed doc's own venue filter
+    preserved) or every wave ships yesterday's walls. Covenant, mirroring
+    the fence refresh above: only a copy the kit last wrote
+    (:func:`doc_is_untouched`) is ever overwritten — the derived-render
+    contract says hand edits are drift, but clobbering them silently would
+    destroy the evidence; a hand-edited copy downgrades to a report line
+    naming the regenerate command. The refreshed write re-records the doc
+    hash (the file is kit-owned wholly, unlike the consumer-owned ledger).
+    Missing file → nothing here (the adopt pass replants it).
+    """
+    rel = seat_digest_relpath(config)
+    path = root / rel
+    if not path.is_file():
+        return []
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return [f"seat-digest: {rel} unreadable — refresh skipped."]
+    context = _upgrade_context(root, backend)
+    fresh = seat_digest_text(
+        root,
+        config,
+        context,
+        venues=walls_digest_venues(text),
+    )
+    if text == fresh:
+        return [f"seat-digest: {rel} already current — nothing to refresh."]
+    if doc_is_untouched(backend, rel, text):
+        atomic_write_text(path, fresh)
+        record_doc_hash(backend, rel, fresh)
+        return [
+            f"seat-digest: regenerated {rel} (derived render — skills index "
+            "+ venue-filtered walls re-rendered from the current tree; "
+            "venue filter preserved from the committed doc).",
+        ]
+    return [
+        f"seat-digest: NOT regenerated — {rel} differs from the last "
+        "kit-written render (hand-edited, or no hash recorded). It is a "
+        "derived render, never a copy of record: move any real finding into "
+        "the capability ledger / skill index, then regenerate with "
+        "`python3 bootstrap.py seat-digest` (overwrites this file only; "
+        "the sources are untouched).",
+    ]
+
+
 def upgrade_report_text(
     old_version: str,
     rows: list[dict[str, str]],
     applied: list[str],
     carveouts: list[str] | None = None,
     capability_seed: list[str] | None = None,
+    seat_digest: list[str] | None = None,
 ) -> str:
     """Compose ``<state_dir>/upgrade-report.md``.
 
@@ -14134,6 +14791,13 @@ def upgrade_report_text(
         lines += ["", "## Capability-ledger seed refresh", ""]
         lines += [f"- {line}" for line in capability_seed]
         lines += ["", CAPABILITY_POSTURE_COLLAPSE_NOTE]
+    if seat_digest:
+        # Grounded-skills slice 6: the derived-render refresh outcome is
+        # report-file evidence like the seed refresh above — the
+        # hand-edited downgrade's regenerate instruction must reach the
+        # upgrade PR's body, not only stdout.
+        lines += ["", "## Seat-digest refresh", ""]
+        lines += [f"- {line}" for line in seat_digest]
     if applied:
         lines += ["", "## Applied (--apply-docs)", ""]
         lines += [f"- {line}" for line in applied]
@@ -14292,6 +14956,11 @@ def run_apply_docs_posthoc(
     # idempotent, so a re-run reports "already current" and writes nothing).
     seed_lines = refresh_capability_seed(root, config, backend, rows, old_templates)
     report += seed_lines
+    # Mirror the in-run seat-digest refresh too (slice 6, same rationale):
+    # the post-hoc window must recover the derived render the same way it
+    # recovers doc improvements and the fence refresh; idempotent.
+    digest_lines = refresh_seat_digest(root, config, backend)
+    report += digest_lines
     # The report rewrite must not drop the carve-out section (websites,
     # v1.9.0 wave): re-emit it from a read-only rescan of the installed
     # kit-owned workflows, and carry forward hits recorded in the report
@@ -14315,6 +14984,7 @@ def run_apply_docs_posthoc(
             applied,
             carveout_lines,
             capability_seed=seed_lines,
+            seat_digest=digest_lines,
         ),
     )
     report.append(f"report: {report_rel}")
@@ -14491,6 +15161,15 @@ def run_upgrade(
         if line.startswith(("carve-out:", "carve-out scan:"))
     ]
 
+    # (6c) Seat-digest derived-render refresh (grounded-skills slice 6):
+    # AFTER the adopt pass on purpose — a missing digest (or ledger) has
+    # been replanted by now, and the ledger's fenced seed was refreshed in
+    # (4b), so the re-render reads the post-upgrade tree. Kit-written
+    # copies only; a hand-edited derived render downgrades to a report
+    # line (see refresh_seat_digest).
+    digest_lines = refresh_seat_digest(root, config, backend)
+    report += digest_lines
+
     # (6b) KL-3: the 📊 Model needle joins session_markers at upgrade time —
     # a consumer's gate only tightens when it upgrades, never mid-version
     # (founding plan §5.2); the report says so out loud.
@@ -14530,6 +15209,7 @@ def run_upgrade(
             applied,
             gate_carveout_lines,
             capability_seed=seed_lines,
+            seat_digest=digest_lines,
         ),
     )
     report.append(f"report: {report_rel}")
@@ -15271,6 +15951,21 @@ def cmd_check(
     # (UNVERIFIED per its provenance header; graduation is a later,
     # deliberate step). Full lane only: skills are not control-lane traffic.
     grounds_advisories = check_skill_grounds(target, state_dir=config.state_dir)
+    # Seat-digest drift guard (grounded-skills slice 6, §8 Q2=B):
+    # advisory-only by contract, like every nudge above — a planted
+    # docs/seat-digest.md whose bytes differ from a fresh render of its
+    # sources (skill index + capability ledger) is a regenerate nudge,
+    # never a required-check red (UNVERIFIED per its PL-008 provenance
+    # header; graduation is a later, deliberate step). Full lane only: the
+    # digest is not control-lane traffic. The render context is rebuilt
+    # from state so the fresh render matches what adopt/upgrade/regen
+    # would write (only project_name matters to the render).
+    digest_backend = JsonStateBackend(_state_path(target, config))
+    digest_advisories = check_seat_digest(
+        target,
+        config,
+        context=build_context(digest_backend.data) if digest_backend.data else {},
+    )
     # The inbox append-only gate (issue #36 report 2): a control/inbox.md
     # change must be pure-append vs the merge-base + ORDER-grammar shaped.
     # Rides the finding loop like every checker; engages only when CI handed
@@ -15533,6 +16228,26 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=grounds_advisories,
+        )
+    if digest_advisories and not status_only:
+        # Same warn-only contract as the advisories above (grounded-skills
+        # slice 6, §8 Q2=B advisory-first): a stale/over-budget seat digest
+        # is surfaced + telemetry-recorded, never counted toward the exit
+        # code — the checker is UNVERIFIED (PL-008 header); the fix is one
+        # `bootstrap.py seat-digest` regen, not a locked door.
+        _emit(
+            f"check: {len(digest_advisories)} seat-digest advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in digest_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=digest_advisories,
         )
     if adopters_advisories and not status_only:
         # Same warn-only contract as the advisories above (EAP §6.3): a
@@ -16539,6 +17254,42 @@ def cmd_currency(
     return 0
 
 
+def cmd_seat_digest(target: Path, *, venues: list[str] | None = None) -> int:
+    """Regenerate the planted ``docs/seat-digest.md`` (grounded-skills slice 6).
+
+    The on-demand arm of the derived-render contract (adopt plants it,
+    upgrade refreshes it, this regenerates it whenever the sources moved —
+    the fix ``check_seat_digest``'s stale advisory names). ``venues``
+    overrides the walls-digest venue filter; without it, the committed
+    doc's own ``venues=`` marker is preserved (a regen never silently
+    resets a seat's venue choice), falling back to the Project-seat
+    default. The write re-records the planted-doc hash when an install
+    exists (so upgrade keeps recognizing the file as kit-written); like the
+    guard-fire log, it never CREATES state in an uninitialized tree.
+    """
+    config = load_config(target)
+    rel = seat_digest_relpath(config)
+    path = target / rel
+    if venues:
+        venue_tuple = tuple(venues)
+    elif path.is_file():
+        venue_tuple = walls_digest_venues(path.read_text(encoding="utf-8"))
+    else:
+        venue_tuple = SEAT_DIGEST_DEFAULT_VENUES
+    backend = JsonStateBackend(_state_path(target, config))
+    context = build_context(backend.data) if backend.data else {}
+    text = seat_digest_text(target, config, context, venues=venue_tuple)
+    atomic_write_text(path, text)
+    if backend.data:
+        record_doc_hash(backend, rel, text)
+    _emit(
+        f"seat-digest: wrote {rel} "
+        f"(walls venues: {', '.join(venue_tuple)}; derived render — the "
+        "sources stay the skill index + the capability ledger).",
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Construct the bootstrap argument parser."""
     parser = argparse.ArgumentParser(prog="bootstrap", description="substrate-kit")
@@ -16760,6 +17511,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="scan + print the drift report without writing docs/adopters.md",
     )
 
+    seat_digest = sub.add_parser(
+        "seat-digest",
+        help=(
+            "regenerate docs/seat-digest.md — the fence-marked skills + "
+            "walls digest blocks fleet-manager's seat-prompt regen "
+            "extracts (derived render; never hand-edit)"
+        ),
+    )
+    seat_digest.add_argument("--target", type=Path, default=Path.cwd())
+    seat_digest.add_argument(
+        "--venue",
+        action="append",
+        choices=CAPABILITY_VENUE_TOKENS,
+        default=None,
+        help=(
+            "walls-digest venue filter (repeatable). Default: the committed "
+            "doc's own venues= marker, else the Project-seat default "
+            f"({', '.join(SEAT_DIGEST_DEFAULT_VENUES)})"
+        ),
+    )
+
     check = sub.add_parser("check", help="run the doc + session-log hygiene checks")
     check.add_argument("--target", type=Path, default=Path.cwd())
     check.add_argument("--strict", action="store_true", help="exit 1 if any violation")
@@ -16860,6 +17632,8 @@ def main(argv: list[str] | None = None) -> int:
                 roster_file=args.roster,
                 dry_run=args.dry_run,
             )
+        if args.command == "seat-digest":
+            return cmd_seat_digest(args.target, venues=args.venue)
         if args.command == "check":
             return cmd_check(
                 args.target,
@@ -16958,7 +17732,7 @@ _TEMPLATES = {
     'CAPABILITIES.md.tmpl': '# ${project_name} — session capabilities & walls\n\n> **Status:** `living-ledger`\n>\n> Generated by substrate-kit. What agent sessions in THIS environment can and\n> cannot do — **verified findings, never assumptions**. Read at session start\n> (it is in the orientation reading order); append at session close. Fleet\n> master copy: `menno420/fleet-manager` → `docs/capabilities.md` — sync new\n> fleet-wide findings there via the manager when cross-repo access allows.\n\n## Why this file exists\n\nSessions repeatedly fail to discover what they CAN do (claiming `.mp4`s\nunviewable though ffmpeg frame-extraction is standard; forgetting provisioned\nenv tokens exist) and stall on imagined walls — burning owner attention as\nhand reminders. This ledger makes capability knowledge durable across\nsessions: one session\'s discovery is every later session\'s starting fact.\n\n<!-- substrate-kit:capability-seed BEGIN — kit-owned, refreshed at upgrade. Append your findings BELOW the fence (## Append log), never inside it. -->\n\n## Posture decision rule — establish your venue first\n\n- **Owner-live session:** assume NO special limitations apply — act and merge\n  directly (superbot Q-0269).\n- **Autonomous / routine-fired seat:** pre-route around every known stall\n  class recorded below; park only on a REAL denial, never preemptively\n  (superbot Q-0270 boot triad: model · venue · ability envelope).\n\nVenue tokens (every entry names where it was verified): `owner-live` ·\n`autonomous-project` · `routine-fired` · `subagent` · `any`. Capabilities are\n**venue-scoped, not global** — the same operation can work owner-live, be\norg-refused on a cross-session binding, and prompt-stall in a plain-started\nseat while never prompting in a Routine-spawned one (fleet night review,\n2026-07-12). A flat CAN/CANNOT ledger is wrong somewhere by construction.\n\n## THE DISCOVERY RULE\n\nBefore declaring anything impossible, and before assuming a tool or\ncredential is missing:\n\n1. **Check this file** — the capability or wall may already be recorded for\n   your venue.\n2. **Check the environment** — `printenv` / list the available tools BEFORE\n   assuming no credentials exist (provisioned env tokens are routinely\n   forgotten, not absent).\n3. **Attempt once** — try the operation and capture the **exact** error text;\n   a guessed wall and a verified wall are different facts.\n4. **Append the finding same session** — capability or wall, dated, with the\n   venue token, the evidence (exact error, or proof it worked) and the\n   workaround if one was found. An unrecorded discovery is re-paid by every\n   future session.\n5. **Staleness — re-verify what you build on**: an entry older than the\n   staleness window (config `cadence.staleness_days`, default 14) that your\n   work depends on is a **claim, not a fact** — re-verify it with one cheap\n   attempt and append the result. Re-verifications APPEND, never edit: a\n   refuted wall can self-resolve platform-side, and a ledger with no\n   freshness data is confidently stale — worse than ignorant.\n\n## Capabilities — verified working\n\n- `any` · **Media is readable**: a video is never "unviewable" — extract\n  frames (`ffmpeg -i in.mp4 -vf fps=1 frame_%04d.png`) and read the images;\n  same idea for audio (transcribe) and PDFs (render pages). Try the recipe\n  before reporting a format wall. — LAST-VERIFIED: 2026-07-10\n- `any` · **Provisioned credentials**: the environment often carries\n  tokens/keys as env vars — `printenv` first; a missing-looking credential is\n  usually a missing *look*. — LAST-VERIFIED: 2026-07-10\n- `any` · **Release cutting despite the tag wall**: `workflow_dispatch` on\n  the release workflow (with a version input) creates the tag in-Actions —\n  proven repeatedly fleet-wide after direct tag pushes 403\'d.\n  — LAST-VERIFIED: 2026-07-12\n\n## Walls — verified blocked (use the workaround; don\'t rediscover)\n\n- `any` · **Tag push / release create via git**: HTTP 403 from the\n  environment\'s git proxy → use the workflow_dispatch release path.\n  — LAST-VERIFIED: 2026-07-12\n- `any` · **Branch deletion**: 403 on every path (git push `:branch` and\n  API) → owner deletes by hand / enables "Automatically delete head\n  branches". — LAST-VERIFIED: 2026-07-10\n- `any` · **`api.github.com` direct HTTP**: blocked → GitHub access is\n  MCP-tools-only. — LAST-VERIFIED: 2026-07-10\n- `any` · **Environment / Project creation**: owner-click actions in the\n  console — queue them as structured owner asks, never wait silently.\n  Routine/schedule creation is NO LONGER a blanket wall: `create_trigger`\n  arms routines agent-side (proven 2026-07-11); the console-only knobs\n  (model class, branch-push, auto-fix PRs) remain owner-only.\n  — LAST-VERIFIED: 2026-07-11\n- `subagent` · **Self-merge classifier**: sessions can be refused merging\n  owner-gated PRs while their other capabilities work — and the boundary\n  differs by venue (a child session was refused where a coordinator was\n  not). Record which venue hit which boundary. — LAST-VERIFIED: 2026-07-10\n- `any` · **GraphQL API quota**: tight — batch queries and prefer the\n  REST-backed MCP tools for bulk reads. — LAST-VERIFIED: 2026-07-10\n- `routine-fired` · **Silent prompt-stalls**: a permission prompt in an\n  unattended seat is a silent stall, and grant boundaries differ by venue —\n  the same tool call can be pre-granted in a Routine-spawned seat and prompt\n  in a plain-started one. Pre-route around recorded stall classes; verify\n  grants per venue, never globally. — LAST-VERIFIED: 2026-07-12\n\n<!-- substrate-kit:capability-seed END -->\n\n## Append log — newest first\n\nFormat: `- YYYY-MM-DD · capability|wall · <venue> · finding · evidence · workaround`\n(venue ∈ `owner-live` · `autonomous-project` · `routine-fired` · `subagent` ·\n`any`; older five-field lines without a venue token stay valid — read them\nas venue `any`.)\n\n(Hand-filled by sessions, per the discovery rule. Seed rows above are\nkit-owned — they refresh at upgrade between the fence markers; local\nfindings go here, below the fence.)\n',
     'CLAUDE.md.tmpl': "# ${project_name} — agent working agreement\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit from the staged interview. **NOT SOURCE OF TRUTH**\n> for code — source files always win. Re-render (`bootstrap render`) after the\n> interview fills more slots.\n\n## What this project is\n\n${project_name} is built in ${primary_language}.\n\n## Orientation — read first, in order\n\n1. This file — the working agreement.\n2. `HANDOFF.md` at repo root (when present) — the previous session's trail:\n   newest session card + where to pick up. Regenerated at every session\n   boot, untracked by design — read it before re-deriving history from\n   `git log`/`git show`; never commit or edit it.\n3. `docs/current-state.md` — what is true right now.\n\nThat is the whole boot set. Everything else is routed, **not front-loaded**\n(reading every planted doc up front buys ceremony, not context — measured):\nopen `docs/AGENT_ORIENTATION.md` when a task needs its reading route,\n`docs/SKILLS.md` (the skill index) **before improvising a procedure for a\nrecurring action**, and\n`docs/CAPABILITIES.md` (the verified can/cannot ledger) **before declaring\nany wall or missing credential** — its discovery rule: check the file →\ncheck the env → attempt once + capture the exact error → append the finding\nsame session.\n\n## Kit machinery — search hygiene\n\n`bootstrap.py` (~12k generated lines) and `.substrate/` (kit state + a byte\nbackup of the previous dist) are substrate-kit machinery, not project code.\nExclude them from repo-wide searches: `grep -r --exclude=bootstrap.py\n--exclude-dir=.substrate …`, or ripgrep `rg -g '!bootstrap.py' -g\n'!.substrate' …`.\n\n## Architecture — layers & import rules\n\n${architecture_layers}\n\n## Verifying a change\n\nRun before every push:\n\n```\n${verify_command}\n```\n\n## How the maintainer works\n\n${owner_profile}\n\n## Workflow adoption\n\nCurrent adoption pace for the substrate workflow: **${integration_mode}**.\n",
     'CONSTITUTION.md.tmpl': '# ${project_name} — constitution\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. The working agreement + autonomy rails. **NOT\n> SOURCE OF TRUTH** for code — source files always win. Rules state their\n> **current value only**; provenance lives in `docs/decisions.md` as [D-NNNN]\n> links and is never narrated inline.\n\n## Working agreement\n\n- **The goal comes first.** Achieve the session\'s goal end-to-end; don\'t ship\n  the smallest safe slice.\n- **Session prompts are guidance, not orders.** Weigh every prompt (and every\n  cross-agent report) against source and the binding docs before acting.\n- **Approved plan = execute.** Once a plan is approved, finish it in the same\n  session, with the planning context still loaded — no re-confirming.\n- **Understand-and-reflect.** The owner hands over fragments, not full\n  specs. Before substantive work, restate the fuller picture built from the\n  ask — the implied specs, and the possibility space when feasibility is\n  uncertain — inline in the first substantive response, never as a blocking\n  question. It catches a misread early, and the filled-in picture is itself\n  new material the owner redirects.\n- **Capabilities are discovered, never assumed.** Before declaring a wall or\n  a missing credential: check `docs/CAPABILITIES.md` (the verified ledger) →\n  check the environment → attempt once and capture the exact error → append\n  the finding same session.\n- **Recurring actions run through the skill index.** `docs/SKILLS.md` names\n  every kit-shipped skill and when to reach for it — check it before\n  improvising a procedure or repo-searching "how do we do X here".\n- When a doc and a source file disagree: ${drift_resolution}\n\n## Autonomy rails — act vs. ask\n\n- **Act** on contained, reversible, verifiable changes — including a\n  root-cause fix discovered mid-task.\n- **Ask** before anything irreversible (data loss, external publish),\n  large / cross-cutting (architectural), or when the goal itself is\n  genuinely ambiguous. No live owner to ask? Record the question in\n  `docs/question-router.md` instead of skipping it or guessing.\n- **Owner attention is the scarcest resource.** Before routing anything to\n  the owner: attempt it yourself, or cite the exact wall — assumption-based\n  asks are banned. Every ask carries the OWNER-ACTION fields — WHAT / WHERE\n  / HOW / WHY-IT-MATTERS / UNBLOCKS / VERIFIED-NEEDED (format:\n  `control/README.md`) — phrased so a non-technical owner can act directly.\n  Expire stale asks; fewer, clearer asks beat complete lists. Owner-facing\n  output follows the owner-assist standard — paste-ready finished values, a\n  risk class (✅ / ↩️ / ⚠️) on every manual step, decisions as structured\n  choices with a **bolded recommendation**, answerable with one letter\n  (standard: `control/README.md`).\n\n## Changing the rules — propose, don\'t apply\n\n- A binding rule in this file changes by **proposal**, never by silent edit:\n  record the decision in `docs/decisions.md`, cite it here as its [D-NNNN]\n  id, and let the owner (or the review ritual) confirm before the rule text\n  changes.\n- Every rule change ships with its provenance id. This file carries **no\n  history** — the ledger does; superseded rules are looked up there.\n\n## Program law\n\nRulings that bind **every** repo in this program live canonically in the\nsubstrate-kit repo at `docs/program/rulings.md` — the [PL-NNN] register\n(https://github.com/menno420/substrate-kit/blob/main/docs/program/rulings.md),\ne.g. PL-001 decide-and-flag · PL-006 source-wins / false-green.\n**Cite PL-IDs — never copy ruling bodies into this repo** (the register is\nthe one home; a local copy is drift by construction). Repo-local rulings\nstay in `docs/decisions.md` / `docs/question-router.md`.\n\n## Rails specific to ${project_name}\n\n(Hand-filled: the project\'s own hard rules, one bullet each, each citing its\n[D-NNNN]. Keep the whole hand-filled file under 150 lines.)\n',
-    'SKILLS-index.md.tmpl': '# ${project_name} — skill index\n\n> **Status:** `reference`\n>\n> Generated by substrate-kit. The table below renders FROM the kit\'s\n> `SKILLS` list — the same source that emits the skills — and regenerates\n> at adopt/upgrade, so it cannot hand-drift. **NOT SOURCE OF TRUTH** for\n> skill bodies: the installed `.claude/skills/<name>/SKILL.md` wins.\n\n## What this is\n\nThe registered skill set for ${project_name}: every recurring action that\nhas a defined, kit-shipped procedure. **Check this index before improvising\na workflow or repo-searching "how do we do X here"** — when a row covers\nthe action, invoke the skill (or read its installed body) instead of\nderiving the procedure from scratch.\n\n## The skills\n\n${skills_index}\n\n## Where the bodies live\n\n- **Installed (live):** `.claude/skills/<name>/SKILL.md` — invoke as\n  `/<name>`.\n- **Staged (regenerated at every adopt/upgrade):** the kit state dir\'s\n  `skills/` tree (default `.substrate/skills/`); install with\n  `python3 bootstrap.py skills --build`.\n- **Precedence:** a skill\'s declared capability **wins over the ambient\n  stance** (an invoked `session-close` may write the session log even under\n  a `review` stance); stances stay advisory for anything a skill has not\n  declared.\n\n## Growing the set\n\nThe skill set is kit-owned (the `SKILLS` list in the kit\'s\n`src/engine/skills/skills.py`) and this index regenerates from it — never\nhand-edit the table. A recurring action without a row here is a candidate\nskill: capture it as an idea (`docs/ideas/README.md`) or propose it\nupstream to the kit, and it reaches every adopter at the next release.\n',
+    'SKILLS-index.md.tmpl': '# ${project_name} — skill index\n\n> **Status:** `reference`\n>\n> Generated by substrate-kit. The table below renders FROM the kit\'s\n> `SKILLS` list — the same source that emits the skills — and regenerates\n> at adopt/upgrade, so it cannot hand-drift. **NOT SOURCE OF TRUTH** for\n> skill bodies: the installed `.claude/skills/<name>/SKILL.md` wins.\n\n## What this is\n\nThe registered skill set for ${project_name}: every recurring action that\nhas a defined, kit-shipped procedure. **Check this index before improvising\na workflow or repo-searching "how do we do X here"** — when a row covers\nthe action, invoke the skill (or read its installed body) instead of\nderiving the procedure from scratch.\n\n## The skills\n\n${skills_index}\n\n## Where the bodies live\n\n- **Installed (live):** `.claude/skills/<name>/SKILL.md` — invoke as\n  `/<name>`.\n- **Staged (regenerated at every adopt/upgrade):** the kit state dir\'s\n  `skills/` tree (default `.substrate/skills/`); install with\n  `python3 bootstrap.py skills --build`.\n- **Precedence:** a skill\'s declared capability **wins over the ambient\n  stance** (an invoked `session-close` may write the session log even under\n  a `review` stance); stances stay advisory for anything a skill has not\n  declared.\n\n## Machine consumption — the seat digest\n\n`docs/seat-digest.md` is the machine-extractable DERIVED RENDER of this\nindex plus the capability ledger\'s venue-relevant walls — two fence-marked\nblocks sized for seat-prompt budgets, consumed by fleet-manager\'s\nseat-prompt regen via fence-prefix extraction + byte match. Never edit it;\nregenerate with `python3 bootstrap.py seat-digest` (adopt/upgrade refresh\nit too). The extraction contract and the no-third-copy deferral chain are\ndocumented in that file itself.\n\n## Growing the set\n\nThe skill set is kit-owned (the `SKILLS` list in the kit\'s\n`src/engine/skills/skills.py`) and this index regenerates from it — never\nhand-edit the table. A recurring action without a row here is a candidate\nskill: capture it as an idea (`docs/ideas/README.md`) or propose it\nupstream to the kit, and it reaches every adopter at the next release.\n',
     'ai-project-workflow.md.tmpl': "# ${project_name} — AI project workflow\n\n> **Status:** `reference`\n>\n> Generated by substrate-kit. The multi-agent pipeline: how ideas become work\n> and how sessions run. **NOT SOURCE OF TRUTH** — the binding contracts win.\n\n## Idea lifecycle\n\n```\ncaptured -> classified -> planned -> built -> verified\n```\n\nEvery idea ends implemented, planned, in discussion, or explicitly rejected —\nnever orphaned. Backlog + routing: `docs/ideas/README.md`.\n\n## Session workflow\n\n```\norient -> claim -> born-red card -> build -> verify -> close\n```\n\n1. **Orient** — working agreement, current state, task-specific reading route.\n2. **Claim** — declare your lane so parallel sessions don't collide.\n3. **Born-red card** — open the session record first, marked in-progress, so\n   the work is visible while it is still incomplete.\n4. **Build** — the goal, end-to-end.\n5. **Verify** — run `${verify_command}` before shipping.\n6. **Close** — flip the card complete; log the session, groom one idea, hand\n   off.\n\n## Handoff template\n\n(What the next session needs, four lines: state of the work · what is\nverified · what is still open · the first next step.)\n\n## Adoption pace\n\nCurrent substrate-workflow adoption: **${integration_mode}**.\n",
     'architecture.md.tmpl': '# ${project_name} — architecture\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. Layering, invariants, and decomposition rules.\n> **NOT SOURCE OF TRUTH** for code — source files always win.\n\n## Layers & import rules\n\n${architecture_layers}\n\n| Layer | May import | Must NOT import |\n|---|---|---|\n| (one row per layer, expanded from the summary above) | | |\n\n## Invariants\n\n(The rules that must survive every refactor — write each one as a testable\nstatement, and name the check that enforces it where one exists.)\n\n## Namespace protection — two mechanisms, both required\n\nTwo separate mechanisms guard the namespace, and they catch different\nfailure classes:\n\n1. **A registry for runtime string identities** — event names, command\n   names, settings keys, and any other string that selects behavior at\n   runtime. Collisions here are invisible to static analysis.\n2. **A static AST pass for Python symbol shadowing** — a later top-level\n   `def` / `class` with the same name silently shadows the earlier one, and\n   no import fails.\n\nNeither mechanism subsumes the other. The registry cannot see symbol\nshadowing; the AST pass cannot see string-keyed dispatch. Do not delete one\nbelieving the other covers it.\n\n## Verifying a change\n\n```\n${verify_command}\n```\n',
     'collaboration-model.md.tmpl': '# ${project_name} — collaboration model\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. How the owner and agents work together. **NOT\n> SOURCE OF TRUTH** for code — source files always win.\n\n## The model\n\n- **Goal first.** The owner designs and directs; agents build. Each session\n  achieves its goal end-to-end — not the smallest safe slice.\n- **Session prompts are guidance, not orders.** Weigh every prompt (and every\n  cross-agent report) against source and the binding docs before acting; a\n  prompt is one input, never a command list.\n- **Approved plan = execute.** Once a plan is approved, finish it in the same\n  session, with the planning context still loaded — code, verify, ship —\n  without re-confirming.\n\n## Act vs. ask\n\n- **Act** on contained, reversible, verifiable changes — including a\n  root-cause fix discovered mid-task (that is expected, not scope creep).\n- **Ask** when the change is irreversible (data loss / external publish),\n  large and cross-cutting (architectural), or the goal itself is genuinely\n  ambiguous.\n\n## Routing work to the owner\n\nThe owner is the scarcest resource in the program. An ask reaches the owner\nonly when the agent has **attempted the action itself** or can name the\n**exact wall** (error text, permission denial) proving only the owner can do\nit — assumption-based asks are banned. Every ask uses the OWNER-ACTION\nformat — WHAT / WHERE / HOW / WHY-IT-MATTERS / UNBLOCKS / VERIFIED-NEEDED\n(canonical: `control/README.md`) — phrased so a non-technical owner can act\ndirectly: one plain sentence, an exact click path, paste-ready text.\nWithdraw asks that have gone stale; fewer, clearer asks beat complete lists.\n\nEvery owner-facing OUTPUT — not just asks — follows the owner-assist output\nstandard (canonical: `control/README.md` § "Owner-assist output standard"):\nvalues arrive finished and paste-ready, with the exact link to where each\none goes (a full file in one copyable block — never a recipe the owner must\nderive); every manual step carries a risk class (✅ safe / ↩️ reversible /\n⚠️ irreversible); a decision put to the owner is a structured choice —\noptions A/B(/C) with a **bolded recommendation** and a one-line rationale,\nanswerable with one letter — never an ask that requires the owner to\nparse, derive, or transform anything; a large output ships as a control-plane\nrendered link plus a 3-line digest in chat, with full text in one copyable\nblock in chat as the fallback where the plane cannot render the repo yet.\n\n## Friction → guard\n\nAnything that interrupts a session\'s workflow — a stale file, a checker that\nlied, a footgun — is converted into the **cheapest enforcing prevention**\nbefore the session ends: checker / CI / test first, then hook, then written\nrule. Enforce, don\'t exhort.\n\n## Guiding questions\n\nDuring exploratory / brainstorming work, surface the single most useful\nquestion about the owner\'s idea that the agent genuinely cannot derive\nitself — rare and selective, never during routine execution, and only when\nthe answer would actually matter and be actionable. A big or vague idea\nearns a dedicated research pass or its own session before being answered\nfrom memory alone.\n\n## Program law\n\nThis model\'s program-wide form, and the rulings that bind every repo in the\nprogram, live canonically in the substrate-kit repo at\n`docs/program/rulings.md` (the [PL-NNN] register — e.g. PL-001\ndecide-and-flag, PL-002 never-wait, PL-007 enforce-don\'t-exhort) and\n`docs/program/collaboration-model.md`\n(https://github.com/menno420/substrate-kit/tree/main/docs/program).\n**Cite PL-IDs — never copy ruling bodies into this repo.**\n\n## Drift & staleness\n\n- When a doc and a source file disagree: ${drift_resolution}\n- Staleness review cadence: ${staleness_review}\n',

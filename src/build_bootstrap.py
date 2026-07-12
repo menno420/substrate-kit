@@ -93,6 +93,10 @@ MODULE_ORDER = (
     "render.py",
     "derive.py",
     "contextpack.py",
+    # Before adopt.py (which plants the doc it renders), upgrade.py (the
+    # derived-render refresh), and the slice-6 drift checker: the
+    # seat-digest render surface imports only grammar/skills/config.
+    "seatdigest.py",
     "adopt.py",
     # After adopt.py on purpose: the engagement gate scans the ADOPT_PLAN
     # destinations and keys off adopt's UNRENDERED banner marker.
@@ -101,6 +105,9 @@ MODULE_ORDER = (
     # after skills/skills.py (scans the SKILLS bodies + grounds): the
     # grounded-skills slice-2 command-grounding advisory.
     "checks/check_skill_grounds.py",
+    # After seatdigest.py (byte-compares the planted doc against its fresh
+    # render): the grounded-skills slice-6 drift guard.
+    "checks/check_seat_digest.py",
     # After adopt.py: reuses its dist_version header parser (EAP §6.3
     # currency scanner — tree truth vs heartbeat self-report).
     "currency.py",
