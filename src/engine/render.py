@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from engine.lib.config import KIT_VERSION
+from engine.skills.skills import skills_index_table
 
 _PLACEHOLDER_RE = re.compile(r"\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}")
 
@@ -32,7 +33,7 @@ _MD_CODE_FENCE_RE = re.compile(r"^```.*?^```", re.MULTILINE | re.DOTALL)
 # exactly this set, so a template may reference them without a bank question
 # existing. Grows deliberately: every addition must be injected by
 # build_context (or a caller) unconditionally, or templates strand unfilled.
-ENGINE_CONTEXT_KEYS = frozenset({"agreement_home", "kit_version"})
+ENGINE_CONTEXT_KEYS = frozenset({"agreement_home", "kit_version", "skills_index"})
 
 
 def agreement_home(root: Path, *, include_claude: bool = False) -> str:
@@ -104,14 +105,20 @@ def build_context(state: dict[str, Any]) -> dict[str, str]:
     (inbox ORDER 003, adopter-visibility band) renders with the real version
     instead of stranding as an unfilled placeholder. A slot named
     ``kit_version`` (none exists) would win over the constant by design.
-    (Top-level import on purpose: ``lib/config.py`` precedes ``render.py``
-    in the dist's MODULE_ORDER, so the intra-package import strips cleanly;
-    a function-body ``from engine...`` would survive into the single file
-    and fail at dist runtime.)
+    ``skills_index`` follows the same shape (grounded-skills plan §2, slice
+    1): the planted ``docs/SKILLS.md`` table is rendered FROM the kit's
+    ``SKILLS`` list — the same source that emits the skills — so the index
+    can never hand-drift from what the kit installs; injected here so every
+    render path fills it, and a same-named slot (none exists) would win.
+    (Top-level imports on purpose: ``lib/config.py`` and ``skills/skills.py``
+    both precede ``render.py`` in the dist's MODULE_ORDER, so the
+    intra-package imports strip cleanly; a function-body ``from engine...``
+    would survive into the single file and fail at dist runtime.)
     """
     values = state.get("slot_values", {})
     context = {slot: str(entry.get("value", "")) for slot, entry in values.items()}
     context.setdefault("kit_version", KIT_VERSION)
+    context.setdefault("skills_index", skills_index_table())
     return context
 
 

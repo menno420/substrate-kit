@@ -15,6 +15,7 @@ from engine.skills.skills import (
     skill_names,
     skill_permits,
     skill_relpath,
+    skills_index_table,
 )
 from engine.stances.stances import EDIT, READ, RUN
 
@@ -132,6 +133,40 @@ def test_session_close_carries_capability_nudge():
     body = get_skill("session-close")["body"]
     assert "Capability delta" in body
     assert "docs/CAPABILITIES.md" in body
+
+
+# ---------------------------------------------------------------------------
+# Skill index (grounded-skills plan §2 slice 1 — the docs/SKILLS.md table)
+# ---------------------------------------------------------------------------
+
+
+def test_skills_index_table_lists_every_skill():
+    # One row per SKILLS entry, rendered from the same list that emits the
+    # skills (the "render from ONE source" rule) — name backticked,
+    # description verbatim as the when-to-reach-for-it line.
+    table = skills_index_table()
+    rows = table.split("\n")
+    assert rows[0] == "| Skill | When to reach for it | Capabilities |"
+    assert rows[1] == "|---|---|---|"
+    assert len(rows) == len(SKILLS) + 2
+    for skill in SKILLS:
+        assert f"| `{skill['name']}` |" in table
+        assert skill["description"] in table
+
+
+def test_skills_index_table_capabilities_match_declarations():
+    # The capabilities column is skill_capabilities() truth: the implicit
+    # read plus every declared capability, never hand-written prose.
+    table = skills_index_table()
+    for skill in SKILLS:
+        row = next(
+            line
+            for line in table.split("\n")
+            if line.startswith(f"| `{skill['name']}` |")
+        )
+        assert f"`{READ}`" in row
+        for cap in skill["capabilities"]:
+            assert f"`{cap}`" in row
 
 
 # ---------------------------------------------------------------------------

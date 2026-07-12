@@ -25,6 +25,7 @@ from engine.upgrade import (
     CLASS_CONSUMER_EDITED,
     CLASS_DIVERGED,
     CLASS_IMPROVED,
+    CLASS_MISSING,
     CLASS_UNCHANGED,
     UpgradeRefused,
     apply_doc_improvements,
@@ -144,6 +145,22 @@ def test_untouched_docs_with_identical_templates_are_unchanged(tmp_path):
     rows = classify_planted_docs(root, config, backend, load_templates())
     assert rows
     assert {r["class"] for r in rows} == {CLASS_UNCHANGED}
+
+
+def test_missing_skill_index_classifies_missing_and_replants(tmp_path):
+    # Grounded-skills slice 1 accept criterion: an adopter installed before
+    # the index existed has no docs/SKILLS.md — the upgrade doc diff
+    # classifies it `missing` and the upgrade's adopt pass replants it.
+    root, config, backend = _adopted(tmp_path)
+    (root / "docs" / "SKILLS.md").unlink()
+    rows = classify_planted_docs(root, config, backend, load_templates())
+    row = next(r for r in rows if r["relpath"] == "docs/SKILLS.md")
+    assert row["class"] == CLASS_MISSING
+    assert "replants" in row["note"]
+    # The adopt pass (what upgrade runs) replants the missing index.
+    lines = adopt(root, config, backend, kit_root=tmp_path / "kit")
+    assert "planted: docs/SKILLS.md" in lines
+    assert (root / "docs" / "SKILLS.md").is_file()
 
 
 def test_template_improvement_on_untouched_doc_is_apply_safe(tmp_path):

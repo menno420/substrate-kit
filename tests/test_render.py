@@ -25,8 +25,14 @@ def test_render_substitutes_filled_and_leaves_unfilled_visible():
 
 
 def test_build_context_from_slot_values():
+    from engine.skills.skills import skills_index_table
+
     state = {"slot_values": {"project_name": {"value": "Demo"}}}
-    assert build_context(state) == {"project_name": "Demo", "kit_version": KIT_VERSION}
+    assert build_context(state) == {
+        "project_name": "Demo",
+        "kit_version": KIT_VERSION,
+        "skills_index": skills_index_table(),
+    }
 
 
 def test_build_context_always_injects_kit_version():
@@ -37,6 +43,18 @@ def test_build_context_always_injects_kit_version():
     assert build_context({})["kit_version"] == KIT_VERSION
     state = {"slot_values": {"kit_version": {"value": "9.9.9"}}}
     assert build_context(state)["kit_version"] == "9.9.9"
+
+
+def test_build_context_always_injects_skills_index():
+    # The engine-computed skill index (grounded-skills plan §2 slice 1):
+    # every render path flows through build_context, so the planted
+    # docs/SKILLS.md table always renders from the live SKILLS list — and a
+    # (hypothetical) slot of the same name would win over the constant.
+    from engine.skills.skills import skills_index_table
+
+    assert build_context({})["skills_index"] == skills_index_table()
+    state = {"slot_values": {"skills_index": {"value": "custom"}}}
+    assert build_context(state)["skills_index"] == "custom"
 
 
 def test_agreement_home_tracks_installed_working_agreement(tmp_path):

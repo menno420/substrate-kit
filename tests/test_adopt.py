@@ -170,6 +170,37 @@ def test_capability_manifest_planted_with_discovery_rule(tmp_path):
     assert "docs/CAPABILITIES.md" in orientation
 
 
+def test_skill_index_planted_and_wired(tmp_path):
+    # Grounded-skills plan §7 slice 1: docs/SKILLS.md plants fully rendered
+    # (its slots are the derivable project_name + the engine-computed
+    # skills_index), names every kit skill with its when-to-use line, and
+    # the boot-set templates route sessions through it — the same wiring
+    # pattern docs/CAPABILITIES.md carries.
+    root, config, lines = _adopt_into(tmp_path)
+    index = root / "docs" / "SKILLS.md"
+    assert index.is_file()
+    assert "planted: docs/SKILLS.md" in lines
+    text = index.read_text(encoding="utf-8")
+    assert "${" not in text  # both slots fill at plant → no banner
+    assert not text.startswith(UNRENDERED_BANNER_FIRST_LINE)
+    assert "| Skill | When to reach for it | Capabilities |" in text
+    for skill in SKILLS:
+        assert f"`{skill['name']}`" in text
+        assert skill["description"] in text
+    # Boot-set wiring: constitution + orientation router + the staged
+    # working agreement all route through the index.
+    constitution = (root / "CONSTITUTION.md").read_text(encoding="utf-8")
+    assert "docs/SKILLS.md" in constitution
+    orientation = (root / "docs" / "AGENT_ORIENTATION.md").read_text(
+        encoding="utf-8"
+    )
+    assert "docs/SKILLS.md" in orientation
+    staged_claude = (root / config.state_dir / "claude" / "CLAUDE.md").read_text(
+        encoding="utf-8"
+    )
+    assert "docs/SKILLS.md" in staged_claude
+
+
 def test_order_claim_convention_planted(tmp_path):
     # ORDER 007: the planted control/README.md carries the order-claiming
     # convention — claim FIRST on your own status orders line (landed on

@@ -195,6 +195,26 @@ def action_permitted(
     return action_allowed(stance_name, action)
 
 
+def skills_index_table() -> str:
+    """Render the skill-index table (planted ``docs/SKILLS.md``) from :data:`SKILLS`.
+
+    Engine-computed on purpose (grounded-skills plan §2, PR #263): the index's
+    rows come FROM the same list that emits the skills, so the planted index
+    can never hand-drift from what the kit actually installs — the "render
+    from ONE source" rule. Consumed as the ``skills_index`` engine context key
+    (:func:`engine.render.build_context` injects it on every render path);
+    the surrounding prose lives in ``SKILLS-index.md.tmpl``.
+    """
+    lines = [
+        "| Skill | When to reach for it | Capabilities |",
+        "|---|---|---|",
+    ]
+    for skill in SKILLS:
+        caps = ", ".join(f"`{c}`" for c in skill_capabilities(skill["name"]))
+        lines.append(f"| `{skill['name']}` | {skill['description']} | {caps} |")
+    return "\n".join(lines)
+
+
 def skill_frontmatter(skill: dict) -> str:
     """Return the native ``SKILL.md`` YAML frontmatter (metadata-first loading)."""
     return f'---\nname: {skill["name"]}\ndescription: "{skill["description"]}"\n---'
