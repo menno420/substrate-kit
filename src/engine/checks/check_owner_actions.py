@@ -32,6 +32,24 @@ parser for every free-text shape an ask can take. Input-gated like every
 checker — engages only when the ``control/`` protocol is present and the
 file's ``⚑ needs-owner`` value is something other than ``none``. Stdlib
 only; unreadable files fail open.
+
+Owner-assist output standard (grounded-skills slice 4, plan §3/§7.4;
+added 2026-07-12, §8 Q2=B advisory-first): two further advisory findings
+extend the same contract —
+
+- ``owner-action-risk-class`` — an ``⚑ OWNER-ACTION`` block whose
+  contiguous text carries no risk-class token (``✅ / ↩️ / ⚠️`` — the
+  maintainer-profile standing rule: a risk class on every manual step).
+- ``owner-action-vague-destination`` — a ``WHERE:`` value naming a
+  settings-like surface with no deep shape at all (no URL, no click-path
+  arrow, no path): the "go to settings" anti-pattern from the Q-0263
+  incident. Deep values ("Settings → Rules → …", a URL, a repo path)
+  never fire.
+
+Reliability of the two new checks (PL-008): UNVERIFIED — confirm their
+findings against ground truth a few times across sessions before trusting
+them; **delete these two checks if they prove unreliable over multiple
+sessions.** Both are advisory-only by the same contract as the fields nag.
 """
 
 from __future__ import annotations
@@ -52,7 +70,14 @@ from engine.checks.check_status_current import (
 # drift apart. Field semantics (canonical-first spelling, the lenient
 # WHY:/VERIFIED-WHEN: alternates) are documented there. Re-exported here
 # unchanged for existing importers.
-from engine.grammar import NEEDS_OWNER_TOKEN, OWNER_ACTION_FIELDS
+from engine.grammar import (
+    DESTINATION_SHAPE_MARKS,
+    NEEDS_OWNER_TOKEN,
+    OWNER_ACTION_BLOCK_TOKEN,
+    OWNER_ACTION_FIELDS,
+    RISK_CLASS_TOKENS,
+    VAGUE_DESTINATION_WORDS,
+)
 
 
 def _needs_owner_value(text: str) -> str | None:
@@ -69,6 +94,48 @@ def _needs_owner_value(text: str) -> str | None:
     line = text[idx:].splitlines()[0]
     _, _, value = line.partition(":")
     return value.strip()
+
+
+# The canonical WHERE label (one spelling — no lenient alternates exist).
+_WHERE_LABEL = OWNER_ACTION_FIELDS[1][0]
+
+
+def _unrisked_block_count(text: str) -> int:
+    """Return how many ⚑ OWNER-ACTION blocks carry no risk-class token.
+
+    A block is the contiguous paragraph after its ``⚑ OWNER-ACTION`` marker
+    (up to the first blank line or the next marker) — a risk token elsewhere
+    in the file never vouches for a block that lacks one.
+    """
+    count = 0
+    for segment in text.split(OWNER_ACTION_BLOCK_TOKEN)[1:]:
+        block = segment.split("\n\n", 1)[0]
+        if not any(token in block for token in RISK_CLASS_TOKENS):
+            count += 1
+    return count
+
+
+def _vague_destinations(text: str) -> list[str]:
+    """Return WHERE: values that name a surface without any deep shape.
+
+    Fires only on the intersection of *both* signals — a settings-like word
+    (``VAGUE_DESTINATION_WORDS``) AND no shape mark at all
+    (``DESTINATION_SHAPE_MARKS``: URL, click-path arrow, path separator) —
+    so "Settings → Rules → …", any URL, and any repo path stay clean, and a
+    value like "any channel" (no surface word) never fires either.
+    """
+    vague: list[str] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith(_WHERE_LABEL):
+            continue
+        value = stripped.partition(":")[2].strip()
+        lowered = value.lower()
+        if any(word in lowered for word in VAGUE_DESTINATION_WORDS) and not any(
+            mark in value for mark in DESTINATION_SHAPE_MARKS
+        ):
+            vague.append(value)
+    return vague
 
 
 def check_owner_actions(
@@ -119,6 +186,35 @@ def check_owner_actions(
                     "yourself or cite the exact wall — VERIFIED-NEEDED; "
                     "assumption-based asks are banned), and withdraw stale "
                     "asks.",
+                ),
+            )
+        # Owner-assist output standard (slice 4) — advisory, same contract.
+        unrisked = _unrisked_block_count(text)
+        if unrisked:
+            findings.append(
+                Finding(
+                    rel,
+                    "owner-action-risk-class",
+                    f"{unrisked} ⚑ OWNER-ACTION block(s) carry no risk-class "
+                    "token — every manual step names its class (✅ safe / "
+                    "read-only · ↩️ reversible, say how to undo · ⚠️ "
+                    "irreversible / destructive), e.g. a `RISK:` line per "
+                    "block (control/README.md § Owner-assist output "
+                    "standard).",
+                ),
+            )
+        vague = _vague_destinations(text)
+        if vague:
+            findings.append(
+                Finding(
+                    rel,
+                    "owner-action-vague-destination",
+                    "WHERE: names a surface without a deep destination "
+                    f"({'; '.join(vague)}) — name the exact destination: a "
+                    "deep URL, a console path to the exact field "
+                    "(Surface → section → field), or a repo path + line; "
+                    'never a bare "go to settings" (control/README.md § '
+                    "Owner-assist output standard).",
                 ),
             )
     return findings

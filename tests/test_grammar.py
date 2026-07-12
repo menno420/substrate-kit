@@ -63,6 +63,10 @@ def test_enforcers_consume_the_grammar_module_objects():
     assert inbox_mod.ORDER_REQUIRED_FIELDS is grammar.ORDER_REQUIRED_FIELDS
     assert owner_mod.OWNER_ACTION_FIELDS is grammar.OWNER_ACTION_FIELDS
     assert owner_mod.NEEDS_OWNER_TOKEN is grammar.NEEDS_OWNER_TOKEN
+    assert owner_mod.RISK_CLASS_TOKENS is grammar.RISK_CLASS_TOKENS
+    assert owner_mod.OWNER_ACTION_BLOCK_TOKEN is grammar.OWNER_ACTION_BLOCK_TOKEN
+    assert owner_mod.VAGUE_DESTINATION_WORDS is grammar.VAGUE_DESTINATION_WORDS
+    assert owner_mod.DESTINATION_SHAPE_MARKS is grammar.DESTINATION_SHAPE_MARKS
     assert claims_mod.ORDERS_LINE_RE is grammar.ORDERS_LINE_RE
     assert claims_mod.ORDERS_DONE_RE is grammar.ORDERS_DONE_RE
     assert claims_mod.ORDERS_CLAIMED_BY_RE is grammar.ORDERS_CLAIMED_BY_RE
@@ -237,6 +241,26 @@ def test_heartbeat_and_kit_line_examples_parse():
         "green",
         "yes",
     )
+
+
+def test_owner_action_example_carries_a_risk_class():
+    """The canonical block exemplifies the slice-4 standard: a RISK line."""
+    example = grammar.owner_action_block_example()
+    assert grammar.RISK_CLASS_LABEL in example
+    assert any(token in example for token in grammar.RISK_CLASS_TOKENS)
+
+
+def test_risk_class_line_example_parses():
+    line = grammar.risk_class_line_example()
+    assert line.startswith(grammar.RISK_CLASS_LABEL)
+    assert any(token in line for token in grammar.RISK_CLASS_TOKENS)
+    assert "undo" in line  # reversible steps say how to undo
+
+
+def test_structured_choice_example_is_one_letter_answerable():
+    example = grammar.structured_choice_example()
+    assert "A)" in example and "B)" in example
+    assert "RECOMMENDATION:" in example
 
 
 def test_kit_repos_own_inbox_satisfies_the_taught_grammar():

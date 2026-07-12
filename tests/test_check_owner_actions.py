@@ -44,6 +44,7 @@ def _status(needs_owner: str, extra: str = "") -> str:
 STRUCTURED_BLOCK = (
     "\n⚑ OWNER-ACTION\nWHAT: merge PR 7.\n"
     "WHERE: https://example.test/pr/7\nHOW: click Merge.\n"
+    "RISK: ↩️ reversible — revert the merge to undo.\n"
     "WHY-IT-MATTERS: unblocks the release.\nUNBLOCKS: the v2 cut.\n"
     "VERIFIED-NEEDED: I attempted the merge and got 403 (exact error).\n"
 )
@@ -114,6 +115,7 @@ def test_fully_structured_ask_is_clean(tmp_path):
 SHORTHAND_BLOCK = (
     "\n⚑ OWNER-ACTION\nWHAT: merge PR 7.\n"
     "WHERE: https://example.test/pr/7\nHOW: click Merge.\n"
+    "RISK: ↩️ reversible — revert the merge to undo.\n"
     "WHY: unblocks the release.\nUNBLOCKS: the v2 cut.\n"
     "VERIFIED-WHEN: I attempted the merge and got 403 (exact error).\n"
 )
@@ -141,6 +143,108 @@ def test_checker_canonical_labels_match_the_shipped_template():
     for alts in OWNER_ACTION_FIELDS:
         canonical = alts[0]
         assert canonical in tmpl, f"{canonical} missing from control-README template"
+
+
+# ---------------------------------------------------------------------------
+# Owner-assist output standard (slice 4) — risk class + vague destination
+# ---------------------------------------------------------------------------
+
+UNRISKED_BLOCK = (
+    "\n⚑ OWNER-ACTION\nWHAT: merge PR 7.\n"
+    "WHERE: https://example.test/pr/7\nHOW: click Merge.\n"
+    "WHY-IT-MATTERS: unblocks the release.\nUNBLOCKS: the v2 cut.\n"
+    "VERIFIED-NEEDED: I attempted the merge and got 403 (exact error).\n"
+)
+
+
+def test_block_without_risk_class_fires_the_risk_advisory(tmp_path):
+    _write(tmp_path, STATUS_RELPATH, _status("merge PR 7", UNRISKED_BLOCK))
+    kinds = [f.kind for f in check_owner_actions(tmp_path)]
+    assert "owner-action-risk-class" in kinds
+    assert "owner-action-fields" not in kinds  # all six fields present
+
+
+def test_block_with_risk_line_is_clean():
+    # STRUCTURED_BLOCK carries the RISK: line — the canonical complete shape.
+    assert "RISK:" in STRUCTURED_BLOCK
+
+
+def test_risk_token_outside_the_block_does_not_vouch(tmp_path):
+    # The block boundary is the contiguous paragraph: a ⚠️ used elsewhere in
+    # the file (e.g. "⚠️ noise" prose) never satisfies a block that lacks a
+    # risk class of its own.
+    text = _status("merge PR 7", UNRISKED_BLOCK + "\nunrelated ⚠️ prose note\n")
+    _write(tmp_path, STATUS_RELPATH, text)
+    kinds = [f.kind for f in check_owner_actions(tmp_path)]
+    assert "owner-action-risk-class" in kinds
+
+
+def test_risk_advisory_counts_only_the_unrisked_blocks(tmp_path):
+    _write(
+        tmp_path,
+        STATUS_RELPATH,
+        _status("two asks", STRUCTURED_BLOCK + UNRISKED_BLOCK),
+    )
+    findings = [
+        f
+        for f in check_owner_actions(tmp_path)
+        if f.kind == "owner-action-risk-class"
+    ]
+    assert len(findings) == 1
+    assert "1 ⚑ OWNER-ACTION block(s)" in findings[0].message
+
+
+def test_vague_destination_flagged(tmp_path):
+    block = UNRISKED_BLOCK.replace(
+        "WHERE: https://example.test/pr/7", "WHERE: go to settings"
+    ).replace("HOW: click Merge.", "HOW: click Merge.\nRISK: ✅ safe.")
+    _write(tmp_path, STATUS_RELPATH, _status("merge PR 7", block))
+    findings = [
+        f
+        for f in check_owner_actions(tmp_path)
+        if f.kind == "owner-action-vague-destination"
+    ]
+    assert len(findings) == 1
+    assert "go to settings" in findings[0].message
+
+
+def test_deep_click_path_destination_is_clean(tmp_path):
+    # A settings word WITH a deep shape (the click-path arrow) never fires.
+    block = STRUCTURED_BLOCK.replace(
+        "WHERE: https://example.test/pr/7",
+        "WHERE: Settings → Rules → the main ruleset",
+    )
+    _write(tmp_path, STATUS_RELPATH, _status("merge PR 7", block))
+    kinds = [f.kind for f in check_owner_actions(tmp_path)]
+    assert "owner-action-vague-destination" not in kinds
+
+
+def test_non_surface_destination_is_clean(tmp_path):
+    # "any channel" has no settings-like word — a reply-anywhere ask is fine.
+    block = STRUCTURED_BLOCK.replace(
+        "WHERE: https://example.test/pr/7", "WHERE: any channel"
+    )
+    _write(tmp_path, STATUS_RELPATH, _status("merge PR 7", block))
+    kinds = [f.kind for f in check_owner_actions(tmp_path)]
+    assert "owner-action-vague-destination" not in kinds
+
+
+def test_needs_owner_none_suppresses_the_new_advisories(tmp_path):
+    # Withdrawn/stale asks (needs-owner: none) never nag — same gate as the
+    # fields check.
+    _write(tmp_path, STATUS_RELPATH, _status("none", UNRISKED_BLOCK))
+    assert check_owner_actions(tmp_path) == []
+
+
+def test_cmd_check_strict_stays_green_on_the_new_advisories(tmp_path, capsys):
+    block = UNRISKED_BLOCK.replace(
+        "WHERE: https://example.test/pr/7", "WHERE: go to settings"
+    )
+    _write(tmp_path, STATUS_RELPATH, _status("merge PR 7", block))
+    assert cmd_check(tmp_path, strict=True) == 0
+    out = capsys.readouterr().out
+    assert "owner-action-risk-class" in out
+    assert "owner-action-vague-destination" in out
 
 
 # ---------------------------------------------------------------------------

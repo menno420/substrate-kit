@@ -157,9 +157,59 @@ def owner_action_block_example() -> str:
         "WHAT: flip the example setting to on\n"
         "WHERE: Settings → Example → the toggle\n"
         "HOW: one checkbox\n"
+        "RISK: ↩️ reversible — flip the toggle back to undo\n"
         "WHY-IT-MATTERS: the lane stalls without it\n"
         "UNBLOCKS: the next slice starts moving the moment it's done\n"
         "VERIFIED-NEEDED: attempted via the API — 403, owner-only surface\n"
+    )
+
+
+# ── Owner-facing output — the owner-assist standard (grounded-skills §3) ────
+#
+# Taught in control/README.md § "Owner-assist output standard" (canonical
+# home) and the collaboration-model / CONSTITUTION / question-router
+# doctrine. The structured-choice phrases are ALSO the /intake skill body's
+# Q-0263.2 pins (engine.skills.skills._INTAKE_BODY) — one home, so skill
+# text, template text, and enforcer cannot drift; agreement is pinned by
+# tests/test_owner_assist.py. Enforced (advisory-only, §8 Q2=B) by
+# check_owner_actions.
+#
+# Risk-class tokens are the BASE characters (no VS16 emoji selector) so the
+# scan matches both the plain and the emoji-presentation spellings adopters
+# write (`"↩" in "↩️ reversible"` is True).
+
+RISK_CLASS_LABEL = "RISK:"
+RISK_CLASS_TOKENS = ("✅", "↩", "⚠")
+OWNER_ACTION_BLOCK_TOKEN = "⚑ OWNER-ACTION"
+# Q-0263.2 pinned phrases — a decision put to the owner is options A/B(/C)
+# with a **bolded recommendation**, answerable with one letter; an ask that
+# requires the owner to parse, derive, or transform anything is a drafting
+# defect, never an owner task.
+STRUCTURED_CHOICE_PHRASES = (
+    "**bolded recommendation**",
+    "answerable with one letter",
+    "parse, derive, or transform",
+)
+# The destination anti-pattern (the Q-0263 incident class): a WHERE: value
+# naming a settings-like surface with no deep shape at all — no URL, no
+# click-path arrow, no path. "Settings → Rules → the main ruleset" is fine;
+# a bare "go to settings" is not.
+VAGUE_DESTINATION_WORDS = ("settings", "console", "dashboard", "portal", "admin")
+DESTINATION_SHAPE_MARKS = ("http", "→", "/", ">")
+
+
+def risk_class_line_example() -> str:
+    """Canonical ``RISK:`` line — one class token + how to undo."""
+    return "RISK: ↩️ reversible — delete the variable to undo.\n"
+
+
+def structured_choice_example() -> str:
+    """Canonical structured-choice question (the Q-0263.2 shape)."""
+    return (
+        "Q1 — Default channel for large owner-facing outputs?\n"
+        "  A) Rendered link + 3-line digest in chat.\n"
+        "  B) Full text in chat every time.\n"
+        "  RECOMMENDATION: A — one tap on a phone; B stays the fallback.\n"
     )
 
 

@@ -17,6 +17,31 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- Grounded-skills slice 4 (PR #272): the owner-assist output standard
+  (plan §3/§7.4) — every owner-facing output, not just asks. Templates:
+  `control-README.md.tmpl` gains the canonical "Owner-assist output
+  standard" section (paste-ready finished values with the exact link to
+  where each one goes; exact destinations, never a bare "go to settings";
+  a risk class — ✅ safe / ↩️ reversible / ⚠️ irreversible — on every
+  manual step via the new `RISK:` line in the OWNER-ACTION block;
+  structured choices with a **bolded recommendation**, answerable with one
+  letter; large outputs as a control-plane rendered link + 3-line digest
+  in chat with full-text-in-chat fallback — §8 Q1=A) plus the §3.4 worked
+  example; `collaboration-model.md.tmpl`, `CONSTITUTION.md.tmpl`, and
+  `question-router.md.tmpl` carry the doctrine/pointer text. Grammar:
+  the risk-class tokens, `⚑ OWNER-ACTION` block token, Q-0263.2
+  structured-choice phrases (the SAME constants the `/intake` skill body
+  is test-pinned to — skill, template, and enforcer share one home), and
+  the vague-destination scan live in `src/engine/grammar.py`. Checker:
+  `check_owner_actions` extended with two advisory-only findings (§8
+  Q2=B; PL-008 unverified header) — `owner-action-risk-class` (an
+  OWNER-ACTION block with no risk-class token) and
+  `owner-action-vague-destination` (a settings-like WHERE with no deep
+  shape). NOTE for the next distribution wave: these rules live in
+  planted-doc templates — existing adopters receive them only via upgrade
+  doc-classification (`template-improved` applies under `--apply-docs` to
+  consumer-untouched docs; edited copies get a report line).
+
 - Grounded-skills slice 3 (PR #270): the `/intake` owner-request skill —
   superbot's Q-0254 understand-and-reflect doctrine made executable as one
   `SKILLS` entry (plan §5/§7.3). Five-step procedure: CONSOLIDATE the
