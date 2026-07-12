@@ -1520,6 +1520,23 @@
     "summary": "> **Status:** `complete`"
   },
   {
+    "slug": "adopter-outcomes-measurement",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "adopter",
+      "outcomes",
+      "measurement",
+      "before",
+      "after",
+      "report",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
     "slug": "adopters-regen-v190-wave",
     "date": "2026-07-11",
     "tags": [
@@ -1717,6 +1734,24 @@
       "release",
       "prep",
       "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "bump-v1.12.1",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "bump",
+      "v1",
+      "12",
+      "1",
+      "release",
+      "prep",
+      "\ud83d\udca1",
+      "\u2691",
       "\u27f2",
       "\ud83d\udcca"
     ],
@@ -2075,6 +2110,44 @@
     "summary": "> **Status:** `complete`"
   },
   {
+    "slug": "rearm-kit-lab-loop-trigger",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "routine-state",
+      "re-arm",
+      "daily",
+      "kit-lab",
+      "loop",
+      "trigger",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "rearm-q0265-failsafe",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "routine-state",
+      "re-arm",
+      "q-0265",
+      "failsafe",
+      "wake",
+      "v1",
+      "1",
+      "cutover",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
     "slug": "release-v1100-closeout",
     "date": "2026-07-11",
     "tags": [
@@ -2208,6 +2281,49 @@
     "summary": "> **Status:** `complete`"
   },
   {
+    "slug": "wave-a-v1121-distribution",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "wave",
+      "v1",
+      "12",
+      "1",
+      "distribution",
+      "registry",
+      "rows",
+      "3",
+      "5",
+      "6",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "wave-b-v1121-upgrades",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "wave",
+      "b",
+      "v1",
+      "12",
+      "1",
+      "distribution",
+      "last",
+      "four",
+      "adopters",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
     "slug": "wave-fixes-v190",
     "date": "2026-07-11",
     "tags": [
@@ -2295,6 +2411,58 @@
       "adopters",
       "registry",
       "regen",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "lab-cadence-failsafe-stopgap",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "lab-cadence",
+      "loop",
+      "missed",
+      "first",
+      "fire",
+      "failsafe",
+      "stopgap",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "lab-loop-run",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "lab-loop",
+      "friction-inbox",
+      "clear",
+      "stopgap",
+      "run",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `in-progress`"
+  },
+  {
+    "slug": "order-014-doctrine-input",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "order",
+      "014",
+      "prompt-template",
+      "hardening",
+      "input",
       "\ud83d\udca1",
       "\u27f2",
       "\ud83d\udcca"

@@ -399,11 +399,14 @@ the push delivery gap; run-8 proved the pointer converts but the card was
 empty; run-9 validated the #222 countermeasure (near-miss FAIL, sole gap
 ON-T2 M1) — countered by #236. B2/B3/B4 still need OWNER-ACTION 6.
 
-**→ Post-archive (2026-07-11, the coordinator chat archived):** next =
-**cut v1.13.0** (payload #228+#232+#236 in CHANGELOG [Unreleased]) → the
-7-repo wave → **bench run-10** (ideally after pin PRs #220/#238 ratify —
-⚑ OA-14/15). The daily lab loop is armed (06:00Z). Resume path + true
-state: `docs/retro/archive-ready-2026-07-11.md`.
+**→ Post-freeze state (2026-07-12):** the penciled v1.13.0 shipped as
+**v1.12.1** (PATCH per the owner's 2026-07-11 feature FREEZE);
+distribution COMPLETE — all 9 adopters current (`control/status.md`).
+Pending: **bench run-10** (judges best after pins #220/#238 ratify — ⚑
+OA-14/15) + the freeze-lift call (until then, no new surface). Daily
+loop ARMED but 2-for-2 missed fires — stopgap carries the slice
+in-session; D3 count NOT started. Friction inbox CLEARED (#36–#39 →
+`docs/ideas/` + `bench/results/friction/index.json`).
 
 ### Owner gates — each with its one-line unblock
 

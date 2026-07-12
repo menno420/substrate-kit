@@ -49,6 +49,24 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- [Engagement gate: a "native-substrate consumer" state for pin-only repos](engagement-native-consumer-state-2026-07-12.md)
+  — state: captured; origin: consumer (superbot, friction #37 — the pin-only
+  repo with the fleet's strongest native enforcement would red
+  `enforcement-unwired`; PL-011 merged without a native-consumer state);
+  next: a post-freeze quick-win — declared `native_gate` evidence class in
+  the engagement checker, engine change → dist byte-pin.
+- [Regeneration-lag checker for staged `.substrate/` artifacts](staged-artifact-regen-lag-checker-2026-07-12.md)
+  — state: captured; origin: consumer (websites, friction #39 — slots all
+  filled while staged artifacts still carried `${...}`; the engagement gate
+  scans planted docs only); next: a post-freeze quick-win — staged-tree leg
+  reusing the code-span-aware placeholder scan, engine change → dist
+  byte-pin.
+- [Engagement gate: verify wiring STRENGTH, not just existence](engagement-wiring-strength-verification-2026-07-12.md)
+  — state: captured; origin: consumer (friction #36 r3 + #38 residuals —
+  plain-form `check --strict` reads as fully wired while missing the
+  session-log/diff-aware/inbox legs, and required-check status stays
+  unverifiable/unsaid); next: post-freeze advisory-only strength +
+  required-ness-honesty notes in the engagement checker.
 - [Gate card picker `tail -1` lets a multi-card diff shadow the born-red hold](gate-tail1-multi-card-shadowing-2026-07-11.md)
   — state: captured; origin: consumer (venture-lab #33, first exercise of
   the regenerated v1.10.0 gate: head 798a3d0 shipped an ADDED in-progress

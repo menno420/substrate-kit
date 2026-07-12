@@ -1,1 +1,48 @@
-[]
+[
+  {
+    "date": "2026-07-12",
+    "issue": 36,
+    "repo": "menno420/substrate-kit",
+    "project_id": null,
+    "reports": 3,
+    "dispositions": [
+      "r1 (engagement-gate comment-leniency): fixed-in-v1.7.0 — kit PR #86, comment content stripped before the needle test, known-bad fixture pinned",
+      "r2 (inbox append-only unenforced): fixed-in-v1.7.0 — kit PR #87 check_inbox_append (pure-append + ORDER grammar via --inbox-base); latent-gate wiring completed in v1.7.1 (generated substrate-gate.yml carries the step)",
+      "r3 (required-check status unverifiable by agents): partial — mergeable_state=='behind' inference recipes documented in docs/CAPABILITIES.md (2026-07-10 entries); v1.9.0 validates automerge.required_context against workflow job contexts at plant time; residual (checker honesty note / API probe leg) backlogged-at docs/ideas/engagement-wiring-strength-verification-2026-07-12.md"
+    ],
+    "fixed_in": "1.7.0 (r1, r2) / 1.7.1 + 1.9.0 (partial r3)"
+  },
+  {
+    "date": "2026-07-12",
+    "issue": 37,
+    "repo": "menno420/superbot",
+    "project_id": "8155d8c4a73f",
+    "reports": 1,
+    "dispositions": [
+      "still-real, backlogged-at docs/ideas/engagement-native-consumer-state-2026-07-12.md — re-verified 2026-07-12: superbot pin still kit_version 1.0.0, zero workflows run check --strict, PL-011 merged (owner-merged #26, 2026-07-10) without a native-consumer state; severity LOW while nothing runs the gate there, MEDIUM the moment superbot upgrades from pin-only (owner-gated)"
+    ],
+    "fixed_in": null
+  },
+  {
+    "date": "2026-07-12",
+    "issue": 38,
+    "repo": "menno420/superbot-next",
+    "project_id": null,
+    "reports": 1,
+    "dispositions": [
+      "partially overtaken + residuals backlogged — re-verified 2026-07-12 at superbot-next c03df80: vendored dist now v1.12.1 and required checks armed on main (named-gates.yml carries the ruleset's job names), but ci.yml's checkers job still runs the plain weak form 'python3 bootstrap.py check --strict' (no --require-session-log, no diff-aware --session-log, no control fast lane, no --inbox-base); adopter-side install of the staged wired gate relayed via control/status.md flag; kit-side weak-form advisory backlogged-at docs/ideas/engagement-wiring-strength-verification-2026-07-12.md"
+    ],
+    "fixed_in": null
+  },
+  {
+    "date": "2026-07-12",
+    "issue": 39,
+    "repo": "menno420/websites",
+    "project_id": null,
+    "reports": 1,
+    "dispositions": [
+      "still-real as a class, backlogged-at docs/ideas/staged-artifact-regen-lag-checker-2026-07-12.md — re-verified 2026-07-12 at kit v1.12.1: no regeneration-lag checker exists (the engagement gate scans planted docs only, never staged .substrate/ artifacts); the websites instance itself was fixed by its rollout + upgrades (upgrade's staged-regen covers the upgrade path); the any-adopter guard is the open item"
+    ],
+    "fixed_in": null
+  }
+]
