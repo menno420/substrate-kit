@@ -1,0 +1,1 @@
+- `claude/journal-guard-fleet` · **grounded-skills slice 7 — /journal/{repo}/file guard widening in menno420/websites** — widen the control-plane render guard to fleet lane repos via a derived allow-set (REPOS untouched) · websites app/config.py, app/main.py, tests/test_app.py, .sessions/ · 2026-07-12
