@@ -1,52 +1,52 @@
 [
   {
-    "id": "R-0158",
-    "lesson": "**Session idea:** archive-ready close-out as a kit surface \u2014 auto-draft",
-    "evidence": "2026-07-11-archive-prep-close-out.md:L71",
+    "id": "R-0166",
+    "lesson": "**Model-class deviation (D-11):** the lab loop's default is Sonnet-class;",
+    "evidence": "2026-07-12-lab-loop-run.md:L9",
+    "tags": [
+      "flag"
+    ],
+    "status": "provisional",
+    "date": "2026-07-12"
+  },
+  {
+    "id": "R-0167",
+    "lesson": "14/15 (pin PRs #220/#238) unratified, and this seat neither runs arms",
+    "evidence": "2026-07-12-lab-loop-run.md:L28",
+    "tags": [
+      "flag"
+    ],
+    "status": "provisional",
+    "date": "2026-07-12"
+  },
+  {
+    "id": "R-0168",
+    "lesson": "** Session idea:** the friction-disposition loop should leave a",
+    "evidence": "2026-07-12-lab-loop-run.md:L86",
     "tags": [
       "idea"
     ],
     "status": "provisional",
-    "date": "2026-07-11"
+    "date": "2026-07-12"
   },
   {
-    "id": "R-0159",
-    "lesson": "Recurring attention on control/inbox.md",
-    "evidence": "2026-07-11-wave-v1100-adopters-regen.md:L23, 2026-07-11-wave-v1101-adopters-regen.md:L22, 2026-07-11-wave-v1110-adopters-regen.md:L22, 2026-07-11-wave-v1120-adopters-regen.md:L24",
+    "id": "R-0169",
+    "lesson": "Recurring attention on docs/operations/lab-loop.md",
+    "evidence": "2026-07-12-lab-cadence-failsafe-stopgap.md:L38, 2026-07-12-lab-loop-run.md:L18",
     "tags": [
       "recurring-path"
     ],
     "status": "provisional",
-    "date": "2026-07-11"
+    "date": "2026-07-12"
   },
   {
-    "id": "R-0160",
-    "lesson": "Recurring attention on control/status.md",
-    "evidence": "2026-07-11-archive-prep-close-out.md:L9, 2026-07-11-wave-v1101-adopters-regen.md:L50",
+    "id": "R-0170",
+    "lesson": "Recurring attention on substrate/upgrade-report.md",
+    "evidence": "2026-07-11-wave-a-v1121-distribution.md:L67, 2026-07-11-wave-b-v1121-upgrades.md:L39",
     "tags": [
       "recurring-path"
     ],
     "status": "provisional",
-    "date": "2026-07-11"
-  },
-  {
-    "id": "R-0161",
-    "lesson": "Recurring attention on dist/bootstrap.py",
-    "evidence": "2026-07-11-wave-v1100-adopters-regen.md:L13, 2026-07-11-wave-v1101-adopters-regen.md:L10, 2026-07-11-wave-v1110-adopters-regen.md:L10, 2026-07-11-wave-v1120-adopters-regen.md:L10",
-    "tags": [
-      "recurring-path"
-    ],
-    "status": "provisional",
-    "date": "2026-07-11"
-  },
-  {
-    "id": "R-0162",
-    "lesson": "Recurring attention on docs/adopters.md",
-    "evidence": "2026-07-11-wave-v1100-adopters-regen.md:L13, 2026-07-11-wave-v1101-adopters-regen.md:L10, 2026-07-11-wave-v1110-adopters-regen.md:L10, 2026-07-11-wave-v1120-adopters-regen.md:L10",
-    "tags": [
-      "recurring-path"
-    ],
-    "status": "provisional",
-    "date": "2026-07-11"
+    "date": "2026-07-12"
   }
 ]
