@@ -1,0 +1,1 @@
+- `claude/wave-a-v1.14.0` · **distribution wave A (kit v1.14.0)** — upgrade menno420/superbot-next, menno420/websites, menno420/superbot-games, menno420/trading-strategy + substrate-kit dist verify no-op · adopter repos, docs/adopters.md, control/status.md · 2026-07-12
