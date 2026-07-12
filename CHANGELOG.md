@@ -17,6 +17,47 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- Grounded-skills §7 tail (PR #287): the three graduation-map ❌ rows the
+  program's 8 slices left as "a small follow-on" (plan §6/§7 tail; map:
+  `docs/reports/2026-07-12-prompt-template-hardening-input.md` §(b)).
+  **New template `routines.md.tmpl` → `docs/ROUTINES.md`** (ADOPT_PLAN):
+  the routine / wake-chain doctrine, incident-backed by
+  `docs/reports/2026-07-12-trigger-forensics.md` and portably worded (no
+  fleet/env ids — the env-id mismatch is itself load-bearing, forensics
+  H2): binding chosen by lifetime rationale (self-bind dies with its seat,
+  re-arm at every cutover; standing loops want fresh-session-per-fire)
+  then delivery VERIFIED — fresh-session cron observed 0-for-2 vs 100%
+  self-bound, treat as UNVERIFIED-BROKEN until proven in your environment;
+  verbatim create/delete-call records (id, cron, binding, next-fire);
+  probe-not-record at every wake (presence = first page, absence = walk
+  the registry to exhaustion; deletions can leave no tombstone — total
+  absence = hard deletion, actor unknown); the scheduler-health wedge
+  signature `enabled ∧ next_run_at < now − 15min` and the manual-fire trap
+  (`fire_trigger` sets `last_fired_at` WITHOUT advancing `next_run_at` —
+  never read `last_fired_at` alone as scheduler health); sequential
+  trigger-write pacing (parallel multi-call writers hung; a send_later
+  chain is a live-seat pacemaker, the cron failsafe is the dead-man
+  backstop, not the pacer); the failsafe blind-window check (verify the
+  standing loop's last slot actually delivered). Routed from the CLAUDE /
+  AGENT_ORIENTATION templates (planted-doc list + when-to-open pointers)
+  so the plant never orphans `check --strict`.
+  **CONSTITUTION.md.tmpl** gains the verify-don't-trust **Evidence**
+  working-agreement block: a record is a claim, the live surface is the
+  proof (probe-not-record); the committed tree wins over a self-report
+  (adopter `kit:` lines lag 1–3 releases); a check is judged by its job
+  log, never its name; staleness-sensitive reads cross-checked (~25 min
+  stale MCP PR reads); false-green = a bug in the CHECK, not a clearance
+  (PL-006); every load-bearing claim cites a commit/PR/tag/run.
+  **Preflight fetch + hard-reset** is now the explicit FIRST orientation
+  step: the one-line rule as step 0 in `CLAUDE.md.tmpl` (`git fetch origin
+  main && git reset --hard origin/main`), the mechanics (`checkout -B`
+  alternative, HEAD-vs-`ls-remote` verification, never reset over
+  unexplained work) in `AGENT_ORIENTATION.md.tmpl` § "Start every
+  session" — the warm-clone-behind-origin class. Doctrine pins in
+  `tests/test_grounded_tail.py` (template-direct, no grammar constants:
+  no checker consumes these sentences — the only enforcer in play is the
+  generic reachability walk, exercised end-to-end against a fresh adopt).
+  Suite 1184 → 1195.
 - Grounded-skills slice 8 (PR #282): the self-propagation doctrine (plan
   §7.8 — the program's final slice). **CONSTITUTION.md.tmpl** gains one
   working-agreement clause: a recurring action with no skill — or a skill
