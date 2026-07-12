@@ -39,6 +39,8 @@ def _init(target):
 def test_starter_pack_present_and_ordered():
     assert skill_names() == [
         "session-close",
+        "upgrade-distribution",
+        "release",
         "quality-gate",
         "review",
         "repo-health",
@@ -49,11 +51,14 @@ def test_starter_pack_present_and_ordered():
 
 
 def test_every_skill_is_well_formed():
-    required = {"name", "description", "capabilities", "body"}
+    required = {"name", "description", "capabilities", "body", "grounds"}
     for skill in SKILLS:
         assert required <= set(skill), skill.get("name")
         assert skill["description"], skill["name"]
         assert skill["body"], skill["name"]
+        assert isinstance(skill["grounds"], list), skill["name"]
+        for ground in skill["grounds"]:
+            assert isinstance(ground, str) and ground.strip(), skill["name"]
 
 
 def test_get_skill_known_and_unknown():
@@ -136,6 +141,85 @@ def test_session_close_carries_capability_nudge():
 
 
 # ---------------------------------------------------------------------------
+# Grounds — the per-skill exact-command grounding (grounded-skills slice 2)
+# ---------------------------------------------------------------------------
+
+PLAYBOOK_SKILLS = ("session-close", "upgrade-distribution", "release")
+
+
+def test_playbook_skills_ground_commands():
+    # The three playbook skills MUST carry non-empty grounds — a playbook
+    # with no exact commands is the checklist-prose gap slice 2 closes.
+    for name in PLAYBOOK_SKILLS:
+        assert get_skill(name)["grounds"], name
+
+
+def test_grounds_entries_appear_verbatim_in_body():
+    # Grounds are structured data, but they can never DRIFT from the body:
+    # every entry must appear verbatim as a backticked span, so editing a
+    # body command without updating grounds (or vice versa) fails here.
+    for skill in SKILLS:
+        for ground in skill["grounds"]:
+            assert f"`{ground}`" in skill["body"], (
+                f"{skill['name']}: ground {ground!r} not a backticked "
+                "span in the body"
+            )
+
+
+def test_grounds_reference_only_known_bank_slots():
+    bank = {q["slot"] for q in QUESTIONS}
+    for skill in SKILLS:
+        for ground in skill["grounds"]:
+            unknown = find_placeholders(ground) - bank
+            assert not unknown, f"{skill['name']}: {unknown}"
+
+
+def test_session_close_is_the_landing_path_playbook():
+    # The slice-2 upgrade: claim-first, born-red-first-commit, READY open,
+    # flip-complete-last, designed-red reading, never-self-merge.
+    body = get_skill("session-close")["body"]
+    assert "Claim first" in body
+    assert "FIRST commit" in body
+    assert "READY (not\n   draft)" in body or "READY (not draft)" in body
+    assert "NEVER arm auto-merge" in body
+    assert "designed hold" in body
+    assert "LAST step" in body
+    assert "delete your own claim file" in body
+
+
+def test_upgrade_distribution_is_the_wave_runbook():
+    body = get_skill("upgrade-distribution")["body"]
+    assert "git fetch origin main && git reset --hard origin/main" in body
+    assert "sha256sum bootstrap.py.new" in body
+    assert "python3 bootstrap.py.new upgrade" in body
+    assert "three-way" in body
+    assert "carve-out" in body.lower() or "Carve-out" in body
+    assert "one outcome line per target repo" in body
+    assert "git commit --allow-empty" in body  # the label-race cure (W-8)
+    assert "~25-min" in body  # the stale-MCP-read gotcha
+
+
+def test_release_is_the_cut_runbook():
+    body = get_skill("release")["body"]
+    assert "src/engine/lib/config.py" in body and "pyproject.toml" in body
+    assert "SAME commit" in body
+    assert "gh workflow run release.yml -f version=X.Y.Z" in body
+    assert "git diff --exit-code dist/bootstrap.py" in body
+    assert "gh release view vX.Y.Z" in body
+    assert "python3 dist/bootstrap.py currency" in body
+    assert "never deleted" in body
+
+
+def test_playbook_bodies_have_no_multiline_command_spans():
+    # The grounds-matching invariant relies on inline spans: a command
+    # wrapped across lines silently escapes both the drift test above and
+    # the check_skill_grounds scan.
+    for name in PLAYBOOK_SKILLS:
+        for ground in get_skill(name)["grounds"]:
+            assert "\n" not in ground, name
+
+
+# ---------------------------------------------------------------------------
 # Skill index (grounded-skills plan §2 slice 1 — the docs/SKILLS.md table)
 # ---------------------------------------------------------------------------
 
@@ -146,8 +230,10 @@ def test_skills_index_table_lists_every_skill():
     # description verbatim as the when-to-reach-for-it line.
     table = skills_index_table()
     rows = table.split("\n")
-    assert rows[0] == "| Skill | When to reach for it | Capabilities |"
-    assert rows[1] == "|---|---|---|"
+    assert rows[0] == (
+        "| Skill | When to reach for it | Capabilities | Grounds (exact commands) |"
+    )
+    assert rows[1] == "|---|---|---|---|"
     assert len(rows) == len(SKILLS) + 2
     for skill in SKILLS:
         assert f"| `{skill['name']}` |" in table
@@ -167,6 +253,36 @@ def test_skills_index_table_capabilities_match_declarations():
         assert f"`{READ}`" in row
         for cap in skill["capabilities"]:
             assert f"`{cap}`" in row
+
+
+def test_skills_index_table_grounds_column():
+    # The grounds column is SKILLS truth: every ground appears (slot refs
+    # display as <slot_name>, never raw ${...} — the re-banner trap), multi
+    # grounds join with <br>, and a grounds-less skill shows an em dash.
+    table = skills_index_table()
+    assert "${" not in table  # raw slots would re-banner the planted index
+    release_row = next(
+        line for line in table.split("\n") if line.startswith("| `release` |")
+    )
+    assert "`python3 src/build_bootstrap.py`" in release_row
+    assert "<br>" in release_row
+    close_row = next(
+        line for line in table.split("\n") if line.startswith("| `session-close` |")
+    )
+    assert "`<verify_command>`" in close_row  # unfilled slot display form
+    question_row = next(
+        line for line in table.split("\n") if line.startswith("| `question` |")
+    )
+    assert "| — |" in question_row
+
+
+def test_skills_index_table_grounds_fill_from_context():
+    # build_context passes the project's slot values INTO the table, so a
+    # filled project's index shows its real verify command.
+    table = skills_index_table({"verify_command": "python3 -m pytest -q"})
+    assert "`python3 -m pytest -q`" in table
+    assert "<verify_command>" not in table
+    assert "${" not in table
 
 
 # ---------------------------------------------------------------------------

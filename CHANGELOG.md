@@ -15,6 +15,16 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+Grounded-skills slice 2 (PR #265): playbook-grade skill bodies —
+`session-close` upgraded to the full landing-path playbook, new
+`upgrade-distribution` (distribution-wave runbook) and `release` (cut
+runbook) skills, all with exact command groundings; a structured per-skill
+`grounds` field surfaced as a new Grounds column in the generated
+`docs/SKILLS.md` index (slot refs display filled or as `<slot>`, never raw
+`${...}`); and the advisory `check_skill_grounds` checker (backticked
+command spans + grounds entries must resolve; never exit-affecting, §8
+Q2=B). Suite 1065 -> 1086.
+
 ## [1.12.1] - 2026-07-11
 
 Patch release (PATCH) shipping the adopter-gate false-green fixes from

@@ -97,6 +97,10 @@ MODULE_ORDER = (
     # After adopt.py on purpose: the engagement gate scans the ADOPT_PLAN
     # destinations and keys off adopt's UNRENDERED banner marker.
     "checks/check_engagement.py",
+    # After adopt.py (imports ADOPT_PLAN for the kit-planted path set) and
+    # after skills/skills.py (scans the SKILLS bodies + grounds): the
+    # grounded-skills slice-2 command-grounding advisory.
+    "checks/check_skill_grounds.py",
     # After adopt.py: reuses its dist_version header parser (EAP §6.3
     # currency scanner — tree truth vs heartbeat self-report).
     "currency.py",

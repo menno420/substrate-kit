@@ -8198,31 +8198,205 @@ skill is project-aware (e.g. ``quality-gate`` runs the project's own verify comm
 
 
 
-_SESSION_CLOSE_BODY = """\
-Close ${project_name}'s current session correctly.
 
-1. Session log — write `.sessions/<date>-<slug>.md`: what changed, one new idea
-   you genuinely believe in, and a one-line review of the previous session.
-2. Capability delta — did you discover a new capability or hit a wall this
-   session? Append it to `docs/CAPABILITIES.md` (dated, with the exact
-   error or the proof it worked, plus any workaround).
-3. Owner asks — every ⚑ needs-owner item you leave behind carries the
-   OWNER-ACTION fields (WHAT / WHERE / HOW / WHY-IT-MATTERS / UNBLOCKS /
-   VERIFIED-NEEDED — you attempted it, or you name the exact wall; see
-   `control/README.md`). Withdraw stale asks; fewer, clearer asks beat
-   complete lists.
-4. Idea backlog — groom one idea forward (the ideas-README lifecycle).
-5. Verify — run the project's checks: `${verify_command}` and `bootstrap check`.
-6. Commit + push on the session branch; open the PR ready (not draft).
-7. Drive the PR to a terminal state — merge on green CI, or close with a reason.
+_SESSION_CLOSE_BODY = """\
+Land ${project_name}'s session correctly — the full landing path, claim to
+merged-on-green. Playbook-grade: a session reading this executes without
+improvising (grounded-skills plan §7.2).
+
+## What this does
+
+Drives the session's work to a terminal, verified state on two rails:
+the born-red gate (card first, flip last) and never-self-merge (the repo's
+server-side auto-merge-enabler arms; GitHub lands the PR on green required
+checks). Everything else is ordered steps.
+
+## Instructions
+
+1. Claim first (session start — verify it happened) — one file per claim,
+   `control/claims/<branch-or-scope>.md`, a single bullet: backticked
+   branch/scope token · **scope** — one-line detail · expected files/area ·
+   ISO date (the shape `check_claims` parses). Land the claim on main fast,
+   then re-read `control/claims/` at HEAD before building.
+2. Born-red card as the FIRST commit — `.sessions/<date>-<slug>.md` whose
+   Status badge line declares `in-progress` (the born-red hold token), plus
+   a one-line "what is about to happen". Push, then open the PR READY (not
+   draft) immediately: the open PR + the claim are the in-flight signal
+   parallel sessions collide without.
+3. NEVER arm auto-merge on, or merge, your own PR — author self-arm/
+   self-merge is refused terminally (deny-wins; never retry it). The
+   enabler workflow arms server-side at open; green required checks merge
+   it with no action from you. Read a red on a born-red head as the
+   designed hold, not a CI failure: verify any red against the job log
+   before diagnosing — alias/mirror jobs echo the required check without
+   running anything (kit repo example: the two legacy jobs mirroring
+   `kit-quality`), and "HOLD (by design)" means nothing to investigate.
+4. Batch the work — push when a batch is meaningfully complete, never every
+   commit (superseded CI runs are the dominant Actions cost).
+5. Close-out docs, into the SAME card: what shipped (paths + commits);
+   Capability delta — new capability or wall discovered? Append it to
+   `docs/CAPABILITIES.md` (dated, exact error or proof, workaround); every
+   ⚑ needs-owner ask carries the OWNER-ACTION fields (WHAT / WHERE / HOW /
+   WHY-IT-MATTERS / UNBLOCKS / VERIFIED-NEEDED — attempted, or the exact
+   wall; see `control/README.md`) — Withdraw stale asks; groom one idea
+   forward; add one new 💡 idea you genuinely believe in; write the ⟲
+   previous-session review.
+6. Verify — `${verify_command}` and `python3 bootstrap.py check --strict`.
+   The only acceptable pre-flip red is the designed born-red hold naming
+   this session's own card.
+7. Flip as the deliberate LAST step — flip the card badge to `complete`,
+   delete your own claim file, push. Green then merges server-side; a
+   flipped-early card merges a partial PR (the failure the gate exists
+   for), and an unpushed flip leaves the PR red forever.
+
+## Report format (card close-out)
+
+- Shipped: one line per artifact, with paths + commit SHAs.
+- Verify: each command + its tail, verbatim.
+- ⚑ decide-and-flag lines · 💡 session idea · ⟲ previous-session review.
+- PR: #<n> + terminal state, probed against the tree/checks — not a stale
+  PR read.
 
 Declared capabilities: edit (the log + docs), run (the checks + git)."""
+
+_UPGRADE_DISTRIBUTION_BODY = """\
+Roll a substrate-kit release out to ${project_name} — one target repo of the
+distribution wave. Playbook-grade wave runbook (grounded-skills plan §7.2).
+
+## What this does
+
+Moves the target's vendored `bootstrap.py` to the released version with the
+sha256 three-way proof, the banked rollback path, a carve-out scan for local
+modifications, and a born-red PR — then verifies MERGED MAIN against the
+tree, never a registry line or a PR read.
+
+## Instructions
+
+1. Preflight — sync the clone before reading anything:
+   `git fetch origin main && git reset --hard origin/main`. A stale clone
+   reads stale orders and re-executes finished work.
+2. Download the release next to the vendored copy:
+   `gh release download vX.Y.Z --repo menno420/substrate-kit --pattern 'bootstrap.py*' --pattern 'release.json'`
+   then move the downloaded dist to `bootstrap.py.new` (the consumer flow
+   `release.json` names).
+3. sha256 three-way compare (never skip) — `sha256sum bootstrap.py.new`
+   must equal BOTH the `sha256` field in `release.json` AND the kit repo's
+   committed `dist/bootstrap.py` at the release's bump SHA. Any mismatch:
+   stop and report; do not upgrade.
+4. Born-red PR first — claim file + `.sessions/` card declaring
+   `in-progress` as the first commit on the wave branch; open the PR READY;
+   never self-arm/self-merge (the session-close rails apply verbatim).
+5. Upgrade — `python3 bootstrap.py.new upgrade`. It banks the OLD dist to
+   `.substrate/backup/` (verify the banked `bootstrap-<old-version>.py`
+   exists — that is the rollback path) and consumes its own inputs.
+6. Carve-out scan — read `.substrate/upgrade-report.md`: `consumer-edited`
+   and `diverged` docs are LOCAL MODIFICATIONS the upgrade must not
+   clobber; list them verbatim in the PR body. `template-improved` applies
+   only under `--apply-docs` and only to consumer-untouched docs.
+7. Verify + flip — `${verify_command}` and
+   `python3 bootstrap.py check --strict` green (own card's designed hold
+   excepted); flip the card `complete`, delete the claim, push.
+8. Verify merged main afterward — TREE over registries:
+   `git fetch origin main && git log -1 --oneline origin/main` and read the
+   vendored dist's version header at origin/main. Never trust an MCP PR
+   read alone for merge/CI state (~25-min-stale data) — cross-check the
+   tree or the Actions runs.
+
+## Report format — one outcome line per target repo
+
+`<repo>: vOLD → vNEW · sha256 3-way ✔ · bank ✔ · carve-outs: <n or none> · PR #<n> merged @ <sha> · tree-verified ✔`
+
+Known failure modes + fixes:
+
+- A `do-not-automerge` label applied seconds after MCP PR-create misses the
+  opened-event label snapshot and reds the first CI round — cure with one
+  empty commit (`git commit --allow-empty`) to re-fire the enabler.
+- MCP PR reads can serve ~25-minute-stale merge/CI state — probe the tree,
+  not the PR object.
+- A born-red head red-pings "failed checks"; job-log truth is the designed
+  hold plus alias jobs that mirror the required check — verify against the
+  job log, don't chase.
+
+Declared capabilities: edit (the vendored dist + docs), run (git + gh + the
+checks)."""
+
+_RELEASE_BODY = """\
+Cut and publish a substrate-kit release — the kit cut runbook, executable
+(canonical prose: `docs/operations/release-runbook.md`). Kit-repo-specific
+by nature: the commands below run in the kit repo, the source of the
+releases ${project_name} consumes.
+
+## What this does
+
+Takes `CHANGELOG.md` `[Unreleased]` to a published GitHub Release with
+byte-verified assets: version bump PR (born-red), workflow_dispatch publish,
+three-way post-release verification, then adopter notification via
+distribution PRs.
+
+## Instructions
+
+1. Preconditions — every shipped PR has its entry under `[Unreleased]` in
+   `CHANGELOG.md`; decide the semver class (MAJOR = planted-doc / state /
+   config / CLI break · MINOR = new capability · PATCH = fixes).
+2. Claim, then bump PR born-red — claim `control/claims/` (one file, e.g.
+   release-vX.Y.Z.md) on main first; cut the bump branch from post-claim
+   main; born-red card as first commit; open the PR READY; never
+   self-arm/self-merge.
+3. Version bump, one commit set — BOTH version homes in the SAME commit:
+   `src/engine/lib/config.py` (`KIT_VERSION`) and `pyproject.toml`
+   (`version`). CHANGELOG: rename `[Unreleased]` to the new `[X.Y.Z]`
+   dated section, add a fresh empty `[Unreleased]` above it, and keep the
+   machine comment (breaking / state_migration / min_upgrade_from)
+   accurate — the release workflow refuses a version with no CHANGELOG
+   section.
+4. Dist regen + byte-pin — `python3 src/build_bootstrap.py`, then
+   `git diff --exit-code dist/bootstrap.py` must be clean; commit the
+   regenerated dist (CI rebuilds and byte-compares).
+5. Verify locally, then flip — `python3 -m pytest tests/ -q` green ·
+   `python3 -m ruff check src/engine/` clean ·
+   `python3 src/build_release_json.py --version X.Y.Z --verify-only`
+   reports preconditions green ·
+   `python3 dist/bootstrap.py check --strict` (only acceptable red = own
+   card's designed hold). Flip the card `complete` as the last commit; the
+   server-side enabler merges on green.
+6. Publish — dispatch the release workflow on main at the bump-merge SHA:
+   `gh workflow run release.yml -f version=X.Y.Z`. The run creates the
+   annotated tag `vX.Y.Z` in-Actions and publishes the Release with three
+   assets: `bootstrap.py`, `bootstrap.py.sha256`, `release.json`.
+7. Post-release verification (never skip) — the tag exists:
+   `git fetch --tags && git tag -l vX.Y.Z`; the assets are published:
+   `gh release view vX.Y.Z`; independently download the released
+   `bootstrap.py` and its sha256 must equal BOTH the `sha256` field in
+   `release.json` AND the committed `dist/bootstrap.py` at the bump SHA
+   (three-way, byte-identical). Record run id, tag, commit SHA, and hash
+   in the release record.
+8. Aftermath — adopter notification via distribution PRs: run the
+   `upgrade-distribution` skill per adopter (one born-red PR each);
+   registry regen `python3 dist/bootstrap.py currency` refreshes
+   `docs/adopters.md`; write the `control/status.md` release record;
+   delete the claim.
+
+## Report format (release record)
+
+`vX.Y.Z · bump PR #<n> merged @ <sha> · release run <id> · tag vX.Y.Z @ <sha> · sha256 <hash> (3-way ✔) · adopters: <one outcome line per repo>`
+
+Known failure modes + fixes:
+
+- Tag pushes can 403 where branch pushes work — the workflow_dispatch path
+  creates the tag in-Actions; never hand-push a tag first.
+- The workflow refuses when `KIT_VERSION` / dist header / CHANGELOG
+  disagree — fix the version homes, never the guard.
+- Published releases are never deleted — supersede a bad cut with a fixed
+  one whose `release.json` carries the yank note.
+
+Declared capabilities: edit (version homes + CHANGELOG + docs), run (build +
+git + gh)."""
 
 _QUALITY_GATE_BODY = """\
 Prove a change is good before pushing ${project_name}.
 
 1. Run `${verify_command}` — the project's full verification (tests + lint/types).
-2. Run `bootstrap check --strict` — doc + session-log hygiene.
+2. Run `python3 bootstrap.py check --strict` — doc + session-log hygiene.
 3. Report every failure with the exact command to reproduce it.
 4. Do NOT push on red — green here should mean green in CI.
 
@@ -8242,8 +8416,8 @@ Declared capabilities: comment."""
 _REPO_HEALTH_BODY = """\
 Audit ${project_name}'s documentation + session-log hygiene.
 
-1. Run `bootstrap check` — badges, link resolution, doc reachability, and the
-   required session-log markers.
+1. Run `python3 bootstrap.py check` — badges, link resolution, doc
+   reachability, and the required session-log markers.
 2. Summarize the drift: orphaned docs, missing badges, incomplete logs.
 3. Fix the small ones (link the orphan, badge the doc); capture the rest as ideas.
 
@@ -8280,13 +8454,65 @@ Declared capabilities: read-only."""
 
 # Each skill declares the capabilities it needs *beyond* read (read is implicit).
 # The declared set is what overrides the ambient stance (the precedence rule).
+#
+# ``grounds`` (grounded-skills plan §7.2, slice 2) is the skill's exact-command
+# grounding: the verbatim command strings the body's procedure runs, as
+# STRUCTURED DATA — never scraped from prose. Invariants (test-pinned): the
+# key exists on every skill; each entry appears verbatim as a backticked span
+# in the body (grounds can never drift from what the body actually says); a
+# playbook skill's list is non-empty. Read-only skills ground nothing ([]).
+# The index table surfaces the column; check_skill_grounds verifies each
+# entry's command resolves (advisory, §8 Q2=B).
 SKILLS: list[dict] = [
     {
         "name": "session-close",
-        "description": "End the session correctly — write the log, groom + add an "
-        "idea, verify, commit, push, drive the PR to a terminal state.",
+        "description": "Land the session — claim, born-red card first, READY PR, "
+        "batched work, close-out docs, flip complete last; never self-merge.",
         "capabilities": [EDIT, RUN],
         "body": _SESSION_CLOSE_BODY,
+        "grounds": [
+            "${verify_command}",
+            "python3 bootstrap.py check --strict",
+        ],
+    },
+    {
+        "name": "upgrade-distribution",
+        "description": "Roll a kit release out to one adopter repo — download, "
+        "sha256 three-way, banked rollback, carve-out scan, born-red PR, "
+        "tree-verified merge.",
+        "capabilities": [EDIT, RUN],
+        "body": _UPGRADE_DISTRIBUTION_BODY,
+        "grounds": [
+            "git fetch origin main && git reset --hard origin/main",
+            "gh release download vX.Y.Z --repo menno420/substrate-kit "
+            "--pattern 'bootstrap.py*' --pattern 'release.json'",
+            "sha256sum bootstrap.py.new",
+            "python3 bootstrap.py.new upgrade",
+            "${verify_command}",
+            "python3 bootstrap.py check --strict",
+            "git fetch origin main && git log -1 --oneline origin/main",
+            "git commit --allow-empty",
+        ],
+    },
+    {
+        "name": "release",
+        "description": "Cut + publish a substrate-kit release — version bump PR, "
+        "workflow_dispatch publish, three-way asset verification, adopter "
+        "distribution wave.",
+        "capabilities": [EDIT, RUN],
+        "body": _RELEASE_BODY,
+        "grounds": [
+            "python3 src/build_bootstrap.py",
+            "git diff --exit-code dist/bootstrap.py",
+            "python3 -m pytest tests/ -q",
+            "python3 -m ruff check src/engine/",
+            "python3 src/build_release_json.py --version X.Y.Z --verify-only",
+            "python3 dist/bootstrap.py check --strict",
+            "gh workflow run release.yml -f version=X.Y.Z",
+            "git fetch --tags && git tag -l vX.Y.Z",
+            "gh release view vX.Y.Z",
+            "python3 dist/bootstrap.py currency",
+        ],
     },
     {
         "name": "quality-gate",
@@ -8294,6 +8520,10 @@ SKILLS: list[dict] = [
         "report what must be fixed.",
         "capabilities": [RUN],
         "body": _QUALITY_GATE_BODY,
+        "grounds": [
+            "${verify_command}",
+            "python3 bootstrap.py check --strict",
+        ],
     },
     {
         "name": "review",
@@ -8301,6 +8531,7 @@ SKILLS: list[dict] = [
         "comment with a verdict and fixes, no edits.",
         "capabilities": [COMMENT],
         "body": _REVIEW_BODY,
+        "grounds": [],
     },
     {
         "name": "repo-health",
@@ -8308,6 +8539,9 @@ SKILLS: list[dict] = [
         "summarize drift.",
         "capabilities": [RUN],
         "body": _REPO_HEALTH_BODY,
+        "grounds": [
+            "python3 bootstrap.py check",
+        ],
     },
     {
         "name": "deep-research",
@@ -8315,6 +8549,7 @@ SKILLS: list[dict] = [
         "synthesize a cited report.",
         "capabilities": [RUN],
         "body": _DEEP_RESEARCH_BODY,
+        "grounds": [],
     },
     {
         "name": "question",
@@ -8322,6 +8557,7 @@ SKILLS: list[dict] = [
         "make no changes.",
         "capabilities": [],
         "body": _QUESTION_BODY,
+        "grounds": [],
     },
     {
         "name": "analysis",
@@ -8329,6 +8565,7 @@ SKILLS: list[dict] = [
         "without changing anything.",
         "capabilities": [],
         "body": _ANALYSIS_BODY,
+        "grounds": [],
     },
 ]
 
@@ -8375,7 +8612,38 @@ def action_permitted(
     return action_allowed(stance_name, action)
 
 
-def skills_index_table() -> str:
+# A ``${slot}`` inside a grounds string, for the index's display rewrite —
+# same braced-only form as engine.render._PLACEHOLDER_RE (skills.py cannot
+# import render.py: render.py imports THIS module, and MODULE_ORDER puts
+# skills before render).
+_GROUND_SLOT_RE = re.compile(r"\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}")
+
+
+def _ground_cell(grounds: list[str], context: dict[str, str] | None) -> str:
+    """Render one index-table grounds cell (``—`` when the skill grounds nothing).
+
+    Slot references inside a ground substitute from ``context`` when the
+    project has filled them; an unfilled (or context-less) slot displays as
+    ``<slot_name>`` — NEVER as a raw ``${slot_name}``, which would make the
+    planted ``docs/SKILLS.md`` read as an unrendered doc forever
+    (``with_unrendered_banner`` re-banners any text carrying ``${...}``, and
+    the index is injected AFTER template substitution, so nothing would ever
+    fill it). Multiple grounds join with ``<br>`` so the table stays one row
+    per skill.
+    """
+    if not grounds:
+        return "—"
+    cells = []
+    for ground in grounds:
+        shown = _GROUND_SLOT_RE.sub(
+            lambda m: (context or {}).get(m.group(1)) or f"<{m.group(1)}>",
+            ground,
+        )
+        cells.append(f"`{shown}`")
+    return "<br>".join(cells)
+
+
+def skills_index_table(context: dict[str, str] | None = None) -> str:
     """Render the skill-index table (planted ``docs/SKILLS.md``) from :data:`SKILLS`.
 
     Engine-computed on purpose (grounded-skills plan §2, PR #263): the index's
@@ -8384,14 +8652,23 @@ def skills_index_table() -> str:
     from ONE source" rule. Consumed as the ``skills_index`` engine context key
     (:func:`engine.render.build_context` injects it on every render path);
     the surrounding prose lives in ``SKILLS-index.md.tmpl``.
+
+    ``context`` (slice 2) fills slot references inside the Grounds column —
+    ``build_context`` passes the project's slot values so a filled project's
+    index shows its REAL verify command; without context (or unfilled) the
+    slot displays as ``<slot_name>`` (see :func:`_ground_cell` for why raw
+    ``${...}`` must never survive into the injected table).
     """
     lines = [
-        "| Skill | When to reach for it | Capabilities |",
-        "|---|---|---|",
+        "| Skill | When to reach for it | Capabilities | Grounds (exact commands) |",
+        "|---|---|---|---|",
     ]
     for skill in SKILLS:
         caps = ", ".join(f"`{c}`" for c in skill_capabilities(skill["name"]))
-        lines.append(f"| `{skill['name']}` | {skill['description']} | {caps} |")
+        grounds = _ground_cell(skill.get("grounds", []), context)
+        lines.append(
+            f"| `{skill['name']}` | {skill['description']} | {caps} | {grounds} |"
+        )
     return "\n".join(lines)
 
 
@@ -9318,7 +9595,13 @@ def build_context(state: dict[str, Any]) -> dict[str, str]:
     values = state.get("slot_values", {})
     context = {slot: str(entry.get("value", "")) for slot, entry in values.items()}
     context.setdefault("kit_version", KIT_VERSION)
-    context.setdefault("skills_index", skills_index_table())
+    # The slot context is passed INTO the table (slice 2): grounds-column
+    # slot references (e.g. a ``${verify_command}`` ground) fill from the
+    # project's own answers; render() cannot fill them later because the
+    # table is itself a substitution VALUE — re.sub never rescans
+    # replacements, so anything unfilled here would strand as literal
+    # ``${...}`` and re-banner the planted index (skills._ground_cell docs).
+    context.setdefault("skills_index", skills_index_table(context))
     return context
 
 
@@ -11778,6 +12061,254 @@ def check_engagement(target: Path, config: Any) -> list[Finding]:
         )
     return findings
 
+# --- engine/checks/check_skill_grounds.py ---
+"""check_skill_grounds — skill-body command-grounding advisory (slice 2, plan §7.2).
+
+Why + provenance: the grounded-skills program's slice-2 accept criterion is
+"each body names only commands that exist" — and the slice-1 session card's
+💡 idea (`.sessions/2026-07-12-grounded-skills-slice1-index.md`) rules that
+this ships as a CHECKER, not a review habit ("enforce, don't exhort"): a
+grammar-level scan that extracts backticked command spans from skill bodies
+plus the structured ``grounds`` lists and verifies each names something that
+resolves — a whitelisted executable, a file in the target tree, or a path
+the kit itself plants/ships. Added 2026-07-12 (grounded-skills slice 2,
+§8 Q2=B advisory-first). Reliability (PL-008): UNVERIFIED — confirm its
+findings against ground truth a few times across sessions before trusting
+it; **delete this if it proves unreliable over multiple sessions.**
+
+Posture is **advisory-only, never exit-affecting** (§8 Q2=B: no CI-red until
+proven; graduation is a later, deliberate step) — the same nudge-never-door
+contract as ``check_claims`` / ``check_capability_xref``. Detection is
+deliberately coarse: backticked spans are prose as often as commands, so a
+span is only *judged* when its first token is command- or path-shaped;
+everything ambiguous fails open (no verdict). A false nudge costs one
+glance; a skill that tells every future session to run a command that does
+not exist costs every session an improvisation.
+
+What it scans:
+
+- The kit-truth :data:`engine.skills.skills.SKILLS` list — every body's
+  backticked spans and every ``grounds`` entry (the self-check that travels
+  with the kit).
+- The target's installed/staged skill documents (``.claude/skills/*/
+  SKILL.md`` and ``<state_dir>/skills/*/SKILL.md``) when present — the
+  RENDERED bodies, so a host-edited or host-added skill gets the same scan.
+
+Skip rules (fail-open classes, in order): a span carrying an unfilled
+``${slot}`` (rendered per-project — the raw body cannot know the value);
+a span carrying non-ASCII characters (``·``/``→``/``✔`` mark report-format
+prose, never commands);
+a first token that is not identifier/path-shaped (prose, ``<placeholders>``,
+``[brackets]``, flags, globs); a token ending ``/`` (directory prose); a
+token under the state dir (runtime artifacts, not committed files); a single
+bare word with no path shape (``complete``, ``in-progress`` — status tokens,
+not commands). Pure stdlib; no ``subprocess`` (§3.2) — resolution is
+existence checks, never execution.
+"""
+
+
+
+
+# One backticked inline span (commands never span lines in skill bodies —
+# a grounds-matching invariant the skills tests pin).
+_SPAN_RE = re.compile(r"`([^`\n]+)`")
+
+# A judgeable first token: identifier/path-shaped. Anything else (``>``,
+# ``[Unreleased]``, ``<repo>:``, ``<!--``, unicode prose) is skipped as prose.
+_FIRST_TOKEN_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.\-/]*$")
+
+# A real file extension (lowercase — ``vX.Y.Z`` version placeholders end in
+# uppercase pseudo-extensions and must stay prose).
+_EXT_RE = re.compile(r"\.[a-z0-9]{1,5}$")
+
+# Executables a skill body may legitimately invoke without the target repo
+# proving anything: VCS/CI/toolchain entry points, plus the MCP tool verbs
+# the landing-path doctrine names (gh-mcp). Deliberately generous — this is
+# an advisory scan of prose, and an unknown-but-real tool must fail open at
+# the "bare word" rule rather than nag every adopter.
+_EXECUTABLES = frozenset(
+    {
+        "git",
+        "gh",
+        "python",
+        "python3",
+        "python3.10",
+        "python3.11",
+        "python3.12",
+        "pip",
+        "pip3",
+        "pytest",
+        "ruff",
+        "black",
+        "isort",
+        "mypy",
+        "npm",
+        "npx",
+        "node",
+        "yarn",
+        "make",
+        "cargo",
+        "go",
+        "sha256sum",
+        "shasum",
+        "curl",
+        "wget",
+        "bash",
+        "sh",
+        "ls",
+        "grep",
+        "rg",
+        "bootstrap",  # the vendored entry point's shorthand spelling
+        # gh-mcp / trigger-MCP verbs (tool calls, not shell commands)
+        "create_pull_request",
+        "update_pull_request",
+        "list_pull_requests",
+        "merge_pull_request",
+        "enable_pr_auto_merge",
+        "get_file_contents",
+        "create_trigger",
+        "delete_trigger",
+        "list_triggers",
+        "fire_trigger",
+        "send_later",
+    }
+)
+
+# Paths that are grounded by construction even when absent from the target
+# tree: the kit's own release/distribution artifacts (the ``release`` and
+# ``upgrade-distribution`` runbooks name kit-repo files and transient wave
+# files that no adopter tree carries) plus the vendored-dist names the
+# consumer flow uses. ADOPT_PLAN destinations join this set below — a path
+# the kit plants is grounded wherever the kit is adopted.
+_KIT_SHIPPED_PATHS = frozenset(
+    {
+        "bootstrap.py",
+        "bootstrap.py.new",
+        "bootstrap.py.sha256",
+        "release.json",
+        "dist/bootstrap.py",
+        "src/build_bootstrap.py",
+        "src/build_release_json.py",
+        "src/engine/lib/config.py",
+        "pyproject.toml",
+        "CHANGELOG.md",
+        ".github/workflows/release.yml",
+        "docs/adopters.md",
+        "docs/operations/release-runbook.md",
+        "docs/SKILLS.md",
+    }
+)
+
+_KNOWN_PATHS = _KIT_SHIPPED_PATHS | {dest for _tmpl, dest in ADOPT_PLAN}
+
+
+def _unresolved(span: str, target: Path, state_dir: str) -> bool:
+    """True when ``span``'s first token is command/path-shaped and resolves nowhere.
+
+    Every ambiguous shape returns False (fail open — no verdict); see the
+    module docstring's skip-rule ladder.
+    """
+    if "${" in span:
+        return False  # slot-bearing — rendered per project, not judgeable raw
+    if any(ord(ch) > 127 for ch in span):
+        return False  # commands are ASCII; ·/→/✔ mark report-format prose
+    tokens = span.split()
+    if not tokens:
+        return False
+    first = tokens[0]
+    if not _FIRST_TOKEN_RE.match(first):
+        return False  # prose / placeholder / flag / bracket shapes
+    if first.endswith("/") or first.startswith(f"{state_dir}/"):
+        return False  # directory prose; runtime state artifacts
+    if first in _EXECUTABLES or first in _KNOWN_PATHS:
+        return False
+    if (target / first).exists():
+        return False
+    path_shaped = "/" in first or _EXT_RE.search(first) is not None
+    if path_shaped:
+        return True  # names a concrete file that is nowhere
+    # Bare word: with arguments it reads as a command whose executable is
+    # unknown (the fake-command class); alone it is a prose token.
+    return len(tokens) > 1
+
+
+def _spans(body: str) -> list[str]:
+    """Return the backticked inline spans of ``body``, in order."""
+    return _SPAN_RE.findall(body)
+
+
+def _skill_doc_paths(target: Path, state_dir: str) -> list[Path]:
+    """Return the target's installed + staged skill documents (may be empty)."""
+    paths: list[Path] = []
+    for root in (target / ".claude" / "skills", target / state_dir / "skills"):
+        if root.is_dir():
+            paths.extend(sorted(root.glob("*/SKILL.md")))
+    return paths
+
+
+def check_skill_grounds(
+    target: Path,
+    *,
+    skills: list[dict] | None = None,
+    state_dir: str = ".substrate",
+) -> list[Finding]:
+    """Return advisory ``skill-ground-unresolved`` findings for ``target``.
+
+    Scans the kit-truth skill set (``skills`` defaults to :data:`SKILLS`) —
+    bodies + ``grounds`` — and any rendered skill documents installed in the
+    target. Advisory by contract: callers must NEVER count these findings
+    toward an exit code (§8 Q2=B — see module docstring). Fail-open on
+    unreadable files and on every ambiguous span shape.
+    """
+    skill_set = SKILLS if skills is None else skills
+    findings: list[Finding] = []
+    for skill in skill_set:
+        rel = f"skills/{skill['name']}/SKILL.md"
+        for span in _spans(skill.get("body", "")):
+            if _unresolved(span, target, state_dir):
+                findings.append(
+                    Finding(
+                        rel,
+                        "skill-ground-unresolved",
+                        f"body names `{span}` but its first token resolves to "
+                        "no whitelisted executable, target file, or "
+                        "kit-shipped path — a session following this skill "
+                        "would improvise; fix the body (or the grounds "
+                        "whitelist) this session.",
+                    ),
+                )
+        for ground in skill.get("grounds", []):
+            if _unresolved(ground, target, state_dir):
+                findings.append(
+                    Finding(
+                        rel,
+                        "skill-ground-unresolved",
+                        f"grounds entry `{ground}` resolves to no whitelisted "
+                        "executable, target file, or kit-shipped path — "
+                        "grounds are the skill's exact-command truth; an "
+                        "unresolvable ground is drift.",
+                    ),
+                )
+    for doc in _skill_doc_paths(target, state_dir):
+        try:
+            text = doc.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue  # fail open — an unreadable file is not a verdict
+        rel = str(doc.relative_to(target)) if doc.is_relative_to(target) else str(doc)
+        for span in _spans(text):
+            if _unresolved(span, target, state_dir):
+                findings.append(
+                    Finding(
+                        rel,
+                        "skill-ground-unresolved",
+                        f"rendered skill names `{span}` but its first token "
+                        "resolves to no whitelisted executable, target file, "
+                        "or kit-shipped path — verify the command before a "
+                        "session inherits it.",
+                    ),
+                )
+    return findings
+
 # --- engine/currency.py ---
 """Fleet kit-currency scanner — tree truth vs self-report, per adopter repo.
 
@@ -13960,6 +14491,13 @@ def cmd_check(
     # migrates by nag, never a required-check red. Full lane only: the hook
     # is not control-lane traffic (emitted below with the adopters block).
     setup_advisories = check_setup_script(target)
+    # Skill command-grounding scan (grounded-skills slice 2, §8 Q2=B):
+    # advisory-only by contract, like every nudge above — a skill body /
+    # grounds entry / rendered SKILL.md naming a command that resolves
+    # nowhere is a drift nudge for the session, never a required-check red
+    # (UNVERIFIED per its provenance header; graduation is a later,
+    # deliberate step). Full lane only: skills are not control-lane traffic.
+    grounds_advisories = check_skill_grounds(target, state_dir=config.state_dir)
     # The inbox append-only gate (issue #36 report 2): a control/inbox.md
     # change must be pure-append vs the merge-base + ORDER-grammar shaped.
     # Rides the finding loop like every checker; engages only when CI handed
@@ -14202,6 +14740,26 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=setup_advisories,
+        )
+    if grounds_advisories and not status_only:
+        # Same warn-only contract as the advisories above (grounded-skills
+        # slice 2, §8 Q2=B advisory-first): an unresolvable skill command is
+        # surfaced + telemetry-recorded, never counted toward the exit code
+        # — the checker is UNVERIFIED (PL-008 header) and a coarse prose
+        # scan can never be a verdict.
+        _emit(
+            f"check: {len(grounds_advisories)} skill-grounds advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in grounds_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=grounds_advisories,
         )
     if adopters_advisories and not status_only:
         # Same warn-only contract as the advisories above (EAP §6.3): a

@@ -57,6 +57,7 @@ from engine.checks.check_session_log import (
     status_in_progress,
 )
 from engine.checks.check_setup_script import check_setup_script
+from engine.checks.check_skill_grounds import check_skill_grounds
 from engine.contextpack import generate_packs, load_pack_index
 from engine.currency import (
     ADOPTERS_RELPATH,
@@ -795,6 +796,13 @@ def cmd_check(
     # migrates by nag, never a required-check red. Full lane only: the hook
     # is not control-lane traffic (emitted below with the adopters block).
     setup_advisories = check_setup_script(target)
+    # Skill command-grounding scan (grounded-skills slice 2, §8 Q2=B):
+    # advisory-only by contract, like every nudge above — a skill body /
+    # grounds entry / rendered SKILL.md naming a command that resolves
+    # nowhere is a drift nudge for the session, never a required-check red
+    # (UNVERIFIED per its provenance header; graduation is a later,
+    # deliberate step). Full lane only: skills are not control-lane traffic.
+    grounds_advisories = check_skill_grounds(target, state_dir=config.state_dir)
     # The inbox append-only gate (issue #36 report 2): a control/inbox.md
     # change must be pure-append vs the merge-base + ORDER-grammar shaped.
     # Rides the finding loop like every checker; engages only when CI handed
@@ -1037,6 +1045,26 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=setup_advisories,
+        )
+    if grounds_advisories and not status_only:
+        # Same warn-only contract as the advisories above (grounded-skills
+        # slice 2, §8 Q2=B advisory-first): an unresolvable skill command is
+        # surfaced + telemetry-recorded, never counted toward the exit code
+        # — the checker is UNVERIFIED (PL-008 header) and a coarse prose
+        # scan can never be a verdict.
+        _emit(
+            f"check: {len(grounds_advisories)} skill-grounds advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in grounds_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=grounds_advisories,
         )
     if adopters_advisories and not status_only:
         # Same warn-only contract as the advisories above (EAP §6.3): a

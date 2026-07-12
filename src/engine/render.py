@@ -118,7 +118,13 @@ def build_context(state: dict[str, Any]) -> dict[str, str]:
     values = state.get("slot_values", {})
     context = {slot: str(entry.get("value", "")) for slot, entry in values.items()}
     context.setdefault("kit_version", KIT_VERSION)
-    context.setdefault("skills_index", skills_index_table())
+    # The slot context is passed INTO the table (slice 2): grounds-column
+    # slot references (e.g. a ``${verify_command}`` ground) fill from the
+    # project's own answers; render() cannot fill them later because the
+    # table is itself a substitution VALUE — re.sub never rescans
+    # replacements, so anything unfilled here would strand as literal
+    # ``${...}`` and re-banner the planted index (skills._ground_cell docs).
+    context.setdefault("skills_index", skills_index_table(context))
     return context
 
 
