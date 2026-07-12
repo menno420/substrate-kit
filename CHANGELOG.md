@@ -15,15 +15,53 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
-Grounded-skills slice 2 (PR #265): playbook-grade skill bodies —
-`session-close` upgraded to the full landing-path playbook, new
-`upgrade-distribution` (distribution-wave runbook) and `release` (cut
-runbook) skills, all with exact command groundings; a structured per-skill
-`grounds` field surfaced as a new Grounds column in the generated
-`docs/SKILLS.md` index (slot refs display filled or as `<slot>`, never raw
-`${...}`); and the advisory `check_skill_grounds` checker (backticked
-command spans + grounds entries must resolve; never exit-affecting, §8
-Q2=B). Suite 1065 -> 1086.
+## [1.13.0] - 2026-07-12
+
+Capability release (MINOR) shipping the grounded-skills program slices 1–2
+(a new planted template, a new advisory checker, playbook-grade skill
+bodies) plus the ORDER 015 dead-boot-pointer template fix. MINOR per the
+header's contract: new capability (new template `docs/SKILLS.md`, new
+checker `check_skill_grounds`) plus fixes — no planted-doc, state schema,
+config schema, or CLI contract breaks; adopters inherit everything on
+`upgrade`. The grounded-skills program supersedes the 2026-07-11 template
+freeze (owner directive 2026-07-12 via coordinator; plan §8 Q4=A default,
+flagged).
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+### Added
+
+- Grounded-skills slice 1 (PR #264): generated `docs/SKILLS.md` skill
+  index, rendered from the single `SKILLS` source
+  (`skills_index_table()`, new engine context key `skills_index` injected
+  unconditionally in `build_context`), planted at adopt via one
+  `ADOPT_PLAN` tuple (hash-recorded; upgrade classifies missing →
+  replanted), and wired into the boot set (AGENT_ORIENTATION planted-doc
+  list + router line, CONSTITUTION working-agreement bullet, CLAUDE.md
+  orientation routing). Suite 1060 -> 1065.
+
+- Grounded-skills slice 2 (PR #265): playbook-grade skill bodies —
+  `session-close` upgraded to the full landing-path playbook, new
+  `upgrade-distribution` (distribution-wave runbook) and `release` (cut
+  runbook) skills, all with exact command groundings; a structured per-skill
+  `grounds` field surfaced as a new Grounds column in the generated
+  `docs/SKILLS.md` index (slot refs display filled or as `<slot>`, never raw
+  `${...}`); and the advisory `check_skill_grounds` checker (backticked
+  command spans + grounds entries must resolve; never exit-affecting, §8
+  Q2=B). Suite 1065 -> 1086.
+
+### Fixed
+
+- ORDER 015 dead boot pointer (PR #261): the planted
+  `docs/AGENT_ORIENTATION.md` hardcoded its boot pointer to
+  `.claude/CLAUDE.md`, a file the default adopt deliberately only STAGES —
+  a dead boot pointer verified live in 3/3 adopters. The pointer is now
+  the engine-computed `agreement_home` slot (`.claude/CLAUDE.md` when live
+  or opted-in via `include_claude`, else the always-planted root
+  `CONSTITUTION.md`), injected at adopt, upgrade doc-diff classification,
+  and render staging — logic in one home
+  (`engine.render.agreement_home`), with regression tests for both adopt
+  modes.
 
 ## [1.12.1] - 2026-07-11
 
