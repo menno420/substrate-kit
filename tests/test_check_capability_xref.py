@@ -273,3 +273,250 @@ def test_verified_when_shorthand_also_parses(tmp_path):
     findings = check_capability_xref(tmp_path)
     assert [f.kind for f in findings] == ["owner-ask-wall-unrecorded"]
     assert "OWNER-ACTION 3" in findings[0].message
+
+
+# ---------------------------------------------------------------------------
+# Slice-5 extensions (§4.2d): append-log grammar + staleness advisories
+# ---------------------------------------------------------------------------
+
+from datetime import date
+
+from engine import grammar
+
+TODAY = date(2026, 7, 12)
+
+
+class _Cfg:
+    """Duck-typed config carrier for the checker's config parameter."""
+
+    def __init__(self, cadence=None, sessions_dir=".sessions"):
+        self.cadence = cadence if cadence is not None else {"staleness_days": 14}
+        self.sessions_dir = sessions_dir
+
+
+def test_venue_scoped_wall_entry_feeds_the_wall_side(tmp_path):
+    # WATCH-item pin: _ledger_sides reads the tag at fields[1] — the NEW
+    # venue token at field 2 must not break tag-side attribution. A
+    # venue-scoped wall entry still closes the xref loop.
+    log = (
+        "- 2026-07-10 · wall · routine-fired · api.github.com direct HTTP\n"
+        "  403-blocked through the proxy; rulesets unreachable · exact error\n"
+        "  captured · workaround: MCP tools only.\n"
+    )
+    _write(tmp_path, STATUS_RELPATH, _status(RULESET_ASK))
+    _write(tmp_path, CAPABILITIES_RELPATH, _ledger(log=log))
+    assert check_capability_xref(tmp_path) == []
+
+
+def test_new_format_venue_line_is_grammar_clean(tmp_path):
+    _write(tmp_path, STATUS_RELPATH, _status(""))
+    _write(
+        tmp_path,
+        CAPABILITIES_RELPATH,
+        _ledger(log=grammar.capability_log_line_example()),
+    )
+    assert check_capability_xref(tmp_path) == []
+
+
+def test_old_five_field_line_is_never_flagged(tmp_path):
+    # Backward compatibility is a hard contract: a pre-venue line must not
+    # become advisory noise.
+    _write(tmp_path, STATUS_RELPATH, _status(""))
+    _write(
+        tmp_path,
+        CAPABILITIES_RELPATH,
+        _ledger(log=grammar.capability_log_line_example(venue=None)),
+    )
+    assert check_capability_xref(tmp_path) == []
+
+
+def test_unknown_venue_token_flags(tmp_path):
+    log = (
+        "- 2026-07-10 · wall · owner-lave · tag push refused · 403 ·\n"
+        "  use workflow_dispatch.\n"
+    )
+    _write(tmp_path, STATUS_RELPATH, _status(""))
+    _write(tmp_path, CAPABILITIES_RELPATH, _ledger(log=log))
+    findings = check_capability_xref(tmp_path)
+    assert [f.kind for f in findings] == ["capability-log-venue-unknown"]
+    assert "owner-lave" in findings[0].message
+    assert "any" in findings[0].message  # the message lists the valid tokens
+
+
+def test_undated_log_bullet_flags_malformed(tmp_path):
+    log = "- wall · tag push refused · 403 · use workflow_dispatch.\n"
+    _write(tmp_path, STATUS_RELPATH, _status(""))
+    _write(tmp_path, CAPABILITIES_RELPATH, _ledger(log=log))
+    findings = check_capability_xref(tmp_path)
+    assert [f.kind for f in findings] == ["capability-log-malformed"]
+    assert grammar.CAPABILITY_LOG_TAUGHT_FORMAT in findings[0].message
+
+
+def test_untagged_log_entry_flags_malformed(tmp_path):
+    log = "- 2026-07-10 · note · something happened · evidence · none.\n"
+    _write(tmp_path, STATUS_RELPATH, _status(""))
+    _write(tmp_path, CAPABILITIES_RELPATH, _ledger(log=log))
+    findings = check_capability_xref(tmp_path)
+    assert [f.kind for f in findings] == ["capability-log-malformed"]
+    assert "capability" in findings[0].message and "wall" in findings[0].message
+
+
+def test_grammar_scan_is_scoped_to_the_append_log_section(tmp_path):
+    # Walls-section bullets are seed rows, not append entries — never judged.
+    _write(tmp_path, STATUS_RELPATH, _status(""))
+    _write(
+        tmp_path,
+        CAPABILITIES_RELPATH,
+        _ledger(walls="- **Branch deletion**: refused everywhere.\n"),
+    )
+    assert check_capability_xref(tmp_path) == []
+
+
+def _card(tmp_path, text, name="2026-07-12-current-session.md"):
+    return _write(tmp_path, f".sessions/{name}", text)
+
+
+def test_stale_cited_entry_flags(tmp_path):
+    log = (
+        "- 2026-06-01 · wall · any · tag push via git refused everywhere ·\n"
+        "  HTTP 403 from the git proxy · use the workflow_dispatch release\n"
+        "  path.\n"
+    )
+    _write(tmp_path, STATUS_RELPATH, _status(""))
+    _write(tmp_path, CAPABILITIES_RELPATH, _ledger(log=log))
+    _card(
+        tmp_path,
+        "# card\nRelying on the tag push wall: the git proxy 403 means the\n"
+        "workflow_dispatch release path is the plan.\n",
+    )
+    findings = check_capability_xref(tmp_path, config=_Cfg(), today=TODAY)
+    assert [f.kind for f in findings] == ["capability-entry-stale"]
+    assert "2026-06-01" in findings[0].message
+    assert "DISCOVERY RULE step 5" in findings[0].message
+
+
+def test_fresh_cited_entry_is_clean(tmp_path):
+    log = (
+        "- 2026-07-10 · wall · any · tag push via git refused everywhere ·\n"
+        "  HTTP 403 from the git proxy · use the workflow_dispatch release\n"
+        "  path.\n"
+    )
+    _write(tmp_path, STATUS_RELPATH, _status(""))
+    _write(tmp_path, CAPABILITIES_RELPATH, _ledger(log=log))
+    _card(
+        tmp_path,
+        "# card\nRelying on the tag push wall: the git proxy 403 means the\n"
+        "workflow_dispatch release path is the plan.\n",
+    )
+    assert check_capability_xref(tmp_path, config=_Cfg(), today=TODAY) == []
+
+
+def test_stale_uncited_entry_is_clean(tmp_path):
+    # Aging alone never nags — only an aged entry the current card leans on.
+    log = (
+        "- 2026-06-01 · wall · any · tag push via git refused everywhere ·\n"
+        "  HTTP 403 from the git proxy · use the workflow_dispatch release\n"
+        "  path.\n"
+    )
+    _write(tmp_path, STATUS_RELPATH, _status(""))
+    _write(tmp_path, CAPABILITIES_RELPATH, _ledger(log=log))
+    _card(tmp_path, "# card\nEntirely unrelated docs work this session.\n")
+    assert check_capability_xref(tmp_path, config=_Cfg(), today=TODAY) == []
+
+
+def test_stale_scan_reads_last_verified_seed_stamps(tmp_path):
+    walls = (
+        "- `any` · **Tag push via git**: refused everywhere — HTTP 403 from\n"
+        "  the git proxy → use the workflow_dispatch release path.\n"
+        "  — LAST-VERIFIED: 2026-06-01\n"
+    )
+    _write(tmp_path, STATUS_RELPATH, _status(""))
+    _write(tmp_path, CAPABILITIES_RELPATH, _ledger(walls=walls))
+    _card(
+        tmp_path,
+        "# card\nRelying on the tag push wall: the git proxy 403 means the\n"
+        "workflow_dispatch release path is the plan.\n",
+    )
+    findings = check_capability_xref(tmp_path, config=_Cfg(), today=TODAY)
+    assert [f.kind for f in findings] == ["capability-entry-stale"]
+
+
+def test_staleness_window_honors_the_config_knob(tmp_path):
+    log = (
+        "- 2026-06-20 · wall · any · tag push via git refused everywhere ·\n"
+        "  HTTP 403 from the git proxy · use the workflow_dispatch release\n"
+        "  path.\n"
+    )
+    _write(tmp_path, STATUS_RELPATH, _status(""))
+    _write(tmp_path, CAPABILITIES_RELPATH, _ledger(log=log))
+    _card(
+        tmp_path,
+        "# card\nRelying on the tag push wall: the git proxy 403 means the\n"
+        "workflow_dispatch release path is the plan.\n",
+    )
+    # 22 days old: stale under the default 14 — clean under a 30-day window.
+    wide = _Cfg(cadence={"staleness_days": 30})
+    assert check_capability_xref(tmp_path, config=wide, today=TODAY) == []
+    narrow = _Cfg(cadence={"staleness_days": 14})
+    findings = check_capability_xref(tmp_path, config=narrow, today=TODAY)
+    assert [f.kind for f in findings] == ["capability-entry-stale"]
+
+
+def test_staleness_days_defaults_when_missing_from_cadence(tmp_path):
+    # The triggers.py:100 house pattern: default-on-missing, never a KeyError.
+    log = (
+        "- 2026-06-01 · wall · any · tag push via git refused everywhere ·\n"
+        "  HTTP 403 from the git proxy · use the workflow_dispatch release\n"
+        "  path.\n"
+    )
+    _write(tmp_path, STATUS_RELPATH, _status(""))
+    _write(tmp_path, CAPABILITIES_RELPATH, _ledger(log=log))
+    _card(
+        tmp_path,
+        "# card\nRelying on the tag push wall: the git proxy 403 means the\n"
+        "workflow_dispatch release path is the plan.\n",
+    )
+    findings = check_capability_xref(
+        tmp_path, config=_Cfg(cadence={}), today=TODAY
+    )
+    assert [f.kind for f in findings] == ["capability-entry-stale"]
+
+
+def test_no_session_card_no_staleness_verdict(tmp_path):
+    log = (
+        "- 2026-06-01 · wall · any · tag push via git refused everywhere ·\n"
+        "  HTTP 403 from the git proxy · use the workflow_dispatch release\n"
+        "  path.\n"
+    )
+    _write(tmp_path, STATUS_RELPATH, _status(""))
+    _write(tmp_path, CAPABILITIES_RELPATH, _ledger(log=log))
+    assert check_capability_xref(tmp_path, config=_Cfg(), today=TODAY) == []
+
+
+def test_cmd_check_strict_stays_green_on_slice5_advisories(tmp_path, capsys):
+    # Advisory by contract (§8 Q2=B): the new kinds are surfaced but never
+    # exit-affecting, on both lanes.
+    log = (
+        "- 2026-07-10 · wall · owner-lave · tag push refused · 403 ·\n"
+        "  use workflow_dispatch.\n"
+    )
+    _write(tmp_path, STATUS_RELPATH, _status(""))
+    _write(tmp_path, CAPABILITIES_RELPATH, _ledger(log=log))
+    assert cmd_check(tmp_path, strict=True, status_only=True) == 0
+    out = capsys.readouterr().out
+    assert "capability-log-venue-unknown" in out
+    assert "never exit-affecting" in out
+
+
+def test_rendered_template_ledger_is_grammar_clean(tmp_path):
+    # Dogfood: a fresh adopt's planted ledger (venue-scoped seeds, fence,
+    # LAST-VERIFIED stamps, taught format line) yields zero slice-5 findings.
+    from engine.render import load_templates, render
+
+    rendered = render(
+        load_templates()["CAPABILITIES.md.tmpl"],
+        {"project_name": "demo"},
+    )
+    _write(tmp_path, STATUS_RELPATH, _status(""))
+    _write(tmp_path, CAPABILITIES_RELPATH, rendered)
+    assert check_capability_xref(tmp_path, config=_Cfg(), today=TODAY) == []

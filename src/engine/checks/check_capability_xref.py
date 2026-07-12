@@ -41,19 +41,53 @@ Input-gated on the ``control/`` protocol and per heartbeat file, like
 every control-band checker. Pure stdlib — no ``subprocess`` (§3.2); it
 only reads the heartbeat files the fast lane already validates plus the
 planted capability ledger. Unreadable files fail open (no verdict).
+
+**Slice-5 extensions (grounded-skills plan §4.2d, added 2026-07-12;
+§8 Q2=B advisory-first).** Two more advisory families, extending this
+checker IN PLACE (the twice-proven pattern — slice 2 check_skill_grounds,
+slice 4 check_owner_actions):
+
+- **Append-log grammar** (the writer half is the planted template; both
+  consume ``engine.grammar``'s capability-ledger constants):
+  ``capability-log-malformed`` — an append-log bullet that does not open
+  ``- YYYY-MM-DD · capability|wall · …``; ``capability-log-venue-unknown``
+  — a venue-shaped field-3 token that is not one of the grammar's venue
+  tokens. BACKWARD-COMPATIBLE by contract: an old five-field line without
+  a venue token is read as venue ``any`` and NEVER flagged.
+- **Staleness** (§4.2b): ``capability-entry-stale`` — a dated ledger entry
+  (append-log line, or a seed row's ``LAST-VERIFIED:`` stamp) older than
+  the config's ``cadence.staleness_days`` (default 14) whose surface the
+  NEWEST session card cites — a claim, not a fact; re-verify with one
+  cheap attempt and APPEND the result (THE DISCOVERY RULE step 5).
+
+Reliability of the slice-5 checks (PL-008): UNVERIFIED — confirm their
+findings against ground truth a few times across sessions before trusting
+them; **delete these checks if they prove unreliable over multiple
+sessions.** They are advisory-only by the same contract as the original
+xref and must never count toward an exit code.
 """
 
 from __future__ import annotations
 
 import re
 from collections.abc import Sequence
+from datetime import date, datetime
 from pathlib import Path
+from typing import Any
 
 from engine.checks.check_docs import Finding
 from engine.checks.check_status_current import (
     CONTROL_README_RELPATH,
     INBOX_RELPATH,
     heartbeat_relpaths,
+)
+from engine.grammar import (
+    CAPABILITY_ENTRY_TAGS,
+    CAPABILITY_LAST_VERIFIED_RE,
+    CAPABILITY_LOG_LINE_RE,
+    CAPABILITY_LOG_TAUGHT_FORMAT,
+    CAPABILITY_VENUE_SHAPE_RE,
+    CAPABILITY_VENUE_TOKENS,
 )
 
 # Where adopt plants the capability ledger (src/engine/adopt.py PLANTED_DOCS:
@@ -241,11 +275,193 @@ def _ledger_sides(text: str) -> tuple[set[str], set[str]]:
     return _tokens("\n".join(wall_parts)), _tokens("\n".join(cap_parts))
 
 
+def _log_grammar_findings(rel: str, text: str) -> list[Finding]:
+    """Grammar-check the ledger's append-log bullets (slice 5, advisory).
+
+    Old-format compatibility is a hard contract: a five-field line without a
+    venue token parses clean (field 3 carries spaces → an old-format finding,
+    never judged as a venue). Only a venue-SHAPED field-3 token outside the
+    grammar's venue set flags, and only date/tag misses flag as malformed.
+    Continuation lines (indented wraps) are skipped like ``_ledger_sides``
+    skips nothing — they never start ``- ``.
+    """
+    findings: list[Finding] = []
+    in_log = False
+    for line in text.splitlines():
+        if line.startswith("## "):
+            in_log = "append log" in line.lower()
+            continue
+        if not in_log or not line.startswith("- "):
+            continue
+        match = CAPABILITY_LOG_LINE_RE.match(line)
+        if not match:
+            findings.append(
+                Finding(
+                    rel,
+                    "capability-log-malformed",
+                    "append-log entry does not open `- YYYY-MM-DD · "
+                    "capability|wall · …` — the taught grammar is "
+                    f"`{CAPABILITY_LOG_TAUGHT_FORMAT}` "
+                    "(src/engine/grammar.py); date the entry so the "
+                    f"staleness rule can read it: {line[:60]!r}",
+                ),
+            )
+            continue
+        fields = [f.strip() for f in line.split("·")]
+        tag = fields[1].lower() if len(fields) > 1 else ""
+        if not any(t in tag for t in CAPABILITY_ENTRY_TAGS):
+            findings.append(
+                Finding(
+                    rel,
+                    "capability-log-malformed",
+                    "append-log entry's second field names neither "
+                    "`capability` nor `wall` — the ledger's two sides key on "
+                    f"that tag ({CAPABILITY_LOG_TAUGHT_FORMAT}): "
+                    f"{line[:60]!r}",
+                ),
+            )
+            continue
+        if len(fields) > 2:
+            candidate = fields[2]
+            if (
+                CAPABILITY_VENUE_SHAPE_RE.match(candidate)
+                and candidate not in CAPABILITY_VENUE_TOKENS
+            ):
+                findings.append(
+                    Finding(
+                        rel,
+                        "capability-log-venue-unknown",
+                        f"append-log entry names venue {candidate!r}, which "
+                        "is not a grammar venue token "
+                        f"({' · '.join(CAPABILITY_VENUE_TOKENS)}) — fix the "
+                        "token, or drop the field to write the legacy "
+                        "five-field form (read as venue `any`).",
+                    ),
+                )
+    return findings
+
+
+def _dated_entries(text: str) -> list[tuple[date, str]]:
+    """Return ``(date, entry_text)`` per dated ledger bullet.
+
+    Two dated shapes exist: append-log bullets (leading ISO date) and seed
+    rows carrying a ``LAST-VERIFIED: YYYY-MM-DD`` stamp (§4.2b). A bullet's
+    indented continuation lines belong to it — the distinctive tokens the
+    citation scan matches usually live there. Unparseable dates are skipped
+    (fail open — a malformed date is the grammar check's finding, never
+    fabricated staleness).
+    """
+    entries: list[tuple[date, str]] = []
+
+    def flush(bullet: list[str]) -> None:
+        if not bullet:
+            return
+        block = "\n".join(bullet)
+        match = CAPABILITY_LOG_LINE_RE.match(bullet[0])
+        if match is not None:
+            stamp = match.group(1)
+        else:
+            verified = CAPABILITY_LAST_VERIFIED_RE.search(block)
+            if verified is None:
+                return
+            stamp = verified.group(1)
+        try:
+            entry_date = datetime.strptime(stamp, "%Y-%m-%d").date()
+        except ValueError:
+            return
+        entries.append((entry_date, block))
+
+    bullet: list[str] = []
+    for line in text.splitlines():
+        if line.startswith("- "):
+            flush(bullet)
+            bullet = [line]
+        elif bullet and line.strip() and line[:1] in (" ", "\t"):
+            bullet.append(line)  # indented continuation of the bullet above
+        else:
+            flush(bullet)
+            bullet = []
+    flush(bullet)
+    return entries
+
+
+def _newest_session_card(target: Path, sessions_dir: str) -> tuple[str, str] | None:
+    """Return ``(relpath, text)`` of the newest date-named session card.
+
+    Newest by FILENAME (cards are ``YYYY-MM-DD-<slug>.md``, so lexicographic
+    order is date order) — never by mtime, which a fresh CI checkout
+    flattens. ``None`` when no card exists or the newest is unreadable
+    (fail open).
+    """
+    root = target / sessions_dir
+    if not root.is_dir():
+        return None
+    cards = sorted(
+        p for p in root.glob("*.md") if re.match(r"20\d{2}-\d{2}-\d{2}", p.name)
+    )
+    if not cards:
+        return None
+    newest = cards[-1]
+    try:
+        text = newest.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+    rel = (
+        str(newest.relative_to(target))
+        if newest.is_relative_to(target)
+        else str(newest)
+    )
+    return rel, text
+
+
+def _stale_citation_findings(
+    ledger_rel: str,
+    ledger_text: str,
+    card: tuple[str, str] | None,
+    staleness_days: int,
+    today: date,
+) -> list[Finding]:
+    """Flag stale ledger entries the newest session card cites (§4.2d ii).
+
+    Coarse by the module's own contract: "cites" is distinctive-token
+    overlap between the entry and the card (the same ``_anchors`` machinery
+    as the OWNER-ACTION xref), so a false nudge costs one glance. No card,
+    no dated entries, or nothing distinctive → no verdict.
+    """
+    if card is None:
+        return []
+    card_rel, card_text = card
+    card_tokens = _tokens(card_text)
+    findings: list[Finding] = []
+    for entry_date, entry_text in _dated_entries(ledger_text):
+        if (today - entry_date).days <= staleness_days:
+            continue
+        anchors = _anchors(entry_text)
+        if not anchors:
+            continue
+        if len(anchors & card_tokens) >= min(2, len(anchors)):
+            findings.append(
+                Finding(
+                    ledger_rel,
+                    "capability-entry-stale",
+                    f"ledger entry dated {entry_date.isoformat()} is older "
+                    f"than the staleness window ({staleness_days}d) and "
+                    f"{card_rel} cites its surface — an aged entry is a "
+                    "claim, not a fact (THE DISCOVERY RULE step 5): "
+                    "re-verify with one cheap attempt and APPEND the "
+                    "result (re-verifications append, never edit).",
+                ),
+            )
+    return findings
+
+
 def check_capability_xref(
     target: Path,
     *,
     status_files: Sequence[str] | None = None,
     capabilities_relpath: str = CAPABILITIES_RELPATH,
+    config: Any = None,
+    today: date | None = None,
 ) -> list[Finding]:
     """Return advisory findings cross-referencing owner asks vs the ledger.
 
@@ -254,6 +470,16 @@ def check_capability_xref(
     ledger's Walls/Capabilities sides. Emits ``owner-ask-wall-unrecorded``
     when the wall is nowhere in the ledger (or the ledger is absent), and
     ``owner-ask-capability-resolved`` when only the capability side matches.
+
+    Slice-5 extensions (see module docstring): the ledger's append-log lines
+    are grammar-checked against ``engine.grammar``'s capability constants
+    (``capability-log-malformed`` / ``capability-log-venue-unknown``; old
+    five-field lines are never flagged), and dated entries older than
+    ``config.cadence['staleness_days']`` (default 14, the triggers.py
+    default-on-missing pattern) that the newest session card in
+    ``config.sessions_dir`` cites emit ``capability-entry-stale``. ``today``
+    is injectable for tests.
+
     Advisory by contract — callers must never count these toward an exit
     code (see module docstring). Empty when the ``control/`` protocol is
     absent; fail-open on unreadable files and anchor-less asks.
@@ -275,6 +501,21 @@ def check_capability_xref(
     )
 
     findings: list[Finding] = []
+    if ledger_text is not None:
+        findings += _log_grammar_findings(capabilities_relpath, ledger_text)
+        staleness_days = 14
+        sessions_dir = ".sessions"
+        if config is not None:
+            cadence = getattr(config, "cadence", None) or {}
+            staleness_days = int(cadence.get("staleness_days", 14))
+            sessions_dir = getattr(config, "sessions_dir", "") or ".sessions"
+        findings += _stale_citation_findings(
+            capabilities_relpath,
+            ledger_text,
+            _newest_session_card(target, sessions_dir),
+            staleness_days,
+            today if today is not None else date.today(),
+        )
     for rel in relpaths:
         path = target / rel
         if not path.is_file():

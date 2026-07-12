@@ -1197,3 +1197,289 @@ def test_doctrine_merge_detects_emphasis_variant_phrase(tmp_path):
     _merge_model_doctrine(root, config, report)
     assert readme.read_text(encoding="utf-8") == underscored
     assert report == []
+
+
+# ---------------------------------------------------------------------------
+# Grounded-skills slice 5 (§4.2c): the capability-ledger fenced-seed refresh
+# ---------------------------------------------------------------------------
+
+from engine import grammar  # noqa: E402  (slice-5 block import, kept local)
+from engine.upgrade import (  # noqa: E402
+    CAPABILITY_POSTURE_COLLAPSE_NOTE,
+    _capability_fence,
+    _render_planted,
+    _upgrade_context,
+    refresh_capability_seed,
+)
+
+_LEDGER_REL = "docs/CAPABILITIES.md"
+
+# A pre-slice-5 (fence-less) CAPABILITIES template, shaped like the shipped
+# v1.13.0 one: seed region = discovery rule + Capabilities/Walls, no markers.
+_LEGACY_CAPABILITIES_TMPL = """# ${project_name} — session capabilities & walls
+
+> **Status:** `living-ledger`
+
+## Why this file exists
+
+This ledger makes capability knowledge durable across sessions.
+
+## THE DISCOVERY RULE
+
+1. **Check this file** — the capability or wall may already be recorded.
+2. **Attempt once** — capture the exact error text.
+
+## Capabilities — verified working
+
+- **Release cutting despite the tag wall**: workflow_dispatch creates the tag.
+
+## Walls — verified blocked (use the workaround; don't rediscover)
+
+- **Tag push / release create via git**: HTTP 403 — use workflow_dispatch.
+
+## Append log — newest first
+
+Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
+
+(Hand-filled by sessions, per the discovery rule.)
+"""
+
+
+def _seed_variant(extra_row: str) -> dict[str, str]:
+    """Return a template set whose CAPABILITIES fence carries ``extra_row``."""
+    templates = dict(load_templates())
+    templates["CAPABILITIES.md.tmpl"] = templates["CAPABILITIES.md.tmpl"].replace(
+        grammar.CAPABILITY_SEED_END,
+        extra_row + "\n\n" + grammar.CAPABILITY_SEED_END,
+    )
+    return templates
+
+
+_NEW_SEED_ROW = (
+    "- `any` · **New fleet-wide seed row**: proven at the next wave. "
+    "— LAST-VERIFIED: 2026-08-01"
+)
+
+
+def test_capability_seed_refreshes_fence_and_preserves_consumer_text(tmp_path):
+    # The §7.5 accept criterion: upgrade on a consumer-edited ledger
+    # refreshes ONLY the fenced seed block; the append log + all consumer
+    # text survive byte-for-byte.
+    root, config, backend = _adopted(tmp_path)
+    ledger = root / _LEDGER_REL
+    appended = grammar.capability_log_line_example()
+    before = ledger.read_text(encoding="utf-8") + appended
+    ledger.write_text(before, encoding="utf-8")
+    old_templates = dict(load_templates())
+    new_templates = _seed_variant(_NEW_SEED_ROW)
+    rows = classify_planted_docs(root, config, backend, old_templates, new_templates)
+    row = next(r for r in rows if r["relpath"] == _LEDGER_REL)
+    assert row["class"] == CLASS_DIVERGED  # consumer appended + template moved
+    lines = refresh_capability_seed(
+        root, config, backend, rows, old_templates, new_templates
+    )
+    assert any("refreshed the kit-owned fenced seed block" in ln for ln in lines)
+    after = ledger.read_text(encoding="utf-8")
+    assert "New fleet-wide seed row" in after
+    assert appended in after  # the consumer append survives
+    # Byte-for-byte preservation outside the fence.
+    fence_before = _capability_fence(before)
+    fence_after = _capability_fence(after)
+    assert fence_before is not None and fence_after is not None
+    assert before.replace(fence_before, "", 1) == after.replace(fence_after, "", 1)
+    # The file stays consumer-owned: no hash was re-recorded.
+    assert not doc_is_untouched(backend, _LEDGER_REL, after)
+
+
+def test_capability_seed_modified_fence_downgrades_to_report_line(tmp_path):
+    # The covenant's other half: a consumer edit INSIDE the fence is never
+    # clobbered — the refresh downgrades to an instruction line.
+    root, config, backend = _adopted(tmp_path)
+    ledger = root / _LEDGER_REL
+    edited = ledger.read_text(encoding="utf-8").replace(
+        "Media is readable", "Media is unreadable here"
+    )
+    assert "Media is unreadable here" in edited
+    ledger.write_text(edited, encoding="utf-8")
+    old_templates = dict(load_templates())
+    new_templates = _seed_variant(_NEW_SEED_ROW)
+    rows = classify_planted_docs(root, config, backend, old_templates, new_templates)
+    lines = refresh_capability_seed(
+        root, config, backend, rows, old_templates, new_templates
+    )
+    assert any("NOT refreshed" in ln for ln in lines)
+    assert ledger.read_text(encoding="utf-8") == edited  # nothing written
+    assert "New fleet-wide seed row" not in edited
+
+
+def test_capability_seed_adopts_fence_on_pre_fence_ledger(tmp_path):
+    # Transition case: a pre-slice-5 ledger has no markers. When its kit
+    # seed region still matches the OLD template verbatim (the designed
+    # append-only edit pattern), the fence is adopted automatically.
+    root, config, backend = _adopted(tmp_path)
+    old_templates = dict(load_templates())
+    old_templates["CAPABILITIES.md.tmpl"] = _LEGACY_CAPABILITIES_TMPL
+    context = _upgrade_context(root, backend)
+    legacy_render = _render_planted(
+        _LEGACY_CAPABILITIES_TMPL, "CAPABILITIES.md.tmpl", context
+    )
+    appended = grammar.capability_log_line_example(venue=None)  # legacy form
+    ledger = root / _LEDGER_REL
+    ledger.write_text(legacy_render + appended, encoding="utf-8")
+    rows = classify_planted_docs(root, config, backend, old_templates)
+    lines = refresh_capability_seed(root, config, backend, rows, old_templates)
+    assert any("adopted the marker fence" in ln for ln in lines)
+    after = ledger.read_text(encoding="utf-8")
+    assert grammar.CAPABILITY_SEED_BEGIN in after
+    assert grammar.CAPABILITY_SEED_END in after
+    assert appended in after  # the consumer append survives
+    headings = [ln for ln in after.splitlines() if ln.startswith("## Append log")]
+    assert len(headings) == 1  # one heading (the fence warning names it mid-line)
+    assert "workflow_dispatch creates the tag" not in after  # old seed replaced
+
+
+def test_capability_seed_pre_fence_ledger_with_edited_seed_downgrades(tmp_path):
+    # A fence-less ledger whose seed region no longer matches the old
+    # template cannot be auto-adopted — report line, nothing written.
+    root, config, backend = _adopted(tmp_path)
+    old_templates = dict(load_templates())
+    old_templates["CAPABILITIES.md.tmpl"] = _LEGACY_CAPABILITIES_TMPL
+    context = _upgrade_context(root, backend)
+    legacy_render = _render_planted(
+        _LEGACY_CAPABILITIES_TMPL, "CAPABILITIES.md.tmpl", context
+    )
+    edited = legacy_render.replace("HTTP 403", "HTTP 403 (site note)")
+    ledger = root / _LEDGER_REL
+    ledger.write_text(edited, encoding="utf-8")
+    rows = classify_planted_docs(root, config, backend, old_templates)
+    lines = refresh_capability_seed(root, config, backend, rows, old_templates)
+    assert any("hand-adopt once" in ln for ln in lines)
+    assert ledger.read_text(encoding="utf-8") == edited
+
+
+def test_capability_seed_already_current_fence_is_a_noop(tmp_path):
+    # Consumer appended below the fence, template unchanged: the fence is
+    # already at kit form — nothing to write, an honest "already current".
+    root, config, backend = _adopted(tmp_path)
+    ledger = root / _LEDGER_REL
+    text = ledger.read_text(encoding="utf-8") + grammar.capability_log_line_example()
+    ledger.write_text(text, encoding="utf-8")
+    old_templates = dict(load_templates())
+    rows = classify_planted_docs(root, config, backend, old_templates)
+    row = next(r for r in rows if r["relpath"] == _LEDGER_REL)
+    assert row["class"] == CLASS_CONSUMER_EDITED
+    lines = refresh_capability_seed(root, config, backend, rows, old_templates)
+    assert any("already current" in ln for ln in lines)
+    assert ledger.read_text(encoding="utf-8") == text
+
+
+def test_capability_seed_untouched_ledger_points_at_apply_docs(tmp_path):
+    # A consumer-untouched improved ledger is the --apply-docs channel's job;
+    # the fence step only leaves the pointer line.
+    root, config, backend = _adopted(tmp_path)
+    old_templates = dict(load_templates())
+    new_templates = _seed_variant(_NEW_SEED_ROW)
+    rows = classify_planted_docs(root, config, backend, old_templates, new_templates)
+    row = next(r for r in rows if r["relpath"] == _LEDGER_REL)
+    assert row["class"] == CLASS_IMPROVED
+    before = (root / _LEDGER_REL).read_text(encoding="utf-8")
+    lines = refresh_capability_seed(
+        root, config, backend, rows, old_templates, new_templates
+    )
+    assert any("--apply-docs" in ln for ln in lines)
+    assert (root / _LEDGER_REL).read_text(encoding="utf-8") == before
+
+
+def test_run_upgrade_refreshes_seed_and_reports_q0270_collapse(tmp_path):
+    # End-to-end through run_upgrade: the doc on disk is the OLD render
+    # (fence at old form) + a consumer append; the running engine's template
+    # is newer inside the fence. The upgrade refreshes the fence and the
+    # report carries the seed section + the Q-0270 collapse wording.
+    root, config, backend = _adopted(tmp_path)
+    current = load_templates()["CAPABILITIES.md.tmpl"]
+    old_capabilities = current.replace(
+        "- `any` · **GraphQL API quota**: tight — batch queries and prefer the\n"
+        "  REST-backed MCP tools for bulk reads. — LAST-VERIFIED: 2026-07-10\n",
+        "",
+    )
+    assert old_capabilities != current  # the removal really happened
+    old_templates = dict(load_templates())
+    old_templates["CAPABILITIES.md.tmpl"] = old_capabilities
+    context = _upgrade_context(root, backend)
+    old_render = _render_planted(old_capabilities, "CAPABILITIES.md.tmpl", context)
+    appended = grammar.capability_log_line_example()
+    ledger = root / _LEDGER_REL
+    ledger.write_text(old_render + appended, encoding="utf-8")
+    _fake_old_dist(root, old_templates)
+    running = _fake_new_dist(tmp_path)
+    lines = run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    assert any("refreshed the kit-owned fenced seed block" in ln for ln in lines)
+    after = ledger.read_text(encoding="utf-8")
+    assert "GraphQL API quota" in after  # the new seed row arrived
+    assert appended in after
+    report_text = (root / config.state_dir / "upgrade-report.md").read_text(
+        encoding="utf-8",
+    )
+    assert "Capability-ledger seed refresh" in report_text
+    assert CAPABILITY_POSTURE_COLLAPSE_NOTE in report_text
+    assert "superseded by docs/CAPABILITIES.md's posture rule" in report_text
+
+
+def test_posthoc_apply_docs_mirrors_the_seed_refresh(tmp_path):
+    # The decide-and-flag mirror: a same-version `upgrade --apply-docs`
+    # (post-hoc, from the banked archive) also refreshes the fence, and its
+    # report rewrite carries the seed section.
+    root, config, backend = _adopted(tmp_path)
+    current = load_templates()["CAPABILITIES.md.tmpl"]
+    old_capabilities = current.replace(
+        "- `any` · **GraphQL API quota**: tight — batch queries and prefer the\n"
+        "  REST-backed MCP tools for bulk reads. — LAST-VERIFIED: 2026-07-10\n",
+        "",
+    )
+    old_templates = dict(load_templates())
+    old_templates["CAPABILITIES.md.tmpl"] = old_capabilities
+    context = _upgrade_context(root, backend)
+    old_render = _render_planted(old_capabilities, "CAPABILITIES.md.tmpl", context)
+    appended = grammar.capability_log_line_example()
+    ledger = root / _LEDGER_REL
+    ledger.write_text(old_render + appended, encoding="utf-8")
+    # Bank the old dist the way an upgrade would have (archive-first), with
+    # the vendored file already AT the running version (the post-hoc state).
+    backup = root / config.state_dir / BACKUP_DIRNAME
+    backup.mkdir(parents=True, exist_ok=True)
+    archived = backup / "bootstrap-0.9.0.py"
+    archived.write_text(
+        _OLD_DIST_HEADER + f"\n_TEMPLATES = {old_templates!r}\n",
+        encoding="utf-8",
+    )
+    (backup / "last-upgrade.json").write_text(
+        json.dumps(
+            {
+                "from_version": "0.9.0",
+                "to_version": KIT_VERSION,
+                "archived_dist": str(archived.relative_to(root)),
+                "vendored": "bootstrap.py",
+            },
+        ),
+        encoding="utf-8",
+    )
+    lines = run_apply_docs_posthoc(root, config, backend)
+    assert any("refreshed the kit-owned fenced seed block" in ln for ln in lines)
+    after = ledger.read_text(encoding="utf-8")
+    assert "GraphQL API quota" in after
+    assert appended in after
+    report_text = (root / config.state_dir / "upgrade-report.md").read_text(
+        encoding="utf-8",
+    )
+    assert "Capability-ledger seed refresh" in report_text
+    assert CAPABILITY_POSTURE_COLLAPSE_NOTE in report_text
+    # Idempotent: a re-run finds the fence already current, writes nothing.
+    again = run_apply_docs_posthoc(root, config, backend)
+    assert any("already current" in ln for ln in again)
+    assert ledger.read_text(encoding="utf-8") == after
