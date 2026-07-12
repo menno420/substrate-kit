@@ -144,7 +144,13 @@ from engine.loop.telemetry import (
     record_guard_fires,
 )
 from engine.loop.triggers import check_triggers, mandatory_questions, trigger_block
-from engine.render import build_context, find_placeholders, load_templates, render
+from engine.render import (
+    agreement_home,
+    build_context,
+    find_placeholders,
+    load_templates,
+    render,
+)
 from engine.skills.skills import (
     SKILLS,
     skill_capabilities,
@@ -350,6 +356,9 @@ def cmd_render(target: Path, live: bool = False) -> int:
         _emit(f"render: no state at {target} (run init first).")
         return 1
     context = build_context(backend.data)
+    # Engine-computed boot pointer (ORDER 015): same rule as adopt, so a
+    # staged/live render never strands ${agreement_home} as an unfilled slot.
+    context.setdefault("agreement_home", agreement_home(target))
     if live:
         return _render_live(target, context, backend)
     out_dir = target / config.state_dir / "rendered"

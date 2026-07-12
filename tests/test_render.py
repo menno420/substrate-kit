@@ -5,6 +5,7 @@ from engine.interview.question_bank import QUESTIONS
 from engine.lib.config import KIT_VERSION
 from engine.render import (
     ENGINE_CONTEXT_KEYS,
+    agreement_home,
     build_context,
     find_placeholders,
     load_templates,
@@ -36,6 +37,18 @@ def test_build_context_always_injects_kit_version():
     assert build_context({})["kit_version"] == KIT_VERSION
     state = {"slot_values": {"kit_version": {"value": "9.9.9"}}}
     assert build_context(state)["kit_version"] == "9.9.9"
+
+
+def test_agreement_home_tracks_installed_working_agreement(tmp_path):
+    # The engine-computed boot pointer (ORDER 015): .claude/CLAUDE.md only
+    # when it is live in the target (or this adopt run opts in), else the
+    # always-planted root CONSTITUTION.md — never a pointer to a file the
+    # default adopt doesn't install.
+    assert agreement_home(tmp_path) == "CONSTITUTION.md"
+    assert agreement_home(tmp_path, include_claude=True) == ".claude/CLAUDE.md"
+    (tmp_path / ".claude").mkdir()
+    (tmp_path / ".claude" / "CLAUDE.md").write_text("x", encoding="utf-8")
+    assert agreement_home(tmp_path) == ".claude/CLAUDE.md"
 
 
 def test_load_templates_returns_core_set():
