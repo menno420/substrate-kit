@@ -24,3 +24,8 @@
   — prompt-template hardening input (dated audit, inbox ORDER 014): the
   must-carry seat-prompt doctrine list per regression class, the kit-template
   graduation map, and corrections to stale kit facts in the fleet prompts.
+- [../reports/2026-07-12-trigger-forensics.md](../reports/2026-07-12-trigger-forensics.md)
+  — overnight trigger forensics (dated audit, owner-requested): timeline of
+  every scheduling mechanism the seat armed, ranked root-cause hypotheses for
+  the missed fresh-session cron fires, other overnight anomalies, and
+  recommendations (read-only pass; none executed).

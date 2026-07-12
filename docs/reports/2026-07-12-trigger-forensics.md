@@ -1,0 +1,55 @@
+# Overnight trigger forensics — substrate-kit seat (2026-07-11 ~22:00Z → 2026-07-12 ~08:55Z)
+
+> **Status:** `audit` (dated snapshot — registry/repo state as observed
+> ~08:55Z 2026-07-12; source code and merged PRs win over this file)
+>
+> Owner-requested (2026-07-12): why did the scheduled cron routines fail overnight, and what else went wrong. Compiled read-only by the kit seat; preserved at coordinator direction.
+
+Read-only throughout: no writes, no PRs, no trigger create/delete/update; probes were list_triggers (7 calls total, paced sequentially) + one list_events read of the 08:46Z session.
+
+## (a) Timeline — every scheduling mechanism this seat ever armed (repo-recorded; commits cited)
+
+1. trig_01FnqnAQjLU2T8d16iHwWQ2h "kit-lab gen2 hourly wake" — SELF-BOUND cron 0 * * * *, created 2026-07-10T01:56:06Z (PR #120 card 9f5d8e2). ~14 consecutive hourly fires 02:02→14:08Z, zero misses (15f0e58). Deleted ~15:53Z Jul 10 at ORDER 011 cutover (2ba610a).
+2. trig_016EfUawz6KxEYqUM6f1BqDw "2-hourly standing wake" — SELF-BOUND cron 0 */2 * * *, created 15:53:36Z Jul 10 (15f0e58). Fired 16/18/20/22:00Z. Deleted 23:09–23:11Z Jul 10 at Q-0265 cutover (8a09156).
+3. trig_019nbVSWfu9grKjeHks97CeU "failsafe wake" — SELF-BOUND cron 0 */2 * * *, created 23:09:56Z Jul 10 (8a09156). Ran through Jul 11. Deleted ~19:45Z Jul 11 at archive-prep — with a probe-vs-record contradiction: recorded already-deleted, probed still armed, then delete confirmed (234f0eb, 700c5b6).
+4. Q-0265 send_later chain (first one-shot trig_01F7KpBrT3uUpzvtG5fgHjT3, armed 23:11Z Jul 10, 8a09156) — carried Jul 11's entire day incl. the 05:32–07:52Z morning burst (PRs #174–#185, v1.10.0). 100% fire rate on every chain link scanned (registry pages: 29 substrate-kit links, all ended_reason=run_once_fired). Ended at archive; one stray one-shot trig_0159SwShY6z4WXa6nbV2s2Ft aimed at the archived session (234f0eb).
+5. trig_01MHwmBrA1bziEp49g6xqGt5 "kit-lab loop" — FRESH-SESSION cron 0 6 * * *, env recorded env_01R1G1wsWsEMShxECRsFnVor, created ~10:0xZ Jul 11 (PR #195, e6b099a). Last verified ARMED 19:52Z Jul 11 (234f0eb) — NOT 22:50Z; no 22:50Z record exists. VANISHED unfired: absent in ~23:05Z 700-entry scan (PR #252, 1a85751), confirmed by 718-entry full walk ~23:20Z (PR #253, 4493251), and absent again in a fresh 600-entry scan today (pages covering created_at 2026-07-11T01:43Z→now: no id/name/cron match). No tombstone — auto-disabled triggers stay listed with ended_reason (e.g. auto_disabled_env_deleted, auto_disabled_session_gone observed), so its total absence means hard deletion, actor unknown; no agent-side delete recorded in repo.
+6. trig_01Jm57GAjNCFrYJn1oLMiYGE "kit-lab loop" (replacement) — FRESH-SESSION cron 0 6 * * *, created 23:26:20Z Jul 11 (PR #253, 4493251). Scheduler NEVER self-delivered its 06:08:52Z slot: probed 08:06Z last_fired_at null (PR #257, 5c70b6f); zero repo activity 00:26→08:13Z. Registry at ~08:55Z: last_fired_at=2026-07-12T08:46:12.611896Z, but next_run_at STILL frozen at the past 06:08:52.096557406Z and updated_at untouched (23:49:37Z Jul 11) — the recorded fire did not advance the schedule.
+7. trig_011iJucRpsruWJ4dFB7xVbvf "failsafe wake" (re-arm) — SELF-BOUND cron 0 */2 * * * → session_01G7tWPmizaEC7AXt829p5Th, created 23:09:20Z Jul 11 (PR #252, 1a85751). Fired all night; registry last_fired_at 08:04:44.962031Z, next 10:03:52Z — schedule advances normally after each fire, unlike #6. Its wakes carried the stopgap lab run (PRs #257 5c70b6f, #258 132cc73).
+
+The 08:46Z session (cse_01BUyeM5t9itqBwTNyX2mZUi): verified via list_events — started 08:46:32Z, entrypoint remote_trigger, cwd /home/user/substrate-kit, session grouping sgrp_01GWoqRWh8YPLmokSzqMhewU (matches trigger #6's), Opus-class model. The coordinator's correction says it was a manual kick from the hub night-review session; not independently verifiable agent-side (remote_trigger entrypoint is identical for scheduled and manually-fired triggers), but it reconciles all hard evidence: a manual fire_trigger call at 08:46:12 would set last_fired_at and spawn the session WITHOUT advancing next_run_at — exactly what the registry shows. Under that reading the earlier "fires ~2h38m late" hypothesis is retracted. Precise count: 2 fresh-session triggers ever armed, 0 scheduler-delivered fires ("3-for-3" double-counts — PR #257's recorded miss IS today's dropped slot).
+
+## (b) Root-cause hypotheses, ranked
+
+- H1 (strong): platform scheduler does not deliver fresh-session cron fires for this seat — self-bound delivery works, fresh-session delivery doesn't. For: 0-for-2 fresh-session vs 100% on every self-bound cron and all ~60+ send_later one-shots scanned; next_run_at frozen in the past >2.5h after the slot (a live scheduler recomputes); registry-wide scan found NO fresh-session trigger other than #6 in 600 entries — this seat is the fleet's only user of the path, and docs/CAPABILITIES.md at 9f5d8e2 had explicitly recorded "fresh-session-per-fire scheduling unverified". Against: nothing agent-side; scheduler logs invisible (owner-side check needed).
+- H2 (plausible mechanism for H1, unproven): env-reference defect — registry job_config surfaces env_01WAB3QKMneNpWKuR1ZLVsVX on all kit triggers while every arm call recorded env_01R1G1wsWsEMShxECRsFnVor (status.md L16 @ 132cc73; report §c.5 @ 8a544a6). A fresh-session fire must provision a session in an environment (self-bound fires only message an existing session), so a stale/migrated env pointer selectively breaks exactly the fresh-session path. Weakened by: the 08:46 manual fire spawned fine into substrate-kit; manual and scheduled paths may differ.
+- H3 (separate event): the trig_01MHwm vanish is a hard registry deletion between 19:52Z and ~23:05Z Jul 11, actor indeterminable (platform cleanup / migration cascade / unrecorded delete). It is NOT the same failure as the missed fire — but both being unique-to-fresh-session incidents on consecutive triggers is suggestive of H1/H2's platform path being generally unhealthy.
+- H4 (retracted): "fires late rather than never" — explained away by the manual kick; revives only if the manual-kick claim is false.
+
+## (c) What changed vs "last time it worked"
+
+Nothing worked before — a fresh-session cron has NEVER demonstrably fired in this seat's history. Jul 10 mornings ran on the self-bound hourly cron (#1); Jul 11 morning ran on the send_later chain + self-bound failsafe (#3/#4). The fresh-session daily cron was introduced Jul 11 ~10:18Z (PR #195, e6b099a; lab-loop.md 8c505c9 §Arming actually specified an OWNER-console schedule — the agent-side arm was the founding-plan alternate path); its first-ever scheduled slot was this morning's 06:08:52Z. So this is a never-worked new path, not a regression.
+
+## (d) Other overnight problems
+
+1. PRs #252–#258 all merged on green; born-red pattern fits #252/253/256/257/258 exactly; no force-pushes/reverts. Deviations: #254 hand-merged by menno420 35s after open with enable-auto-merge SKIPPED (branch name outside the claude/* enabler pattern; manager-lane inbox append; contradicts the report's own §a.2 never-self-merge doctrine if same-account — recorded as fact); #255 also skipped born-red legitimately (control fast lane, no session card); #259 interleaved mid-#258 (different lane, benign).
+2. Model-class anomaly is now BEHAVIORAL, not display: the spawned loop session actually runs Opus-class (verified in its init event) vs lab-loop.md D-11 Sonnet-class default (8c505c9 L19/109); stopgap runs additionally executed on the seat's Fable-class model, flagged as D-11 deviation on the run card (132cc73).
+3. Env-id mismatch (H2 above) — still unexplained, now load-bearing rather than cosmetic.
+4. Failsafe fires land ~3.8min EARLIER than registry next_run_at estimates (08:04:44 actual vs :07:52-pattern estimate). Negative finding: no "00:04" fire time is committed anywhere in-repo — the 00:04-cadence claim traces only to the estimate-vs-actual drift pattern.
+5. Detection latency: the 06:04Z failsafe wake couldn't catch the loop miss (slot was 06:08:52); detection waited for the 08:04 wake → ~2h blind window by design.
+6. ORDER 014 verdicts: kit's 5 stale-doc claims CONFIRMED against fleet-manager legacy docs, 0 real defects in the v3.1 rebuild, 3 genuine coverage gaps queued P2/P2/P3 (fm PR #107, 313401c0; kit report 8a544a6 §c).
+7. Registry hygiene: stray one-shot trig_0159Sw… still aimed at the archived coordinator session; historical: 4 multi-call workers hung under parallel trigger-MCP load (retro W-6, 8a544a6); prior probe-vs-record contradiction on failsafe #3 (234f0eb).
+8. Brief-vs-repo discrepancy: the "ARMED at 22:50Z" datum in the tasking has no repo record — last ARMED verification is 19:52Z (234f0eb).
+
+## (e) Recommendations (none executed — the forensics slice was read-only)
+
+1. Treat fresh-session cron as UNVERIFIED-BROKEN platform-side; keep the daily loop on the proven self-bound failsafe/stopgap path (already de facto per PR #257 doctrine) or have the hub/manager fire_trigger it on schedule.
+2. Leave trig_01Jm57 untouched through tomorrow's 06:08Z slot as a controlled experiment — its frozen next_run_at predicts another no-fire; that observation would clinch H1. (Adopted by the coordinator as the controlled experiment.)
+3. Add an explicit loop-fire check to the failsafe prompt (the 08:04-class wake should verify last 06:0xZ delivery) to cut the 2h blind window — proposal only.
+4. Doctrine note: a manual fire_trigger sets last_fired_at without advancing next_run_at — never read last_fired_at alone as scheduler health.
+5. Owner-side: only the console can see scheduler/delivery logs — ask the owner to check why the 06:08:52Z fire wasn't delivered and which env id (env_01WAB… vs env_01R1G1…) is actually current, and to confirm whether trig_01MHwm shows a deletion audit entry.
+6. Re-arm decision after the experiment: if re-arming, set model to the D-11 Sonnet-class default explicitly.
+
+## (f) Honest unknowns
+
+Platform scheduler internals, delivery logs, and deletion audit are invisible agent-side. The manual-kick provenance of the 08:46 session is a relayed claim not independently verifiable (entrypoint cannot discriminate). Whether scheduled fresh-session fires would have landed in a different environment is inference only. Registry scans covered the 600 newest entries (back to Jul 11 01:43Z) plus the repo-recorded 718-entry full walk from last night; pages older than Jul 11 01:43Z were not re-walked, so trig_01MHwm's absence relies on last night's exhaustive walk (4493251) plus 600 fresh entries today.
