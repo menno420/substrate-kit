@@ -1,1 +1,1 @@
-claude/gate-multicard · gate multi-card shadowing fix · Sun Jul 12 21:39:31 UTC 2026
+- `claude/gate-multicard` · **gate multi-card shadowing fix** — ground-truth verify + idea-file reconciliation · docs/ideas + .sessions · 2026-07-12 (claimed Sun Jul 12 21:39:31 UTC 2026)
