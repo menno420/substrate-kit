@@ -137,6 +137,9 @@ def _default_automerge() -> dict:
       head); anything else matches exactly. An empty list falls back to the
       default at the consumer (the ``heartbeat_files`` doctrine: a
       misconfiguration must not silently disable — or widen — the arming).
+      Default covers ``claude/*`` (session branches) AND ``claim/*``
+      (control fast-lane claim PRs): a claude/-only list left claim PRs
+      green+clean but unarmed forever (kit PR #293, the live stall class).
     - ``required_context`` — the required status-check context the arming
       message names (default ``substrate-gate``, the planted gate's job).
       Informational only: the workflow's refuse-to-arm guard counts the
@@ -144,7 +147,7 @@ def _default_automerge() -> dict:
       wrong name here mislabels a log line, never the guard.
     """
     return {
-        "branch_patterns": ["claude/*"],
+        "branch_patterns": ["claude/*", "claim/*"],
         "required_context": "substrate-gate",
     }
 

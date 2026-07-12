@@ -1052,7 +1052,11 @@ AUTOMERGE_ENABLER_RELPATH = ".github/workflows/auto-merge-enabler.yml"
 # rename would silently split the fleet's shared review convention.
 AUTOMERGE_CARVEOUT_LABEL = "do-not-automerge"
 
-DEFAULT_AUTOMERGE_BRANCH_PATTERNS = ("claude/*",)
+# claim/* rides alongside claude/*: control fast-lane claim PRs land on
+# claim/* heads, and a claude/-only default left them green+clean but
+# unarmed forever (kit PR #293, the live stall — ~2 h during the v1.15.0
+# wave-A distribution until re-landed on claude/* as #297).
+DEFAULT_AUTOMERGE_BRANCH_PATTERNS = ("claude/*", "claim/*")
 DEFAULT_AUTOMERGE_REQUIRED_CONTEXT = "substrate-gate"
 
 
