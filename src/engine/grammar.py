@@ -344,3 +344,47 @@ def work_claim_bullet_example(date: str = "2026-07-10") -> str:
         f"- `example-branch` · **scope** — one-line detail · "
         f"expected files/area · {date}\n"
     )
+
+
+# ── Self-propagation doctrine — the registration reflex (grounded-skills §7.8) ─
+#
+# Taught in the CONSTITUTION.md.tmpl working-agreement clause and in the
+# planted skill index's "Growing the set" section (SKILLS-index.md.tmpl) —
+# the clause's pointer target, so the reflex is stated where agents actually
+# look. Agreement between the two templates and this one home is pinned by
+# tests/test_self_propagation.py; clause and index cannot drift.
+#
+# Executable twin of superbot doctrine (mined from superbot .claude/CLAUDE.md
+# + docs/owner/maintainer-question-router.md — cited, never paraphrased into
+# drift):
+#   - Q-0194 (2026-06-22, promoted binding 2026-06-28) — friction → guard:
+#     convert recurring friction into the cheapest ENFORCING prevention
+#     before session end (checker/CI/test → hook → journal rule; "enforce,
+#     don't exhort", Q-0132). Ownership split: docs / journal / test /
+#     checker guards are free to ship now; a hook / settings / binding
+#     working-agreement rule is owner-gated (build if owner-directed
+#     in-session, else propose a router DISCUSS Q).
+#   - Q-0106 (2026-06-12) — agents do NOT self-edit the working agreement /
+#     executable config on their own initiative; a binding rule evolves by
+#     PROPOSING it (a router Q-block), never applying it. The one exception:
+#     an in-session owner-directed change (the owner is the live reviewer),
+#     applied directly and recorded with its provenance id.
+#   - Q-0172 (2026-06-17) — ideas promote to plans and ship anytime without
+#     approval; the single requirement is ACCOUNTABILITY (the self-initiated
+#     flag on the run report). Safety brakes unchanged.
+
+SELF_PROPAGATION_REFLEX = "add or extend the skill"
+SELF_PROPAGATION_REGISTRY = "a registry entry, not ad-hoc prose"
+SELF_PROPAGATION_GROWTH_LOOP = "prose workflow → index row → promoted skill"
+SELF_PROPAGATION_FREE_LANE = "free to ship directly"
+SELF_PROPAGATION_BOUND_LANE = "never self-applied"
+SELF_PROPAGATION_PHRASES = (
+    SELF_PROPAGATION_REFLEX,
+    SELF_PROPAGATION_REGISTRY,
+    SELF_PROPAGATION_GROWTH_LOOP,
+    SELF_PROPAGATION_FREE_LANE,
+    SELF_PROPAGATION_BOUND_LANE,
+)
+# The compact in-clause provenance cite (Q-numbers; the dates live in this
+# comment block — templates state current value only, per their own header).
+SELF_PROPAGATION_PROVENANCE = "superbot Q-0194 · Q-0106 · Q-0172"

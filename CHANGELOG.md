@@ -17,6 +17,31 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- Grounded-skills slice 8 (PR #282): the self-propagation doctrine (plan
+  §7.8 — the program's final slice). **CONSTITUTION.md.tmpl** gains one
+  working-agreement clause: a recurring action with no skill — or a skill
+  whose body doesn't actually cover it — fires the registration reflex:
+  **add or extend the skill**, a registry entry, not ad-hoc prose, via the
+  growth loop *prose workflow → index row → promoted skill* (pointer into
+  `docs/SKILLS.md` § "Growing the set" — the superbot fleet-vocab growth
+  loop generalized). The propose-don't-apply boundary is carried intact:
+  skill bodies, grounds, and index rows are free to ship directly (flagged
+  self-initiated on the run report); binding working-agreement text and
+  executable config route through `docs/question-router.md` as a proposal,
+  never self-applied — the one exception is an in-session owner-directed
+  change, recorded with its provenance id. **SKILLS-index.md.tmpl**
+  § "Growing the set" teaches the same reflex at the clause's pointer
+  target, pointing back via the engine-computed `${agreement_home}` key.
+  **Grammar** (`src/engine/grammar.py`, new self-propagation section):
+  `SELF_PROPAGATION_PHRASES` + `SELF_PROPAGATION_PROVENANCE` — one home,
+  both templates test-pinned against it (`tests/test_self_propagation.py`),
+  whitespace-insensitive so rewrapping can't break a pin. Executable twin
+  of superbot doctrine, cited not paraphrased: Q-0194 friction→guard
+  (2026-06-22, promoted binding 2026-06-28, ownership split), Q-0106
+  propose-don't-apply (2026-06-12, in-session owner-directed exception),
+  Q-0172 ship-anytime-with-accountability (2026-06-17, ⚑ self-initiated
+  flag). collaboration-model.md.tmpl deliberately not wired — plan §7.8
+  names CONSTITUTION.md.tmpl only. Suite 1174 → 1184.
 - Grounded-skills slice 6, kit side (PR #279): single-source seat-digest
   render (plan §7.6, §8 Q3=A — kit ships the canonical blocks
   fleet-manager's seat-prompt regen consumes). **Grammar**
