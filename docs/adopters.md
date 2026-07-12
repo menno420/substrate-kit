@@ -5,7 +5,7 @@
 > **GENERATED — do not hand-edit** — regenerate with `python3 dist/bootstrap.py currency`
 > (agent-side: kit CI cannot auth to sibling repos, so CI validates
 > only this file's format + staleness, never refetches).
-> Generated: 2026-07-12T12:01:29Z · kit release: v1.13.0
+> Generated: 2026-07-12T12:15:06Z · kit release: v1.13.0
 >
 > Who runs which kit version — the substrate-coordinator's
 > visibility surface (inbox ORDER 003; manager research 2026-07-09).
@@ -30,8 +30,8 @@
 | menno420/superbot | — | v1.0.0 | no `kit:` line | — | stale (v1.0.0 < v1.13.0) · pin-only (no vendored dist found) |
 | menno420/superbot-games | v1.13.0 (bootstrap.py) | v1.13.0 | status.md: no `kit:` line · status-mining.md: v1.7.1 · status-exploration.md: v1.7.1 | — | ⚠️ DRIFT · current |
 | menno420/trading-strategy | v1.13.0 (bootstrap.py) | v1.13.0 | v1.12.0 | — | ⚠️ DRIFT · current |
-| menno420/gba-homebrew | v1.12.1 (bootstrap.py) | v1.12.1 | no `kit:` line | — | stale (v1.12.1 < v1.13.0) |
-| menno420/pokemon-mod-lab | v1.12.1 (bootstrap.py) | v1.12.1 | no `kit:` line | — | stale (v1.12.1 < v1.13.0) |
+| menno420/gba-homebrew | v1.13.0 (bootstrap.py) | v1.13.0 | no `kit:` line | — | current |
+| menno420/pokemon-mod-lab | v1.13.0 (bootstrap.py) | v1.13.0 | no `kit:` line | — | current |
 | menno420/venture-lab | v1.13.0 (bootstrap.py) | v1.13.0 | v1.12.1 | yes | ⚠️ DRIFT · current |
 | menno420/fleet-manager | v1.13.0 (bootstrap.py) | v1.13.0 | v1.7.0 | yes | ⚠️ DRIFT · current |
 
