@@ -15,6 +15,28 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.15.0] - 2026-07-12
+
+Capability release (MINOR) closing out the grounded-skills program's kit
+surface: slice 6's single-source seat-digest render contract (skills +
+walls digest fences, render module, drift guard), slice 8's
+self-propagation working-agreement clause, the §7 tail (the planted
+`docs/ROUTINES.md` routine/wake-chain doctrine, the CONSTITUTION Evidence
+block, the preflight fetch + hard-reset orientation step), the model-line
+attribution doctrine fix (family-level names only — any exact model-ID
+token banned, with a harvest advisory), and the heartbeat-grammar negative
+`kit:` example + adopters.md deference row (the last open graduation-map
+row). MINOR per the header's contract: new capability (new render module +
+generated planted doc, new grammar sections, new planted doctrine
+template, extended advisory checkers) — no planted-doc, state schema,
+config schema, or CLI contract breaks; adopters inherit everything on
+`upgrade` (+ `upgrade --apply-docs` for consumer-untouched planted docs).
+Freeze provenance: the grounded-skills program supersedes the 2026-07-11
+template freeze (owner directive 2026-07-12 via coordinator; plan §8 Q4=A
+default, flagged).
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
 ### Added
 
 - Heartbeat-grammar hardening row (PR #289 — the LAST open graduation-map
