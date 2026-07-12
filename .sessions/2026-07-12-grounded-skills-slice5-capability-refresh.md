@@ -1,6 +1,6 @@
 # 2026-07-12 — grounded-skills program, slice 5: capability refresh + venue-scoping + staleness
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** fable-5 · seat-worker · grounded-skills slice 5
 
