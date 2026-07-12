@@ -243,6 +243,59 @@ def test_heartbeat_and_kit_line_examples_parse():
     )
 
 
+# ── heartbeat-grammar hardening (map §(b) row 8): the taught NEGATIVE example ─
+
+
+def test_kit_line_negative_example_is_rejected_by_the_enforcer():
+    """The bold-label form — the ``kit:`` token INSIDE the bold — must never
+    parse: KIT_LINE_RE's optional bold group cannot contain the token, so
+    the registry reads "no kit: line" (the live adopter incident the
+    hardening report §a.4 cites). Both the raw regex and the full parser
+    reject it."""
+    negative = grammar.kit_line_negative_example()
+    assert grammar.KIT_LINE_RE.search(negative) is None
+    assert parse_kit_line(negative) == (None, None, None)
+
+
+def test_kit_line_bold_label_before_plain_token_still_parses():
+    """The contrast pin: a bold label BEFORE a plain ``kit:`` token is the
+    accepted lenient shape (venture-lab's live heartbeat) — teaching the
+    negative example must not regress it."""
+    line = "- **kit heartbeat:** kit: v1.2.3 · check: green · engaged: yes\n"
+    assert parse_kit_line(line) == ("1.2.3", "green", "yes")
+
+
+def test_control_templates_carry_the_negative_example_verbatim():
+    """Writer↔enforcer shared pin (the CAPABILITY_LOG_TAUGHT_FORMAT
+    precedent): both control templates teach the exact string the enforcer
+    rejects, rendered from the grammar module's own negative renderer — the
+    warning text and the rejection cannot drift apart."""
+    taught = grammar.kit_line_negative_example().strip()
+    assert taught in _template("control-README.md.tmpl")
+    assert taught in _template("control-status.md.tmpl")
+
+
+def test_control_templates_carry_the_adopters_deference_doctrine():
+    """Version truth defers to the generated registry / the committed tree —
+    heartbeat self-reports chronically lag (hardening report §a.4)."""
+    for name in ("control-README.md.tmpl", "control-status.md.tmpl"):
+        flat = " ".join(_template(name).split())
+        assert "docs/adopters.md" in flat, name
+        assert "version truth" in flat.lower(), name
+        assert "self-report" in flat, name
+
+
+def test_status_seed_negative_example_does_not_shadow_the_real_kit_line():
+    """The seed now carries the negative example in its notes — the rendered
+    seed must still parse to the REAL seeded line (version from the render
+    context, check red, engaged no), proving the taught negative is inert."""
+    seed = render(
+        _template("control-status.md.tmpl"),
+        {"project_name": "demo", "kit_version": "9.9.9"},
+    )
+    assert parse_kit_line(seed) == ("9.9.9", "red", "no")
+
+
 def test_owner_action_example_carries_a_risk_class():
     """The canonical block exemplifies the slice-4 standard: a RISK line."""
     example = grammar.owner_action_block_example()
