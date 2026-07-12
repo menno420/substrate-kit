@@ -11,10 +11,22 @@ outcome: shipped
 
 > **Status:** `ideas`
 >
-> **State:** captured. **Origin:** consumer — venture-lab, live-verified
+> **State:** shipped. **Origin:** consumer — venture-lab, live-verified
 > during the v1.10.0 distribution wave (first exercise of the regenerated
-> gate). **Priority: HIGH — target v1.10.1.** It partially reopens the
-> superbot-games #40 card-only loophole the v1.10.0 release closed.
+> gate). **Priority was HIGH — shipped in v1.10.1 (PR #187):** every card
+> in a PR's session-card diff is graded on BOTH surfaces (the generated
+> gate template `live_ci_workflow()` and the kit's own `ci.yml` session
+> gate), each ADDED card through the added-card/locked-door lane; the
+> external review #226 findings G-1/G-2 then tightened it further
+> (modified siblings gate through the locked door; card deletions are a
+> hard red). Regression tests execute the generated gate's bash in a
+> scratch git repo, including this exact shadowing shape
+> (`tests/test_adopt.py::test_gate_script_holds_the_shadowed_added_in_progress_card`
+> and siblings). Ground-truth re-verified 2026-07-12 against the real
+> engine — the reconstructed v1.10.0 `tail -1` gate goes GREEN on the
+> shadowing shape, the current gate HOLDs it — evidence transcript in
+> PR #311, which also reconciled this body (it still said `captured`
+> after the fix landed).
 
 ## The finding (first-exercise evidence, venture-lab #33)
 
@@ -52,7 +64,7 @@ is the one graded. On a multi-card diff the picker, not the hold, decides
 — so the pre-armed-auto-merge premature-merge class (#40, merged 24 s
 after arming) is reachable again via any two-card diff.
 
-## Proposed fix direction (deliberately NOT attempted in the filing PR)
+## Proposed fix direction (deliberately NOT attempted in the filing PR — since IMPLEMENTED as proposed, v1.10.1 PR #187 + the #226-review tightening)
 
 Grade **EVERY card in the diff**, not the tail: loop the diff list, route
 each ADDED card through the added-card/locked-door lane and each modified
@@ -63,7 +75,7 @@ template, the kit's own `.github/workflows/ci.yml` session-gate step, and
 shadowing sibling → HOLD; all-complete multi-card diff → green). Adopters
 inherit on next upgrade.
 
-## Interim wave doctrine (until fixed)
+## Interim wave doctrine (OBSOLETE — the fix shipped in v1.10.1; kept as history)
 
 Land sibling-card backfills pre-PR or in the SAME commit that flips your
 own card complete — never mid-PR — and touch ONLY your own card in a
