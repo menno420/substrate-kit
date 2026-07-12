@@ -1,1 +1,0 @@
-- `claude/heartbeat-grammar-row` · **heartbeat-grammar map row** — negative `**kit:**` example + adopters.md deference into the control template family (hardening map §(b) row 8) · src/engine/grammar.py + src/engine/templates/control-*.md.tmpl + tests/test_grammar.py + CHANGELOG + dist · 2026-07-12
