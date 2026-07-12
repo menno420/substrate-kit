@@ -57,6 +57,18 @@ def test_build_context_always_injects_skills_index():
     assert build_context(state)["skills_index"] == "custom"
 
 
+def test_build_context_fills_grounds_slots_in_skills_index():
+    # Slice 2: the slot context is passed INTO the table so the grounds
+    # column shows the project's REAL verify command — and never a raw
+    # ${...}, which would re-banner the planted index forever (render()
+    # cannot fill it later: re.sub never rescans substituted values).
+    state = {"slot_values": {"verify_command": {"value": "python3 -m pytest -q"}}}
+    table = build_context(state)["skills_index"]
+    assert "`python3 -m pytest -q`" in table
+    assert "${" not in table
+    assert "<verify_command>" not in table
+
+
 def test_agreement_home_tracks_installed_working_agreement(tmp_path):
     # The engine-computed boot pointer (ORDER 015): .claude/CLAUDE.md only
     # when it is live in the target (or this adopt run opts in), else the
