@@ -29,3 +29,10 @@
   every scheduling mechanism the seat armed, ranked root-cause hypotheses for
   the missed fresh-session cron fires, other overnight anomalies, and
   recommendations (read-only pass; none executed).
+- [../reports/2026-07-12-grounded-skills-wrap.md](../reports/2026-07-12-grounded-skills-wrap.md)
+  — grounded-skills program wrap (dated audit): the full verified receipts
+  chain (plan #263 → 8 slices → releases v1.13.0–v1.15.0 → distribution waves
+  → close-out #298), what the owner's five ideas became, honest gaps
+  (lane-owed · owner asks · backlog candidates · the unmeasured-effect gap +
+  a #247-methodology measurement proposal), and the ORDER 015 rider
+  disposition.
