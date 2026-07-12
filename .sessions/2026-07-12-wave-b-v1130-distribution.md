@@ -1,6 +1,6 @@
 # 2026-07-12 — Wave B: v1.13.0 distribution to the last four adopters
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** fable-5 · medium · distribution-wave
 
