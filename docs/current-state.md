@@ -238,49 +238,15 @@
 
 (Verify against live source control — this section is a dated snapshot.)
 
-- PR #69 — **ORDER 007 order-claiming convention + v1.6.0 cut (this PR)**:
-  "Claiming an order" section in `control-README.md.tmpl` + local copy
-  (claim FIRST on your own status orders line, landed on main before
-  build; re-read inbox + sibling statuses post-merge; earliest-merged-
-  claim tiebreak; ~24h no-activity expiry); status-format `orders:` line
-  gains the `claimed-by:` annotation; #50 disposition verified already
-  terminal (merged 17:40Z as the lane-suffixed salvage) with an audit
-  comment; KIT_VERSION/pyproject → 1.6.0, CHANGELOG rolled (covers the
-  #68 ORDER 008 band too), dist byte-pinned, suite 721 → 722. Post-merge
-  the session dispatches `release.yml` `version=1.6.0`, then the ORDER
-  007+008 status overwrite (done gains 007,008) rides its own
-  control-only PR as the deliberate LAST act.
-- PR #63 — **ORDER 006 capability-manifest band + v1.5.0 cut (MERGED
-  2026-07-09, release verified — also in Recently shipped)**:
-  new `CAPABILITIES.md.tmpl` planted at `docs/CAPABILITIES.md` (seed:
-  ffmpeg-frames media recipe, printenv-before-assuming, the fleet's
-  verified walls, THE DISCOVERY RULE + append log); orientation wiring in
-  `CLAUDE.md.tmpl` / `CONSTITUTION.md.tmpl` / `AGENT_ORIENTATION.md.tmpl`;
-  session-close capability-delta nudge in the `session-close` skill;
-  self-hosted `docs/CAPABILITIES.md` (incl. the live per-session
-  repo-allowlist wall: fleet-manager unreadable → master-copy sync is
-  manager-relayed); KIT_VERSION/pyproject → 1.5.0, CHANGELOG rolled, dist
-  byte-pinned, suite 705 → 707. Claimed FIRST via the #60 status overwrite
-  (visible claim before build — the #50/#51 twin-execution lesson; the
-  durable convention is ORDER 007's, still queued). Post-merge the session
-  dispatches `release.yml` `version=1.5.0`, then the ORDER 006 status
-  overwrite rides its own control-only PR as the deliberate LAST act.
-- PR #46 — **ORDER 004 configurable heartbeat paths + v1.4.0 cut
-  (MERGED 2026-07-09 — also in Recently shipped; kept here for the
-  post-merge steps it named, all done)**: `substrate.config.json` → `heartbeat_files` (default
-  `["control/status.md"]`) threaded through `check_status_current` /
-  both `cli.py` call sites / the Stop-hook reminder; per-lane
-  multi-Project pattern in the planted `control/README.md` contract;
-  superbot-games registered in `docs/adopters.md` as the two-lane
-  adopter; version roll to 1.4.0 (dist byte-pinned). Post-merge the
-  session dispatches `release.yml` with `version=1.4.0`, then writes the
-  ORDER 004 status overwrite (ack 004 + the newer ORDER 005) as its own
-  control-only PR (the deliberate LAST act). ORDER 005 (P1 self-review
-  retro, planted by #45) is ACKED and queued as its own session. KL-7's
-  companion PL-register note (PL-011) still rides its own
-  `do-not-automerge` PR #26 (left open for the owner). *(#41 — ORDER 003
-  + v1.3.0 — and #44 — B1 run-2 record — both MERGED 2026-07-09 and in
-  Recently shipped.)*
+- PR #263 — **Grounded skills program plan (2026-07-12)**: owner directive
+  via coordinator (supersedes the 2026-07-11 freeze for this program only) —
+  [`docs/planning/2026-07-12-grounded-skills-program.md`](planning/2026-07-12-grounded-skills-program.md).
+  Plan only; its 8 slices (§7) are follow-up sessions.
+- *(Drift fix 2026-07-12: the former #69 / #63 / #46 bullets here were all
+  MERGED 2026-07-09 with post-merge steps done and releases verified — see
+  "Recently shipped" (#63, #46, and the #75 v1.6.0-rollout wrap-up) and
+  CHANGELOG v1.4.0–v1.6.0; removed as merged work per this section's
+  dated-snapshot rule.)*
 
 ## Field notes — incident ledger (2026-07-09 run)
 
