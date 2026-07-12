@@ -15,6 +15,47 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Grounded-skills slice 6, kit side (PR #279): single-source seat-digest
+  render (plan §7.6, §8 Q3=A — kit ships the canonical blocks
+  fleet-manager's seat-prompt regen consumes). **Grammar**
+  (`src/engine/grammar.py`, new seat-digest section): the
+  `substrate-kit:skills-digest` / `substrate-kit:walls-digest`
+  prefix-matched fence pairs (with the capability-seed pair, THE machine
+  extraction contract — consumers match the PREFIX, byte-compare the block
+  between markers), the `venues=` marker regex, the Project-seat default
+  venue filter (`autonomous-project` + `any`), and the per-block budget
+  (`SEAT_DIGEST_BLOCK_BUDGET` = 1,500 chars — digest + pointer, never
+  inline; the consuming seat pastes have no 8,000-char headroom).
+  **Render surface** (`src/engine/seatdigest.py`, new module): the
+  skills-index digest (rendered FROM the `SKILLS` list) and the
+  venue-filtered walls digest (rendered FROM the adopter's
+  `docs/CAPABILITIES.md` — seed-fence Walls rows + `wall`-tagged append
+  entries; legacy venue-less lines read as `any`), composed into ONE
+  generated planted doc `docs/seat-digest.md` that also documents the
+  extraction contract and the no-third-copy deferral chain (ledger =
+  seat-local source of truth → seat-digest = derived render, regenerated
+  never edited → fleet-manager `docs/capabilities.md` = fleet aggregation
+  point; no third authored copy). Blocks budget-truncate into a "+N more —
+  read the source" pointer row, never overflow. **Distribution**: adopt
+  plants it (after the ledger, hash-recorded; deliberately outside
+  `ADOPT_PLAN` — it is a derived render of live tree content, not a slot
+  template); upgrade refreshes kit-written copies (`refresh_seat_digest`,
+  in-run + post-hoc `--apply-docs` mirror; venue filter preserved from the
+  committed doc; a hand-edited copy is never clobbered — report-line
+  downgrade with the regen command; new "Seat-digest refresh"
+  upgrade-report section); `bootstrap.py seat-digest` regenerates on
+  demand (`--venue` repeatable override, otherwise the committed filter is
+  preserved). **Drift guard** (`src/engine/checks/check_seat_digest.py`,
+  advisory-only per §8 Q2=B, PL-008 unverified/kill-switch header):
+  `seat-digest-stale` (committed bytes ≠ fresh render of the sources —
+  the `--check-registry`-style proof that prompt blocks equal kit truth)
+  and `seat-digest-over-budget`; wired into `check` (full lane, never
+  exit-affecting). `docs/SKILLS.md` template gains the machine-consumption
+  pointer section. Fleet-manager-side wiring (regen-tool consumption of
+  these fences) is a separate coordinated PR.
+
 ## [1.14.0] - 2026-07-12
 
 Capability release (MINOR) shipping the grounded-skills program slices 3–5:

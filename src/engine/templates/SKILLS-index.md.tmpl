@@ -31,6 +31,16 @@ ${skills_index}
   a `review` stance); stances stay advisory for anything a skill has not
   declared.
 
+## Machine consumption — the seat digest
+
+`docs/seat-digest.md` is the machine-extractable DERIVED RENDER of this
+index plus the capability ledger's venue-relevant walls — two fence-marked
+blocks sized for seat-prompt budgets, consumed by fleet-manager's
+seat-prompt regen via fence-prefix extraction + byte match. Never edit it;
+regenerate with `python3 bootstrap.py seat-digest` (adopt/upgrade refresh
+it too). The extraction contract and the no-third-copy deferral chain are
+documented in that file itself.
+
 ## Growing the set
 
 The skill set is kit-owned (the `SKILLS` list in the kit's

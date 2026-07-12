@@ -56,6 +56,7 @@ from engine.checks.check_session_log import (
     latest_session_log,
     status_in_progress,
 )
+from engine.checks.check_seat_digest import check_seat_digest
 from engine.checks.check_setup_script import check_setup_script
 from engine.checks.check_skill_grounds import check_skill_grounds
 from engine.contextpack import generate_packs, load_pack_index
@@ -71,6 +72,7 @@ from engine.currency import (
 from engine.economy.engine import economy_actuate, economy_check, issue_body
 from engine.economy.harvest import harvest_sources, parse_harvest_tables
 from engine.economy.simulator import calibration_recipe, default_calibration, run_search
+from engine.grammar import CAPABILITY_VENUE_TOKENS, SEAT_DIGEST_DEFAULT_VENUES
 from engine.hooks.post_edit import evaluate_edit
 from engine.hooks.session_start import compose_orientation
 from engine.hooks.settings import full_settings_template, hooks_fill_table
@@ -151,6 +153,11 @@ from engine.render import (
     find_placeholders,
     load_templates,
     render,
+)
+from engine.seatdigest import (
+    seat_digest_relpath,
+    seat_digest_text,
+    walls_digest_venues,
 )
 from engine.skills.skills import (
     SKILLS,
@@ -807,6 +814,21 @@ def cmd_check(
     # (UNVERIFIED per its provenance header; graduation is a later,
     # deliberate step). Full lane only: skills are not control-lane traffic.
     grounds_advisories = check_skill_grounds(target, state_dir=config.state_dir)
+    # Seat-digest drift guard (grounded-skills slice 6, §8 Q2=B):
+    # advisory-only by contract, like every nudge above — a planted
+    # docs/seat-digest.md whose bytes differ from a fresh render of its
+    # sources (skill index + capability ledger) is a regenerate nudge,
+    # never a required-check red (UNVERIFIED per its PL-008 provenance
+    # header; graduation is a later, deliberate step). Full lane only: the
+    # digest is not control-lane traffic. The render context is rebuilt
+    # from state so the fresh render matches what adopt/upgrade/regen
+    # would write (only project_name matters to the render).
+    digest_backend = JsonStateBackend(_state_path(target, config))
+    digest_advisories = check_seat_digest(
+        target,
+        config,
+        context=build_context(digest_backend.data) if digest_backend.data else {},
+    )
     # The inbox append-only gate (issue #36 report 2): a control/inbox.md
     # change must be pure-append vs the merge-base + ORDER-grammar shaped.
     # Rides the finding loop like every checker; engages only when CI handed
@@ -1069,6 +1091,26 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=grounds_advisories,
+        )
+    if digest_advisories and not status_only:
+        # Same warn-only contract as the advisories above (grounded-skills
+        # slice 6, §8 Q2=B advisory-first): a stale/over-budget seat digest
+        # is surfaced + telemetry-recorded, never counted toward the exit
+        # code — the checker is UNVERIFIED (PL-008 header); the fix is one
+        # `bootstrap.py seat-digest` regen, not a locked door.
+        _emit(
+            f"check: {len(digest_advisories)} seat-digest advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in digest_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=digest_advisories,
         )
     if adopters_advisories and not status_only:
         # Same warn-only contract as the advisories above (EAP §6.3): a
@@ -2075,6 +2117,42 @@ def cmd_currency(
     return 0
 
 
+def cmd_seat_digest(target: Path, *, venues: list[str] | None = None) -> int:
+    """Regenerate the planted ``docs/seat-digest.md`` (grounded-skills slice 6).
+
+    The on-demand arm of the derived-render contract (adopt plants it,
+    upgrade refreshes it, this regenerates it whenever the sources moved —
+    the fix ``check_seat_digest``'s stale advisory names). ``venues``
+    overrides the walls-digest venue filter; without it, the committed
+    doc's own ``venues=`` marker is preserved (a regen never silently
+    resets a seat's venue choice), falling back to the Project-seat
+    default. The write re-records the planted-doc hash when an install
+    exists (so upgrade keeps recognizing the file as kit-written); like the
+    guard-fire log, it never CREATES state in an uninitialized tree.
+    """
+    config = load_config(target)
+    rel = seat_digest_relpath(config)
+    path = target / rel
+    if venues:
+        venue_tuple = tuple(venues)
+    elif path.is_file():
+        venue_tuple = walls_digest_venues(path.read_text(encoding="utf-8"))
+    else:
+        venue_tuple = SEAT_DIGEST_DEFAULT_VENUES
+    backend = JsonStateBackend(_state_path(target, config))
+    context = build_context(backend.data) if backend.data else {}
+    text = seat_digest_text(target, config, context, venues=venue_tuple)
+    atomic_write_text(path, text)
+    if backend.data:
+        record_doc_hash(backend, rel, text)
+    _emit(
+        f"seat-digest: wrote {rel} "
+        f"(walls venues: {', '.join(venue_tuple)}; derived render — the "
+        "sources stay the skill index + the capability ledger).",
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Construct the bootstrap argument parser."""
     parser = argparse.ArgumentParser(prog="bootstrap", description="substrate-kit")
@@ -2296,6 +2374,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="scan + print the drift report without writing docs/adopters.md",
     )
 
+    seat_digest = sub.add_parser(
+        "seat-digest",
+        help=(
+            "regenerate docs/seat-digest.md — the fence-marked skills + "
+            "walls digest blocks fleet-manager's seat-prompt regen "
+            "extracts (derived render; never hand-edit)"
+        ),
+    )
+    seat_digest.add_argument("--target", type=Path, default=Path.cwd())
+    seat_digest.add_argument(
+        "--venue",
+        action="append",
+        choices=CAPABILITY_VENUE_TOKENS,
+        default=None,
+        help=(
+            "walls-digest venue filter (repeatable). Default: the committed "
+            "doc's own venues= marker, else the Project-seat default "
+            f"({', '.join(SEAT_DIGEST_DEFAULT_VENUES)})"
+        ),
+    )
+
     check = sub.add_parser("check", help="run the doc + session-log hygiene checks")
     check.add_argument("--target", type=Path, default=Path.cwd())
     check.add_argument("--strict", action="store_true", help="exit 1 if any violation")
@@ -2396,6 +2495,8 @@ def main(argv: list[str] | None = None) -> int:
                 roster_file=args.roster,
                 dry_run=args.dry_run,
             )
+        if args.command == "seat-digest":
+            return cmd_seat_digest(args.target, venues=args.venue)
         if args.command == "check":
             return cmd_check(
                 args.target,
