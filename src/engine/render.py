@@ -32,7 +32,25 @@ _MD_CODE_FENCE_RE = re.compile(r"^```.*?^```", re.MULTILINE | re.DOTALL)
 # exactly this set, so a template may reference them without a bank question
 # existing. Grows deliberately: every addition must be injected by
 # build_context (or a caller) unconditionally, or templates strand unfilled.
-ENGINE_CONTEXT_KEYS = frozenset({"kit_version"})
+ENGINE_CONTEXT_KEYS = frozenset({"agreement_home", "kit_version"})
+
+
+def agreement_home(root: Path, *, include_claude: bool = False) -> str:
+    """Return the boot pointer to the target repo's working agreement.
+
+    ``.claude/CLAUDE.md`` only when it is actually live in ``root`` (or the
+    current adopt run is about to write it, via ``include_claude``);
+    otherwise the root ``CONSTITUTION.md``, which ``ADOPT_PLAN`` always
+    plants. Engine-computed (an :data:`ENGINE_CONTEXT_KEYS` member, like
+    ``kit_version``) because no interview answer can know what the run
+    installs: the planted ``docs/AGENT_ORIENTATION.md`` used to hardcode
+    ``.claude/CLAUDE.md`` while the default adopt deliberately only STAGES
+    CLAUDE.md — a dead boot pointer verified live in 3/3 adopters
+    (inbox ORDER 015, 2026-07-12).
+    """
+    if include_claude or (root / ".claude" / "CLAUDE.md").is_file():
+        return ".claude/CLAUDE.md"
+    return "CONSTITUTION.md"
 
 
 def find_placeholders(text: str) -> set[str]:

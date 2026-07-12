@@ -74,7 +74,7 @@ from engine.lib.atomicio import atomic_write_text
 from engine.lib.config import KIT_VERSION, Config, save_config
 from engine.lib.state import STATE_SCHEMA_VERSION
 from engine.loop.telemetry import MODEL_LINE_NEEDLE
-from engine.render import build_context, load_templates, render
+from engine.render import agreement_home, build_context, load_templates, render
 
 LAST_UPGRADE_FILENAME = "last-upgrade.json"
 UPGRADE_REPORT_FILENAME = "upgrade-report.md"
@@ -145,10 +145,18 @@ def verify_against_release_json(running: Path, release_json: Path) -> list[str]:
     return [f"verified: sha256 + version against {release_json.name}"]
 
 
-def _upgrade_context(backend: Any) -> dict[str, str]:
-    """Build the render context exactly the way adopt does."""
+def _upgrade_context(root: Path, backend: Any) -> dict[str, str]:
+    """Build the render context exactly the way adopt does.
+
+    ``agreement_home`` uses the same existence rule as :func:`_doc_plan`
+    (a live ``.claude/CLAUDE.md`` means the host opted in), so the doc-diff
+    classification renders the boot pointer adopt would compute — a mismatch
+    here would misclassify an untouched ``docs/AGENT_ORIENTATION.md`` as
+    diverged.
+    """
     context = build_context(backend.data)
     context.setdefault("integration_mode", str(backend.get("mode", "guided")))
+    context.setdefault("agreement_home", agreement_home(root))
     return context
 
 
@@ -189,7 +197,7 @@ def classify_planted_docs(
     diverged docs with old templates available — the template@old→new delta,
     both rendered through the *current* slot context for a readable diff).
     """
-    context = _upgrade_context(backend)
+    context = _upgrade_context(root, backend)
     templates = new_templates if new_templates is not None else load_templates()
     rows: list[dict[str, str]] = []
     for template_name, rel in _doc_plan(root, config):
@@ -277,7 +285,7 @@ def apply_doc_improvements(
     planted docs are never auto-edited without ``--apply-docs``, and never
     when the consumer diverged).
     """
-    context = _upgrade_context(backend)
+    context = _upgrade_context(root, backend)
     templates = new_templates if new_templates is not None else load_templates()
     lines: list[str] = []
     for row in rows:

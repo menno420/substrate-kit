@@ -37,7 +37,13 @@ from engine.lib.atomicio import atomic_write_text
 from engine.lib.config import KIT_VERSION, Config, save_config
 from engine.lib.guardrail import assert_safe_target
 from engine.loop.telemetry import MODEL_LINE_NEEDLE
-from engine.render import build_context, find_placeholders, load_templates, render
+from engine.render import (
+    agreement_home,
+    build_context,
+    find_placeholders,
+    load_templates,
+    render,
+)
 from engine.skills.skills import SKILLS, skill_document, skill_relpath
 
 # Template filename -> planted relpath. CLAUDE.md.tmpl is deliberately absent:
@@ -1646,6 +1652,13 @@ def adopt(
     context = build_context(backend.data)
     # The live integration mode is state, not a slot — render it truthfully.
     context.setdefault("integration_mode", str(backend.get("mode", "guided")))
+    # The boot pointer is state too: only this run knows whether
+    # .claude/CLAUDE.md is (or is about to be) live in the target — the
+    # ORDER 015 dead-pointer fix (logic: engine.render.agreement_home).
+    context.setdefault(
+        "agreement_home",
+        agreement_home(root, include_claude=include_claude),
+    )
 
     # (1) Plant the live docs — never clobber; a doc with unfilled ${slots}
     # is planted under the loud UNRENDERED banner (visible, never inert).

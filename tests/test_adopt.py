@@ -93,6 +93,34 @@ def test_claude_md_is_staged_not_planted(tmp_path):
     assert "CLAUDE.md.tmpl" not in {name for name, _ in ADOPT_PLAN}
 
 
+def test_orientation_boot_pointer_default_adopt_is_constitution(tmp_path):
+    # ORDER 015 (dead-boot-pointer class): the default adopt never installs
+    # .claude/CLAUDE.md (it is staged only), so the planted orientation
+    # router must boot from the always-planted root CONSTITUTION.md — the
+    # old hardcoded .claude/CLAUDE.md pointer was verified dead in 3/3
+    # adopters (superbot-next, venture-lab, fleet-manager).
+    root, _, _ = _adopt_into(tmp_path)
+    orientation = (root / "docs" / "AGENT_ORIENTATION.md").read_text(
+        encoding="utf-8"
+    )
+    assert ".claude/CLAUDE.md" not in orientation
+    assert "${agreement_home}" not in orientation
+    assert "the working agreement — `CONSTITUTION.md` —" in orientation
+    assert "the working agreement (`CONSTITUTION.md`)" in orientation
+
+
+def test_orientation_boot_pointer_include_claude_is_claude_md(tmp_path):
+    # ORDER 015: with the explicit opt-in the live .claude/CLAUDE.md IS the
+    # working agreement, and the router boots from it.
+    root, _, _ = _adopt_into(tmp_path, include_claude=True)
+    assert (root / ".claude" / "CLAUDE.md").is_file()
+    orientation = (root / "docs" / "AGENT_ORIENTATION.md").read_text(
+        encoding="utf-8"
+    )
+    assert "${agreement_home}" not in orientation
+    assert "the working agreement — `.claude/CLAUDE.md` —" in orientation
+
+
 def test_claude_md_orientation_names_handoff_pointer(tmp_path):
     # The B1 run-6 delivery-gap fix's #2 rider: the harness's claudeMd
     # injection is the one channel run-6 proved reaches delegated workers
