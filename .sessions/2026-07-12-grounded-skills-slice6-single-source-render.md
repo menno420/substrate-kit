@@ -1,6 +1,6 @@
 # 2026-07-12 — grounded-skills program, slice 6: single-source seat-digest render (kit side)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** fable-5 · seat-worker · grounded-skills slice 6
 
