@@ -82,6 +82,20 @@ ADOPT_PLAN: list[tuple[str, str]] = [
     # (the CAPABILITIES.md pattern); advisory only — no CI enforcement
     # of "you used the skill" (§8 Q2=B, graduation later).
     ("SKILLS-index.md.tmpl", "docs/SKILLS.md"),
+    # Routine / wake-chain doctrine (grounded-skills program §7 tail —
+    # docs/planning/2026-07-12-grounded-skills-program.md §6 "Routine/
+    # wake-chain doctrine" row; map: docs/reports/
+    # 2026-07-12-prompt-template-hardening-input.md §(b)): binding choice
+    # by lifetime + verify-delivery, verbatim create-call records,
+    # probe-not-record re-verification at every wake, the scheduler-health
+    # wedge signature, sequential trigger-write pacing, and the failsafe
+    # blind-window check — incident-backed (the 2026-07-12 trigger
+    # forensics) and portably worded (no fleet/env ids: the env-id
+    # mismatch is itself load-bearing, forensics H2). Routed from the
+    # CLAUDE / AGENT_ORIENTATION templates like its CAPABILITIES/SKILLS
+    # siblings so the plant never orphans an adopter's check --strict
+    # (the orphan-doc reachability rule).
+    ("routines.md.tmpl", "docs/ROUTINES.md"),
     ("ideas-README.md.tmpl", "docs/ideas/README.md"),
     ("session-journal.md.tmpl", ".session-journal.md"),
     # The fleet coordination protocol (band KL-8, spec: superbot
