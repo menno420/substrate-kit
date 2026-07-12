@@ -1,1 +1,0 @@
-- `claude/grounded-skills-wrap-report` · **grounded-skills program wrap report** — verified-receipts wrap report + control/status.md program-shipped overwrite · `docs/reports/2026-07-12-grounded-skills-wrap.md`, `control/status.md`, `.sessions/` · 2026-07-12
