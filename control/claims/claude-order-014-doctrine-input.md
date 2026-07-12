@@ -1,1 +1,0 @@
-- `claude/order-014-doctrine-input` · **ORDER 014: prompt-template hardening input** — doctrine-input doc + outbox pointer · docs/reports/ + control/outbox.md + control/status.md · 2026-07-12

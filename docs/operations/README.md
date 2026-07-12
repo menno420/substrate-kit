@@ -20,3 +20,7 @@
   — adopter outcomes measurement (dated audit): before/after kit-adoption
   effect unmeasurable today (9/10 adopters born-with-kit; superbot pin-only),
   false-claim audit near-clean, post-adoption time-to-ship baselines.
+- [../reports/2026-07-12-prompt-template-hardening-input.md](../reports/2026-07-12-prompt-template-hardening-input.md)
+  — prompt-template hardening input (dated audit, inbox ORDER 014): the
+  must-carry seat-prompt doctrine list per regression class, the kit-template
+  graduation map, and corrections to stale kit facts in the fleet prompts.
