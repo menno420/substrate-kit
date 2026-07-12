@@ -1,0 +1,1 @@
+- `claude/wave-b-v1140` · **kit v1.14.0 distribution wave B** — upgrade gba-homebrew · pokemon-mod-lab · venture-lab · fleet-manager to v1.14.0 (+ kit close-out regen) · target repos' bootstrap.py/.substrate/docs + kit docs/adopters.md + control/status.md · 2026-07-12
