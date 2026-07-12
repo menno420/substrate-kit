@@ -1,5 +1,8 @@
 # Overnight trigger forensics — substrate-kit seat (2026-07-11 ~22:00Z → 2026-07-12 ~08:55Z)
 
+> **Status:** `audit` (dated snapshot — registry/repo state as observed
+> ~08:55Z 2026-07-12; source code and merged PRs win over this file)
+>
 > Owner-requested (2026-07-12): why did the scheduled cron routines fail overnight, and what else went wrong. Compiled read-only by the kit seat; preserved at coordinator direction.
 
 Read-only throughout: no writes, no PRs, no trigger create/delete/update; probes were list_triggers (7 calls total, paced sequentially) + one list_events read of the 08:46Z session.
