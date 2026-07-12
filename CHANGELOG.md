@@ -48,6 +48,24 @@ induced no write-back or guard-response behavior change (T2 write-back
 probe failed both arms; T5 ignored). **KF-8 trend at 9 scored rows: 1 PASS
 / 8 FAIL.**
 
+### Added
+
+- **K0 headroom advisory — the orientation word-budget gauge (PR #308).**
+  The K0 budget gate used to bite silently: no signal until the boot set
+  crossed `orientation.budget_words` and `check --strict` went red, then an
+  iterative trim loop, one full check run per guess (live hits: the 7,250-word
+  nightcap trim loop; 8 words of headroom at 6,992/7,000 with no warning).
+  New checker `check_orientation_headroom` warns when the boot-set total
+  reaches `orientation.headroom_warn_ratio` (default 0.95, config-tunable;
+  ≥ 1 disables) of the budget without exceeding it — one
+  `orientation-headroom` advisory naming total/budget, exact words of
+  headroom, and the per-doc word split largest-first. **Advisory-only,
+  never exit-affecting** (§8 Q2=B advisory-first; PL-008 UNVERIFIED until
+  proven across sessions), full check lane only. The exit-affecting
+  `orientation-budget` gate finding now carries the same per-doc split, so
+  an over-budget trim is targeted instead of guess-and-recheck. Spec of
+  record: `.sessions/2026-07-10-nightcap-docs-reconcile.md` § 💡.
+
 ### Fixed
 
 - **Auto-merge enabler arms `claim/*` branches (the kit #293 stall class).**
