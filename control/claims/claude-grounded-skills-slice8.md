@@ -1,0 +1,1 @@
+- `claude/grounded-skills-slice8-self-propagation` · **grounded-skills slice 8 — self-propagation doctrine** — CONSTITUTION.md.tmpl registration-reflex clause + SKILLS-index "Growing the set" + grammar phrase pins · src/engine/templates/, src/engine/grammar.py, tests/, CHANGELOG.md, dist/bootstrap.py · 2026-07-12
