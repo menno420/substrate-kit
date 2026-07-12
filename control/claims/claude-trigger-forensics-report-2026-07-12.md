@@ -1,1 +1,0 @@
-- `claude/trigger-forensics-report-2026-07-12` · **preserve overnight trigger-forensics report** — docs/reports/2026-07-12-trigger-forensics.md + session card · docs/reports/ + .sessions/ · 2026-07-12
