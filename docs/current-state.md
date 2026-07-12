@@ -399,11 +399,21 @@ the push delivery gap; run-8 proved the pointer converts but the card was
 empty; run-9 validated the #222 countermeasure (near-miss FAIL, sole gap
 ON-T2 M1) — countered by #236. B2/B3/B4 still need OWNER-ACTION 6.
 
-**→ Post-archive (2026-07-11, the coordinator chat archived):** next =
-**cut v1.13.0** (payload #228+#232+#236 in CHANGELOG [Unreleased]) → the
-7-repo wave → **bench run-10** (ideally after pin PRs #220/#238 ratify —
-⚑ OA-14/15). The daily lab loop is armed (06:00Z). Resume path + true
-state: `docs/retro/archive-ready-2026-07-11.md`.
+**→ Post-freeze state (2026-07-12):** the penciled "cut v1.13.0 → 7-repo
+wave" is DONE in overtaken form — the payload shipped as **v1.12.1**
+(PATCH, per the owner's 2026-07-11 feature-freeze directive) and the
+distribution is COMPLETE (all 9 vendored adopters at v1.12.1; see
+`control/status.md` phase). What remains pending: **bench run-10**
+(re-measure the ON-T2 axis; judges best after pin PRs #220/#238 ratify —
+⚑ OA-14/15) and the **freeze-lift decision** (until then: bugs / docs /
+grooming / evidence-base only — no new checker/command/template surface).
+The daily lab loop is ARMED but **missed its first two fire windows**
+(fresh-session cron delivery suspect, 2-for-2) — the slice rides the
+coordinator's stopgap doctrine in-session meanwhile; D3's ≥3-fire count
+has NOT started. Friction inbox CLEARED 2026-07-12 (issues #36–#39
+dispositioned; residuals in `docs/ideas/`, rows in
+`bench/results/friction/index.json`). Resume path + true state:
+`docs/retro/archive-ready-2026-07-11.md` + `control/status.md`.
 
 ### Owner gates — each with its one-line unblock
 
