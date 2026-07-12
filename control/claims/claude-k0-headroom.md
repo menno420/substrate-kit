@@ -1,1 +1,0 @@
-- `claude/k0-headroom` · K0 headroom advisory · 2026-07-12 (Sun Jul 12 21:04:21 UTC 2026)
