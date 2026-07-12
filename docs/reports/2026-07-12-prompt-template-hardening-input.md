@@ -1,6 +1,6 @@
 # Prompt-template hardening input — fleet prompt rebuild 2026-07-12
 
-> **Status:** `report` · executed under inbox ORDER 014 (2026-07-11T23:45Z, P1)
+> **Status:** `audit` (dated snapshot) · executed under inbox ORDER 014 (2026-07-11T23:45Z, P1)
 >
 > Input from the kit lane — owner of the portable doctrine templates
 > (`src/engine/templates/CONSTITUTION.md.tmpl`, `collaboration-model.md.tmpl`,
