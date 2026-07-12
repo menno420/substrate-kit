@@ -275,11 +275,15 @@ def test_intake_owner_questions_are_structured_choices():
     # Q-0263.2: owner questions ONLY as structured choices with a bolded
     # recommendation, answerable with one letter; derivable values never
     # route to the owner; unattended sessions route to the question router.
+    # The phrases are the kit-owned grammar constants (slice 4) — the SAME
+    # pins the doctrine templates carry, so skill and template cannot drift
+    # (the shared-constant home: engine.grammar.STRUCTURED_CHOICE_PHRASES).
+    from engine.grammar import STRUCTURED_CHOICE_PHRASES
+
     body = get_skill("intake")["body"]
     assert "structured" in body and "choice" in body
-    assert "**bolded recommendation**" in body
-    assert "answerable with one letter" in body
-    assert "parse, derive, or transform" in body
+    for phrase in STRUCTURED_CHOICE_PHRASES:
+        assert phrase in body, phrase
     assert "docs/question-router.md" in body
 
 
