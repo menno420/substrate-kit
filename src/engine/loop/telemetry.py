@@ -72,6 +72,16 @@ TASK_CLASSES = (
 
 _DATE_PREFIX_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
 
+# Exact model-ID token detector for the 📊 model segment (fleet reporting
+# bar, ORDER 012 widened 2026-07-12): repo artifacts carry FAMILY-LEVEL model
+# names only (`fable-5`, `opus-4.8`), never an exact model-ID token — and
+# exact IDs are not always dated, so a dated-suffix test alone is too narrow
+# (the websites #178 cleanup class: cards recording `claude-`-prefixed exact
+# ID tokens passed the old "no full dated model ID" wording). Flags the two
+# exact-ID shapes seen in the wild: a provider-prefixed ID token
+# (`claude-…`, incl. `us.anthropic.…` forms) and a dated `-YYYYMMDD` suffix.
+_EXACT_MODEL_ID_RE = re.compile(r"^(?:us\.)?(?:anthropic\.)?claude-|-\d{8}$")
+
 
 def guard_fires_path(root: Path, state_dir: str) -> Path:
     """Return the guard-fire JSONL path for one install."""
@@ -318,6 +328,13 @@ def harvest_model_usage(root: Path, session_log: Path | None) -> list[str]:
                 f"task_class {parsed['task_class']!r} is not one of the "
                 f"{len(TASK_CLASSES)} PL-004 classes ({known}) — recorded "
                 "verbatim; fix the line or the taxonomy.",
+            )
+        if _EXACT_MODEL_ID_RE.search(parsed["model"]):
+            lines.append(
+                f"model {parsed['model']!r} looks like an exact model-ID "
+                "token — record the family-level model name only (e.g. "
+                "`fable-5`, `opus-4.8`), never an exact model ID (fleet "
+                "reporting bar; recorded verbatim — fix the card's line).",
             )
         session = session_log.stem
         path = root / MODEL_USAGE_RELPATH

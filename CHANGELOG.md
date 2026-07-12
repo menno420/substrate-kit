@@ -81,6 +81,26 @@ workflow refuses to publish a version that has no section in this file.
   pointer section. Fleet-manager-side wiring (regen-tool consumption of
   these fences) is a separate coordinated PR.
 
+### Fixed
+
+- Model-line attribution doctrine widened to the full fleet reporting bar
+  (family-level model names only — never an exact model-ID token): the
+  planted `.sessions/README.md` doctrine (`_model_doctrine_text`, shared by
+  the fresh plant and the retroactive merge) banned only a "full **dated**
+  model ID", so exact-but-undated model-ID tokens (e.g. a `claude-`-prefixed
+  ID) followed the letter of the instruction into adopter session cards —
+  the websites #178 cleanup class. The doctrine now bans ANY exact model ID,
+  dated or not; the kit's own `.sessions/README.md` carries the same
+  wording; and the KL-3 session-close harvest (`harvest_model_usage`) gains
+  an advisory (never exit-affecting, the task-class-advisory pattern) when
+  the `📊 Model:` model segment looks like an exact model-ID token
+  (`_EXACT_MODEL_ID_RE`: provider-prefixed or `-YYYYMMDD`-dated shapes;
+  the doctrine's own family-level examples are test-pinned to never
+  false-fire). The idempotency detection phrase is untouched, so READMEs
+  already carrying the ORDER 012 paragraph are not re-appended — adopters
+  pick the reworded doctrine up at the next release + `upgrade
+  --apply-docs`; existing adopter cards are not retro-edited.
+
 ## [1.14.0] - 2026-07-12
 
 Capability release (MINOR) shipping the grounded-skills program slices 3–5:

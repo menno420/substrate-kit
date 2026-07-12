@@ -486,13 +486,19 @@ def test_sessions_readme_teaches_family_level_model_attribution(tmp_path):
     # segment is the family-level name the session's OWN harness reports —
     # the committed card's self-report is the attribution ground truth;
     # external surfaces (schedule/Routines screens) are evidenced to
-    # misattribute, and full dated model IDs are banned from attribution.
+    # misattribute, and exact model IDs are banned from attribution.
     root, config, _ = _adopt_into(tmp_path)
     text = (root / config.sessions_dir / "README.md").read_text(encoding="utf-8")
     assert "family-level model name your own harness" in text
     assert "attribution ground truth" in text
     assert "`fable-5`" in text
     assert "family-level names only" in text
+    # The ban covers ANY exact model-ID token, not just dated ones — the
+    # old "full dated model ID" wording let undated exact IDs through (the
+    # websites #178 cleanup class; fleet bar: family-level names only).
+    assert "never record an exact model ID" in text
+    assert "never an exact model-ID token (dated or not)" in text
+    assert "full dated model ID" not in text
 
 
 def test_sessions_readme_model_doctrine_only_with_model_marker(tmp_path):

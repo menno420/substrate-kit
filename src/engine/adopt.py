@@ -472,8 +472,8 @@ def _model_doctrine_text() -> str:
         "(e.g. `fable-5`, `opus-4.8`, `sonnet-5`) — the committed card's "
         "self-report is the attribution ground truth. Never copy it from "
         "an external surface (schedule/Routines screens are evidenced to "
-        "misattribute), and never record a full dated model ID — "
-        "family-level names only."
+        "misattribute), and never record an exact model ID — family-level "
+        "names only, never an exact model-ID token (dated or not)."
     )
 
 
