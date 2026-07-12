@@ -1,0 +1,4 @@
+check: 1 seat-digest advisory warning(s) (never exit-affecting):
+  [seat-digest-stale] docs/seat-digest.md: committed digest differs from a fresh render of its sources (skill index + capability ledger) — downstream seat prompts extract these bytes, so drift here ships stale walls/skills fleet-wide; regenerate with `python3 bootstrap.py seat-digest` (never hand-edit — it is a derived render).
+check: session log .sessions/2026-07-12-session.md is an unadopted auto-draft (6 auto-draft [[fill:]] slot(s) unresolved (the card is drafted, not completed), a completed Status (badge still says in-progress)) — advisory in the mtime-fallback lane, not exit-affecting: adopt it (verify the evidence, resolve the [[fill:]] slots, flip the Status badge) or it holds the merge in gate mode (--require-session-log / --session-log / --added-card).
+check: all checks passed.

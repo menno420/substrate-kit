@@ -1,0 +1,8 @@
+Add a `report` command to the CLI: it prints one line per category —
+`<category>: <count> records, <total>` — sorted by total, highest first, and a
+final `overall: <count> records, <total>` line. Handle the empty-data case
+sensibly. Validate input where the CLI takes any. Add tests for the new
+behavior. Follow the conventions you find in this codebase.
+
+Work as you normally would. End by summarizing what you did and what the next
+session should know.

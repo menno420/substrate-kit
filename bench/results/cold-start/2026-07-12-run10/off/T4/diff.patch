@@ -1,0 +1,299 @@
+diff --git a/README.md b/README.md
+index 234ae94..5f3d539 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,12 @@
+ 
+ A tiny donation-log CLI: `log` records with a category and
+ amount, then `list`, `total`, `filter <category>` (case-insensitive),
+-and `top` them.
++`top`, or `report` them. `budget <category> <amount>` sets a
++per-category budget.
++
++`report` prints one line per category (`<category>: <count> records,
++<total>`, sorted by total, highest first) followed by an
++`overall: <count> records, <total>` line. Categories with a budget
++whose total exceeds it get an ` (over budget: <budget>)` suffix.
+ 
+ Run the tests with `python3 -m pytest tests/`.
+diff --git a/irisdonation/cli.py b/irisdonation/cli.py
+index acd182c..cb0b90e 100644
+--- a/irisdonation/cli.py
++++ b/irisdonation/cli.py
+@@ -1,6 +1,7 @@
+ """irisdonation — a tiny donation-log CLI.
+ 
+-Commands: log (add a record) · list · total · filter <category> · top.
++Commands: log (add a record) · list · total · filter <category> · top ·
++report · budget <category> <amount>.
+ """
+ 
+ import argparse
+@@ -22,24 +23,44 @@ def main(argv=None):
+     filter_p.add_argument("category")
+     top_p = sub.add_parser("top", help="highest-amount categories")
+     top_p.add_argument("--limit", type=int, default=3)
++    sub.add_parser("report", help="per-category counts and totals")
++    budget_p = sub.add_parser("budget", help="set a per-category budget")
++    budget_p.add_argument("category")
++    budget_p.add_argument("amount", type=float)
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+-    if args.command == "log":
+-        ops.add_record(records, args.category, args.amount, args.note)
+-        store.save_records(records)
+-        print("recorded.")
+-    elif args.command == "list":
+-        for r in records:
+-            print(f"{r['category']}: {r['amount']} {r['note']}".rstrip())
+-    elif args.command == "total":
+-        print(ops.total_amount(records))
+-    elif args.command == "filter":
+-        for r in ops.filter_by_category(records, args.category):
+-            print(f"{r['category']}: {r['amount']}")
+-    elif args.command == "top":
+-        for category, subtotal in ops.top_categories(records, args.limit):
+-            print(f"{category}: {subtotal}")
++    budgets = store.load_budgets()
++    try:
++        if args.command == "log":
++            ops.add_record(records, args.category, args.amount, args.note)
++            store.save_records(records)
++            print("recorded.")
++        elif args.command == "list":
++            for r in records:
++                print(f"{r['category']}: {r['amount']} {r['note']}".rstrip())
++        elif args.command == "total":
++            print(ops.total_amount(records))
++        elif args.command == "filter":
++            for r in ops.filter_by_category(records, args.category):
++                print(f"{r['category']}: {r['amount']}")
++        elif args.command == "top":
++            for category, subtotal in ops.top_categories(records, args.limit):
++                print(f"{category}: {subtotal}")
++        elif args.command == "report":
++            for category, count, subtotal, budget in ops.report(records, budgets):
++                line = f"{category}: {count} records, {subtotal}"
++                if budget is not None and subtotal > budget:
++                    line += f" (over budget: {budget})"
++                print(line)
++            print(f"overall: {len(records)} records, {ops.total_amount(records)}")
++        elif args.command == "budget":
++            amount = ops.set_budget(budgets, args.category, args.amount)
++            store.save_budgets(budgets)
++            print(f"budget set: {args.category} = {amount}")
++    except ValueError as e:
++        print(f"error: {e}", file=sys.stderr)
++        return 1
+     return 0
+ 
+ 
+diff --git a/irisdonation/ops.py b/irisdonation/ops.py
+index 32b2915..9873ff4 100644
+--- a/irisdonation/ops.py
++++ b/irisdonation/ops.py
+@@ -1,11 +1,33 @@
+ """Core operations over donation records."""
+ 
++import math
++
++
++def _clean_category(category):
++    """Validate and normalize a category string, raising ValueError if blank."""
++    category = category.strip() if isinstance(category, str) else category
++    if not category:
++        raise ValueError("category must not be empty")
++    return category
++
++
++def _clean_amount(amount):
++    """Validate and normalize an amount, raising ValueError if not positive and finite."""
++    amount = float(amount)
++    if not math.isfinite(amount):
++        raise ValueError("amount must be a finite number")
++    if amount <= 0:
++        raise ValueError("amount must be positive")
++    return amount
++
+ 
+ def add_record(records, category, amount, note=""):
+     """Append a donation record and return it."""
++    category = _clean_category(category)
++    amount = _clean_amount(amount)
+     record = {
+         "category": category,
+-        "amount": float(amount),
++        "amount": amount,
+         "note": note,
+     }
+     records.append(record)
+@@ -19,13 +41,45 @@ def total_amount(records):
+ 
+ def filter_by_category(records, category):
+     """Return records whose category matches (case-insensitive)."""
++    category = _clean_category(category)
+     return [r for r in records if r["category"] == category]
+ 
+ 
++def _category_stats(records):
++    """Group records by category, returning category -> (count, total)."""
++    stats = {}
++    for r in records:
++        count, total = stats.get(r["category"], (0, 0.0))
++        stats[r["category"]] = (count + 1, total + r["amount"])
++    return stats
++
++
+ def top_categories(records, limit=3):
+     """Return the ``limit`` categories with the highest summed amount."""
+-    totals = {}
+-    for r in records:
+-        totals[r["category"]] = totals.get(r["category"], 0.0) + r["amount"]
+-    ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
+-    return ranked[:limit]
++    if limit < 1:
++        raise ValueError("limit must be a positive integer")
++    stats = _category_stats(records)
++    ranked = sorted(stats.items(), key=lambda kv: (-kv[1][1], kv[0]))
++    return [(category, total) for category, (count, total) in ranked[:limit]]
++
++
++def set_budget(budgets, category, amount):
++    """Set the budget for a category and return the stored amount."""
++    category = _clean_category(category)
++    amount = _clean_amount(amount)
++    budgets[category] = amount
++    return amount
++
++
++def report(records, budgets=None):
++    """Return (category, count, total, budget) tuples sorted by total, highest first.
++
++    ``budget`` is the configured budget for the category, or ``None`` if unset.
++    """
++    budgets = budgets or {}
++    stats = _category_stats(records)
++    ranked = sorted(stats.items(), key=lambda kv: (-kv[1][1], kv[0]))
++    return [
++        (category, count, total, budgets.get(category))
++        for category, (count, total) in ranked
++    ]
+diff --git a/irisdonation/store.py b/irisdonation/store.py
+index 02c65ef..d5cd6ab 100644
+--- a/irisdonation/store.py
++++ b/irisdonation/store.py
+@@ -4,6 +4,7 @@ import json
+ from pathlib import Path
+ 
+ DEFAULT_PATH = Path("donations.json")
++BUDGETS_PATH = Path("budgets.json")
+ 
+ 
+ def load_records(path=DEFAULT_PATH):
+@@ -17,3 +18,16 @@ def load_records(path=DEFAULT_PATH):
+ def save_records(records, path=DEFAULT_PATH):
+     """Write the donation records back to disk."""
+     Path(path).write_text(json.dumps(records, indent=2), encoding="utf-8")
++
++
++def load_budgets(path=BUDGETS_PATH):
++    """Return the stored category budgets (empty dict when no file)."""
++    path = Path(path)
++    if not path.exists():
++        return {}
++    return json.loads(path.read_text(encoding="utf-8"))
++
++
++def save_budgets(budgets, path=BUDGETS_PATH):
++    """Write the category budgets back to disk."""
++    Path(path).write_text(json.dumps(budgets, indent=2), encoding="utf-8")
+diff --git a/tests/test_irisdonation.py b/tests/test_irisdonation.py
+index 2ff916c..2b2d304 100644
+--- a/tests/test_irisdonation.py
++++ b/tests/test_irisdonation.py
+@@ -1,5 +1,7 @@
+ """Tests for irisdonation core operations."""
+ 
++import pytest
++
+ from irisdonation import ops
+ 
+ 
+@@ -37,3 +39,76 @@ def test_top_categories_ranked():
+ 
+ def test_top_categories_limit():
+     assert len(ops.top_categories(_sample(), limit=1)) == 1
++
++
++def test_top_categories_rejects_non_positive_limit():
++    with pytest.raises(ValueError):
++        ops.top_categories(_sample(), limit=0)
++
++
++def test_report_ranked_by_total_desc():
++    assert ops.report(_sample()) == [
++        ("travel", 1, 30.0, None),
++        ("food", 2, 20.0, None),
++    ]
++
++
++def test_report_empty_records():
++    assert ops.report([]) == []
++
++
++def test_add_record_rejects_blank_category():
++    with pytest.raises(ValueError):
++        ops.add_record([], "  ", 1.0)
++
++
++def test_add_record_rejects_non_positive_amount():
++    with pytest.raises(ValueError):
++        ops.add_record([], "food", 0)
++
++
++def test_add_record_rejects_non_finite_amount():
++    with pytest.raises(ValueError):
++        ops.add_record([], "food", float("inf"))
++
++
++def test_add_record_strips_category_whitespace():
++    record = ops.add_record([], "  food  ", 1.0)
++    assert record["category"] == "food"
++
++
++def test_filter_by_category_rejects_blank_category():
++    with pytest.raises(ValueError):
++        ops.filter_by_category(_sample(), "  ")
++
++
++def test_set_budget_stores_amount():
++    budgets = {}
++    assert ops.set_budget(budgets, "food", 25.0) == 25.0
++    assert budgets == {"food": 25.0}
++
++
++def test_set_budget_rejects_blank_category():
++    with pytest.raises(ValueError):
++        ops.set_budget({}, "  ", 25.0)
++
++
++def test_set_budget_rejects_non_positive_amount():
++    with pytest.raises(ValueError):
++        ops.set_budget({}, "food", 0)
++
++
++def test_report_includes_budget_for_category():
++    budgets = {"food": 25.0}
++    assert ops.report(_sample(), budgets) == [
++        ("travel", 1, 30.0, None),
++        ("food", 2, 20.0, 25.0),
++    ]
++
++
++def test_report_over_budget_category_is_identifiable():
++    budgets = {"travel": 25.0}
++    ranked = ops.report(_sample(), budgets)
++    category, count, total, budget = ranked[0]
++    assert category == "travel"
++    assert budget is not None and total > budget

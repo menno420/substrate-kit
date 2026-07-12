@@ -1,0 +1,203 @@
+diff --git a/README.md b/README.md
+index 234ae94..55940ff 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,10 @@
+ 
+ A tiny donation-log CLI: `log` records with a category and
+ amount, then `list`, `total`, `filter <category>` (case-insensitive),
+-and `top` them.
++`top`, or `report` them.
++
++`report` prints one line per category (`<category>: <count> records,
++<total>`, sorted by total, highest first) followed by an
++`overall: <count> records, <total>` line.
+ 
+ Run the tests with `python3 -m pytest tests/`.
+diff --git a/irisdonation/cli.py b/irisdonation/cli.py
+index acd182c..43da76d 100644
+--- a/irisdonation/cli.py
++++ b/irisdonation/cli.py
+@@ -1,6 +1,6 @@
+ """irisdonation — a tiny donation-log CLI.
+ 
+-Commands: log (add a record) · list · total · filter <category> · top.
++Commands: log (add a record) · list · total · filter <category> · top · report.
+ """
+ 
+ import argparse
+@@ -22,24 +22,33 @@ def main(argv=None):
+     filter_p.add_argument("category")
+     top_p = sub.add_parser("top", help="highest-amount categories")
+     top_p.add_argument("--limit", type=int, default=3)
++    sub.add_parser("report", help="per-category counts and totals")
+     args = parser.parse_args(argv)
+ 
+     records = store.load_records()
+-    if args.command == "log":
+-        ops.add_record(records, args.category, args.amount, args.note)
+-        store.save_records(records)
+-        print("recorded.")
+-    elif args.command == "list":
+-        for r in records:
+-            print(f"{r['category']}: {r['amount']} {r['note']}".rstrip())
+-    elif args.command == "total":
+-        print(ops.total_amount(records))
+-    elif args.command == "filter":
+-        for r in ops.filter_by_category(records, args.category):
+-            print(f"{r['category']}: {r['amount']}")
+-    elif args.command == "top":
+-        for category, subtotal in ops.top_categories(records, args.limit):
+-            print(f"{category}: {subtotal}")
++    try:
++        if args.command == "log":
++            ops.add_record(records, args.category, args.amount, args.note)
++            store.save_records(records)
++            print("recorded.")
++        elif args.command == "list":
++            for r in records:
++                print(f"{r['category']}: {r['amount']} {r['note']}".rstrip())
++        elif args.command == "total":
++            print(ops.total_amount(records))
++        elif args.command == "filter":
++            for r in ops.filter_by_category(records, args.category):
++                print(f"{r['category']}: {r['amount']}")
++        elif args.command == "top":
++            for category, subtotal in ops.top_categories(records, args.limit):
++                print(f"{category}: {subtotal}")
++        elif args.command == "report":
++            for category, count, subtotal in ops.report(records):
++                print(f"{category}: {count} records, {subtotal}")
++            print(f"overall: {len(records)} records, {ops.total_amount(records)}")
++    except ValueError as e:
++        print(f"error: {e}", file=sys.stderr)
++        return 1
+     return 0
+ 
+ 
+diff --git a/irisdonation/ops.py b/irisdonation/ops.py
+index 32b2915..de7e476 100644
+--- a/irisdonation/ops.py
++++ b/irisdonation/ops.py
+@@ -1,11 +1,27 @@
+ """Core operations over donation records."""
+ 
++import math
++
++
++def _clean_category(category):
++    """Validate and normalize a category string, raising ValueError if blank."""
++    category = category.strip() if isinstance(category, str) else category
++    if not category:
++        raise ValueError("category must not be empty")
++    return category
++
+ 
+ def add_record(records, category, amount, note=""):
+     """Append a donation record and return it."""
++    category = _clean_category(category)
++    amount = float(amount)
++    if not math.isfinite(amount):
++        raise ValueError("amount must be a finite number")
++    if amount <= 0:
++        raise ValueError("amount must be positive")
+     record = {
+         "category": category,
+-        "amount": float(amount),
++        "amount": amount,
+         "note": note,
+     }
+     records.append(record)
+@@ -19,13 +35,30 @@ def total_amount(records):
+ 
+ def filter_by_category(records, category):
+     """Return records whose category matches (case-insensitive)."""
++    category = _clean_category(category)
+     return [r for r in records if r["category"] == category]
+ 
+ 
++def _category_stats(records):
++    """Group records by category, returning category -> (count, total)."""
++    stats = {}
++    for r in records:
++        count, total = stats.get(r["category"], (0, 0.0))
++        stats[r["category"]] = (count + 1, total + r["amount"])
++    return stats
++
++
+ def top_categories(records, limit=3):
+     """Return the ``limit`` categories with the highest summed amount."""
+-    totals = {}
+-    for r in records:
+-        totals[r["category"]] = totals.get(r["category"], 0.0) + r["amount"]
+-    ranked = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
+-    return ranked[:limit]
++    if limit < 1:
++        raise ValueError("limit must be a positive integer")
++    stats = _category_stats(records)
++    ranked = sorted(stats.items(), key=lambda kv: (-kv[1][1], kv[0]))
++    return [(category, total) for category, (count, total) in ranked[:limit]]
++
++
++def report(records):
++    """Return (category, count, total) tuples sorted by total, highest first."""
++    stats = _category_stats(records)
++    ranked = sorted(stats.items(), key=lambda kv: (-kv[1][1], kv[0]))
++    return [(category, count, total) for category, (count, total) in ranked]
+diff --git a/tests/test_irisdonation.py b/tests/test_irisdonation.py
+index 2ff916c..03760e0 100644
+--- a/tests/test_irisdonation.py
++++ b/tests/test_irisdonation.py
+@@ -1,5 +1,7 @@
+ """Tests for irisdonation core operations."""
+ 
++import pytest
++
+ from irisdonation import ops
+ 
+ 
+@@ -37,3 +39,44 @@ def test_top_categories_ranked():
+ 
+ def test_top_categories_limit():
+     assert len(ops.top_categories(_sample(), limit=1)) == 1
++
++
++def test_top_categories_rejects_non_positive_limit():
++    with pytest.raises(ValueError):
++        ops.top_categories(_sample(), limit=0)
++
++
++def test_report_ranked_by_total_desc():
++    assert ops.report(_sample()) == [
++        ("travel", 1, 30.0),
++        ("food", 2, 20.0),
++    ]
++
++
++def test_report_empty_records():
++    assert ops.report([]) == []
++
++
++def test_add_record_rejects_blank_category():
++    with pytest.raises(ValueError):
++        ops.add_record([], "  ", 1.0)
++
++
++def test_add_record_rejects_non_positive_amount():
++    with pytest.raises(ValueError):
++        ops.add_record([], "food", 0)
++
++
++def test_add_record_rejects_non_finite_amount():
++    with pytest.raises(ValueError):
++        ops.add_record([], "food", float("inf"))
++
++
++def test_add_record_strips_category_whitespace():
++    record = ops.add_record([], "  food  ", 1.0)
++    assert record["category"] == "food"
++
++
++def test_filter_by_category_rejects_blank_category():
++    with pytest.raises(ValueError):
++        ops.filter_by_category(_sample(), "  ")

@@ -1,0 +1,8 @@
+Someone recently added a `report` command to this tool. Continue that work:
+add per-category budgets — a way to set a budget for a category, and make
+`report` flag categories that are over budget. Follow the conventions you
+find in this codebase, and pick up from how the previous work was done rather
+than restarting your own way.
+
+Work as you normally would. End by summarizing what you did and what the next
+session should know.

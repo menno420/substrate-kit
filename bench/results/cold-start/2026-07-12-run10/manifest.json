@@ -1,0 +1,57 @@
+{
+  "run_id": "2026-07-12-run10",
+  "date": "2026-07-12",
+  "seed": 712001,
+  "tasks": [
+    "T2",
+    "T4",
+    "T5"
+  ],
+  "wire_enforcement": true,
+  "kit": "/home/user/substrate-kit/dist/bootstrap.py",
+  "arms": {
+    "on": "/tmp/claude-0/-home-user/dc36b696-9936-52c9-96ea-e75e9ea92515/scratchpad/run10/2026-07-12-run10/on/repo",
+    "off": "/tmp/claude-0/-home-user/dc36b696-9936-52c9-96ea-e75e9ea92515/scratchpad/run10/2026-07-12-run10/off/repo"
+  },
+  "task_prompts": {
+    "T2": "/home/user/substrate-kit/bench/tasks/T2.md",
+    "T4": "/home/user/substrate-kit/bench/tasks/T4.md",
+    "T5": "/home/user/substrate-kit/bench/tasks/T5.md"
+  },
+  "rubric": "/home/user/substrate-kit/bench/rubric/cold-start-rubric.md",
+  "smoke": [
+    "seed suite (on): green",
+    "seed suite (off): green",
+    "engage: answered 13 slots (seed-derived, deterministic)",
+    "engage: render --live",
+    "engage: enforcement already wired (adopt --wire-enforcement)",
+    "engage: session card 2026-07-12-adoption.md",
+    "engage: control/status.md heartbeat",
+    "engage: committed",
+    "CONSTITUTION.md: present",
+    "docs/current-state.md: present",
+    ".sessions: present",
+    "check --strict exit=0"
+  ],
+  "cli_version": "2.1.207",
+  "kit_version": "1.15.0",
+  "kit_commit": "main@e1d97c9 (dist 829339 B: v1.15.0 payload + #300 enabler regen; carries the #236 fresh-path cut released in v1.12.1)",
+  "judge_model": "claude-opus-4-8",
+  "arm_model": "claude-sonnet-5",
+  "runner_notes": [
+    "PIN COHERENCE \u2014 FIRST RUN ON THE RATIFIED PAIR: rubric \u00a73 T5 block = v2 (#220 @ ed46c2c) + bench/tasks/T5.md = v3 (#238 @ 5e6ba09), both owner-merged 2026-07-12T19:34Z. T5 scored straight from rubric \u00a73; the run-8/9 'protocol pins applied' limitation class is RETIRED.",
+    "PRECONDITION 1 EXECUTED \u2014 DELEGATION-SEAM SMOKE (prepare time, BEFORE any arm): one throwaway-repo spawn via the bench `claude -p` mechanism (CLI 2.1.207, same flags as measured spawns, prompt = run-8's committed smoke prompt byte-exact, 668 B). RESULT: PASS \u2014 exit 0, ONE new session stream, ZERO delegated subagents, first user message byte-identical (True), model claude-sonnet-5, all five steps green (pytest \u00d72, append, git add, git commit @ 5b88b42 in the scratch repo).",
+    "PRECONDITION 2 EXECUTED \u2014 ENV MITIGATION, VERBATIM: for EVERY spawned CLI (seam smoke, six measured arms, the judge) these variables were removed via `env -u` (prior values in this runner env recorded in harness-evidence/env-mitigation-prior-values.txt): CLAUDE_AUTO_BACKGROUND_TASKS=true \u00b7 CLAUDE_CODE_BG_TASKS_REPORT_RUNNING=1 \u00b7 CLAUDE_CODE_COORDINATOR_MODE=1 \u00b7 CLAUDE_CODE_COORDINATOR_EXTRA_TOOLS=SendUserFile,mcp__claude-code-remote__list_events,mcp__claude-code-remote__send_message \u00b7 CLAUDE_CODE_CHILD_SESSION=1. Removed as a SET; single-var causality still not isolated.",
+    "CONTROL SPAWN (unmitigated, same smoke repo, NOT a measure): the identical spawn WITHOUT the mitigation delegated to 1 subagent whose first user message was a PARAPHRASE ('In the current working directory (/tmp/\u2026/run10/seam-smoke), do exactly these steps in order and nothing else\u2026'; byte-identical: False). FOURTH A/B reproduction of the run-7 signature (runs 8, 9, 10). Evidence: harness-evidence/seam-smoke-control/.",
+    "SEAM SHAPE: FLAT 6/6 (run-8/9 parity) \u2014 zero new subagent streams on every measured spawn; the spawned session IS the measured cold session; first user message byte-identical to the fenced task text 6/6; prompts cmp-verified byte-identical to run-9's committed prompt files 3/3 BEFORE spawning.",
+    "SHARED STREAM FILE (run-8/9 class): spawned CLIs inherit CLAUDE_CODE_SESSION_ID, so consecutive same-arm spawns APPEND to one native stream file. Segments extracted by recorded line offsets (stream-lines-before/after in each session dir); every segment's first user event roots within its own segment (cold-verified 6/6).",
+    "SPEC-NOTES \u00a71 CHECKPOINT \u2014 THE #222 ADVISORY LANE EXERCISED FOR THE FIRST TIME, BOTH TARGETS MET: between ON-T2 arm end and T4 boot, on the organic drafted card (.sessions/2026-07-12-session.md, 6 unresolved slots): (1) bare `check --strict` exit 0 WITH the advisory line naming card + slot count (verbatim in s-row-facts + harness-evidence/checkpoint/); (2) `--require-session-log --session-log <card>` exit 1. Neither falsification reading occurred. Side effect: the two checkpoint invocations appended 2 guard-fire records (7\u21929) \u2014 harness-side, recorded honestly.",
+    "SPEC-NOTES \u00a72 WATCHES \u2014 BOTH CONVERT: ON-T2's boot push rendered the fresh-state fast path ('Fresh start \u2014 nothing in flight' + the exclusion recipe, no 'Open that card FIRST'); the 116w card-FIRST read is GONE (first calls: git fetch/status, ls+find, git status, Read HANDOFF.md 97w) \u2014 nuance: the adoption card was still read later pre-mutation inside one 291w bundled cat; the 1724w-class kit-polluted grep is GONE \u2014 the session's single grep carried the taught `--exclude=bootstrap.py --exclude-dir=.substrate` recipe verbatim, fell outside the M1 window, and returned zero pollution lines. ON-T2 M1 2505 \u2192 1676 (\u221233%); gap vs OFF 3.71\u00d7 \u2192 2.80\u00d7.",
+    "T5 v3 SEED EXECUTED: step 1 clean-tree chore commits ON 8f71ab5 / OFF 219b86e \u2014 the runs-8/9 commit-sweep confound is RETIRED (both T5 commits exactly 1 file +1/\u22121: ON 57e928d, OFF af8ab41; no sweep, no headless dead-end, first family run without the shared T5 incident). Step 2 VERIFIED-PRESENT-NOT-FABRICATED (letter-deviation, intent-faithful, flagged): ON-T4 genuinely ended without write-back, so the drafted/unresolved newest card the seed exists to construct already existed organically; the runner ran `bootstrap.py draft` (counted the draft, refreshed the HANDOFF pointer) and did NOT overwrite genuine state with a synthetic draft. Step 3 probe-validity gate MET: the T5 boot push announced in-progress/drafted, 6 unresolved slots + 'Open that card FIRST' \u2014 the v3 probe is NON-DEGENERATE this run (contrast run-9).",
+    "T5 v3 PROBE RESULT (scripted; judge scored items): ON-T5 saw the drafted-state push in its own context and went silent straight-through \u2014 zero mention of card/push/kit, card byte-untouched at arm end, never ran check --strict itself (items 1\u20132 not-met, 3\u20134 met). The run-8 'saw-and-ignored' pattern reproduced on a genuinely unresolved state.",
+    "ON-T4 DIVERGENCE FROM RUN-9 (recorded honestly): T4 consumed the trail perfectly (first calls HANDOFF \u2192 card \u2192 git diff scoped to EXACTLY the three trail-named files; M1 1522 vs OFF 1846 \u2014 first family T4 M1 ON-win) but did NOT author the card (still drafted, 6 slots at arm end). Run-9's genuine write-back did not recur; write-back is 1-for-2 post-#222.",
+    "ON ARM END bare `check --strict`: exit 0 VIA THE #222 ADVISORY LANE (drafted card advisory, not exit-affecting) \u2014 the OPPOSITE mechanism to run-9's exit-0 (genuine completion). Both mechanisms now observed once each; the lane itself validated by the scripted checkpoint.",
+    "JUDGE INVOCATION: prompt (265823 B) passed on STDIN (run-8 ARG_MAX lesson pre-applied), exit 0, separate cold invocation, mitigated env, --model opus, --tools '' (no tools); judge saw only the pinned rubric (\u00a73 v2) + ratified T5 v3 file + scripted facts + six transcripts + end-state diffs. Judge model claude-opus-4-8 verified from its native stream (harness-evidence/judge/judge-stream.jsonl).",
+    "GUARD-FIRE WINDOWS (advisory, dedupe active): T2 +6 \u00b7 checkpoint (harness) +2 \u00b7 T4 +1 \u00b7 T5 +4 \u2014 zero verbally acknowledged in any transcript. claudeMd-injection channel ABSENT 0/6 (fourth consecutive run). ZERO reset-relaunches (fourth consecutive). Prepare CLEAN FIRST TRY (seventh consecutive); seed 712001 \u2192 irisdonation accepted first try. collect hard-abort guard (#236): never triggered \u2014 all six transcripts converted with events on the first pass (the run-9 argv-slip class did not recur)."
+  ]
+}

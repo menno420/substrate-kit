@@ -1,0 +1,9 @@
+Report:
+
+1. `python3 -m pytest tests/ -q` — **Success** (exit 0). Output: `2 passed in 0.00s`
+2. `python -m pytest tests/ -q` — **Success** (exit 0). Output: `2 passed in 0.00s`
+3. Append `# smoke` to `calc.py` — **Success**. Line appended after `return a * b`.
+4. `git add calc.py` — **Success** (exit 0, no output).
+5. `git commit -m "smoke"` — **Success** (exit 0). Output: `[master 5b88b42] smoke, 1 file changed, 1 insertion(+)`
+
+All 5 steps completed successfully with no failures.

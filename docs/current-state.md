@@ -153,6 +153,22 @@
   fails none-regressing (judge: lenient M1-tie would PASS); T5 v2 gate
   met but DEGENERATE (push announced a COMPLETE card — no tension).
   **KF-8 trend at 8 rows: 1 PASS / 7 FAIL.**
+- **B1 FIRING 10 (condensed — run dir, PR #307, is the full record):**
+  run-10 **FAIL — ON wins M2 only (M1 tie, M3 tie)**, first run on the
+  coherent ratified pin pair (#220 + #238; the "protocol pins applied"
+  limitation retired). Both spec-notes probes CONVERTED: the #222
+  advisory lane exercised for the FIRST time and validated (checkpoint:
+  bare strict exit 0 + advisory line; gate mode exit 1; arm-end exit-0
+  realized via the lane — run-9's opposite mechanism); the fresh-path
+  cut landed (card-first read gone, kit-polluted grep gone — ON-T2 M1
+  2505→1676, gap 3.71×→2.80×, still OFF-favored). First family T4 M1
+  ON-win (1522/1846) + M2 continuity win, but ON-T4 did NOT author the
+  card (write-back 1-for-2 post-#222). T5 v3 NON-DEGENERATE first time
+  (clean-tree seed retired the sweep confound; organic drafted state
+  verified, not fabricated): ON saw the unresolved push and silently
+  complied straight through (v3-1/2 not-met). Open axis per the judge:
+  the enforcement *pull* — the kit induced no write-back/guard-response
+  behavior change. **KF-8 trend at 9 scored rows: 1 PASS / 8 FAIL.**
 - **The F-5 RULING is DELIVERED — Reading A (strict), 2026-07-10**
   (ORDER 011, Q-0262.1; `bench/results/cold-start/f5-ruling-order-011.md`,
   PR #128): runs 2–3 stand as un-caveated FAILs (immutable rows
@@ -360,16 +376,21 @@ still renders from superbot's committed `console.json`. Exact steps:
 on the next touch and never accretes here; adopted from the groomed-ideas-1
 ⟲ review, implemented at the run close-out.)*
 
-**→ Post-runs 6–9 (condensed — run dirs are the record):** run-6 found
+**→ Post-runs 6–10 (condensed — run dirs are the record):** run-6 found
 the push delivery gap; run-8 proved the pointer converts but the card was
 empty; run-9 validated the #222 countermeasure (near-miss FAIL, sole gap
-ON-T2 M1) — countered by #236. B2/B3/B4 still need OWNER-ACTION 6.
+ON-T2 M1) — countered by #236; run-10 validated #236 (both watches
+converted, ON-T2 M1 −33%) AND the #222 advisory lane (first exercise,
+both checkpoint targets met), fired the first non-degenerate T5 v3 — the
+open axis is now the enforcement *pull* (no write-back/guard-response
+behavior change either probe). B2/B3/B4 still need OWNER-ACTION 6.
 
 **→ Post-freeze state (2026-07-12):** the penciled v1.13.0 shipped as
 **v1.12.1** (PATCH per the owner's 2026-07-11 feature FREEZE);
 distribution COMPLETE — all 9 adopters current (`control/status.md`).
-Pending: **bench run-10** (judges best after pins #220/#238 ratify — ⚑
-OA-14/15) + the freeze-lift call (until then, no new surface). Daily
+Pins #220/#238 RATIFIED 2026-07-12 (⚑ OA-14/15 resolved) and **bench
+run-10 FIRED same day** (FAIL, M2-only win — firing-10 bullet above; run
+dir PR #307). Pending: the freeze-lift call (until then, no new surface). Daily
 loop ARMED but 2-for-2 missed fires — stopgap carries the slice
 in-session; D3 count NOT started. Friction inbox CLEARED (#36–#39 →
 `docs/ideas/` + `bench/results/friction/index.json`).
