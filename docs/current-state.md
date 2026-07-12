@@ -14,241 +14,79 @@
 
 > **📋 Fleet adoption review (2026-07-09, owner-directed):**
 > [`docs/reports/2026-07-09-fleet-adoption-review.md`](reports/2026-07-09-fleet-adoption-review.md)
-> — how every fleet repo handles the kit: per-repo verdicts (kit OK ·
-> superbot OK-pin-only · superbot-next DEGRADED · websites OK-recovered),
-> the kit's-own-promises proofs, the shipped fast-lane status gate
-> (ledgered in `docs/decisions.md`, PR #35), friction filings #36–#39,
-> the cite-never-copy ⚑ owner ruling ask, and the ⚑ needs-owner list.
+> — per-repo verdicts (kit OK · superbot OK-pin-only · superbot-next
+> DEGRADED · websites OK-recovered), the kit's-own-promises proofs, the
+> fast-lane status gate (ledgered in `docs/decisions.md`, PR #35),
+> friction filings #36–#39, the cite-never-copy ⚑ ruling ask.
+
+> **📦 History archive (2026-07-12):** the full band-by-band KL narratives,
+> per-run B1 prose, incident timelines, and per-PR "Recently shipped" rows
+> were relocated verbatim to
+> [`docs/reports/2026-07-12-current-state-archive.md`](reports/2026-07-12-current-state-archive.md)
+> to restore K0 orientation headroom. Rows below are the condensed ledger;
+> the archive + run dirs + CHANGELOG are the full record.
 
 ## Stability baseline
 
-*(dated snapshot: 2026-07-09)*
+*(dated snapshot: 2026-07-09; full band narratives in the archive)*
 
-- The kit engine is finished + enforced: the full test suite at `tests/` is green
-  (618 tests after groomed-ideas-1, PR #19); `src/engine/` is stdlib-only, `dist/bootstrap.py` is
-  generated and byte-pinned by the dist-equality test. Do not re-audit without a
-  reported regression.
-- **KL-0 is DONE** (founding plan §10 band zero): the repo exists, the kit is seeded,
-  tests moved here, CI runs, the founding plan travelled in
-  (`docs/planning/kit-lab-founding-plan-2026-07-07.md`), and the repo is
-  **consumer #0** (seeded by its own `dist/bootstrap.py adopt` per plan §3.3).
-- **KL-1 (release discipline) is DONE kit-side → tag v1.0.0** (plan §4 + §10 KL-1
-  row; PRs #6/#8/#9): `KIT_VERSION` + `--version` + dist header stamp +
-  `Config.kit_version` declared field; adopt/`render --live` record planted-doc
-  sha256 hashes + kit_version into config/state; CHANGELOG.md (keep-a-changelog) +
-  LICENSE (MIT, ⚑ owner P8 default) + `release.yml` (v* tag → refuse-to-release
-  guards → Release with bootstrap.py + .sha256 + release.json); the **`upgrade`
-  verb** (archive-first, hash-based doc diff, `--apply-docs` covenant,
-  `--rollback`); `_ENGINE_MANIFEST` dropped; `reconciliation_prs` default → 30.
-  **D2 is now FULLY done**: the consumer pin PRs merged — superbot #1879
-  (`substrate.config.json` with `kit_version: 1.0.0`; the in-tree
-  `substrate-kit/` copy it sat next to was then REMOVED in superbot #1882 —
-  the pin + vendored dist is superbot's only kit presence now) and
-  superbot-next #42; superbot-next **#46** additionally upgraded its
-  vendored dist to the released v1.0.0 (verified live: its first leg #44
-  merged prematurely with only the born-red card — the OLD dist's `check`
-  can't hold a card red; #46 "completes prematurely-merged #44" and shipped
-  the upgrade itself).
-- **KL-2 (governance home) is DONE both-sided** (plan §8 + §10 KL-2 row):
-  kit-side PR #12 — `docs/program/` (the [PL-NNN] register PL-001…PL-009,
-  README, canonical program collaboration-model + agent-decision-authority),
-  `scripts/check_program_law.py` in the kit-quality gate, "Program law"
-  pointer sections in the two planted templates + the kit's own copies,
-  `docs/house-style.md`; superbot companion PR #1881 (merged 2026-07-09) —
-  "canonical home" provenance riders on the origin Q-blocks
-  (Q-0240/41/47/48/49 + Q-0120/0132/0105 → PL-001…PL-008). **D7 holds.**
-- **KL-3 (telemetry substrate) is DONE** (plan §10 KL-3 row; PR #13):
-  guard-fire JSONL writers at the two choke points (`cmd_check` finding loop +
-  `cmd_hook` dispatch → `.substrate/guard-fires.jsonl`, fail-open; `ci`
-  surface + `did_not_run` reader-derived from the Checks API, never written
-  in CI); the reasons-required allowlist (`.substrate/check-exceptions.yml`,
-  reason-less entries refused, an entry IS the verdict event); the
-  `📊 Model:` line + session-close harvest → `telemetry/model-usage.jsonl`
-  (PL-004 record, `tokens_out` null-tolerated); the `📊 Model:` needle in
-  default `session_markers` (new adopts) + added at `upgrade` (existing
-  installs); `telemetry/allocation-ladder.md` + `telemetry/README.md` seeded.
-  **D6's kit-side half holds** (`model-usage.jsonl` non-empty — consumer #0's
-  own session-close wrote the first row); the console lane render is KL-6.
-- **KL-4 (lab loop + friction) is DONE build-side** (plan §10 KL-4 row, §6,
-  §9.1; PR #14): `docs/operations/lab-loop.md` (the §6.2 9-part prompt,
-  paste-ready; definition table; `Run type: routine · lab`; kill switches;
-  the exact 👤 P4 arming steps); the **`friction` verb**
-  (`export`/`list`/`show` — envelope `{schema, repo, project_id,
-  kit_version, reports[reflection-records]}` → `.substrate/friction-outbox/`;
-  the engine writes + prints the issue-ready text, the session/agent files
-  the issue; `session-close` advises on pending envelopes); the `friction`
-  label live on this repo (auto-created with issue #15); **D4 PROVEN** —
-  superbot's hand-authored 👤 P9 report filed as friction issue #15 and
-  triaged same-day (report 1 → fixed in the lab-loop prompt's MCP-staleness
-  cross-check; report 2 → fixed in this file's release wording (dispatch
-  path is the agent default); report 3 → backlogged at
-  `docs/ideas/feature-build-task-class-2026-07-09.md`, routed
-  discuss-first). Also two field fixes from superbot-next#46: `upgrade`
-  from-version truth (header outranks a disagreeing pre-upgrade config pin;
-  honest rollback) + input self-cleanup (`bootstrap.py.new`/`release.json`
-  removed on completion, `--keep-inputs` opts out). Suite 535 → 557.
-  **D3 is PENDING owner arming (👤 P4)**: ≥3 consecutive scheduled fires
-  each shipping a real run report — the loop cannot arm itself.
-- **KL-5 first half (auto-drafted handoff) is DONE** (plan §10 KL-5 row —
-  the ruled prerequisite for B1's first firing; PR #16):
-  `src/engine/loop/handoff.py` — the SessionStart hook/`session-start`
-  record a session-start **anchor** (timestamp + git HEAD/branch parsed
-  from `.git`, worktree-aware, no subprocess); `session-close` + the Stop
-  hook (+ the new on-demand `draft` verb) **auto-draft** the card's
-  close-out from evidence (mtime file scan classified
-  code/tests/docs/sessions, HEAD movement, the derived verify command as a
-  run-and-record slot); a missing card gets a drafted skeleton; the
-  session-log checker gains the **drafted-vs-completed** distinction
-  (unresolved `[[fill:]]` slots + the `drafted` status token hold the
-  born-red gate, reported distinctly; a drafted `📊 Model:` stand-in never
-  harvests into PL-004). All fail-open; suite 557 → 587. The **second half
-  (the `bench/` tree) is BUILT on PR #17, a `do-not-automerge` PR** per
-  §5.0 — the first rubric version was **owner-blessed 2026-07-09** and the
-  owner **merged #17 himself the same day** (D-0005), unblocking **B1's
-  first firing**. What #17 carries:
-  both rubrics, tasks T1–T5, `seeds/make_seed.py`, `score_m1.py`,
-  `run_ab.py`, append-only results indexes (incl. the `friction` family —
-  triage-time rows), `check_bench_integrity.py` in kit-quality (pin-path
-  label gate + append-aware results immutability), and the enabler's
-  fresh-label race guard. Suite 587 → 609.
-
-- **B1 FIRINGS 1–4 (condensed ledger — rows + run dirs are the full
-  immutable record):** run-1 `2026-07-09-run01` **PASS** (PR #28; ON won
-  M2+M3, M1 unmeasurable — scorer-tainted; T5 n/a headless). run-2
-  `2026-07-09-run02` **FAIL** (PR #44; first clean M1 — regressed; ON won
-  M2+M3). run-3 `2026-07-10-run03` **FAIL** (PR #85; M1 to OFF all pairs;
-  ON won M2+M3; first legal KF-8 trend at 3 rows; judge = arm model that
-  run). run-4 `2026-07-10-run04` **FAIL, first 0-of-3** (PR #116; M2+M3 to
-  OFF for the first time; hooks LIVE family-first — T5 guard fired yes,
-  obeyed no; first clean scripted prepare). Runs 2–3 RULED Reading A
-  un-caveated (ORDER 011). Deviations verbatim in each run dir; confounds
-  travel (a fresh kit version every run, fresh seeds, judge drift).
-- **B1 FIRINGS 5–6 (condensed — rows + run dirs, PRs #163/#201, are the
-  full immutable record):** run-5 **FAIL** (second 0-of-3; T4 continuity
-  NULL; T5 guard advisories IGNORED — RED close; converter v3 landed
-  verbatim prompts). run-6 **FAIL** (third 0-of-3; **the handoff-push
-  (#165) validation returned precondition-NULL** — the push fired 3/3 ON
-  boots but reached the measured WORKER 0/3, an orchestrator→worker
-  delivery gap; ON won the T5 M1 pair). Trend at 6 rows: 1 PASS / 5 FAIL.
-- **B1 FIRINGS 7–8 (condensed — run dirs, PRs #211/#215, are the full
-  immutable record):** run-7 **ABORTED, NO ROW** (environment, not kit:
-  the orchestrator decomposed every spawn — 0/3 verbatim-prompt workers;
-  suspect `CLAUDE_AUTO_BACKGROUND_TASKS`). run-8 **FAIL** (fourth 0-of-3;
-  first run behind the §6 preconditions: seam smoke PASSED with the env
-  mitigation, seam FLAT, verbatim 6/6; M1 to OFF T2/T4, ON wins T5;
-  M2/M3 tie; **the #203 `HANDOFF.md` pointer was OPENED at the measured
-  seam for the first time** and ON-T4 opened the pointed card — first
-  card-continuity conversion — but the card was an unfilled auto-draft,
-  no marginal value; push delivered 3/3 ON; claudeMd absent 0/6; T5 v2
-  ratified pre-arm (#181), visible push IGNORED, `check --strict` exit=1
-  at end). Trend at 7 rows: 1 PASS / 6 FAIL.
-- **B1 FIRING 9 (condensed — run dir, PR #233, is the full record):**
-  run-9 **FAIL (near-miss) — first ON M2+M3 double win via GENUINE
-  behavior** (#222/v1.12.0 validated): the trail ARRIVED (push+HANDOFF
-  86w), ON-T4 diffed exactly the trail-named files and **AUTHORED the
-  card** (slots resolved, real pointer, flipped complete — family-first
-  write-back); bare `check --strict` exit **0** at arm end (genuine
-  completion; the advisory lane never exercised); T4 M1 near-tie
-  1759/1672, T5 ON 214/294, T2 regressed 2505/675 → strict Reading A
-  fails none-regressing (judge: lenient M1-tie would PASS); T5 v2 gate
-  met but DEGENERATE (push announced a COMPLETE card — no tension).
-  **KF-8 trend at 8 rows: 1 PASS / 7 FAIL.**
-- **B1 FIRING 10 (condensed — run dir, PR #307, is the full record):**
-  run-10 **FAIL — ON wins M2 only (M1 tie, M3 tie)**, first run on the
-  coherent ratified pin pair (#220 + #238; the "protocol pins applied"
-  limitation retired). Both spec-notes probes CONVERTED: the #222
-  advisory lane exercised for the FIRST time and validated (checkpoint:
-  bare strict exit 0 + advisory line; gate mode exit 1; arm-end exit-0
-  realized via the lane — run-9's opposite mechanism); the fresh-path
-  cut landed (card-first read gone, kit-polluted grep gone — ON-T2 M1
-  2505→1676, gap 3.71×→2.80×, still OFF-favored). First family T4 M1
-  ON-win (1522/1846) + M2 continuity win, but ON-T4 did NOT author the
-  card (write-back 1-for-2 post-#222). T5 v3 NON-DEGENERATE first time
-  (clean-tree seed retired the sweep confound; organic drafted state
-  verified, not fabricated): ON saw the unresolved push and silently
-  complied straight through (v3-1/2 not-met). Open axis per the judge:
-  the enforcement *pull* — the kit induced no write-back/guard-response
-  behavior change. **KF-8 trend at 9 scored rows: 1 PASS / 8 FAIL.**
-- **The F-5 RULING is DELIVERED — Reading A (strict), 2026-07-10**
-  (ORDER 011, Q-0262.1; `bench/results/cold-start/f5-ruling-order-011.md`,
-  PR #128): runs 2–3 stand as un-caveated FAILs (immutable rows
-  superseded, never edited) — honest-negative headlines are the fleet's
-  credibility asset. OWNER-ACTION 1 RESOLVED.
-- **KL-7 (the adopt-engage gate) is DONE** (owner-directed P0 off the
-  independent fleet review, superbot `docs/eap/fleet-review-2026-07-09.md`
-  §4; D-0006; PR #25): both fresh adopters had stranded identically —
-  planted docs still bannered/`${...}`-slotted, `session_count` 0,
-  `.claude/` inert, websites without CI — because `adopt`
-  plants-and-banners while render/enforcement were separate opt-in steps.
-  Now `check` carries the **post-adopt ENGAGEMENT gate**
-  (`engine/checks/check_engagement.py`, strict-only exit impact,
-  adoption-evidence-gated, planted-docs scope): RED until no UNRENDERED
-  banner / leftover slot remains, a CI workflow runs `check --strict`, and
-  the session loop has engaged (`session_count ≥ 1` or a real card).
-  `adopt` stages the live `substrate-gate.yml` under `<state_dir>/ci/` and
-  prints the gate's findings as its closing checklist; the cold-adopt
-  smoke + tests pin the RED→ENGAGED→GREEN arc (suite 626 → 637). The
-  PL-register note (adoption-is-not-done-until-ENGAGED as program law)
-  rides its own `do-not-automerge` owner-review PR per §8.3.
-- **v1.1.0 is CUT** (PR #29 + the `release.yml` `workflow_dispatch` run):
-  `KIT_VERSION` 1.0.0 → 1.1.0 (config + pyproject + dist header stamp,
-  byte-pinned), CHANGELOG `[Unreleased]` rolled into `## [1.1.0] -
-  2026-07-09` (KF-5 benchmark outcome stated in the section: B1
-  `2026-07-09-run01` VERDICT PASS, judge claude-opus-4-8; M1 unmeasurable
-  caveat travels with it). SemVer judgment MINOR — new capability only
-  (KL-2/3/4/5/7 + guards), no consumer-contract break in the body.
-  Consumers now upgrade via `bootstrap.py.new upgrade` against the v1.1.0
-  Release assets.
-- **KL-8 (the coordination-protocol kit band) is DONE** (inbox ORDER 002;
-  canonical spec superbot
-  `docs/planning/fleet-coordination-protocol-2026-07-09.md` §2; D-0007;
-  PR #31): `adopt` plants the `control/` bus (generalized README contract
-  + seeded inbox/status skeletons — 3 new templates, skip-if-exists);
-  `engine/checks/check_status_current.py` ships in the dist — missing /
-  heartbeat-less `status.md` gates strict RED (on the adopt checklist
-  too), staleness >72h warns advisory-only, the Stop hook nags when
-  status wasn't overwritten this session; control-only diffs ride an
-  in-job CI fast lane (kit `ci.yml` + planted `substrate-gate.yml`,
-  session gate included — never `paths-ignore`: a required context that
-  never reports jams heartbeat auto-merge); cold-adopt smoke walks the
-  extended arc (RED on seed status → GREEN after first heartbeat); the
-  dist-completeness guard test (a MODULE_ORDER omission NameError'd the
-  dist while the byte-pin stayed green — caught + pinned this band).
-  Suite 658 → 683.
-- **ORDER 003 (substrate-coordinator visibility band) is DONE + v1.3.0 is
-  CUT** (inbox ORDER 003; PR #41 + the post-merge `release.yml`
-  `workflow_dispatch` run): (1) the `kit:` heartbeat self-report line
-  (`kit: v<X.Y.Z> · check: green|red · engaged: yes|no`) in the planted
-  `control/status.md` seed — rendered with the real `KIT_VERSION` via the
-  new engine-computed `kit_version` context key
-  (`render.ENGINE_CONTEXT_KEYS`, injected in `build_context` so every
-  render path fills it; top-level config import on purpose — MODULE_ORDER
-  strips it in the dist) — and documented in the planted
-  `control/README.md` format block (+ the kit's own local copy); (2)
-  [`docs/adopters.md`](adopters.md) — the fleet adopter registry
-  (repo · kit_version · engaged · last-seen; sole writer kit-lab; KF-2:
-  fed by relayed heartbeats, never by writing adopter repos), seeded from
-  the fleet-review facts; (3) the adopter upgrade checklist appended to
-  EVERY release's notes by `src/build_release_json.py` (enforce, don't
-  exhort). CHANGELOG `[Unreleased]` (incl. the previously-unrolled #35
-  fast-lane items + #40 fixes) → `## [1.3.0] - 2026-07-09`; `KIT_VERSION`
-  1.2.0 → 1.3.0 (config + pyproject + dist header, byte-pinned). KF-5
-  statement cites the standing B1 PASS row (run-2 deliberately fires
-  after this release, on the fixed scorer). Suite 694 → 696. Existing
-  adopters get the `kit:` line via the checklist's step 4 (skip-if-exists
-  means their planted status is never re-rendered).
-- **v1.2.0 is CUT** (PR #32 + the post-merge `release.yml`
-  `workflow_dispatch` run): `KIT_VERSION` 1.1.0 → 1.2.0 (config +
-  pyproject + dist header stamp, byte-pinned), CHANGELOG `[Unreleased]`
-  rolled into `## [1.2.0] - 2026-07-09`. KF-5 statement cites the
-  **standing** B1 PASS row (`2026-07-09-run01`, same-day baseline) — ⚑
-  decide-and-flag: no fresh firing this MINOR (run-2 gated behind the
-  filed harness fixes; advisory-to-pass; no trend claim). SemVer MINOR —
-  new templates + checker + CI lane, no contract breaks. Consumers now
-  upgrade via `bootstrap.py.new upgrade` against the v1.2.0 Release
-  assets — this is what delivers `control/` to the fleet (ORDER 002's
-  done-when). The ORDER 002 status overwrite follows as the deliberate
-  LAST act (a control-only PR on the new fast lane).
+- Engine finished + enforced: `tests/` green (618 at PR #19; 1204 at the
+  2026-07-12 heartbeat), `src/engine/` stdlib-only, `dist/bootstrap.py`
+  generated + byte-pinned. Do not re-audit without a reported regression.
+- **Bands KL-0…KL-5, KL-7, KL-8 are DONE** (founding plan
+  `docs/planning/kit-lab-founding-plan-2026-07-07.md` §10): KL-0 seed / CI /
+  consumer #0 (#1–#5). KL-1 release discipline → **tag v1.0.0** (#6/#8/#9/#10/#11;
+  `upgrade` verb — archive-first to `.substrate/backup/`, hash-diff
+  `.substrate/upgrade-report.md`, `--apply-docs`, `--rollback`; D2 done via
+  consumer pins superbot #1879/#1882 + superbot-next #42/#46). KL-2 governance
+  home (#12): `docs/program/` [PL-NNN] register + `scripts/check_program_law.py`
+  + `docs/house-style.md`; D7 holds (superbot #1881). KL-3 telemetry substrate
+  (#13): guard-fire JSONL → `.substrate/guard-fires.jsonl`, reasons-required
+  `.substrate/check-exceptions.yml` allowlist (`src/engine/checks/allowlist.py`),
+  `📊 Model:` harvest → `telemetry/model-usage.jsonl` (D6 kit-side holds),
+  `telemetry/README.md` + `telemetry/allocation-ladder.md`,
+  `src/engine/loop/telemetry.py`. KL-4 lab loop + friction (#14):
+  `docs/operations/lab-loop.md`, `friction` verb (`src/engine/loop/friction.py`
+  → `.substrate/friction-outbox/`), D4 proven (issue #15 triaged;
+  `docs/ideas/feature-build-task-class-2026-07-09.md`); **D3 PENDS 👤 P4**.
+  KL-5 auto-drafted handoff (#16, `src/engine/loop/handoff.py`) + the `bench/`
+  tree (#17 — owner-blessed rubric, owner-merged). KL-7 adopt-engage
+  gate (#25; owner-directed P0 off superbot
+  `docs/eap/fleet-review-2026-07-09.md` §4): `check_engagement.py` strict
+  RED→ENGAGED→GREEN arc,
+  staged `substrate-gate.yml`. KL-8 control bus (#31, ORDER 002):
+  `control/` planted (`control/README.md` contract),
+  `check_status_current.py` status gate, CI control fast lane.
+- **Releases v1.1.0 → v1.5.0 CUT** via the `release.yml` `workflow_dispatch`
+  path: v1.1.0 (#29) · v1.2.0 (#32) · v1.3.0 (#41, ORDER 003 — `kit:`
+  heartbeat line, [`docs/adopters.md`](adopters.md) registry sole-writer
+  kit-lab, upgrade checklist auto-appended by `src/build_release_json.py`) ·
+  v1.4.0 (#46, ORDER 004 — configurable `heartbeat_files`, superbot-games
+  two-lane adopter) · v1.5.0 (#63, ORDER 006 — `docs/CAPABILITIES.md`
+  capability-manifest band + orientation wiring). Per-release detail:
+  CHANGELOG.md + archive.
+- **B1 firings 1–10 (condensed — append-only index rows + run dirs are the
+  full immutable record, e.g. `bench/results/cold-start/2026-07-09-run01/` ·
+  `bench/results/cold-start/2026-07-09-run02/`; full prose in the archive):**
+  run-1 **PASS** (#28) · run-2 **FAIL** (#44 — first clean M1, regressed) ·
+  run-3 **FAIL** (#85 — first legal KF-8 trend) · run-4 **FAIL, first 0-of-3**
+  (#116) · run-5 **FAIL** (#163 — T5 guard advisories IGNORED) · run-6
+  **FAIL** (#201 — handoff-push #165 delivery gap: 3/3 ON boots, 0/3 measured
+  worker) · run-7 **ABORTED, NO ROW** (#211 — environment: orchestrator
+  decomposed every spawn) · run-8 **FAIL** (#215 — first #203 `HANDOFF.md`
+  pointer conversion at the measured seam, but an unfilled card) · run-9
+  **FAIL near-miss** (#233 — first GENUINE ON M2+M3 double win, ON-T4
+  AUTHORED the card, #222 validated) · run-10 **FAIL, M2-only win** (#307 —
+  first coherent ratified pin pair #220+#238; #222 advisory lane + #236
+  fresh-path cut BOTH validated; first non-degenerate T5 v3; open axis per
+  the judge: the enforcement *pull* — no write-back/guard-response behavior
+  change). **KF-8 trend at 9 scored rows: 1 PASS / 8 FAIL.** Confounds and
+  deviations travel verbatim in each run dir.
+- **F-5 RULING DELIVERED — Reading A (strict), 2026-07-10** (ORDER 011,
+  Q-0262.1; `bench/results/cold-start/f5-ruling-order-011.md`, PR #128):
+  runs 2–3 stand as un-caveated FAILs (immutable rows superseded, never
+  edited) — honest-negative headlines are the fleet's credibility asset.
+  OWNER-ACTION 1 RESOLVED.
 
 ## In flight
 
@@ -259,31 +97,24 @@
   [`docs/planning/2026-07-12-grounded-skills-program.md`](planning/2026-07-12-grounded-skills-program.md).
   Plan only; its 8 slices (§7) are follow-up sessions.
 - *(Drift fix 2026-07-12: the former #69 / #63 / #46 bullets here were all
-  MERGED 2026-07-09 with post-merge steps done and releases verified — see
-  "Recently shipped" (#63, #46, and the #75 v1.6.0-rollout wrap-up) and
-  CHANGELOG v1.4.0–v1.6.0; removed as merged work per this section's
-  dated-snapshot rule.)*
+  MERGED 2026-07-09 — see "Recently shipped" and CHANGELOG v1.4.0–v1.6.0.)*
 
 ## Field notes — incident ledger (2026-07-09 run)
 
-The run's honest incident count is **TWO** (the run-closeout originally
-counted one; corrected at the audit follow-ups, PR #24 — full detail with
-timelines and guards in the
-[day report §3](reports/2026-07-09-kit-lab-run.md)):
+Honest incident count is **TWO** (corrected from one at the audit
+follow-ups, PR #24; timelines in the
+[day report §3](reports/2026-07-09-kit-lab-run.md), full narrative in the
+archive):
 
-1. **kit#22 — PL-010 gate slip**: a `do-not-automerge`-labelled program-law
-   PR auto-merged mechanically via the enabler's stale-label race + a
-   ~12-min runner-queue lag. Guards since deployed: #23 (fresh-label re-read
-   before arming), #24 (labeled-event disarm workflow +
-   `check_program_law.py --label-gate` making unlabeled law changes a red
-   required check). Guard-stack map:
+1. **kit#22 — PL-010 gate slip**: a `do-not-automerge`-labelled law PR
+   auto-merged via the enabler's stale-label race + runner-queue lag. Guards
+   deployed: #23 fresh-label re-read, #24 labeled-event disarm +
+   `check_program_law.py --label-gate`. Guard-stack map:
    [`docs/operations/auto-merge-guards.md`](operations/auto-merge-guards.md).
-2. **superbot-next#44 — card-gate slip**: merged 65 s after opening with
-   only its born-red `in-progress` session card — the consumer's OLD
-   vendored dist's `check` predates the in-progress-badge gate, so nothing
-   held its required check red. Self-reported in superbot-next#46's card;
-   the guard is the v1.0.0 vendored-dist upgrade #46 itself shipped. Lesson:
-   a consumer is only as gated as its vendored dist version.
+2. **superbot-next#44 — card-gate slip**: merged 65 s after opening on an
+   OLD vendored dist whose `check` predates the born-red gate; the guard is
+   the #46 dist upgrade itself. Lesson: a consumer is only as gated as its
+   vendored dist version.
 
 ## Pending owner action — 👤 P4 (arm the kit-lab loop) ⚑
 
@@ -300,109 +131,84 @@ arm itself (console Schedules are owner-side). Exact steps — full detail in
 
 Optional rider (👤 P12): a user-PAT (kit-repo Issues:RW) if you want a
 `friction`-labeled issue to hot-fire the loop — app/integration-token-authored
-issues do not fire routines, so without it the triage SLA is the daily cron
-(≤24 h), which is the plan's stated default.
+issues do not fire routines; without it the triage SLA is the daily cron.
 
 ## Pending owner action — web environment setup script ⚑
 
-A Claude Code on the web session died at provisioning: the environment's
-setup script assumed the repo clone as cwd and a `requirements.txt` (this
-repo has neither guarantee). The corrected, guarded script — owner-only
-paste into the environment settings dialog — lives verbatim in
+A web session died at provisioning: the environment's setup script assumed
+the repo clone as cwd and a `requirements.txt` (this repo guarantees
+neither). The corrected, guarded script — owner-only paste into the
+environment settings dialog — lives verbatim in
 [`docs/environment-setup-script.md`](environment-setup-script.md).
 
 ## Pending owner action — 👤 P10 (repo settings, §3.2 item 7)
 
-**Still not finished, and it bit twice more in KL-1.** Verified live (the
-strengthened enabler guard prints the required contexts): the `main` rule still
-requires the two LEGACY contexts `["Kit test suite","Cold-adoption smoke (adopt
-+ check --strict)"]`, NOT `kit-quality`. Consequences this session:
-
-- **PR #7 merged 24 s after opening, red.** kit-quality failed exactly as
-  designed (session gate red on the born-red card — this suite runs in ~15 s),
-  but the legacy contexts are reported by the temporary alias jobs, and a bare
-  `needs: kit-quality` alias is **skipped** on failure — and **GitHub counts a
-  skipped check run as satisfying a required status check**. Fixed in ci.yml:
-  the aliases now run `if: always()` and fail hard when kit-quality is not a
-  success.
-- **PR #9 auto-merged before its close-out commit** (the enabler DOES fire on
-  MCP-created PRs when they are mergeable at open). The engine's session gate
-  now also treats a Status badge still saying `in-progress` as incomplete, so a
-  reopened card can't read green on inherited markers.
-
+**Still not finished, and it bit twice in KL-1** (full incident narrative —
+the #7 skipped-alias merge-red hole and the #9 pre-close-out auto-merge —
+in the archive; both engine/ci.yml guards are deployed). Verified live: the
+`main` rule still requires the two LEGACY contexts `["Kit test
+suite","Cold-adoption smoke (adopt + check --strict)"]`, NOT `kit-quality`.
 Remaining portal clicks:
 
-1. In the `main` rule, **replace the two legacy required checks with the single
-   `kit-quality`** (source: GitHub Actions). Leave "Require branches to be up
-   to date" OFF.
+1. In the `main` rule, **replace the two legacy required checks with the
+   single `kit-quality`** (source: GitHub Actions). Leave "Require branches
+   to be up to date" OFF.
 2. "Allow auto-merge" is confirmed ON (the enabler armed live).
 3. Say so (or just do it) — the next session then **deletes the two
    `legacy-alias-*` jobs** from `ci.yml`.
-4. **⚑ P11 rides v1.0.0** (plan KF-10): flip the repo public, or veto and the
-   read-only-PAT fallback applies.
+4. **⚑ P11 rides v1.0.0** (plan KF-10): flip the repo public, or veto and
+   the read-only-PAT fallback applies.
 
-Path-scoped required review on `bench/{rubric,tasks,seeds}` joins the ruleset
-when `bench/` exists (KL-5).
+Path-scoped required review on `bench/{rubric,tasks,seeds}` joins the
+ruleset when `bench/` exists (KL-5).
 
 ## Pending owner action — 👤 P5 (Railway project `kit-lab`) → then the P6 console move
 
-**The console move (plan §7.2 P6, band KL-6) is owner-gated on P5 and stays
-blocked until it lands.** Reality update since the plan was written: the
-**websites repo** (menno420/websites PRs #7/#8) now runs `botsite` +
-`dashboard` as Railway services in project `superbot-websites`, rendering
-superbot's committed `site.json` / `dashboard.json` / `console.json`; the
-program-console shell itself (superbot PR #1802, `botsite/console/console.js`)
-still renders from superbot's committed `console.json`. Exact steps:
+**The console move (plan §7.2 P6, band KL-6) stays blocked until P5 lands.**
+Reality update: menno420/websites PRs #7/#8 run `botsite` + `dashboard` on
+Railway project `superbot-websites`; the program-console shell (superbot
+PR #1802) still renders from superbot's committed `console.json`. Steps:
 
 1. **👤 P5 — create Railway project `kit-lab`** (portal action; agents never
-   touch Railway — ambient tokens/IDs may point at production): region
-   `europe-west4`, **no spend caps** (Q-0249/PL-005 — telemetry, not caps),
+   touch Railway): region `europe-west4`, **no spend caps** (Q-0249/PL-005),
    notification rule → HQ `#railway-alerts`, workspace soft-limit alert.
-   Deferrable whole until first deploy need (the kickoff pattern). Then put a
-   project-scoped `RAILWAY_TOKEN` in the kit repo's environment (P3 rider).
-2. **Lab-side after P5** (a later session builds it — nothing for the owner):
-   the `/console` route + vendored `ds/` assets + a **program-wide producer**
-   (merges superbot's console rows with the kit's `telemetry/` +
-   `bench/results/` feeds) move onto the `kit-lab` project; superbot's
-   exporter keeps producing superbot rows (plan P6).
-3. **Cross-repo read for the merged feeds**: the kit's feeds become readable
-   to the producer via 👤 P11 (public flip, KF-10) or the 👤 P13 read-only
-   PAT — one of the two must exist before the merged console renders kit
-   data.
+   Deferrable until first deploy need. Then put a project-scoped
+   `RAILWAY_TOKEN` in the kit repo's environment (P3 rider).
+2. **Lab-side after P5** (agent-built, nothing for the owner): the
+   `/console` route + vendored `ds/` assets + a program-wide producer
+   (superbot console rows merged with the kit's `telemetry/` +
+   `bench/results/` feeds) move onto `kit-lab`; superbot's exporter keeps
+   producing superbot rows (plan P6).
+3. **Cross-repo read for the merged feeds**: 👤 P11 (public flip, KF-10) or
+   the 👤 P13 read-only PAT — one must exist before the merged console
+   renders kit data.
 
 ## Next action
 
 *(**Pending-only by convention** — a DONE item moves to "Recently shipped"
-on the next touch and never accretes here; adopted from the groomed-ideas-1
-⟲ review, implemented at the run close-out.)*
+on the next touch and never accretes here.)*
 
-**→ Post-runs 6–10 (condensed — run dirs are the record):** run-6 found
-the push delivery gap; run-8 proved the pointer converts but the card was
-empty; run-9 validated the #222 countermeasure (near-miss FAIL, sole gap
-ON-T2 M1) — countered by #236; run-10 validated #236 (both watches
-converted, ON-T2 M1 −33%) AND the #222 advisory lane (first exercise,
-both checkpoint targets met), fired the first non-degenerate T5 v3 — the
-open axis is now the enforcement *pull* (no write-back/guard-response
-behavior change either probe). B2/B3/B4 still need OWNER-ACTION 6.
+**→ Post-runs 6–10:** the open bench axis after run-10 is the enforcement
+*pull* — the kit induced no write-back/guard-response behavior change on
+either probe (firings bullet above; run dir PR #307). B2/B3/B4 still need
+OWNER-ACTION 6.
 
 **→ Post-freeze state (2026-07-12):** the penciled v1.13.0 shipped as
-**v1.12.1** (PATCH per the owner's 2026-07-11 feature FREEZE);
-distribution COMPLETE — all 9 adopters current (`control/status.md`).
-Pins #220/#238 RATIFIED 2026-07-12 (⚑ OA-14/15 resolved) and **bench
-run-10 FIRED same day** (FAIL, M2-only win — firing-10 bullet above; run
-dir PR #307). Pending: the freeze-lift call (until then, no new surface). Daily
-loop ARMED but 2-for-2 missed fires — stopgap carries the slice
-in-session; D3 count NOT started. Friction inbox CLEARED (#36–#39 →
-`docs/ideas/` + `bench/results/friction/index.json`).
+**v1.12.1** (PATCH per the owner's 2026-07-11 feature FREEZE); distribution
+COMPLETE — all 9 adopters current (`control/status.md`). Pins #220/#238
+RATIFIED 2026-07-12 (⚑ OA-14/15 resolved) and **bench run-10 FIRED same
+day** (FAIL, M2-only win; run dir PR #307). Pending: the freeze-lift call
+(until then, no new surface). Daily loop ARMED but 2-for-2 missed fires —
+stopgap carries the slice in-session; D3 count NOT started. Friction inbox
+CLEARED (#36–#39 → `docs/ideas/` + `bench/results/friction/index.json`).
 
 ### Owner gates — each with its one-line unblock
 
 *(Stale #17 rubric-bless gate removed — owner merged it 2026-07-09,
-D-0005; #26/#49 owner-merged 2026-07-10.)*
+decision stamped in the archive; #26/#49 owner-merged 2026-07-10.)*
 
 1. ✅ **Rubric F-5 ruling — RESOLVED 2026-07-10: Reading A** (ORDER 011,
-   Q-0262.1): runs 2–3 un-caveated FAILs; B-benches unpaused (runs 5–6
-   fired 2026-07-11 → **1 PASS / 5 FAIL** at 6 rows).
+   Q-0262.1): runs 2–3 un-caveated FAILs; B-benches unpaused.
 2. **👤 Ratify or veto PL-010 (#22)** — the `feature build` task-class
    ruling. ⚑ **#22 merged mechanically, not by review** (label-race
    incident — timeline in the #22 comment; fresh-label guard deployed).
@@ -410,336 +216,117 @@ D-0005; #26/#49 owner-merged 2026-07-10.)*
    restoring the 8-class taxonomy.
 3. **👤 P4 — arm the kit-lab loop**: Console → Schedules → paste the prompt
    from `docs/operations/lab-loop.md` § Arming verbatim (cron `0 6 * * *`
-   UTC · fresh session per fire · Sonnet-class). **Unblocks D3** (≥3
-   scheduled fires each shipping a real run report). Full steps in the P4
-   section above.
-4. **👤 P10 — required-check swap**: in the `main` ruleset replace the two
-   legacy contexts with the single `kit-quality`. **Unblocks deleting the
-   two `legacy-alias-*` jobs** from `ci.yml` (agent queue item 4). Detail
-   in the P10 section above.
-5. **👤 P5 — create Railway project `kit-lab`** (portal-only; region
-   `europe-west4` · no spend caps per PL-005 · HQ `#railway-alerts` rule).
-   **Unblocks the P6 console move** (agent-built). Full steps in the P5
-   section above.
-6. **👤 P11 — flip the repo public** (KF-10; rode v1.0.0) **or veto → 👤
-   P13** (read-only consumer-scope PAT, KF-11). Either one **unblocks the
-   cross-repo reads**: kit data in the merged console AND the loop's
-   B2/B3/B4 sweeps.
+   UTC · fresh session per fire · Sonnet-class). **Unblocks D3.**
+4. **👤 P10 — required-check swap**: replace the two legacy contexts with
+   `kit-quality`. **Unblocks deleting the two `legacy-alias-*` jobs**
+   (agent queue item 4). Detail in the P10 section above.
+5. **👤 P5 — create Railway project `kit-lab`** (portal-only). **Unblocks
+   the P6 console move.** Full steps in the P5 section above.
+6. **👤 P11 — flip the repo public** (KF-10) **or veto → 👤 P13**
+   (read-only consumer-scope PAT, KF-11). Either **unblocks the cross-repo
+   reads**: kit data in the merged console AND the loop's B2/B3/B4 sweeps.
 7. **👤 P8 — confirm the MIT license** (applied as the flagged ⚑ default at
    KL-1): one word confirms, or name the replacement.
 
 ### Agent queue — in order, as the gates open
 
-1. ✅ **Upgrade-UX fixes — DONE, kit PR #92** (2026-07-10, adopted by the
-   #98 lane): three of four ideas shipped whole; the 4th (`--apply-docs`)
-   shipped its interim-hint slice — the full post-hoc-apply mechanism
-   idea stays `open` and is the next ordinary-lane increment. superbot
-   stays owner-gated pin-only ⚑; superbot-games gets `adopt --lane`
-   (PR #103) when it adopts.
-2. **Run-2/run-3 bench follow-ups** *(B1 run-3 itself is DONE — fired
-   2026-07-10 after the owner merged #49, recorded as row 3 with the first
-   legal KF-8 trend, PR #85; the three ordinary-lane follow-ups —
-   prepare engagement-arc scripting, `render --live` CLAUDE.md gap,
-   Model-line false-red `_adopt_sessions_readme`/checker-message fix —
-   shipped in PR #95, see Recently shipped)*: what remains is the T5
-   guard-surface shape choice (⚑ pin path → `do-not-automerge`); the
-   F-5 wording ruling is **DELIVERED — Reading A** (ORDER 011,
-   2026-07-10).
-3. **Remaining KL-6 blocked pieces, as gates open**: kit-lab console lane
-   real data (needs #17 **and** P11-or-P13 — until then the lane stays
-   declared-with-contract, never fake rows); B2/B3/B4 sweeps in the loop
-   (need P13; the B4 write-model is live since PR #18); P6 console move
-   (needs P5 — lab-side steps in the P5 section above).
+1. ✅ **Upgrade-UX fixes — DONE, kit PR #92** (2026-07-10, adopted via the
+   #98 lane); the full `--apply-docs` post-hoc-apply idea stays `open` as
+   the next ordinary-lane increment. superbot stays owner-gated pin-only ⚑;
+   superbot-games gets `adopt --lane` (PR #103) when it adopts.
+2. **Run-2/run-3 bench follow-ups** *(run-3 itself DONE, PR #85; the three
+   ordinary-lane follow-ups shipped in PR #95)*: what remains is the T5
+   guard-surface shape choice (⚑ pin path → `do-not-automerge`); the F-5
+   ruling is DELIVERED (Reading A).
+3. **Remaining KL-6 blocked pieces, as gates open**: console lane real data
+   (needs #17 **and** P11-or-P13 — until then declared-with-contract, never
+   fake rows); B2/B3/B4 sweeps (need P13; B4 write-model live since PR
+   #18); P6 console move (needs P5).
 4. **Delete the two `legacy-alias-*` jobs from `ci.yml` (post-P10).**
 5. **superbot-next `📊 Model:` needle**: nothing to build — `upgrade` adds
-   the marker on that repo's next kit upgrade; verify it on that upgrade's
+   the marker on that repo's next kit upgrade; verify on that upgrade's
    session card.
 
 ## Recently shipped (newest first)
 
-- **The Q-0265 continuous run, condensed (2026-07-10/11, PR band
-  #135–#239):** 6 releases v1.7.1→v1.12.0 + waves; 9 engaged trees
-  current; bench runs 5–9; tests 852→1057. Verified arc + self-review +
-  lessons: `docs/retro/2026-07-11-continuous-run-retro.md`.
-- **#108 — planted-gate template sentinel fixes (visiting gba-homebrew
-  Track B lane; claim #105)**: no-card PRs and born-red ADDED cards now
-  gate advisory via explicitly named absent sentinels instead of the
-  mtime fallback latching onto an unrelated in-progress card — two
-  adopter-found defects fixed live (gba-homebrew PRs #2/#3, validated
-  across its #3–#14).
-- **The 2026-07-10 overnight gen-2 run — 9 queue items in one night**
-  (full lane ledger in `.sessions/2026-07-10-gen2-final-close.md`; PR
-  numbers verified at the night-cap reconcile): **#84** walking-skeleton
-  breadcrumb · **#85** B1 run-3 recorded (row 3, first KF-8 trend,
-  strict-F-5 FAIL, since RULED Reading A) ·
-  **#86** engagement-gate
-  comment-leniency fix · **#87** inbox append-only + ORDER-grammar
-  checker (+ **#89** writer-identity honest note) · **#90** claim-aware
-  checker · **#91** telemetry write-at-card-commit + backfill · **#92**
-  four upgrade-UX fixes (adopted + merged via the #98 lane) · **#98**
-  OWNER-ACTION ↔ CAPABILITIES xref advisory · **#99** adopter-findings batch (owner-action token
-  shorthand, fast-CI arm-race + worktree recipes) · **#103** `adopt
-  --lane` (lane-aware adoption, the G1 double-adoption fix) · **#95**
-  run-2 follow-ups (`prepare` walks the ON-arm arc itself + `smoke_failed`
-  manifests; `render --live` iterates the gate's own `scan_relpaths()`;
-  planted `.sessions/README.md` carries marker byte-forms, checker misses
-  name the expected form — three idea files → shipped). Suite 722 → 813
-  over the night; closes/claims:
-  #80/#81/#88/#93/#94/#96/#97/#100/#101/#102/#104. Per-PR detail:
-  CHANGELOG `[Unreleased]` (backfilled at the night-cap).
-- **#75 — fleet rollout v1.6.0 wrap-up (kit-side, docs-only)**: the
-  **v1.6.0 fleet rollout is COMPLETE — every active adopter is ENGAGED on
-  v1.6.0** (superbot-next#96 merged 9761db4, websites#45 merged ab0995d;
-  both `check --strict` exit 0, per-repo upgrade detail in the registry
-  rows, [`docs/adopters.md`](adopters.md)); four upgrade-UX ideas filed
-  (shipped as #92). **Manager relay item ⚑:** websites' inbox ORDER 005
-  is genuinely unexecuted (`/queue` 404s live) — needs a scoped websites
-  session, relayed via the manager. superbot stays v1.0.0 pin-only
-  (owner ⚑).
-- **#68 — ORDER 008: owner-action quality band**: OWNER-ACTION item
-  format (WHAT / WHERE / HOW / WHY-IT-MATTERS / UNBLOCKS /
-  VERIFIED-NEEDED — attempted-or-exact-wall; assumption-based asks
-  banned) in `control-README.md.tmpl` + local copy; new advisory-only
-  `check_owner_actions.py` (never exit-affecting, both lanes) + guard-fire
-  telemetry; CONSTITUTION/collaboration doctrine; session-close "Owner
-  asks" step. Suite 707 → 721. Version bump deferred to the #69 v1.6.0
-  cut (one release for both retro bands).
-- **#67 — ORDER 007+008 claim (control-only, fast lane)**: status
-  overwrite claiming both orders for the coordinator lane BEFORE the
-  builds — the second live run of the claim-first ritual, and the live
-  preview of the `claimed-by:` convention #69 makes durable.
-- **#66 — ORDER 006 status overwrite (control-only, fast lane)**:
-  done=001-006,009; v1.5.0 verified live (tag + 3 assets, sha256 match).
-- **#65 — ORDER 009 PING-ACK (P0 latency ping, control-only, fast
-  lane)**: ack line on main at 18:12Z (discovered 18:07:30Z via
-  mid-session inbox check); also acked 008. *(#64 was the manager's
-  ORDER 009 inbox append; #61 the ORDER 008 append; #59 the ORDER 007
-  append — manager writes, listed for PR-number continuity.)*
-- **#63 — ORDER 006: capability-manifest band + v1.5.0 cut**:
-  `CAPABILITIES.md.tmpl` planted at `docs/CAPABILITIES.md` (THE DISCOVERY
-  RULE + verified fleet walls + append log), orientation wiring
-  (CLAUDE/CONSTITUTION/AGENT_ORIENTATION templates), session-close
-  capability-delta nudge, self-hosted manifest incl. the live per-session
-  repo-allowlist wall; KIT_VERSION/pyproject → 1.5.0, CHANGELOG rolled,
-  dist byte-pinned. Suite 705 → 707. Release v1.5.0 dispatched + verified
-  (3 assets, sha256 of bootstrap.py matches merged dist).
-- **#60 — ORDER 006 claim (control-only, fast lane)**: status overwrite
-  claiming ORDER 006 for the kit-lab coordinator lane BEFORE the build —
-  the manual stand-in for the order-claim convention ORDER 007 will make
-  durable; also records the #53 numbering-collision resolution (closed
-  unmerged, superseded — main's #55 append is canonical).
-- **#46 — ORDER 004: configurable heartbeat paths + v1.4.0 cut**: the
-  status checker's path set is now config
-  (`substrate.config.json` → `heartbeat_files`, default
-  `["control/status.md"]`; empty falls back — misconfiguration never
-  silently disables the gate), validated per-file with findings naming
-  their own lane; consumers (cmd_check incl. `--status-only`, cmd_adopt
-  checklist, Stop-hook reminder — clears on ANY fresh lane) all read the
-  config. Per-lane multi-Project pattern documented in
-  `control-README.md.tmpl` + the local copy; superbot-games registered as
-  the two-lane adopter in [`docs/adopters.md`](adopters.md); D-0010;
-  KIT_VERSION/pyproject → 1.4.0, CHANGELOG rolled, dist byte-pinned.
-  Suite 696 → 705. *(Inbox ORDER 004 — manager relay of the
-  superbot-games finding; ORDER 005 acked, queued as its own session.)*
-- **#44 — B1 run-2 record (second cold-start row)**: run
-  `2026-07-09-run02`'s judged row appended via `run_ab.py record`
-  (append-only law) — **VERDICT: FAIL** under strict F-5 (first clean M1
-  measurement regressed: ON 1706/2272/531 vs OFF 556/1481/511) while ON
-  wins M2 + M3 inside the 7k budget, zero unrecoverable errors; advisory
-  per KF-5. Raw run dir committed at
-  `bench/results/cold-start/2026-07-09-run02/` (judge report, manifest,
-  s-row facts, 6× transcript/diff/m1.json — plan §5.0). Follow-up ideas
-  filed (rubric F-5 owner decision brief · make_seed yield-keyword bug ·
-  prepare engagement arc · render CLAUDE.md gap) + run-2 evidence added
-  to the T5 guard-surface idea; this ledger + CHANGELOG. ⚑ Recorder ≠
-  judge: the row is claude-opus-4-8's verbatim verdict.
-- **#41 — ORDER 003: adopter-visibility band + v1.3.0 cut**: the `kit:`
-  heartbeat self-report line (planted status seed, rendered with the real
-  `KIT_VERSION`; contract format block updated in template + local copy);
-  [`docs/adopters.md`](adopters.md) fleet registry (sole writer kit-lab,
-  seeded from the fleet-review facts); the adopter upgrade checklist
-  auto-appended to every release's notes (`src/build_release_json.py`);
-  CHANGELOG rolled → `## [1.3.0]` (incl. #35/#40 unrolled items) +
-  version bump (byte-pinned dist); suite 694 → 696. Release published by
-  the post-merge `release.yml` dispatch.
-- **#40 — run-2 harness prep**: `score_m1` read-only-fd-redirect +
-  failed-tool-result artifact fixes (all three run-1 M1 taints reproduce
-  as regression tests; recorded results untouched, append-only);
-  `parse_model_line` last-valid-line fix (the websites#31 shadowing
-  find); B4 ledger hygiene; suite 689 (694 post-merge with #35).
-- **#35 — fleet adoption review (owner-directed) + control fast-lane
-  status gate**: the durable review
-  (`docs/reports/2026-07-09-fleet-adoption-review.md` — per-repo verdicts,
-  promise proofs, self-sufficiency lens with the cite-never-copy ⚑ owner
-  ruling, 5 ⚑ needs-owner items); the fast-lane gate decision shipped
-  (ledgered in `docs/decisions.md`) — the fast lane now runs
-  `check --strict --status-only` (new scoped mode) in kit `ci.yml` + the
-  planted `substrate-gate.yml`, closing the heartbeat-deleting-PR bypass
-  (reproduced before/after); friction issues #36–#39 filed; sibling
-  session shipped superbot #1894 (telemetry-append gate).
-- **#33/#34 — control-only lane rides**: ORDER 002 status overwrite (#33,
-  the lane's first live exercise) and the manager's ORDER 003 inbox
-  append (#34).
-- **#32 — v1.2.0 release cut**: `KIT_VERSION`/pyproject/dist-header →
-  1.2.0 (byte-pinned); CHANGELOG `[Unreleased]` → `## [1.2.0] -
-  2026-07-09` with the KF-5 statement (standing B1 PASS row cited —
-  no fresh firing, flagged) + release-metadata comment
-  (`breaking=false state_migration=false min_upgrade_from=1.0.0`);
-  fresh empty `[Unreleased]`; this ledger. Release published by the
-  post-merge `release.yml` dispatch.
-- **#31 — band KL-8: the coordination-protocol kit band** (ORDER 002,
-  spec §2; D-0007): 3 new `control-*` templates in `ADOPT_PLAN`
-  (README contract + inbox/status skeletons);
-  `checks/check_status_current.py` in the dist (static heartbeat states
-  gate strict RED, staleness advisory-only, Stop-hook session nag); the
-  in-job CI control fast lane in `ci.yml` + the planted
-  `substrate-gate.yml` (never `paths-ignore` — required contexts must
-  always report); cold-adopt smoke extended (seed-status RED leg); the
-  MODULE_ORDER dist-completeness guard (friction→guard, caught live);
-  suite 658 → 683; dist regenerated + byte-pinned.
-- **#29 — v1.1.0 release cut**: `KIT_VERSION`/pyproject/dist-header →
-  1.1.0 (byte-pinned); CHANGELOG `[Unreleased]` → `## [1.1.0] -
-  2026-07-09` with the KF-5 benchmark-outcome statement (B1
-  `2026-07-09-run01` PASS; M1-unmeasurable caveat honest and attached) +
-  the release-metadata comment (`breaking=false state_migration=false
-  min_upgrade_from=1.0.0`); fresh empty `[Unreleased]` skeleton; this
-  ledger. The Release itself published by the post-merge `release.yml`
-  `workflow_dispatch` run (in-Actions tag `v1.1.0` + the three assets).
-- **#28 — B1 record (first cold-start row)**: run `2026-07-09-run01`'s
-  judged row appended via `run_ab.py record` (append-only law verified by
-  `check_bench_integrity.py` in CI); the raw run dir committed at
-  `bench/results/cold-start/2026-07-09-run01/` (judge report, manifest,
-  runner facts, 6× transcript/diff/m1.json — plan §5.0); three harness
-  follow-up ideas filed (score_m1 artifacts · T5 headless guard surface ·
-  Model-line false red); this ledger + CHANGELOG updated. ⚑
-  Builder-adjacent recording: the row is the judge's verbatim verdict.
-- **#25 — band KL-7: the post-adopt ENGAGEMENT gate** (fleet-review §4 /
-  owner-directed P0; D-0006): `check_engagement.py` (four finding kinds:
-  `unrendered-banner` · `unrendered-slot` · `enforcement-unwired` ·
-  `session-loop-idle`; strict-only, adoption-evidence-gated, planted-docs
-  scope); adopt stages `<state_dir>/ci/substrate-gate.yml` + prints the
-  engagement checklist; cold-adopt smoke rewritten to the
-  RED→ENGAGED→GREEN arc; suite 626 → 637; dist regenerated + byte-pinned.
-- **#24 — audit follow-ups** (verify-then-fix, Q-0120/PL-006): the
-  label-added disarm workflow (`auto-merge-disarm.yml` — a
-  `do-not-automerge` label at ANY time post-arm disarms native auto-merge;
-  idea file → B4 `shipped`); `check_program_law.py --label-gate` in
-  kit-quality (owner-gated law surfaces red without the label — fresh API
-  label read, tested); the honest guard-stack map
-  (`docs/operations/auto-merge-guards.md`: labels advise, required checks
-  enforce; direct arming is not closable workflow-side); the TWO-incident
-  ledger above + journal entry; the owner day-report
-  (`docs/reports/2026-07-09-kit-lab-run.md`); merged-only `claude/*` branch
-  cleanup (⚑ deletion permission-blocked in-session — see the card);
-  verified #23 merged via auto-merge as designed.
-- **#23 — enabler fresh-label re-read hotfix**: PR #17's KL-5 race-guard
-  hunk deployed byte-identical to main (defeats the stale-payload label race
-  + queue lag that merged #22) + post-#22 prose reality (owner gate 2 →
-  ratify-or-veto; idea B4 → shipped). Verified merged **via auto-merge as
-  designed** (armed at open; merged 3–4 s after the required contexts went
-  green).
-- **#22 — PL-010: the 9th task class `feature build`** (PL-004 amendment):
-  `docs/program/rulings.md` [PL-010] + `TASK_CLASSES` 9th entry +
-  observe-first ladder row. ⚑ Merged **mechanically by the enabler
-  label-race**, not by the intended owner review — see owner gate 2 above
-  (ratify-or-veto) and the incident comment on #22; the enabler's
-  fresh-label re-read guard (from #17's diff) was hotfixed onto main in
-  response. the cross-repo
-  committed-artifact seam doctrine captured as a routed idea
-  (`docs/ideas/pinned-feed-contract-doctrine-2026-07-09.md`) — pattern
-  proven end-to-end the same day in superbot #1884 (the console feed's
-  pinned contract doc) + websites #11 (consumer-side contract pass, which
-  caught a live dict-vs-list shape defect); next stop is a groomed-ideas
-  increment shipping the doctrine note.
-- **#19 — groomed-ideas-1**: diff-aware session-gate selection
-  (`check --session-log`; diff-derived card in kit CI + the planted
-  `substrate-gate.yml`; mtime shim deleted); reflection-miner line-start
-  markers (mid-prose 💡/⚑ fragments no longer junk lessons); guard-recipe
-  convention (function + file + test anchors in friction→guard card
-  entries); three B4 `shipped` idea rows; suite 611 → 618.
-- **#18 — KL-6 (unblocked half)**: the B4 ideas-frontmatter convention +
-  `scripts/check_idea_index.py` in kit-quality (grammar · outcome
-  consistency · 30-day survive window · cohort-key filenames · README index
-  consistency); existing `docs/ideas/` entries migrated (the auto-draft
-  handoff idea records its first real B4 `shipped` outcome — PR #16);
-  planted `ideas-README` template documents the convention (dist
-  regenerated); `telemetry/*.jsonl merge=union` gitattribute (append-only
-  rows never conflict across parallel sessions); 👤 P5/P6 owner steps + the
-  KL-6 blocked ledger in this file; suite 588 → 611. Companion superbot PR
-  #1883: exporter `telemetry` family + the declared kit-lab lane (its row
-  contract then pinned by superbot #1884 + read consumer-side in websites
-  #11 — see the #20 row above).
-- **#16 — KL-5 (1/2) auto-drafted handoff**: `src/engine/loop/handoff.py`
-  (session-start anchor; evidence gathering — mtime scan + pure-file-parse
-  git HEAD; drafted skeleton / appended close-out; `draft` verb); the
-  checker's drafted-vs-completed distinction (`[[fill:]]` slots + `drafted`
-  status); PL-004 harvest guard on drafted stand-ins; planted + local
-  `.sessions/README.md` convention text. The ruled B1 prerequisite.
-- **#14 — KL-4 lab loop + friction**: `docs/operations/lab-loop.md` (the
-  §6.2 prompt + P4 arming steps); `src/engine/loop/friction.py` + the
-  `friction` CLI verb (envelope → `.substrate/friction-outbox/`; agent
-  files the issue); session-close outbox advisory; `friction` label +
-  issue #15 filed and triaged (D4 proven); `upgrade` field fixes
-  (from-version truth + input self-cleanup, superbot-next#46);
-  `docs/ideas/feature-build-task-class-2026-07-09.md`; suite 535 → 557.
-- **#13 — KL-3 telemetry substrate**: `src/engine/loop/telemetry.py`
-  (guard-fire JSONL writer + 📊-line parser/harvest, fail-open by contract) +
-  `src/engine/checks/allowlist.py` (reasons-required `check-exceptions.yml`,
-  stdlib YAML-subset parser); the two choke points wired (`cmd_check` /
-  `cmd_hook`); `📊 Model:` needle in default markers + auto-added at
-  `upgrade`; `telemetry/` seeded (README + allocation-ladder); kit's own
-  config/README/model-usage row dogfooded; D-0003; suite 501 → 535.
-- **#12 — KL-2 governance home (kit-side)**: `docs/program/` — the canonical
-  [PL-NNN] rulings register (PL-001…PL-009 with superbot-Q provenance) +
-  README (cite-never-copy rule) + canonical program copies of
-  collaboration-model + agent-decision-authority; `scripts/check_program_law.py`
-  (grammar · monotonic IDs · provenance-required · no-bodies-in-pointers) in
-  kit-quality with 18 tests (suite 483 → 501); "Program law" pointer sections
-  in CONSTITUTION/collaboration-model templates (dist regenerated) + the
-  kit's own planted copies; `docs/house-style.md` (§3.4/D-7); D-0002;
-  CHANGELOG [Unreleased]; KL-1 tag-location drift fixed.
-- **#11 — KL-1 PR D: `workflow_dispatch` release path** (the session git proxy
-  cannot push tags — HTTP 403): the dispatched run performs the same
-  refuse-to-release guards, creates the annotated tag in-Actions, and
-  publishes the Release. **Tag `v1.0.0` rides this PR's merge commit
-  `daaf29c`** — v1.0.0 was cut through this path.
-- **KL-1 PR C (#10) — close-out + two gate-hole guards**: legacy-alias CI jobs
-  `if: always()` + hard-fail on non-success kit-quality (a skipped alias no
-  longer satisfies a required context — the #7 hole); engine session gate
-  treats an `in-progress` Status badge as incomplete (real born-red, kit-wide —
-  the #9 hole); the PR B close-out docs.
-- **#9 — KL-1 PR B: the `upgrade` verb** (§4.3): sha256+version self-verification
-  vs release.json; archive-first (old dist + state.json banked to
-  `.substrate/backup/` before any overwrite); hash-based planted-doc diff report
-  (`.substrate/upgrade-report.md`; classes unchanged / template-improved /
-  consumer-edited / diverged); `--apply-docs` only ever touches
-  consumer-untouched docs; `--rollback`. (Auto-merged before its close-out
-  commit — see 👤 P10 above; the close-out landed in PR C.)
-- **#8 — KL-1 PR A: release discipline**: `KIT_VERSION` + `Config.kit_version` +
-  `--version` + dist header stamp; planted-doc hash + kit_version recording at
-  adopt/`render --live`; adopt archives the running dist; CHANGELOG.md + LICENSE
-  (MIT ⚑) + `release.yml` + `src/build_release_json.py`; `reconciliation_prs`
-  20→30; `_ENGINE_MANIFEST` dropped; auto-merge-enabler guard counts contexts.
-- **#7 — session card only, merged by the instant-merge footgun** (see 👤 P10
-  above; the work it announced landed as #8/#9).
-- **#6 — KL-1 first act (CI delta vs §3.2)**: one required-check-shaped job
-  `kit-quality` (pytest · dist byte-pin · engine lint bans via ruff
-  T20/S101/TID251 · cold-adopt smoke incl. `--wire-enforcement` exit path ·
-  session gate `check --strict --require-session-log` with git-mtime restore);
-  Python floor 3.10; `auto-merge-enabler` port with a refuse-to-arm guard when
-  main has no required checks; KL-0 friction guards (adopt skips vendoring a
-  root `bootstrap.py` when the target ships the generating `dist/bootstrap.py`;
-  reflection miner skips `#`-heading lines). §3.2 item 7's ruleset turned out
-  owner-landed mid-band with the legacy job names — bridged with temporary
-  alias jobs; context swap = 👤 P10 above.
-- **KL-0 finish** (#5): founding plan travelled in byte-identical; §3.3 dogfood
-  seed (docs/ + `.sessions/` + `.substrate/` + `substrate.config.json` +
-  `project.index.json`, all interview slots filled, mode `active`).
-- #4 — born-red session card for this session (merged alone: no required checks yet).
-- #3 — CODEOWNERS.
-- #2 — CI: kit test suite + cold-adoption smoke.
-- #1 — kit populated from superbot's `substrate-kit/` subtree.
+*(Condensed one-liners — the full per-PR rows live verbatim in the
+[archive](reports/2026-07-12-current-state-archive.md); per-PR detail also
+in CHANGELOG.md.)*
+
+- **Q-0265 continuous run (2026-07-10/11, PR band #135–#239)**: 6 releases
+  v1.7.1→v1.12.0; 9 engaged trees current; bench runs 5–9; tests 852→1057.
+  Retro: `docs/retro/2026-07-11-continuous-run-retro.md`.
+- **#108** — planted-gate template sentinel fixes (visiting gba-homebrew
+  Track B lane; two adopter-found defects fixed live, gba-homebrew #2/#3).
+- **2026-07-10 overnight gen-2 run — 9 queue items** (lane ledger:
+  `.sessions/2026-07-10-gen2-final-close.md`): #84 walking skeleton · #85
+  B1 run-3 row · #86 engagement-gate comment-leniency · #87/#89 inbox
+  append-only + ORDER grammar · #90 claim-aware checker · #91 telemetry
+  write-at-card-commit · #92 upgrade-UX fixes · #98 OWNER-ACTION ↔
+  CAPABILITIES xref · #99 adopter-findings batch · #103 `adopt --lane` ·
+  #95 run-2 follow-ups (incl. planted `.sessions/README.md` marker
+  byte-forms). Suite 722 → 813.
+- **#75** — v1.6.0 fleet rollout wrap-up: every active adopter ENGAGED on
+  v1.6.0 ([`docs/adopters.md`](adopters.md)); superbot stays v1.0.0
+  pin-only ⚑; websites ORDER 005 relay flagged.
+- **#68** — ORDER 008 owner-action quality band (OWNER-ACTION format +
+  advisory `check_owner_actions.py` + doctrine).
+- **#65/#66/#67** — control-only fast-lane rides: ORDER 009 PING-ACK ·
+  ORDER 006 status overwrite · ORDER 007+008 claim.
+- **#63** — ORDER 006 capability-manifest band + **v1.5.0 cut**
+  (`docs/CAPABILITIES.md` planted, THE DISCOVERY RULE, orientation wiring).
+- **#46** — ORDER 004 configurable heartbeat paths + **v1.4.0 cut**
+  (`heartbeat_files` config; superbot-games two-lane adopter).
+- **#44** — B1 run-2 row (FAIL; raw dir
+  `bench/results/cold-start/2026-07-09-run02/`; recorder ≠ judge ⚑).
+- **#41** — ORDER 003 adopter-visibility band + **v1.3.0 cut** (`kit:`
+  heartbeat line; [`docs/adopters.md`](adopters.md);
+  `src/build_release_json.py` upgrade checklist).
+- **#40** — run-2 harness prep (score_m1 taint fixes; `parse_model_line`
+  last-valid-line fix).
+- **#35** — fleet adoption review + control fast-lane status gate
+  (`docs/reports/2026-07-09-fleet-adoption-review.md`; decision ledgered in
+  `docs/decisions.md`; friction issues #36–#39).
+- **#32** — **v1.2.0 cut** (standing B1 PASS row cited, flagged ⚑).
+- **#31** — KL-8 coordination-protocol band (ORDER 002; spec superbot
+  `docs/planning/fleet-coordination-protocol-2026-07-09.md`;
+  `check_status_current.py`; MODULE_ORDER dist-completeness guard).
+- **#29** — **v1.1.0 cut** (KF-5 statement: run-1 PASS, M1 caveat).
+- **#28** — B1 run-1 row (PASS; raw dir
+  `bench/results/cold-start/2026-07-09-run01/`).
+- **#25** — KL-7 post-adopt ENGAGEMENT gate.
+- **#22/#23/#24** — PL-010 `feature build` class (`docs/program/rulings.md`;
+  merged by the label race ⚑ — owner gate 2) + enabler fresh-label hotfix +
+  audit follow-ups (`docs/operations/auto-merge-guards.md`, day report,
+  `docs/ideas/pinned-feed-contract-doctrine-2026-07-09.md` routed; pattern
+  proven in superbot #1884 + websites #11).
+- **#18/#19** — KL-6 unblocked half (B4 ideas-frontmatter +
+  `scripts/check_idea_index.py`; `telemetry/*.jsonl merge=union`; superbot
+  companion #1883) · groomed-ideas-1 (diff-aware session gate).
+- **#12–#17** — bands KL-2…KL-5 (baseline bullets above; e.g. #13
+  `src/engine/loop/telemetry.py` + `src/engine/checks/allowlist.py`, #14
+  `src/engine/loop/friction.py`, #16 `src/engine/loop/handoff.py`).
+- **#6–#11** — KL-1 band → **v1.0.0** (tag rides #11's merge commit
+  `daaf29c` via the `workflow_dispatch` path; `.substrate/backup/` +
+  `.substrate/upgrade-report.md` archive-first upgrade; #7 instant-merge
+  footgun → P10).
+- **#1–#5** — KL-0: repo populated from superbot's `substrate-kit/`
+  subtree, CI, CODEOWNERS, founding-plan travel + dogfood seed.
 
 ## Review rhythm
 
-Every session opens a born-red session card PR early and flips it complete as the last commit; PRs merge on green CI (kit-quality) via auto-merge once §3.2 item 7 makes the check required — **until P10 is confirmed, prefer merging by hand (MCP) after verifying CI green on the final head**: the #7 incident proved arming can mean merging instantly. Releases are semver GitHub Releases from v1.0.0 with bootstrap.py + sha256 + release.json assets (plan §4); a release = the `release.yml` **`workflow_dispatch` run** on a main commit whose CHANGELOG.md carries that version's section (the run performs the refuse-to-release guards, creates the annotated `vX.Y.Z` tag in-Actions, and publishes) — this is the DEFAULT and only agent-runnable path, because the session git proxy refuses tag pushes with HTTP 403 (friction issue #15 report 2; v1.0.0 was cut this way); a hand-pushed tag still works owner-side; published releases are never deleted — supersede (§6.4). Consumers pull upgrades (`bootstrap.py.new upgrade`), the lab never writes to consumer repos (KF-2).
+Every session opens a born-red session card PR early and flips it complete
+as the last commit; PRs merge on green CI (kit-quality) via auto-merge once
+§3.2 item 7 makes the check required — **until P10 is confirmed, prefer
+merging by hand (MCP) after verifying CI green on the final head**: the #7
+incident proved arming can mean merging instantly. Releases are semver
+GitHub Releases from v1.0.0 with bootstrap.py + sha256 + release.json
+assets (plan §4); a release = the `release.yml` **`workflow_dispatch` run**
+on a main commit whose CHANGELOG.md carries that version's section (the run
+performs the refuse-to-release guards, creates the annotated `vX.Y.Z` tag
+in-Actions, and publishes) — the DEFAULT and only agent-runnable path,
+because the session git proxy refuses tag pushes with HTTP 403 (friction
+issue #15 report 2; v1.0.0 was cut this way); a hand-pushed tag still works
+owner-side; published releases are never deleted — supersede (§6.4).
+Consumers pull upgrades (`bootstrap.py.new upgrade`), the lab never writes
+to consumer repos (KF-2).
