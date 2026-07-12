@@ -91,3 +91,11 @@ do: Prompt-template hardening input for the 2026-07-12 fleet prompt rebuild. The
 why: the fleet-wide prompt rebuild lands 2026-07-12; the kit lane owns the portable doctrine and its input must arrive before the templates are frozen.
 done-when: doc committed + outbox pointer on main, by the 2026-07-12 morning sweep.
 provenance: ordered by fleet-manager coordinator, owner-directed, 2026-07-11.
+
+## ORDER 015 · 2026-07-12T08:30Z · status: new
+priority: P1
+owner: Self Improvement coordinator (executor)
+provenance: filed by the fleet manager — relocation of startup-prompt v3.1 orders 2+4 (prompts are STATELESS since v3.2, owner correction 2026-07-12; fleet-manager PR #108). Order 1 registry-truth is OVERTAKEN (docs/adopters.md regenerated 2026-07-11T22:36:49Z from per-repo tree evidence with DRIFT rows); order 3 upgrade-wave is the seat's standing mission.
+do: Kill the dead-boot-pointer class: src/engine/templates/AGENT_ORIENTATION.md.tmpl routes boot reading to .claude/CLAUDE.md (lines ~10 and ~34) while adopters verifiably ship WITHOUT that file (superbot-next at c03df80 has none) — fix the template (target-exists check, or route boot to CONSTITUTION.md) and carry the fix in the next release wave. VERIFY-FIRST rider (unverified by the filer): the v3.1 census claimed a session-gate "added-card advisory loophole" + severity-tier drift — verify against the shipped gate; fix with a fixture holding red, or retract with evidence.
+why: template pointer verified at kit HEAD 8a544a6 on 2026-07-12; the adopter-side dead pointer verified live on superbot-next the same day.
+done-when: no template ships a dead boot pointer (target-exists enforced or boot re-routed); the gate-integrity claim is verified-and-fixed or retracted, with evidence either way.
