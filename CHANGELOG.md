@@ -15,6 +15,22 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Grounded-skills slice 3 (PR #270): the `/intake` owner-request skill —
+  superbot's Q-0254 understand-and-reflect doctrine made executable as one
+  `SKILLS` entry (plan §5/§7.3). Five-step procedure: CONSOLIDATE the
+  fragmented ask into its few main ideas → RESTATE the fuller picture
+  inline (verification + idea-expansion in one step) → MAP each idea to
+  known step patterns via `docs/SKILLS.md` (checking `docs/CAPABILITIES.md`
+  before assuming walls) → surface the POSSIBILITY SPACE first when
+  feasibility is uncertain → DECIDE-AND-FLAG every reversible call, with
+  owner questions only as Q-0263.2 structured choices carrying a bolded
+  recommendation. Read-only (`grounds: []`); the `docs/SKILLS.md` index row
+  renders automatically from the single `SKILLS` source; adopters inherit
+  the staged/installed skill at the next upgrade (staged artifacts always
+  regenerate).
+
 ## [1.13.0] - 2026-07-12
 
 Capability release (MINOR) shipping the grounded-skills program slices 1–2
