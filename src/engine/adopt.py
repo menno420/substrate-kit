@@ -71,6 +71,16 @@ ADOPT_PLAN: list[tuple[str, str]] = [
     # append discoveries at close (session-close skill nudge), so one
     # session's imagined-wall lesson never costs a second session.
     ("CAPABILITIES.md.tmpl", "docs/CAPABILITIES.md"),
+    # The skill index (grounded-skills program slice 1 —
+    # docs/planning/2026-07-12-grounded-skills-program.md §2/§7.1): one
+    # table — skill → when to reach for it → capabilities — rendered FROM
+    # the kit's SKILLS list via the engine-computed ``skills_index``
+    # context key (engine.render.build_context), so the planted index can
+    # never drift from the skills the kit actually emits. Boot-set wiring
+    # lives in the CLAUDE / CONSTITUTION / AGENT_ORIENTATION templates
+    # (the CAPABILITIES.md pattern); advisory only — no CI enforcement
+    # of "you used the skill" (§8 Q2=B, graduation later).
+    ("SKILLS-index.md.tmpl", "docs/SKILLS.md"),
     ("ideas-README.md.tmpl", "docs/ideas/README.md"),
     ("session-journal.md.tmpl", ".session-journal.md"),
     # The fleet coordination protocol (band KL-8, spec: superbot
