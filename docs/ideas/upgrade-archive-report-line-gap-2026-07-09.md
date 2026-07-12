@@ -14,7 +14,10 @@ outcome: shipped
 > **State:** captured (v1.6.0 fleet rollout — **third field report** of the
 > same confusion, seen again on both consumer runs superbot-next#96 +
 > websites#45; cosmetic, but three reports in one day earn a priority bump
-> over other cosmetic items).
+> over other cosmetic items) → **shipped** (kit PR #92, merged 2026-07-10,
+> gen-2 upgrade-UX batch: the idempotent `archive_dist` early return now
+> appends `archived: <rel> (already banked)`, so every upgrade report
+> accounts for the old dist explicitly).
 
 ## The finding
 

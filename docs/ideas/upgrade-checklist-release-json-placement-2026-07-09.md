@@ -12,7 +12,11 @@ outcome: shipped
 > **Status:** `ideas`
 >
 > **State:** captured (v1.6.0 fleet rollout — field finding from the two
-> consumer upgrade runs, superbot-next#96 + websites#45).
+> consumer upgrade runs, superbot-next#96 + websites#45) → **shipped**
+> (kit PR #92, merged 2026-07-10, gen-2 upgrade-UX batch:
+> `ADOPTER_CHECKLIST` step 1 now names `release.json` beside
+> `bootstrap.py.new`, states verify-then-self-clean, and calls out that
+> without it the sha256 check silently skips).
 
 ## The finding
 

@@ -149,6 +149,93 @@ class TestValidateFields:
         assert "bad-merged-date" in kinds
 
 
+SHIPPED_FM = """---
+state: promoted
+origin: lab
+shipped_pr: 92
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-01
+outcome: shipped
+---
+"""
+
+
+def _shipped_idea(body: str) -> str:
+    return SHIPPED_FM + "\n# An idea (2026-07-01)\n\n" + body
+
+
+class TestBodyStateDrift:
+    """Enforcement item 5 — shipped frontmatter vs. a stale body State line
+    (friction→guard from PR #311)."""
+
+    def _drift(self, text):
+        fields, err = cii.parse_frontmatter(text)
+        assert err is None
+        return cii.check_body_state_drift("x-2026-07-01.md", fields, text)
+
+    def test_stale_captured_body_fails(self):
+        text = _shipped_idea("> **State:** captured (a session).\n\n## The finding\n\nBody.\n")
+        findings = self._drift(text)
+        assert _kinds(findings) == ["body-state-drift"]
+        # The message names the two disagreeing values.
+        assert "outcome=`shipped`" in findings[0].message
+        assert "shipped_pr=`92`" in findings[0].message
+        assert "`captured`" in findings[0].message
+
+    def test_stale_routed_body_fails(self):
+        text = _shipped_idea("> **State:** routed (discuss-first).\n\nBody.\n")
+        assert _kinds(self._drift(text)) == ["body-state-drift"]
+
+    def test_arrow_chain_reaching_shipped_passes(self):
+        text = _shipped_idea(
+            "> **State:** captured (a session) → promoted →\n"
+            "> **shipped** same day (kit PR #92).\n\nBody.\n"
+        )
+        assert self._drift(text) == []
+
+    def test_plain_shipped_state_line_passes(self):
+        text = _shipped_idea("> **State:** shipped — kit PR #92 (2026-07-01).\n\nBody.\n")
+        assert self._drift(text) == []
+
+    def test_shipped_section_marker_passes(self):
+        text = _shipped_idea(
+            "> **State:** captured (a session).\n\nBody.\n\n## Shipped\n\nPR #92 built it.\n"
+        )
+        assert self._drift(text) == []
+
+    def test_ruled_banner_passes(self):
+        text = _shipped_idea(
+            "> **State:** captured (a session).\n\n"
+            "> **RULED 2026-07-10 — Reading A.** Body above\n"
+            "> preserved as written (historical).\n"
+        )
+        assert self._drift(text) == []
+
+    def test_no_state_line_passes(self):
+        # Pre-convention bodies have no State line; frontmatter is authoritative.
+        text = _shipped_idea("Just prose, no State blockquote.\n")
+        assert self._drift(text) == []
+
+    def test_unshipped_frontmatter_with_captured_body_passes(self):
+        text = GOOD_FM  # outcome: open, shipped_pr: null, body says nothing shipped
+        fields, err = cii.parse_frontmatter(text)
+        assert err is None
+        assert cii.check_body_state_drift("x.md", fields, text + "> **State:** captured.\n") == []
+
+    def test_shipped_word_outside_state_blockquote_still_fails(self):
+        # `shipped` in ordinary prose is not a reconciliation marker — only the
+        # State blockquote's arrow-chain counts.
+        text = _shipped_idea(
+            "> **State:** captured (a session).\n\nSomeday this could be shipped.\n"
+        )
+        assert _kinds(self._drift(text)) == ["body-state-drift"]
+
+    def test_check_ideas_integration_flags_drift(self, tmp_path):
+        drifted = _shipped_idea("> **State:** captured (a session).\n\nBody.\n")
+        root = _make_repo(tmp_path, {"an-idea-2026-07-01.md": drifted})
+        assert "body-state-drift" in _kinds(cii.check_ideas(root, today=TODAY))
+
+
 class TestCheckIdeas:
     def test_clean_repo(self, tmp_path):
         root = _make_repo(tmp_path, {"an-idea-2026-07-01.md": GOOD_FM})

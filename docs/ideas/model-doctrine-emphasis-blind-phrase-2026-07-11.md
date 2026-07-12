@@ -11,7 +11,11 @@ outcome: shipped
 
 > **Status:** `ideas`
 >
-> **State:** captured. **Origin:** consumer — websites, live-verified during
+> **State:** captured → **shipped** (kit PR #187, merged 2026-07-11, the
+> v1.10.1 payload: the presence check strips markdown emphasis characters
+> and collapses whitespace before comparing; regression fixture — an
+> emphasis-variant existing phrase gets no append, file byte-identical).
+> **Origin:** consumer — websites, live-verified during
 > the v1.10.0 distribution wave. **Priority: minor** (harmless noise,
 > idempotent afterwards).
 
