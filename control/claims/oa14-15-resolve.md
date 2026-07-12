@@ -1,0 +1,1 @@
+- `claude/oa14-15-resolve` · **scope** — status.md reconciliation: mark ⚑ OWNER-ACTION 14 (#220 ratified @ ed46c2c) + 15 (#238 ratified @ 5e6ba09) RESOLVED per the OA-13 pattern; needs-owner 13 → 11 · expected files: control/status.md only · 2026-07-12
