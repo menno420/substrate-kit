@@ -1,1 +1,0 @@
-- `claude/current-state-condense` · **condense** — docs/current-state.md condensation to restore K0 headroom · docs/current-state.md + docs/reports/2026-07-12-current-state-archive.md · 2026-07-12
