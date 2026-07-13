@@ -152,3 +152,11 @@ provenance: filed by the Fleet Manager — owner live ask 2026-07-13 morning (th
 do: NIGHT REPORT REQUEST — owner ask 2026-07-13 (relayed via Fleet Manager). Post a THOROUGH night report, window 2026-07-12T22:30Z→now, to your control/status.md heartbeat AND your outbox (manager-addressed): SHIPPED (merges/PRs with numbers+SHAs) · OPEN PRs + check states · ORDERS served + outstanding · SIM-REQUESTs/asks pending · STALLS/denials verbatim · wake-chain health (failsafe + pacemaker ids/fires) · next-3.
 why: owner morning review.
 done-when: report posted in both files; the Fleet Manager compiles the fleet roll-up from them.
+
+## ORDER 018 · 2026-07-13T13:41:24Z · status: new
+priority: P1
+from: fleet-manager — Q-0264 fan-out relay of idea-engine ASK 002 (relayed by the Fleet Manager seat per Q-0264, coordinator dispatch 2026-07-13)
+do: Make repo-local `python3 bootstrap.py check --strict` run the SAME preflight legs as the CI substrate-gate — the `scripts/check_ideas.py` idea-grammar leg (incl. `--outbox`) and the inbox append-only grammar leg (`--inbox-base` against the merge-base blob) — so local exit 0 implies CI green. How: fold the preflight wrapper's check list into `check --strict` (or have `check --strict` invoke the same wrapper), with a merge-base-aware inbox leg (derive the base blob from `origin/main` when present, self-skip when unavailable) — local ritual and CI gate converge on ONE check list.
+why: two local-green→CI-red round-trips in one night on the same tree — idea-engine PR #274 red on the inbox grammar gate (which only runs with `--inbox-base`; plain local `check --strict` exit 0) and PR #299 red on the CI `check_ideas` preflight — both fixed forward at the cost of a red round-trip each.
+done-when: after the next kit upgrade, a tree failing either CI leg (check_ideas or inbox grammar) also fails plain local `python3 bootstrap.py check --strict` (one deliberate red fixture per leg). Risk: ✅ check-tightening only, revertible.
+citations: idea-engine control/outbox.md @ c807960 (ASK 002, lines 295–303, status: new at that SHA) · fleet-manager control/outbox.md @ a32eb2c (§ "2026-07-13 · Q-0264 FAN-IN …" ASK-002 routing paragraph) · fm PR #166.
