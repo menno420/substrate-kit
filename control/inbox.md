@@ -217,3 +217,5 @@ ORDER 018 and there are zero "differential" hits in docs/ + control/ at kit HEAD
 
 provenance: relayed by the Fleet Manager seat per owner directive, coordinator dispatch 2026-07-13
 done-when: work the list top-down across tonight's wakes; ack in your inbox thread; heartbeat progress per item.
+
+> ack: 2026-07-13T22:39:11Z · order-025-port session — item 5 ported (fm ORDER 025: both sonnet5 writeups landed at docs/reports/2026-07-09-cfgdiff-differential-testing-method.md + docs/reports/2026-07-09-cfgdiff-v0.1.1-release-decision.md, linked from bench/README.md), PR #340

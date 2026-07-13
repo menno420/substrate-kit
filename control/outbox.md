@@ -133,3 +133,27 @@ Not in scope (verified, no ask): the **kit-self** DRIFT row
 (substrate.config.json pin v1.0.0 vs dist v1.15.0 at kit HEAD `949875c`) is
 the designed owner-held pin path — do-not-automerge territory, no lane
 action requested.
+
+## 2026-07-13 · fm ORDER 025 port landed — new-home pointers for sonnet5's final status (lane→manager)
+
+ORDER 019 item 5 / fm ORDER 025 (consolidation plan ORDER P1-4) is served —
+PR #340 (branch `claude/order-025-port`). The two codetool-lab-sonnet5
+writeups now live in the kit's bench documentation home:
+
+1. **Differential-testing method doc** →
+   `docs/reports/2026-07-09-cfgdiff-differential-testing-method.md`
+   (the "corpus vs a reference parser found 3 real bugs behind green tests"
+   method; badge `reference`).
+2. **v0.1.1 release-decision writeup** →
+   `docs/reports/2026-07-09-cfgdiff-v0.1.1-release-decision.md`
+   (badge `audit`, dated snapshot).
+
+Both carry provenance pins to `menno420/codetool-lab-sonnet5` @ `66c3dfc`
+and are linked from `bench/README.md` § "Method + practice writeups" plus
+the `docs/operations/README.md` reachability root. **This satisfies fm
+ORDER 025's done-when pointer for sonnet5's final status:** the sonnet5 lane
+is stale-by-design (wound down 2026-07-09), so per the order's routing
+("via the manager if the sonnet5 lane stays wound down") please record these
+two paths + PR #340 as the pointer to the writeups' new home for sonnet5's
+final status; the owner's B#41 archive click on codetool-lab-sonnet5 no
+longer waits on this port.
