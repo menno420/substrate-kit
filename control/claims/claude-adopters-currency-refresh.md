@@ -1,0 +1,1 @@
+- claude/adopters-currency-refresh · regenerate docs/adopters.md via `bootstrap currency` (fleet tree re-verification, baton rung b) · expected files: docs/adopters.md, .sessions/, this claim · 2026-07-13
