@@ -84,6 +84,15 @@ credential is missing:
 
 Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
 
+- 2026-07-13 · wall · **send_later one-shots can drop platform-side and
+  leave NO tombstone** — the dropped trigger is absent from `list_triggers`
+  entirely (0 hits across 1203 records, 13 pages, audited
+  2026-07-13T10:40Z) while delivered siblings persist with
+  `ended_reason=run_once_fired`. Detection: gap in expected wake;
+  mitigation: the seat failsafe cron bridges (F-1). Observed:
+  trig_01USg5i3qna4fCX5ZeePg7Gj, armed 01:34Z for 01:49Z, never delivered;
+  failsafe bridged 02:07Z. Also observed: one tick delivered 25 min late
+  (02:24Z→02:49Z).
 - 2026-07-10 · capability · **the self-merge classifier wall is
   AUTHORSHIP-scoped, not a blanket merge ban** — a NON-AUTHOR session that
   GENUINELY reviews a PR it did not write, then merges it, PASSES the auto-mode
