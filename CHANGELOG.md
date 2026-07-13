@@ -50,6 +50,23 @@ probe failed both arms; T5 ignored). **KF-8 trend at 9 scored rows: 1 PASS
 
 ### Added
 
+- **Staged-artifact regen-lag advisory (`check_staged_regen`, ORDER 019
+  item 6, PR #345).** Staged `.substrate/` artifacts (staged CLAUDE.md,
+  skills, agents) could carry unfilled `${...}` slots even though every
+  `state.json` `slot_values` answer was filled — staged pre-slot-fill,
+  re-rendered only by an `upgrade`, and invisible to the engagement gate
+  (which scans planted docs, never the staged tree); proven live on
+  websites @ `992c045`. `check`'s full lane now scans the staged subtrees
+  (`agents/`, `claude/`, `ci/`, `hooks/`, `skills/` — never `backup/` or
+  state files) and fires one advisory-only finding per artifact whose live
+  placeholders **outside code spans** intersect the *filled* slot set —
+  the intersection is the false-positive firewall (shell `${VAR}`s and
+  GitHub `${{ ... }}` syntax are not filled slot names) — naming the exact
+  regen commands (`upgrade`, or `skills --build` / `agents --build`).
+  Never exit-affecting (idea file: advisory-first per the adopt-freely
+  posture; UNVERIFIED per its PL-008 header until proven across sessions).
+  Design authority: `docs/ideas/staged-artifact-regen-lag-checker-2026-07-12.md`.
+
 - **Local `check --strict` runs the CI substrate-gate's preflight legs
   (ORDER 018 / idea-engine ASK 002, PR #332).** Two local-green→CI-red
   round-trips in one night (idea-engine #274 — the inbox grammar gate only
