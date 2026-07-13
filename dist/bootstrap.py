@@ -16632,13 +16632,28 @@ def cmd_check(
                 "check: simulation is advisory-only — it never affects this "
                 "run's exit code.",
             )
+    # Guard-fire write announcement (PR #328 card's ⟲ finding): the ledger is
+    # a TRACKED file by design (founding plan KF-11 — committed, never
+    # gitignored), so a silent append leaves a "mystery" dirty tree that
+    # sessions were reverting. Aggregate every call site's written count and
+    # say so once, at the end of the run, on every return path.
+    fires_written = 0
+
+    def _announce_fires() -> None:
+        if fires_written:
+            _emit(
+                f"check: {fires_written} guard-fire record(s) appended to "
+                f"{config.state_dir}/{GUARD_FIRES_FILENAME} — telemetry "
+                "ledger; commit the delta with your session (do not revert).",
+            )
+
     if suppressed:
         _emit(
             f"check: {len(suppressed)} finding(s) suppressed by allowlist "
             "(reason-carrying entries; fires recorded with their verdicts).",
         )
         for finding, entry in suppressed:
-            record_guard_fires(
+            fires_written += record_guard_fires(
                 target,
                 config.state_dir,
                 cmd="check",
@@ -16652,7 +16667,7 @@ def cmd_check(
         _emit(f"check: {len(doc_findings)} finding(s):")
         for finding in doc_findings:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16671,7 +16686,7 @@ def cmd_check(
         )
         for finding in status_advisories:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16689,7 +16704,7 @@ def cmd_check(
         )
         for finding in owner_ask_advisories:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16709,7 +16724,7 @@ def cmd_check(
         )
         for finding in claim_advisories:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16728,7 +16743,7 @@ def cmd_check(
         )
         for finding in xref_advisories:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16748,7 +16763,7 @@ def cmd_check(
         )
         for finding in setup_advisories:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16768,7 +16783,7 @@ def cmd_check(
         )
         for finding in grounds_advisories:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16788,7 +16803,7 @@ def cmd_check(
         )
         for finding in digest_advisories:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16807,7 +16822,7 @@ def cmd_check(
         )
         for finding in headroom_advisories:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16829,7 +16844,7 @@ def cmd_check(
         )
         for finding in automerge_advisories:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16848,7 +16863,7 @@ def cmd_check(
         )
         for finding in adopters_advisories:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16865,7 +16880,9 @@ def cmd_check(
         # whole point), so gating on one here would deadlock every heartbeat.
         if not doc_findings:
             _emit("check: control-status check passed (--status-only).")
+            _announce_fires()
             return 0
+        _announce_fires()
         return 1 if strict else 0
     if session_log is not None:
         explicit = session_log if session_log.is_absolute() else target / session_log
@@ -16918,7 +16935,7 @@ def cmd_check(
                 "holds the merge in gate mode (--require-session-log / "
                 "--session-log / --added-card).",
             )
-            record_guard_fires(
+            fires_written += record_guard_fires(
                 target,
                 config.state_dir,
                 cmd="check",
@@ -16957,7 +16974,7 @@ def cmd_check(
                 "session-log",
                 f"missing: {', '.join(log_missing)}",
             )
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -17019,7 +17036,9 @@ def cmd_check(
             )
     if not doc_findings and not log_missing and not log_absent_fails:
         _emit("check: all checks passed.")
+        _announce_fires()
         return 0
+    _announce_fires()
     return 1 if strict else 0
 
 
