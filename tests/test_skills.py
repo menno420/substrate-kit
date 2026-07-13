@@ -42,6 +42,8 @@ def test_starter_pack_present_and_ordered():
         "upgrade-distribution",
         "release",
         "intake",
+        "chase-references",
+        "prep-owner-steps",
         "quality-gate",
         "review",
         "repo-health",
@@ -323,6 +325,74 @@ def test_intake_grounded_at_kit_root_and_on_empty_target(tmp_path):
     intake = [get_skill("intake")]
     assert check_skill_grounds(kit_root, skills=intake) == []
     assert check_skill_grounds(tmp_path, skills=intake) == []
+
+
+# ---------------------------------------------------------------------------
+# Seed skills (ORDER 016 seat-item 2, provenance Q-0273) — superbot's
+# chase-references + prep-owner-steps generalized into kit templates.
+# ---------------------------------------------------------------------------
+
+
+def test_chase_references_carries_the_full_method():
+    # The four method steps + the bar, in order: inventory, resolve,
+    # unfound-is-a-search-task, state-the-picture-back.
+    body = get_skill("chase-references")["body"]
+    assert "Inventory first" in body
+    assert "Resolve each one, in this order" in body
+    assert "search task, never a skip" in body
+    assert "State the assembled picture back" in body
+    assert "explicitly reported unfindable" in body
+    # Generalized: no superbot-specific tooling or doc names survive.
+    assert "fleet_status" not in body
+    assert "fleet-reading-path" not in body
+    assert "python3.10" not in body
+    # Q-0272 dependency stays generic phrasing, not a hardcoded fleet doc.
+    assert "where one exists" in body
+    # Provenance travels in the body, as superbot's copy carries it.
+    assert "Q-0273" in body
+
+
+def test_prep_owner_steps_carries_the_full_method():
+    # The five method steps + the shape + the bar: deep-link, paste-ready
+    # blobs, walk-the-path, batch-to-one-sitting, payoff + verification.
+    body = get_skill("prep-owner-steps")["body"]
+    assert "Lead with the direct link" in body
+    assert "fenced block" in body
+    assert "Walk his path once yourself" in body
+    assert "Batch to one sitting" in body
+    assert "State the payoff + verification" in body
+    assert "clicks and pastes" in body
+    # The shape template survives generalization (nested fence intact).
+    assert "⚑ OWNER —" in body
+    assert "verify: <command/URL that should now succeed>" in body
+    # Kit integration: drafting half of the OWNER-ACTION contract.
+    assert "OWNER-ACTION" in body
+    assert "control/README.md" in body
+    # Provenance travels in the body, as superbot's copy carries it.
+    assert "Q-0273" in body
+
+
+def test_seed_skills_are_read_only_and_ground_nothing():
+    # Both are method/reporting skills: nothing declared beyond the implicit
+    # read; no commands run, so grounds is [] (the slice-2 rule).
+    for name in ("chase-references", "prep-owner-steps"):
+        assert get_skill(name)["capabilities"] == [], name
+        assert skill_capabilities(name) == [READ], name
+        assert get_skill(name)["grounds"] == [], name
+
+
+def test_seed_skills_grounded_at_kit_root_and_on_empty_target(tmp_path):
+    # Every backticked span in both bodies resolves under the slice-2
+    # grounds checker — at the kit root AND on a bare adopter tree (their
+    # doc references are ADOPT_PLAN destinations / skip-shaped prose).
+    from pathlib import Path
+
+    from engine.checks.check_skill_grounds import check_skill_grounds
+
+    kit_root = Path(__file__).resolve().parents[1]
+    seeds = [get_skill("chase-references"), get_skill("prep-owner-steps")]
+    assert check_skill_grounds(kit_root, skills=seeds) == []
+    assert check_skill_grounds(tmp_path, skills=seeds) == []
 
 
 # ---------------------------------------------------------------------------

@@ -119,8 +119,14 @@ def skills_digest_block(docs_root: str = "docs") -> str:
     """
     index_path = f"{docs_root}/SKILLS.md"
     header = [SKILLS_DIGEST_BEGIN, "## Skills digest", ""]
+    # Description clip 120 → 85 (2026-07-13, seed-skills slice): at 12
+    # registered skills the 120-char rows overflowed the block budget and
+    # _fit_rows silently dropped the tail skills from the digest — but the
+    # digest's whole job is "these procedures exist, don't improvise", so
+    # every NAME must survive; the pointer line carries the detail. The
+    # _fit_rows overflow line stays as the safety net for future growth.
     rows = [
-        f"- `{skill['name']}` — {_truncate(skill['description'], 120)}"
+        f"- `{skill['name']}` — {_truncate(skill['description'], 85)}"
         for skill in SKILLS
     ]
     footer = [
