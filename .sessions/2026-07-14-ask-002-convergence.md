@@ -1,6 +1,6 @@
 # 2026-07-14 — ORDER 019 item 3 / ASK 002: check --strict ⇄ CI substrate-gate convergence — verification (no-op)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 About to: verify ORDER 019 item 3 (ASK 002 relay: converge local
 `check --strict` with the CI substrate-gate, evidenced by idea-engine
