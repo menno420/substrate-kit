@@ -93,8 +93,16 @@ def orders_line_example(*, claimed: bool = False) -> str:
 # treats the Project as dark. The value is the line's first token (ISO-8601,
 # minutes or seconds precision, `Z` or offset). Enforced by
 # check_status_current (parse_heartbeat).
+#
+# The prefix match is CASE-INSENSITIVE (the KIT_LINE_RE leniency instinct:
+# accepting an alternate only ever *withholds* a red, never adds one). A live
+# heartbeat written as `Updated:` failed `[status-no-heartbeat]` and had to
+# be hand-fixed in-PR (kit #326, 2026-07-13) — a casing slip is a writer
+# spelling variant, not a dead heartbeat, so the enforcer forgives it. The
+# canonical WRITER form stays lowercase `updated:` (the example below, every
+# planted template, control/README.md's taught block).
 
-UPDATED_LINE_RE = re.compile(r"^updated:\s*(\S+)", re.MULTILINE)
+UPDATED_LINE_RE = re.compile(r"^updated:\s*(\S+)", re.MULTILINE | re.IGNORECASE)
 
 
 def updated_line_example() -> str:

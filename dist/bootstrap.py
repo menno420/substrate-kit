@@ -38,7 +38,9 @@ import json
 import os
 import random
 import re
+import shlex
 import string
+import subprocess  # noqa: TID251
 import sys
 import tarfile
 import tempfile
@@ -216,6 +218,25 @@ def _default_automerge() -> dict:
     }
 
 
+def _default_preflight_scripts() -> list[str]:
+    """Return the repo-local preflight scripts ``check`` runs on the full lane.
+
+    Local-ritual ↔ CI-gate parity (ORDER 018 / idea-engine ASK 002): each
+    entry is a repo-relative command line (``shlex``-split; a leading
+    ``*.py`` token runs under the interpreter already running ``check``)
+    executed by ``cmd_check`` on the full — non ``--status-only`` — lane,
+    with any non-zero exit riding the strict finding loop. Because the
+    generated substrate-gate's full lane itself invokes ``bootstrap.py
+    check --strict``, this ONE list is what both the local ritual and CI
+    run — a checker added to the repo's preflight wrapper is enforced in
+    both venues with zero workflow edits. The default names the
+    conventional wrapper path (idea-engine's ``scripts/preflight.py``
+    convergence pattern) so parity arrives on upgrade without a config
+    edit; an absent script self-skips with a NOTE, never a red.
+    """
+    return ["scripts/preflight.py"]
+
+
 def _default_badge_tokens() -> list[str]:
     """Return the default Status-badge taxonomy the doc checker accepts."""
     return [
@@ -292,6 +313,11 @@ class Config:
     claims_dir: str = DEFAULT_CLAIMS_DIR
     # Auto-merge-enabler knobs (EAP §6.10 — see _default_automerge above).
     automerge: dict = field(default_factory=_default_automerge)
+    # Local preflight scripts (ORDER 018 — see _default_preflight_scripts
+    # above): the ONE check list both the local ritual and the CI gate run.
+    preflight_scripts: list[str] = field(
+        default_factory=_default_preflight_scripts,
+    )
 
     def to_json(self) -> str:
         """Serialise the config to indented, key-sorted JSON."""
@@ -733,8 +759,16 @@ def orders_line_example(*, claimed: bool = False) -> str:
 # treats the Project as dark. The value is the line's first token (ISO-8601,
 # minutes or seconds precision, `Z` or offset). Enforced by
 # check_status_current (parse_heartbeat).
+#
+# The prefix match is CASE-INSENSITIVE (the KIT_LINE_RE leniency instinct:
+# accepting an alternate only ever *withholds* a red, never adds one). A live
+# heartbeat written as `Updated:` failed `[status-no-heartbeat]` and had to
+# be hand-fixed in-PR (kit #326, 2026-07-13) — a casing slip is a writer
+# spelling variant, not a dead heartbeat, so the enforcer forgives it. The
+# canonical WRITER form stays lowercase `updated:` (the example below, every
+# planted template, control/README.md's taught block).
 
-UPDATED_LINE_RE = re.compile(r"^updated:\s*(\S+)", re.MULTILINE)
+UPDATED_LINE_RE = re.compile(r"^updated:\s*(\S+)", re.MULTILINE | re.IGNORECASE)
 
 
 def updated_line_example() -> str:
@@ -2706,7 +2740,9 @@ def parse_heartbeat(text: str) -> datetime | None:
     """Return the ``updated:`` line's timestamp as an aware UTC datetime.
 
     Accepts the contract's ISO-8601 shapes (``2026-07-09T12:07Z``,
-    ``...T12:07:00+00:00``, minutes or seconds precision). A trailing ``Z``
+    ``...T12:07:00+00:00``, minutes or seconds precision) behind a
+    case-insensitive ``updated:`` prefix (``Updated:`` is a writer spelling
+    variant, not a dead heartbeat — kit #326). A trailing ``Z``
     is normalized for ``fromisoformat`` (Python 3.10 floor). A naive
     timestamp is taken as UTC — the contract says ISO8601, sessions write
     UTC, and treating it otherwise would fabricate staleness. None when the
@@ -3066,14 +3102,21 @@ IDENTITY is deliberately NOT enforced: on a single-account program it is not
 enforceable in-repo (issue #36 report 2, stated honestly in the protocol
 doc); this gate enforces the part of the law that lives in the bytes.
 
-Diff access without shelling out: engine code is pure stdlib — ``subprocess``
-is banned (§3.2). So, exactly like the session-log gate, CI does the git work
-in bash (extract the merge-base blob of ``control/inbox.md`` to a file) and
-hands the path in via ``check --inbox-base <file>``; this checker only reads
-two files and compares them. No base path (a local ``check`` with no diff
-context, or the file/base absent) → **no-op**, the same fail-open posture as
-the mtime session-log fallback. It engages only when there is a real diff to
-judge, so ``check`` stays meaningful on a tree with no inbox change.
+Diff access without shelling out: engine *checker* code is pure stdlib —
+``subprocess`` is banned (§3.2). So, exactly like the session-log gate, CI
+does the git work in bash (extract the merge-base blob of
+``control/inbox.md`` to a file) and hands the path in via ``check
+--inbox-base <file>``; this checker only reads two files and compares them.
+A base is now findable on BOTH venues (ORDER 018 / idea-engine ASK 002): when
+``--inbox-base`` is absent, ``cmd_check`` derives the merge-base blob from
+``origin/main`` itself via the ONE documented §3.2 subprocess carve-out
+(``engine.cli._derive_inbox_base`` — never this checker), so a plain local
+``check --strict`` reds where CI would red instead of silently no-opping
+(the idea-engine PR #274 local-green→CI-red class). With no base at all (no
+git context to derive from, or the file/base absent) → **no-op**, the same
+fail-open posture as the mtime session-log fallback. It engages only when
+there is a real diff to judge, so ``check`` stays meaningful on a tree with
+no inbox change.
 """
 
 
@@ -13516,8 +13559,8 @@ not exist costs every session an improvisation.
 What it scans:
 
 - The kit-truth :data:`engine.skills.skills.SKILLS` list — every body's
-  backticked spans and every ``grounds`` entry (the self-check that travels
-  with the kit).
+  backticked spans, markdown-link targets, and every ``grounds`` entry (the
+  self-check that travels with the kit).
 - The target's installed/staged skill documents (``.claude/skills/*/
   SKILL.md`` and ``<state_dir>/skills/*/SKILL.md``) when present — the
   RENDERED bodies, so a host-edited or host-added skill gets the same scan.
@@ -13527,11 +13570,16 @@ Skip rules (fail-open classes, in order): a span carrying an unfilled
 a span carrying non-ASCII characters (``·``/``→``/``✔`` mark report-format
 prose, never commands);
 a first token that is not identifier/path-shaped (prose, ``<placeholders>``,
-``[brackets]``, flags, globs); a token ending ``/`` (directory prose); a
-token under the state dir (runtime artifacts, not committed files); a single
-bare word with no path shape (``complete``, ``in-progress`` — status tokens,
-not commands). Pure stdlib; no ``subprocess`` (§3.2) — resolution is
-existence checks, never execution.
+``[brackets]``, flags, globs; a leading ``.`` is path-shaped — dot-led
+pointers like ``.claude/skills/x/SKILL.md`` ARE judged); a token ending
+``/`` (directory prose); a state-dir token naming a known kit-written
+artifact class (:data:`_STATE_DIR_ARTIFACTS` / :data:`_STATE_DIR_PREFIXES`
+— runtime artifacts grounded by construction; any OTHER state-dir path is
+judged by existence like every pointer); a markdown-link target carrying a
+URL scheme, a bare ``#anchor``, or whitespace; a single bare word with no
+path shape (``complete``, ``in-progress`` — status tokens, not commands).
+Pure stdlib; no ``subprocess`` (§3.2) — resolution is existence checks,
+never execution.
 """
 
 
@@ -13541,9 +13589,18 @@ existence checks, never execution.
 # a grounds-matching invariant the skills tests pin).
 _SPAN_RE = re.compile(r"`([^`\n]+)`")
 
-# A judgeable first token: identifier/path-shaped. Anything else (``>``,
-# ``[Unreleased]``, ``<repo>:``, ``<!--``, unicode prose) is skipped as prose.
-_FIRST_TOKEN_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.\-/]*$")
+# A judgeable first token: identifier/path-shaped, optionally dot-led
+# (``.substrate/upgrade-report.md``, ``.claude/skills/x/SKILL.md``, ``.env``).
+# The optional leading ``.`` must be followed by an identifier character so
+# pure-punctuation prose (``..``, ``...``, ``./``) stays unjudged. Anything
+# else (``>``, ``[Unreleased]``, ``<repo>:``, ``<!--``, unicode prose) is
+# skipped as prose.
+_FIRST_TOKEN_RE = re.compile(r"^\.?[A-Za-z0-9_][A-Za-z0-9_.\-/]*$")
+
+# One markdown link target: ``[text](target)``. Same extraction precedent as
+# the kit-side template pointer guard (tests/test_template_pointer_guard.py
+# ``_MD_LINK_TARGET_RE``); targets feed the SAME skip ladder as backtick spans.
+_MD_LINK_TARGET_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 
 # A real file extension (lowercase — ``vX.Y.Z`` version placeholders end in
 # uppercase pseudo-extensions and must stay prose).
@@ -13602,18 +13659,21 @@ _EXECUTABLES = frozenset(
     }
 )
 
-# Paths that are grounded by construction even when absent from the target
-# tree: the kit's own release/distribution artifacts (the ``release`` and
-# ``upgrade-distribution`` runbooks name kit-repo files and transient wave
-# files that no adopter tree carries) plus the vendored-dist names the
-# consumer flow uses. ADOPT_PLAN destinations join this set below — a path
-# the kit plants is grounded wherever the kit is adopted.
-_KIT_SHIPPED_PATHS = frozenset(
+# Paths grounded by construction even when absent from the target tree,
+# split into explicit classes so each entry states WHY it resolves and the
+# kit-side guard (tests/test_skill_pointer_guard.py
+# ``test_skill_grounds_kit_path_whitelist_cannot_rot``) can pin each class
+# against rot. A raw "must exist in the adopter tree" pin is deliberately
+# NOT used: a 4-adopter survey (2026-07-13, kit 1.15.0) measured it at 14–15
+# FALSE findings per adopter — these paths never live in adopter trees by
+# design. Classes must stay disjoint; the guard test asserts it.
+
+# Kit-repo source/runbook files the ``release`` / ``upgrade-distribution``
+# skills name ("the commands below run in the kit repo"). They resolve by
+# class in ANY target; the guard test pins each to exist in the KIT tree so
+# a kit-side rename cannot leave the whitelist resolving dead pointers.
+_KIT_REPO_PATHS = frozenset(
     {
-        "bootstrap.py",
-        "bootstrap.py.new",
-        "bootstrap.py.sha256",
-        "release.json",
         "dist/bootstrap.py",
         "src/build_bootstrap.py",
         "src/build_release_json.py",
@@ -13623,11 +13683,43 @@ _KIT_SHIPPED_PATHS = frozenset(
         ".github/workflows/release.yml",
         "docs/adopters.md",
         "docs/operations/release-runbook.md",
-        "docs/SKILLS.md",
     }
 )
 
+# Release-wave transients: files that exist only mid-wave or as published
+# release assets (release.yml / the consumer flow in release.json) — never
+# in any committed tree, kit or adopter. Resolve by class.
+_WAVE_TRANSIENT_PATHS = frozenset(
+    {
+        "bootstrap.py.new",
+        "bootstrap.py.sha256",
+        "release.json",
+    }
+)
+
+# Files the kit plants in ADOPTER trees outside ADOPT_PLAN (which joins
+# _KNOWN_PATHS below on its own): the vendored single-file dist copied to
+# the repo root by adopt (_vendor_bootstrap, skip-if-exists). Class-resolved
+# because a not-yet-adopted / empty target legitimately lacks it while the
+# shipped skill bodies already name it.
+_ADOPTER_PLANTED_PATHS = frozenset({"bootstrap.py"})
+
+# The full grounded-by-construction set — kept as the single derived union
+# so resolution behavior is exactly the historical whitelist's.
+_KIT_SHIPPED_PATHS = _KIT_REPO_PATHS | _WAVE_TRANSIENT_PATHS | _ADOPTER_PLANTED_PATHS
+
 _KNOWN_PATHS = _KIT_SHIPPED_PATHS | {dest for _tmpl, dest in ADOPT_PLAN}
+
+# State-dir artifacts the kit itself writes/stages, grounded by construction
+# even when absent (they appear only after an upgrade / ``skills --build`` /
+# a backup): the upgrade report (engine.upgrade.UPGRADE_REPORT_FILENAME),
+# the pre-upgrade byte backup dir, and the staged-skills tree. Derived from
+# what kit SKILLS bodies + staged skill docs actually reference under the
+# state dir. Any OTHER state-dir path is judged by existence like every
+# pointer — the pre-2026-07-13 blanket state-dir skip failed dead dot-led
+# pointers open.
+_STATE_DIR_ARTIFACTS = frozenset({"upgrade-report.md"})
+_STATE_DIR_PREFIXES = ("backup/", "skills/")
 
 
 def _unresolved(span: str, target: Path, state_dir: str) -> bool:
@@ -13646,8 +13738,13 @@ def _unresolved(span: str, target: Path, state_dir: str) -> bool:
     first = tokens[0]
     if not _FIRST_TOKEN_RE.match(first):
         return False  # prose / placeholder / flag / bracket shapes
-    if first.endswith("/") or first.startswith(f"{state_dir}/"):
-        return False  # directory prose; runtime state artifacts
+    if first.endswith("/"):
+        return False  # directory prose
+    if first.startswith(f"{state_dir}/"):
+        rest = first[len(state_dir) + 1 :]
+        if rest in _STATE_DIR_ARTIFACTS or rest.startswith(_STATE_DIR_PREFIXES):
+            return False  # kit-written runtime artifacts — grounded by class
+        # any other state-dir path falls through to the existence lanes
     if first in _EXECUTABLES or first in _KNOWN_PATHS:
         return False
     if (target / first).exists():
@@ -13661,8 +13758,24 @@ def _unresolved(span: str, target: Path, state_dir: str) -> bool:
 
 
 def _spans(body: str) -> list[str]:
-    """Return the backticked inline spans of ``body``, in order."""
-    return _SPAN_RE.findall(body)
+    """Return the judgeable spans of ``body``, in order.
+
+    Backticked inline spans first, then markdown-link targets fed through
+    the same downstream skip ladder. Link targets carrying a URL scheme, a
+    bare ``#anchor``, or whitespace (titles, prose parentheticals) are
+    skipped here; fragments are stripped (``docs/x.md#section`` judges
+    ``docs/x.md``).
+    """
+    spans = _SPAN_RE.findall(body)
+    for raw in _MD_LINK_TARGET_RE.findall(body):
+        candidate = raw.strip()
+        if candidate.startswith(("http://", "https://", "mailto:", "#")):
+            continue
+        candidate = candidate.split("#", 1)[0].strip()
+        if not candidate or any(ch.isspace() for ch in candidate):
+            continue  # empty after fragment-strip, or title/prose-bearing
+        spans.append(candidate)
+    return spans
 
 
 def _skill_doc_paths(target: Path, state_dir: str) -> list[Path]:
@@ -13860,6 +13973,130 @@ def check_seat_digest(
                 ),
             )
     return findings
+
+# --- engine/checks/check_automerge_preflight.py ---
+"""Auto-merge-enabler branch-allowlist preflight — the offline-verifiable half
+of the enabler install-time preflight (docs/ideas/enabler-install-preflight-
+2026-07-13.md).
+
+Why + provenance: the auto-merge enabler installs cleanly into repos where it
+cannot function, and the INERT state stays silent until the first parked PR.
+Three seats hit it on the 2026-07-12→13 night run
+(docs/reports/2026-07-13-night-run-adopter-outcomes.md §a): idle's enabler sat
+INERT on zero required contexts, gba-homebrew #76 merged with the enabler
+inert, and idea-engine had to hand-patch the workflow to add `claude/` to its
+branch allowlist (PR #272) — its outbox flagging that a kit upgrade would
+clobber the local fix.
+
+What it flags (**advisory** — a nudge, never a locked door, the same posture
+as the setup-script / seat-digest / adopters-staleness warnings):
+
+- ``automerge-branch-drift`` — the installed
+  ``.github/workflows/auto-merge-enabler.yml``'s parsed branch terms differ
+  from what ``substrate.config.json`` → ``automerge.branch_patterns`` would
+  regenerate. This is the idea-engine class: a hand-edited workflow (clobbered
+  on the next upgrade) or a stale pre-``claim/*`` copy whose allowlist no
+  longer covers the branches sessions push, so the enabler never arms those
+  PRs. The fix is to put the branch list in config (where regeneration
+  preserves it) and regenerate — hand edits to the kit-owned workflow are
+  overwritten on ``upgrade``.
+
+Scope — **branch half only**. The other install-time precondition (the base
+branch actually REQUIRING a status-check context) cannot be verified here: the
+engine is stdlib-only and offline (no rules API). That half stays owner-UI —
+it is surfaced by the enabler's own PR-time ``::warning::`` (the refuse-to-arm
+guard counts required contexts and refuses on zero) and by the adopt
+repo-settings checklist. Naming the split here keeps the omission explicit.
+
+Posture is **advisory-only, never exit-affecting**, and input-gated on the
+enabler workflow existing (adopt plants it; a repo without it gets no nag).
+The comparison is on the BRANCH EXPRESSION only, not the whole file: the
+branch expr is derived purely from config, so it is stable across kit-version
+bumps — a whole-file byte-compare would nag the whole fleet during version
+skew (and that scan already lives in the adopt/upgrade carve-out report). Pure
+stdlib, no ``subprocess`` (§3.2); unreadable files fail open (no verdict).
+"""
+
+
+
+
+# The two head_ref-keyed term shapes the enabler's branch expr is built from
+# (adopt._automerge_branch_expr): a trailing-`*` config pattern renders as a
+# prefix `startsWith`, anything else as an exact `==`. Scanning for these two
+# forms yields exactly the branch terms — the repo guard keys off
+# `head.repo.full_name`, the draft guard off `.draft`, the label guard off
+# `labels.*.name`, none of which mention `head_ref`.
+_STARTSWITH_RE = re.compile(r"startsWith\(\s*github\.head_ref\s*,\s*'([^']*)'\s*\)")
+_EXACT_RE = re.compile(r"github\.head_ref\s*==\s*'([^']*)'")
+
+
+def _branch_terms(expr: str) -> set[tuple[str, str]]:
+    """Return the normalized set of branch terms in a workflow expression.
+
+    Each term is ``("prefix", value)`` (a ``startsWith`` prefix match) or
+    ``("exact", value)`` (a ``==`` head-ref match). A set on purpose — the
+    enabler arms on the OR of its terms, so ordering and duplication carry no
+    meaning; two expressions with the same term set arm identically.
+    """
+    terms: set[tuple[str, str]] = set()
+    for value in _STARTSWITH_RE.findall(expr):
+        terms.add(("prefix", value))
+    for value in _EXACT_RE.findall(expr):
+        terms.add(("exact", value))
+    return terms
+
+
+def check_automerge_preflight(target: Path, config: Config) -> list[Finding]:
+    """Return advisory findings for auto-merge-enabler branch-allowlist drift.
+
+    Engages only when the enabler workflow exists (adopt plants it; absence is
+    not a finding). Advisory by contract — callers must never count these
+    toward an exit code. Fail-open on unreadable files.
+    """
+    path = target / AUTOMERGE_ENABLER_RELPATH
+    if not path.is_file():
+        return []
+    try:
+        live_text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return []  # fail open — an unreadable file is not a verdict
+
+    live_terms = _branch_terms(live_text)
+    # No head_ref terms at all → not a shape this checker understands (a host
+    # rewrote the arming condition wholesale); stay silent rather than nag on
+    # a workflow that is intentionally off the kit's own generated shape.
+    if not live_terms:
+        return []
+
+    patterns, _context = _automerge_params(config)
+    expected_terms = _branch_terms(_automerge_branch_expr(patterns))
+    if live_terms == expected_terms:
+        return []
+
+    live_desc = _describe(live_terms)
+    expected_desc = _describe(expected_terms)
+    return [
+        Finding(
+            AUTOMERGE_ENABLER_RELPATH,
+            "automerge-branch-drift",
+            f"the installed enabler arms on {live_desc}, but "
+            f"`automerge.branch_patterns` would regenerate {expected_desc} — "
+            "they differ, so either the workflow was hand-edited (kit-owned: "
+            "`upgrade` overwrites it) or its allowlist is stale and will not "
+            "arm the branches sessions push. Put the branch list in "
+            "`substrate.config.json` `automerge.branch_patterns` and "
+            "regenerate (`bootstrap.py upgrade` / `adopt --wire-enforcement`) "
+            "so config and workflow match.",
+        ),
+    ]
+
+
+def _describe(terms: set[tuple[str, str]]) -> str:
+    """Render a branch-term set as a stable, human-readable allowlist string."""
+    parts = sorted(
+        f"{value}*" if kind == "prefix" else value for kind, value in terms
+    )
+    return "{" + ", ".join(parts) + "}" if parts else "{no agent branches}"
 
 # --- engine/currency.py ---
 """Fleet kit-currency scanner — tree truth vs self-report, per adopter repo.
@@ -15745,6 +15982,15 @@ rather than ``print`` to keep the engine lint-clean.
 
 
 
+# THE §3.2 carve-out (ORDER 018 / idea-engine ASK 002): subprocess is banned
+# in engine code — checkers never shell out; CI does the git work in bash.
+# The ONE exception is `check`'s LOCAL-RITUAL parity legs below
+# (_derive_inbox_base + _run_preflight_scripts): local `check --strict` must
+# run the SAME legs as the CI substrate-gate, and locally there is no bash
+# wrapper to extract the merge-base blob or launch the repo's preflight
+# scripts. Both helpers self-skip (fail open, NOTE line) on any failure and
+# are never on the CI path, which still hands in --inbox-base explicitly.
+
 
 
 def _emit(line: str = "") -> None:
@@ -16237,6 +16483,165 @@ def _extra_check_findings(target: Path, config: Config) -> list:
     return findings
 
 
+# Recursion guard for the preflight-scripts leg (ORDER 018): a repo's
+# preflight wrapper conventionally invokes `bootstrap.py check` itself
+# (idea-engine's runs `check --strict --status-only`), so the leg marks its
+# children with this env var and skips itself inside one — otherwise a
+# wrapper entry that runs plain `check --strict` would recurse forever.
+_PREFLIGHT_NESTED_ENV = "SUBSTRATE_KIT_PREFLIGHT"
+
+# Git subprocess budget for the inbox merge-base derivation: local plumbing
+# reads are milliseconds; a hung git (dead network FS) must not wedge check.
+_GIT_TIMEOUT_SECONDS = 30
+
+
+def _derive_inbox_base(target: Path) -> tuple[bytes | None, str | None]:
+    """Derive the merge-base blob of ``control/inbox.md`` from ``origin/main``.
+
+    The LOCAL-RITUAL half of the inbox append-only gate (ORDER 018 /
+    idea-engine ASK 002): CI extracts the merge-base blob in bash and hands
+    it in via ``--inbox-base``, but a plain local ``check --strict`` had no
+    base to diff against, so the gate silently no-opped and the tree learned
+    about an inbox violation only from red CI (idea-engine PR #274). This
+    helper is the documented §3.2 subprocess carve-out (see the import-site
+    note): it runs only when ``--inbox-base`` was NOT given, and mirrors the
+    generated gate's bash exactly — ``git merge-base HEAD origin/main`` then
+    ``git show <base>:control/inbox.md`` (absent-at-base → empty blob, the
+    gate's ``|| : > basefile`` posture).
+
+    Returns ``(blob_bytes, note)``. ``blob_bytes`` is None when there is
+    nothing to judge or derivation failed; ``note`` carries the one-line
+    self-skip reason worth surfacing (None for the silent skips: no inbox
+    file, or not a git checkout at all — a bare tree must stay quiet).
+    """
+    if not (target / INBOX_RELPATH).is_file():
+        return None, None  # no inbox — nothing to judge, silently
+    if not (target / ".git").exists():  # dir, or file for worktrees
+        return None, None  # not a git checkout — a bare tree stays quiet
+    git = ["git", "-C", str(target)]
+    try:
+        merge_base = subprocess.run(  # noqa: TID251 — §3.2 carve-out (import-site note)
+            [*git, "merge-base", "HEAD", "origin/main"],
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, (
+            f"inbox merge-base leg skipped — could not run git "
+            f"({exc.__class__.__name__}); CI still gates with --inbox-base."
+        )
+    if merge_base.returncode != 0:
+        return None, (
+            "inbox merge-base leg skipped — origin/main not resolvable "
+            "(no remote-tracking ref / unborn HEAD); CI still gates with "
+            "--inbox-base."
+        )
+    base = merge_base.stdout.decode("utf-8", "replace").strip()
+    try:
+        show = subprocess.run(  # noqa: TID251 — §3.2 carve-out (import-site note)
+            [*git, "show", f"{base}:{INBOX_RELPATH}"],
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, (
+            f"inbox merge-base leg skipped — could not run git "
+            f"({exc.__class__.__name__}); CI still gates with --inbox-base."
+        )
+    # Path absent at the base (a fresh inbox) → empty base blob, exactly the
+    # generated gate's `git show ... || : > "$basefile"` behavior.
+    return (show.stdout if show.returncode == 0 else b""), None
+
+
+def _run_preflight_scripts(
+    target: Path,
+    config: Config,
+) -> tuple[list, list[str]]:
+    """Run the config-declared repo-local preflight scripts; return findings.
+
+    The other LOCAL-RITUAL parity leg (ORDER 018 / idea-engine ASK 002):
+    ``substrate.config.json::preflight_scripts`` is the ONE check list —
+    ``check``'s full lane runs it here, and the CI substrate-gate's full lane
+    runs it too *through this very code* (its gate step invokes
+    ``bootstrap.py check --strict``), so a checker added to the repo's
+    preflight wrapper red-flags in both venues (idea-engine PR #299's
+    local-green→CI-red class). Returns ``(findings, notes)``: a non-zero
+    exit is an exit-affecting ``preflight-script`` finding riding the strict
+    loop; an absent script is a NOTE (self-skip — the default entry names a
+    conventional path many adopters won't have); a nested run (see
+    ``_PREFLIGHT_NESTED_ENV``) skips the whole leg.
+    """
+    scripts = [s for s in (config.preflight_scripts or []) if str(s).strip()]
+    if not scripts:
+        return [], []
+    if os.environ.get(_PREFLIGHT_NESTED_ENV):
+        return [], [
+            "preflight scripts skipped — nested check run "
+            f"({_PREFLIGHT_NESTED_ENV} set; the outer run owns the leg).",
+        ]
+    findings: list = []
+    notes: list[str] = []
+    child_env = dict(os.environ)
+    child_env[_PREFLIGHT_NESTED_ENV] = "1"
+    for entry in scripts:
+        tokens = shlex.split(str(entry))
+        if not tokens:
+            continue
+        script_rel = tokens[0]
+        script = target / script_rel
+        if not script.is_file():
+            notes.append(
+                f"preflight script {script_rel} not found — skipped "
+                "(config preflight_scripts; plant one to converge the local "
+                "ritual and the CI gate on one check list).",
+            )
+            continue
+        if script_rel.endswith(".py"):
+            # The interpreter already running check exists in BOTH venues by
+            # construction (the recorded config interpreter may not exist in
+            # CI) — the same choice the conventional wrapper itself makes.
+            argv = [sys.executable or "python3", str(script), *tokens[1:]]
+        else:
+            argv = [str(script), *tokens[1:]]
+        try:
+            proc = subprocess.run(  # noqa: TID251 — §3.2 carve-out (import-site note)
+                argv,
+                cwd=target,
+                env=child_env,
+                capture_output=True,
+                timeout=900,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            findings.append(
+                Finding(
+                    script_rel,
+                    "preflight-script",
+                    f"could not run ({exc.__class__.__name__}) — the CI gate "
+                    "runs this same preflight, so a local crash is a red.",
+                ),
+            )
+            continue
+        if proc.returncode != 0:
+            tail = ""
+            for stream in (proc.stderr, proc.stdout):
+                text = stream.decode("utf-8", "replace")
+                lines = [ln for ln in text.splitlines() if ln.strip()]
+                if lines:
+                    tail = lines[-1][:200]
+                    break
+            findings.append(
+                Finding(
+                    script_rel,
+                    "preflight-script",
+                    f"exit {proc.returncode}"
+                    + (f": {tail}" if tail else "")
+                    + " — the CI substrate-gate runs this same preflight; "
+                    "fix it before pushing.",
+                ),
+            )
+    return findings, notes
+
+
 def cmd_check(
     target: Path,
     strict: bool,
@@ -16272,12 +16677,17 @@ def cmd_check(
     work needs an in-run way to verify the lane's grading.
 
     ``inbox_base`` (CLI ``--inbox-base``) names the merge-base version of
-    ``control/inbox.md`` — extracted by CI in bash, because engine code never
-    shells out to git (§3.2). When given, the append-only gate runs on both
-    lanes: the change to ``control/inbox.md`` must be pure-append vs that base
-    and its appended text must be well-formed ORDER blocks (issue #36 report
-    2). It rides the fast lane exactly like the status gate — an inbox append
-    is control-lane traffic — and self-skips when there is nothing to judge.
+    ``control/inbox.md`` — extracted by CI in bash, because engine *checker*
+    code never shells out to git (§3.2). When given, the append-only gate
+    runs on both lanes: the change to ``control/inbox.md`` must be
+    pure-append vs that base and its appended text must be well-formed ORDER
+    blocks (issue #36 report 2). It rides the fast lane exactly like the
+    status gate — an inbox append is control-lane traffic — and self-skips
+    when there is nothing to judge. When ``inbox_base`` is ABSENT (the local
+    ritual), the gate no longer no-ops: :func:`_derive_inbox_base` — the
+    documented §3.2 carve-out — derives the base blob from ``origin/main``
+    so plain local ``check --strict`` reds where CI would red (ORDER 018),
+    and self-skips with a NOTE when no git context is derivable.
 
     ``status_only`` (CLI ``--status-only``) scopes the run to the control/
     status heartbeat checker alone — the CI control fast lane's gate. A
@@ -16416,13 +16826,43 @@ def cmd_check(
     # not control-lane traffic. Over-budget stays the gate's verdict — the
     # advisory self-silences there (see the checker docstring).
     headroom_advisories = check_orientation_headroom(target, config)
+    # Auto-merge-enabler branch-allowlist preflight (enabler-install-preflight
+    # idea, 2026-07-13 night-run finding): advisory-only by contract, like
+    # every nudge above — a planted auto-merge-enabler.yml whose branch
+    # allowlist drifts from `automerge.branch_patterns` (a hand-edit that
+    # `upgrade` clobbers, or a stale allowlist that never arms the branches
+    # sessions push) is a regenerate/config nudge, never a required-check red
+    # (the offline engine cannot verify the required-context half — that stays
+    # owner-UI, surfaced by the enabler's own PR-time ::warning::). Full lane
+    # only: workflows are not control-lane traffic; self-silences when the
+    # live branch expr matches config.
+    automerge_advisories = check_automerge_preflight(target, config)
     # The inbox append-only gate (issue #36 report 2): a control/inbox.md
     # change must be pure-append vs the merge-base + ORDER-grammar shaped.
-    # Rides the finding loop like every checker; engages only when CI handed
-    # in a base blob to diff against (no base → no-op, see the checker).
-    inbox_findings = (
-        check_inbox_append(target, inbox_base) if inbox_base is not None else []
-    )
+    # Rides the finding loop like every checker. CI hands in the base blob
+    # via --inbox-base; a LOCAL run without one derives it from origin/main
+    # itself (ORDER 018 — local `check --strict` must red where CI reds) and
+    # self-skips, NOTE'd, when there is no git context to derive from.
+    inbox_note: str | None = None
+    if inbox_base is not None:
+        inbox_findings = check_inbox_append(target, inbox_base)
+    else:
+        derived_blob, inbox_note = _derive_inbox_base(target)
+        if derived_blob is None:
+            inbox_findings = []
+        else:
+            base_fd, base_name = tempfile.mkstemp(prefix="inbox-base-")
+            try:
+                with os.fdopen(base_fd, "wb") as handle:
+                    handle.write(derived_blob)
+                inbox_findings = check_inbox_append(target, Path(base_name))
+            finally:
+                try:
+                    os.unlink(base_name)
+                except OSError:
+                    pass
+    if inbox_note:
+        _emit(f"check: NOTE — {inbox_note}")
     # The adopter-registry format gate (EAP §6.3): docs/adopters.md is
     # generated output (`bootstrap currency`, agent-side because CI cannot
     # auth to sibling repos); CI validates only the committed file's shape.
@@ -16456,6 +16896,21 @@ def cmd_check(
         doc_findings += _extra_check_findings(target, config) + status_gate
         doc_findings += inbox_findings
         doc_findings += adopters_gate
+        # Local preflight scripts (ORDER 018): the config-declared check
+        # list both venues run — locally right here, and in CI because the
+        # substrate-gate's full lane invokes `check --strict` (this code).
+        # Full lane only: preflights are not control-lane traffic, and the
+        # conventional wrapper itself calls `check --status-only` (the
+        # nested-run guard in _run_preflight_scripts breaks any deeper
+        # recursion). Findings ride the strict loop like every checker;
+        # an absent script is a NOTE'd self-skip, never a red.
+        preflight_findings, preflight_notes = _run_preflight_scripts(
+            target,
+            config,
+        )
+        for note in preflight_notes:
+            _emit(f"check: NOTE — {note}")
+        doc_findings += preflight_findings
     entries, allow_findings = load_allowlist(target, config.state_dir)
     doc_findings, suppressed = apply_allowlist(doc_findings, entries)
     doc_findings += allow_findings
@@ -16535,13 +16990,28 @@ def cmd_check(
                 "check: simulation is advisory-only — it never affects this "
                 "run's exit code.",
             )
+    # Guard-fire write announcement (PR #328 card's ⟲ finding): the ledger is
+    # a TRACKED file by design (founding plan KF-11 — committed, never
+    # gitignored), so a silent append leaves a "mystery" dirty tree that
+    # sessions were reverting. Aggregate every call site's written count and
+    # say so once, at the end of the run, on every return path.
+    fires_written = 0
+
+    def _announce_fires() -> None:
+        if fires_written:
+            _emit(
+                f"check: {fires_written} guard-fire record(s) appended to "
+                f"{config.state_dir}/{GUARD_FIRES_FILENAME} — telemetry "
+                "ledger; commit the delta with your session (do not revert).",
+            )
+
     if suppressed:
         _emit(
             f"check: {len(suppressed)} finding(s) suppressed by allowlist "
             "(reason-carrying entries; fires recorded with their verdicts).",
         )
         for finding, entry in suppressed:
-            record_guard_fires(
+            fires_written += record_guard_fires(
                 target,
                 config.state_dir,
                 cmd="check",
@@ -16555,7 +17025,7 @@ def cmd_check(
         _emit(f"check: {len(doc_findings)} finding(s):")
         for finding in doc_findings:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16574,7 +17044,7 @@ def cmd_check(
         )
         for finding in status_advisories:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16592,7 +17062,7 @@ def cmd_check(
         )
         for finding in owner_ask_advisories:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16612,7 +17082,7 @@ def cmd_check(
         )
         for finding in claim_advisories:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16631,7 +17101,7 @@ def cmd_check(
         )
         for finding in xref_advisories:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16651,7 +17121,7 @@ def cmd_check(
         )
         for finding in setup_advisories:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16671,7 +17141,7 @@ def cmd_check(
         )
         for finding in grounds_advisories:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16691,7 +17161,7 @@ def cmd_check(
         )
         for finding in digest_advisories:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16710,13 +17180,35 @@ def cmd_check(
         )
         for finding in headroom_advisories:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
             surface="check",
             posture="advisory",
             findings=headroom_advisories,
+        )
+    if automerge_advisories and not status_only:
+        # Same warn-only contract as the advisories above
+        # (enabler-install-preflight): a drifted enabler branch allowlist is a
+        # regenerate/config nudge — surfaced + telemetry-recorded, never
+        # counted toward the exit code. The offline engine cannot see whether
+        # the base branch requires a status context (the INERT-on-zero half),
+        # so a required-check red here would be a fleet bomb during version
+        # skew; that half stays owner-UI.
+        _emit(
+            f"check: {len(automerge_advisories)} auto-merge-enabler advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in automerge_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=automerge_advisories,
         )
     if adopters_advisories and not status_only:
         # Same warn-only contract as the advisories above (EAP §6.3): a
@@ -16729,7 +17221,7 @@ def cmd_check(
         )
         for finding in adopters_advisories:
             _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16746,7 +17238,9 @@ def cmd_check(
         # whole point), so gating on one here would deadlock every heartbeat.
         if not doc_findings:
             _emit("check: control-status check passed (--status-only).")
+            _announce_fires()
             return 0
+        _announce_fires()
         return 1 if strict else 0
     if session_log is not None:
         explicit = session_log if session_log.is_absolute() else target / session_log
@@ -16799,7 +17293,7 @@ def cmd_check(
                 "holds the merge in gate mode (--require-session-log / "
                 "--session-log / --added-card).",
             )
-            record_guard_fires(
+            fires_written += record_guard_fires(
                 target,
                 config.state_dir,
                 cmd="check",
@@ -16838,7 +17332,7 @@ def cmd_check(
                 "session-log",
                 f"missing: {', '.join(log_missing)}",
             )
-        record_guard_fires(
+        fires_written += record_guard_fires(
             target,
             config.state_dir,
             cmd="check",
@@ -16900,7 +17394,9 @@ def cmd_check(
             )
     if not doc_findings and not log_missing and not log_absent_fails:
         _emit("check: all checks passed.")
+        _announce_fires()
         return 0
+    _announce_fires()
     return 1 if strict else 0
 
 
@@ -18060,9 +18556,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "gate control/inbox.md against this merge-base copy of the file "
-            "(CI extracts the base blob with git, since engine code never "
-            "shells out): the change must be pure-append and its appended "
-            "text well-formed ORDER blocks; omit when there is no inbox diff"
+            "(CI extracts the base blob with git): the change must be "
+            "pure-append and its appended text well-formed ORDER blocks; "
+            "when omitted, a local run derives the base from origin/main "
+            "itself (ORDER 018 local↔CI parity) and self-skips with a NOTE "
+            "when no git context is derivable"
         ),
     )
     return parser

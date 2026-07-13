@@ -48,6 +48,11 @@ dies with the job). Triage happens through the reasons-required allowlist
 false_positive/accepted_risk verdict event, and reason-less entries are
 refused. Lab-side aggregation lands in `bench/results/guards/` (band KL-5+).
 
+The JSONL is a **committed ledger** (founding plan KF-11), so a `check` run
+that appends records legitimately dirties the tracked file — `check` prints
+one summary line whenever it did. Stage the guard-fires delta with your
+session's close-out commit; never `git checkout --` it away.
+
 ## `allocation-ladder.md`
 
 The program-wide model-for-task ladder (PL-004 layer 2) — seeded from the

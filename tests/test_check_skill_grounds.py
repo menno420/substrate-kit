@@ -80,6 +80,95 @@ def test_missing_path_detected_and_existing_path_resolves(tmp_path):
     assert check_skill_grounds(tmp_path, skills=[skill]) == []
 
 
+def test_dot_led_dead_pointer_in_rendered_doc_detected(tmp_path):
+    # Blind spot 1 (the #335 guard's finding, graduated into the checker):
+    # a dot-led pointer is judged like any pointer — dead means a finding,
+    # including under the state dir when it names no known artifact class.
+    doc = tmp_path / ".claude" / "skills" / "custom" / "SKILL.md"
+    doc.parent.mkdir(parents=True)
+    doc.write_text(
+        "# custom\n\nRead `.substrate/no-such-report.md` and "
+        "`.claude/missing/thing.md` first.\n",
+        encoding="utf-8",
+    )
+    findings = check_skill_grounds(tmp_path, skills=[])
+    assert _kinds(findings) == ["skill-ground-unresolved"] * 2
+    spans = " | ".join(f.message for f in findings)
+    assert ".substrate/no-such-report.md" in spans
+    assert ".claude/missing/thing.md" in spans
+
+
+def test_dot_led_existing_pointer_resolves(tmp_path):
+    skill = _fake_skill(body="Check `.github/workflows/ci.yml` for the gate.")
+    assert _kinds(check_skill_grounds(tmp_path, skills=[skill])) == [
+        "skill-ground-unresolved"
+    ]
+    wf = tmp_path / ".github" / "workflows" / "ci.yml"
+    wf.parent.mkdir(parents=True)
+    wf.write_text("", encoding="utf-8")
+    assert check_skill_grounds(tmp_path, skills=[skill]) == []
+
+
+def test_state_dir_artifact_classes_resolve_on_empty_target(tmp_path):
+    # The deliberate replacement for the blanket state-dir skip: known
+    # kit-written artifact classes stay grounded by construction even on a
+    # target where none of them exist yet.
+    body = (
+        "After the wave read `.substrate/upgrade-report.md`; the byte\n"
+        "backup lands in `.substrate/backup/` and staged docs under\n"
+        "`.substrate/skills/review/SKILL.md`.\n"
+    )
+    assert check_skill_grounds(tmp_path, skills=[_fake_skill(body=body)]) == []
+
+
+def test_state_dir_classification_follows_configured_state_dir(tmp_path):
+    # The classes attach to the CONFIGURED state dir, not the default
+    # spelling: under state_dir="kitstate" the same artifact names resolve
+    # by class, and an unknown kitstate path is judged dead.
+    body = "Read `kitstate/upgrade-report.md`, then `kitstate/ghost.md`."
+    findings = check_skill_grounds(
+        tmp_path, skills=[_fake_skill(body=body)], state_dir="kitstate"
+    )
+    assert _kinds(findings) == ["skill-ground-unresolved"]
+    assert "kitstate/ghost.md" in findings[0].message
+
+
+def test_markdown_link_dead_target_detected(tmp_path):
+    # Blind spot 2: [text](target) pointers feed the same skip ladder.
+    doc = tmp_path / ".claude" / "skills" / "custom" / "SKILL.md"
+    doc.parent.mkdir(parents=True)
+    doc.write_text(
+        "# custom\n\nSee the [report](docs/no-such-file.md) for context.\n",
+        encoding="utf-8",
+    )
+    findings = check_skill_grounds(tmp_path, skills=[])
+    assert _kinds(findings) == ["skill-ground-unresolved"]
+    assert "docs/no-such-file.md" in findings[0].message
+
+
+def test_markdown_link_scheme_anchor_and_prose_targets_skipped(tmp_path):
+    body = "\n".join(
+        [
+            "External: [docs](https://example.com/x.md) and",
+            "[plain](http://example.com) plus [mail](mailto:a@b.md).",
+            "Anchor: [below](#verification).",
+            "Prose parenthetical: [rule] (see the ladder above).",
+            "Titled: [x](docs/y.md 'the report').",
+        ],
+    )
+    assert check_skill_grounds(tmp_path, skills=[_fake_skill(body=body)]) == []
+
+
+def test_markdown_link_fragment_stripped_and_existing_target_resolves(tmp_path):
+    skill = _fake_skill(body="See [the contract](docs/contract.md#section-2).")
+    assert _kinds(check_skill_grounds(tmp_path, skills=[skill])) == [
+        "skill-ground-unresolved"
+    ]
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "contract.md").write_text("", encoding="utf-8")
+    assert check_skill_grounds(tmp_path, skills=[skill]) == []
+
+
 def test_rendered_skill_docs_are_scanned(tmp_path):
     doc = tmp_path / ".claude" / "skills" / "custom" / "SKILL.md"
     doc.parent.mkdir(parents=True)

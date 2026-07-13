@@ -50,6 +50,28 @@ probe failed both arms; T5 ignored). **KF-8 trend at 9 scored rows: 1 PASS
 
 ### Added
 
+- **Local `check --strict` runs the CI substrate-gate's preflight legs
+  (ORDER 018 / idea-engine ASK 002, PR #332).** Two local-green→CI-red
+  round-trips in one night (idea-engine #274 — the inbox grammar gate only
+  ran with `--inbox-base`; #299 — the CI `check_ideas` preflight) proved the
+  local ritual and the CI gate had drifted into two check lists. Now they
+  converge on one: (1) **inbox leg, merge-base aware** — when `--inbox-base`
+  is absent, `cmd_check` derives the merge-base blob of `control/inbox.md`
+  from `origin/main` itself (`engine.cli._derive_inbox_base`, the ONE
+  documented §3.2 subprocess carve-out — checker code still never shells
+  out) and runs the same append-only + ORDER-grammar gate CI runs,
+  self-skipping with a NOTE when no git context is derivable (silently on a
+  bare non-git tree); (2) **preflight-scripts leg** — a new config key
+  `preflight_scripts` (default `["scripts/preflight.py"]`, the conventional
+  wrapper path) names repo-local preflight commands `check` runs on the full
+  lane, each non-zero exit an exit-affecting `preflight-script` finding.
+  Because the generated substrate-gate's full lane already invokes
+  `bootstrap.py check --strict`, both venues execute this one config-declared
+  list with zero workflow edits; an absent script is a NOTE'd self-skip and
+  a nested run is env-guarded (`SUBSTRATE_KIT_PREFLIGHT`) against recursion.
+  Local exit 0 now implies CI green on both legs (`tests/test_check_parity.py`
+  pins one deliberate red fixture per leg).
+
 - **Idea-file body-state drift guard (`check_idea_index` item 5, PR #312).**
   Friction→guard from PR #311: an idea file's frontmatter said
   `shipped_pr: 187` while its body still read "captured", misdirecting

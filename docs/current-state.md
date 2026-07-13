@@ -202,6 +202,16 @@ day** (FAIL, M2-only win; run dir PR #307). Pending: the freeze-lift call
 stopgap carries the slice in-session; D3 count NOT started. Friction inbox
 CLEARED (#36–#39 → `docs/ideas/` + `bench/results/friction/index.json`).
 
+**→ Post-2026-07-13 lab loop:** friction inbox EMPTY; groomed the night-run
+backlog. DONE — the enabler-install-preflight branch-allowlist half (PR #321,
+`check_automerge_preflight.py`): a self-silencing `check`-time advisory for
+`auto-merge-enabler.yml` branch-allowlist drift vs config (the idea-engine
+hand-patch/stale-allowlist class). REMAINS — the required-context half stays
+owner-UI (offline engine, no rules API); the flip-race fail-open
+(`session-gate-flip-race-fail-open-2026-07-13.md`) still needs the mineverse
+repro (out of scope here) before a gate-logic change; heartbeat-delegated-
+tally doctrine still open.
+
 ### Owner gates — each with its one-line unblock
 
 *(Stale #17 rubric-bless gate removed — owner merged it 2026-07-09,

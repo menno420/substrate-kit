@@ -236,6 +236,12 @@ def test_work_claim_bullet_example_is_clean_in_check_claims(tmp_path):
 def test_heartbeat_and_kit_line_examples_parse():
     ts = parse_heartbeat(grammar.updated_line_example())
     assert ts == datetime(2026, 7, 10, 12, 0, tzinfo=timezone.utc)
+    # The canonical WRITER form stays lowercase; the enforcer additionally
+    # forgives a casing slip on the prefix (`Updated:` — kit #326's live
+    # red), the KIT_LINE_RE leniency instinct: accepting an alternate only
+    # ever withholds a red, never adds one.
+    assert grammar.updated_line_example().startswith("updated:")
+    assert grammar.UPDATED_LINE_RE.search("Updated: 2026-07-10T12:00Z\n")
     assert parse_kit_line(grammar.kit_line_example("9.9.9")) == (
         "9.9.9",
         "green",

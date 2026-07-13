@@ -55,6 +55,24 @@ story, the frontmatter keeps the score.
   nothing asserts the pinned two still cover the bank; paid in the
   rider-graduation session when Q-014..016 missed both); next: quick-win —
   a coverage test over the pins (order stays pinned for reproducibility).
+- [Session gate: fix the born-red fail-open on PR-added cards (flip-race)](session-gate-flip-race-fail-open-2026-07-13.md)
+  — state: captured; origin: consumer (superbot-mineverse — stranded
+  close-out flips swept by its PR #50, root-caused in #52; finding at
+  mineverse docs/findings/substrate-gate-born-red-fail-open-2026-07-12.md,
+  fix ask routed via its outbox; night-run report §c); next: structured
+  fix — gate-logic change + flip-race regression test, engine change →
+  dist byte-pin.
+- [Auto-merge-enabler: install-time preflight for required checks + branch allowlist](enabler-install-preflight-2026-07-13.md)
+  — state: captured; origin: consumer (idle/gba enabler INERT states — fm
+  OQ B#50/B#51 — plus idea-engine #272 allowlist patch and its outbox ASK
+  001 on upgrades clobbering it; night-run report §a); next: quick-win —
+  install-step verification that reports what the owner must configure.
+- [Heartbeat currency: document the coordinator delegated-tally pattern](heartbeat-delegated-tally-guidance-2026-07-13.md)
+  — state: captured; origin: consumer (superbot-mineverse
+  "COORDINATOR-DELEGATED heartbeat write" carried games/idle/next tallies
+  while those seats' own heartbeats sat stale; night-run report §f); next:
+  quick-win — delegated-write convention + sweep guidance (classify by PR
+  record + coordinator status, never seat-heartbeat staleness alone).
 - [Seat digest: adaptive description clip instead of a manual ratchet](seat-digest-adaptive-clip-2026-07-13.md)
   — state: captured; origin: lab (the 120→85→72 clip ratchet — every skill
   added to the registry is a latent digest-test failure until someone
