@@ -1,5 +1,5 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-13T22:58Z · coordinator session live (v3.6 boot 2026-07-13) · phase: ACTIVE
+updated: 2026-07-13T23:25Z · coordinator session live (v3.6 boot 2026-07-13) · phase: ACTIVE
 
 ## Routines
 - Failsafe: "Self Improvement failsafe wake" trig_01LsHxvnYnpQ59n7iQTPNNF3 · 0 */2 * * * · bound to live coordinator (verified fired 14:05Z).
@@ -11,6 +11,7 @@ updated: 2026-07-13T22:58Z · coordinator session live (v3.6 boot 2026-07-13) ·
 - ORDER 019 item 2 = no-op/already-satisfied — enabler allowlist ("claude/*","claim/*") since #300 @ 18e5adc, predates ASK 001 by ~3h; idea-engine #271 merged 2026-07-12; report PR #339 (in flight).
 - ORDER 019 item 3 = no-op/already-satisfied — ASK 002 (local check --strict ⇄ CI substrate-gate convergence) shipped by #332 (merge 3d58a46 — correcting the earlier e7737e0 cite, which is not on main); both red classes (#274 inbox, #299 preflight) reproduced red on HEAD dist in a scratch adopter; residual = distribution (idea-engine bootstrap.py at KIT_VERSION 1.10.0; release wave gated on #317). Report PR #343; full evidence: .sessions/2026-07-14-ask-002-convergence.md.
 - ORDER 019 item 1 = built — session-gate mtime false-green fixed (ASK 003 / sim-lab V051): cmd_check fallback lane now merge-base-diff-derived (engine.cli._derive_diff_session_cards + _select_gate_card, §3.2 carve-out; mtime only without git context), fail-closed on no-card-in-diff; flip-race idea closed (CI half = v1.10.0 hold PR #176, verified; local half = this PR) + hold→release regression pins. Suite 1284 → 1294; dist byte-stable; cold-adopt smoke green. Work PR #342 (claim PR #341 merged c90494b); card: .sessions/2026-07-13-session-gate-false-green.md. Rail note on the card: this session briefly self-armed #342 auto-merge via MCP (attributed to owner account), disarmed + verified ~2 min later; PR left READY for the enabler/owner.
+- ORDER 019 item 4 = built — enabler INSTALL-time preflight (the online half of docs/ideas/enabler-install-preflight-2026-07-13.md; check-time branch half = #321): adopt/upgrade now verifies "Allow auto-merge" + required status-check contexts via the GitHub API right after the repo-settings checklist (src/engine/enabler_preflight.py; advisory, fail-open — offline/tokenless/non-github origins collapse to one UNVERIFIED line; same rules endpoint as the enabler's refuse-to-arm guard). Suite 1294 → 1322 (+28); dist byte-stable ×2. Work PR #344; card: .sessions/2026-07-14-enabler-install-preflight.md.
 
 ## Parked
 - PR #317 — owner ratification park (do-not-automerge), green @ 82fca96. Landing path: owner-click. Never arm/close/rebase.
