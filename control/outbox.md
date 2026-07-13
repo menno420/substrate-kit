@@ -96,3 +96,40 @@ are proposals for the manager's edit-registry-first flow.
    Evidence: the 01:49Z tombstone-less drop
    (trig_01USg5i3qna4fCX5ZeePg7Gj — absent from all 1203 `list_triggers`
    records at the 10:40Z audit; failsafe bridged 02:07Z).
+
+## 2026-07-13 · DRIFT-row classification — heartbeat self-report fixes owed by resident lanes (lane→manager)
+
+Coordinator-authored ask: please route the two items below to the named
+repos' RESIDENT lanes — every remaining `docs/adopters.md` DRIFT row is
+**tree-current-but-self-report-stale** (classification b); zero real upgrade
+work exists. Evidence gathered 2026-07-13T13:25Z, pinned to each adopter's
+origin/main HEAD.
+
+1. **fleet-manager — restore the kit heartbeat line.** Ask the resident lane
+   to put a plain `kit: v1.15.0` line back in fleet-manager
+   `control/status.md` — plain text, no bold/bullet decoration wrapping the
+   `kit:` token, so it parses under the kit's `KIT_LINE_RE`
+   (`src/engine/grammar.py`; the bold-label form is the taught negative).
+   Evidence: fleet-manager merged its kit v1.15.0 upgrade PR #123 on
+   2026-07-12, and the tree is byte-verified current at HEAD
+   `a32eb2c6d02994c45a696530ac13e3e45c0de92d` — `bootstrap.py`
+   `KIT_VERSION = "1.15.0"` and `.substrate/state.json` `kit_version:
+   1.15.0`. But `control/status.md` at that HEAD has **no `kit:` line at
+   all** (KIT_LINE_RE matches: zero; the registry's recorded v1.7.0
+   self-report predates the current status rewrite). The DRIFT row clears at
+   the next `docs/adopters.md` regeneration once the line lands.
+2. **superbot-games — same fix, both lanes.** Tree byte-verified current at
+   HEAD `57f69be34785afb427d608b207e7369025166e94` (`bootstrap.py`
+   `KIT_VERSION = "1.15.0"`, `.substrate/state.json` `kit_version: 1.15.0`),
+   but both per-lane heartbeats still self-report v1.7.1:
+   `control/status-mining.md` and `control/status-exploration.md` each carry
+   a KIT_LINE_RE-parseable `kit: substrate-kit v1.7.1 …` line
+   (`control/status.md` itself has no `kit:` line — fine for the shared-repo
+   pattern). Ask each lane to update its own line to a plain
+   `kit: v1.15.0 …` self-report; both superbot-games DRIFT rows then clear
+   at the next registry regeneration.
+
+Not in scope (verified, no ask): the **kit-self** DRIFT row
+(substrate.config.json pin v1.0.0 vs dist v1.15.0 at kit HEAD `949875c`) is
+the designed owner-held pin path — do-not-automerge territory, no lane
+action requested.
