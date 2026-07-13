@@ -44,6 +44,7 @@ def test_starter_pack_present_and_ordered():
         "intake",
         "chase-references",
         "prep-owner-steps",
+        "rationalize",
         "quality-gate",
         "review",
         "repo-health",
@@ -393,6 +394,78 @@ def test_seed_skills_grounded_at_kit_root_and_on_empty_target(tmp_path):
     seeds = [get_skill("chase-references"), get_skill("prep-owner-steps")]
     assert check_skill_grounds(kit_root, skills=seeds) == []
     assert check_skill_grounds(tmp_path, skills=seeds) == []
+
+
+# ---------------------------------------------------------------------------
+# Rationalize (ORDER 016 seat-item 3, provenance Q-0273) — the checkpoint
+# question prototyped: friction→guard generalized from incidents to
+# opportunities, run at natural pauses.
+# ---------------------------------------------------------------------------
+
+
+def test_rationalize_carries_the_checkpoint_method():
+    # The three firing points, the two questions, and the bar.
+    body = get_skill("rationalize")["body"]
+    assert "When the checkpoint fires" in body
+    assert "a slice/batch of work lands" in body
+    assert "workaround, discovery, or lesson surfaces mid-task" in body
+    assert "the session enders" in body
+    assert "Should this action also be executed?" in body
+    assert "Does this lesson deserve a permanent home" in body
+    assert "ship that home\n   NOW?" in body or "ship that home NOW?" in body
+    # Opportunities treated like incidents — the generalization itself.
+    assert "OPPORTUNITIES" in body
+    assert "treated like incidents" in body
+    # A nothing-found pass is a no-op, never filler.
+    assert "silent no-op" in body
+    # Provenance travels in the body, as the seed skills carry it.
+    assert "Q-0273" in body
+
+
+def test_rationalize_routing_table_covers_lessons_and_actions():
+    # Lesson routes: skill body / checker / template / idea file.
+    # Action routes: execute-now (contained + reversible) vs idea/queue.
+    body = get_skill("rationalize")["body"]
+    assert "## Routing table" in body
+    assert "a skill body" in body
+    assert "a checker / CI / test" in body
+    assert "a template or written rule" in body
+    assert "an idea file" in body
+    assert "execute it this session" in body
+    assert "flagged self-initiated" in body
+    assert "idea file or the owner queue" in body
+    # The bound lane stays intact: binding text is proposed, never
+    # self-applied (the constitution clause this skill extends).
+    assert "PROPOSAL" in body
+    assert "docs/question-router.md" in body
+
+
+def test_rationalize_pairs_with_session_close():
+    # The session-ender firing point delegates the recording half to the
+    # close procedure — the checkpoint is the thinking half.
+    body = get_skill("rationalize")["body"]
+    assert "`session-close`" in body
+
+
+def test_rationalize_is_read_only_and_grounds_nothing():
+    # A decision method: nothing declared beyond the implicit read; no
+    # commands run, so grounds is [] (the slice-2 rule).
+    assert get_skill("rationalize")["capabilities"] == []
+    assert skill_capabilities("rationalize") == [READ]
+    assert get_skill("rationalize")["grounds"] == []
+
+
+def test_rationalize_grounded_at_kit_root_and_on_empty_target(tmp_path):
+    # Every backticked span in the body resolves under the slice-2 grounds
+    # checker — at the kit root AND on a bare adopter tree.
+    from pathlib import Path
+
+    from engine.checks.check_skill_grounds import check_skill_grounds
+
+    kit_root = Path(__file__).resolve().parents[1]
+    rationalize = [get_skill("rationalize")]
+    assert check_skill_grounds(kit_root, skills=rationalize) == []
+    assert check_skill_grounds(tmp_path, skills=rationalize) == []
 
 
 # ---------------------------------------------------------------------------
