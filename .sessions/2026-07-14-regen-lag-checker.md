@@ -1,6 +1,6 @@
 # 2026-07-14 — Staged-artifact regen-lag checker (ORDER 019 item 6)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 Intent: build the staged-artifact regen-lag checker per
 `docs/ideas/staged-artifact-regen-lag-checker-2026-07-12.md` — a `check`
@@ -62,10 +62,15 @@ tests and a byte-stable dist regen.
   State line now points at PR #345 and the review-merge session flips the
   frontmatter.
 - **parked green — owner disarm respected, landing path: owner-click.**
-  The enabler armed auto-merge on #345 at open; it was disarmed (verified
-  `auto_merge: null` on a fresh fetch) before the card flip, per the
-  review-merge order for this lane. Never re-armed, never merged from this
-  session.
+  The enabler armed auto-merge on #345 at open; it was disarmed before the
+  card flip per the review-merge order for this lane, and — because the
+  live enabler re-arms on every `synchronize` push (its own header says so)
+  — the PR carries the kit-convention park, the `do-not-automerge` label
+  (the enabler's designed carve-out, fresh-re-read each run; precedent:
+  the #317 owner-ratification park), applied BEFORE the flip push so no
+  later push can re-arm. Verified on a fresh PR fetch:
+  `"labels":["do-not-automerge"]`. Never re-armed, never merged from this
+  session; the review-merge session removes the label when it lands the PR.
 
 ## 💡 Session idea
 
