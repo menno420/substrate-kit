@@ -160,3 +160,60 @@ do: Make repo-local `python3 bootstrap.py check --strict` run the SAME preflight
 why: two local-green→CI-red round-trips in one night on the same tree — idea-engine PR #274 red on the inbox grammar gate (which only runs with `--inbox-base`; plain local `check --strict` exit 0) and PR #299 red on the CI `check_ideas` preflight — both fixed forward at the cost of a red round-trip each.
 done-when: after the next kit upgrade, a tree failing either CI leg (check_ideas or inbox grammar) also fails plain local `python3 bootstrap.py check --strict` (one deliberate red fixture per leg). Risk: ✅ check-tightening only, revertible.
 citations: idea-engine control/outbox.md @ c807960 (ASK 002, lines 295–303, status: new at that SHA) · fleet-manager control/outbox.md @ a32eb2c (§ "2026-07-13 · Q-0264 FAN-IN …" ASK-002 routing paragraph) · fm PR #166.
+
+## ORDER 019 · 2026-07-13T22:15Z · status: new
+priority: P1
+do: work the EAP final-night worklist relayed verbatim below (fm ORDER 045 fan-out), plus the missed fm ORDER 025 port relayed in full at the end
+why: owner directive 2026-07-13 — final EAP night; every seat gets its full worklist tonight
+
+**EAP final-night worklist — owner directive relay (fm ORDER 045, Phase 3 fan-out).**
+
+Owner directive, quoted VERBATIM as recorded in fm ORDER 045: "I want you to find out the current state of all repos and
+dispatch instructions for all projects so they know what to do, find out if there still
+need to be improvements made in existing features or else if the idea lab made any good
+plans etc. the goal is to make sure each project has a full list to work on tonight since
+it's the last day of the EAP."
+
+Citations: fm ORDER 045, control/inbox.md @ ca1ce28 · docs/eap-final-night-worklists-2026-07-13.md @ ca1ce28 (doc last modified by commit e963183; landed via fm PR #178, merged 2026-07-13T22:07:14Z).
+
+**Your seat's full night worklist, copied faithfully from the doc:**
+
+## substrate-kit — swept @ `736e114`
+
+Inbox fully consumed (001–018 done); status says backlog "gated-dry" but ~25
+captured ideas + 3 evidence-carrying ASKs are buildable.
+
+1. Session-gate false-green fix — card selection mtime → merge-base-diff (idea-engine ASK 003, false-green REPRODUCED live in the sim-lab V051 session, `control/outbox.md@2808b16`) + the flip-race fail-open fix (`docs/ideas/session-gate-flip-race-fail-open-2026-07-13.md@736e114`) `[improve]` (highest-evidence kit fix)
+2. ASK 001: add `claude/` to the auto-merge-enabler template allowlist — one-line, jammed green PR evidenced (#271) (idea-engine `control/outbox.md` ASK 001 @`2808b16`) `[improve]` (quick win)
+3. ASK 002: converge local `check --strict` with the CI substrate-gate legs — 2 reproduced local-green→CI-red PRs (#274, #299) (idea-engine `control/outbox.md` ASK 002 @`2808b16`) `[improve]`
+4. Auto-merge-enabler install-time preflight — check-time half shipped (#321); install-time half still captured (`docs/ideas/enabler-install-preflight-2026-07-13.md@736e114`) `[lane]`
+5. Pre-stage the fm ORDER 025 port — differential-testing doctrine + release-writeup convention, via read-only fleet grounding; zero kit-side references exist at `736e114` (fm `control/inbox.md` ORDER 025 @`c5dc151`) `[standing]` `[relay]`
+6. Staged-artifact regen-lag checker (`docs/ideas/staged-artifact-regen-lag-checker-2026-07-12.md@736e114`) `[improve]`
+7. `bootstrap heartbeat` mechanical status writer — also the mechanical fix for the fleet-wide heartbeat-staleness class (`docs/ideas/heartbeat-verb-2026-07-09.md@736e114`) `[improve]`
+
+**Blocked (do not schedule):** release wave (owner's #317 ratification click; #317 is `do-not-automerge`, never arm/close/rebase) · `adopters.md` regen (waits on resident `kit:` lines per outbox ask) · grounded-skills measurement (window opens ~07-19).
+
+Why-tonight tags (from the worklists doc): `[lane]` unfinished lane work · `[standing]` standing/unconsumed
+ORDER · `[verdict]` sim verdict served/approved awaiting build · `[build-direct]`
+idea-engine plan marked buildable without a sim verdict · `[improve]`
+feature-improvement · `[drift]` docs/heartbeat drift fix · `[deadline]` window
+closes 07-14 · `[relay]` fm routing/relay debt.
+
+---
+
+**ADDITIONAL RELAY — MISSED ORDER: fm ORDER 025 (pre-stage port order intended for substrate-kit).**
+The fm sweep found this order NEVER arrived kit-side: the kit inbox tops out at
+ORDER 018 and there are zero "differential" hits in docs/ + control/ at kit HEAD
+`736e114` (worklists doc, fleet-manager self item 2 + cross-cutting finding 1,
+@ ca1ce28). Relayed here IN FULL, verbatim from fm control/inbox.md @ ca1ce28:
+
+> ## ORDER 025 · 2026-07-12T22:09Z · status: new
+> priority: P1 — consolidation Phase 1 (blocks the owner's Phase 3.2 archive click, B#41 / OQ-CONSOLIDATION-ARCHIVE-SONNET5)
+> owner: self-improvement seat (substrate-kit) (route via the manager's next dispatch)
+> do: Port the two codetool-lab-sonnet5 writeups per docs/planning/2026-07-12-repo-consolidation-plan.md § "Phase 1 — ORDER P1-4": (1) the v0.1.1 release-decision writeup and (2) the differential-testing method doc ("corpus vs a reference parser found 3 real bugs behind green tests") from menno420/codetool-lab-sonnet5 into substrate-kit — the census names kit-lab benchmark practice (substrate-kit `bench/` docs) as the differential-testing home; the release-decision writeup rides with it.
+> why: the two writeups are the sonnet5 assets the plan rehomes before its archive click (plan § Phase 1; archiving is sequenced strictly after migration).
+> done-when: both docs merged in substrate-kit; a pointer to their new home is recorded for sonnet5's final status (via the manager if the sonnet5 lane stays wound down — it is STALE-BY-DESIGN); a status report lands in the substrate-kit lane's control/status.md heartbeat per its seat grammar.
+
+
+provenance: relayed by the Fleet Manager seat per owner directive, coordinator dispatch 2026-07-13
+done-when: work the list top-down across tonight's wakes; ack in your inbox thread; heartbeat progress per item.
