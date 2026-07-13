@@ -1,25 +1,27 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-13T12:51Z · coordinator session live (v3.6 boot 2026-07-13) · phase: ACTIVE
+updated: 2026-07-13T13:47:34Z · coordinator session live (v3.6 boot 2026-07-13) · phase: ACTIVE
 
-## Routines (verified via paginated list_triggers, 2026-07-13T12:36Z audit)
-- Failsafe: "Self Improvement failsafe wake" trig_01LsHxvnYnpQ59n7iQTPNNF3 · cron 0 */2 * * * · bound to live coordinator session · next ~14:06Z.
-- Pacemaker: send_later chain live (~15 min cadence).
-- Cutover: old-seat failsafe trig_01EMfauRqevNovFM8dz4NLdp DELETED 2026-07-13 (new failsafe verified armed first); the 11 old-seat one-shots are fired tombstones, no action.
-- Business cron: kit-lab daily trig_01Jm57GAjNCFrYJn1oLMiYGE — fresh-session-per-fire, KEEP, never rebound · last fired 2026-07-13T06:10Z · next 2026-07-14T06:08Z · not wedged.
+## Routines
+- Failsafe: "Self Improvement failsafe wake" trig_01LsHxvnYnpQ59n7iQTPNNF3 · 0 */2 * * * · bound to live coordinator · verified via full paginated list_triggers audit 12:36Z.
+- Pacemaker send_later chain live (~15 min). Old-seat failsafe trig_01EMfauRqevNovFM8dz4NLdp deleted at cutover (new verified first).
+- Business cron: kit-lab daily trig_01Jm57GAjNCFrYJn1oLMiYGE — fresh-session-per-fire, KEEP · next 2026-07-14T06:08Z · not wedged.
 
-## Shipped
-- PR #325 MERGED (squash d916d94, main HEAD): docs/adopters.md regenerated via dist/bootstrap.py currency (Generated: 2026-07-13T12:42:36Z · kit release: v1.15.0). Merge payload diff-verified: exactly adopters.md + session card; claim added-then-deleted in-PR.
+## Shipped 2026-07-13 (this coordinator, all auto-merged on green; payload diffs verified)
+- #325 docs/adopters.md regenerated (squash d916d94).
+- #326 heartbeat landing, control fast lane (04ecd6e).
+- #327 DRIFT-row classification + outbox ask to manager (dc75e0c): ZERO real upgrade work — fleet-manager and both superbot-games lanes are tree-current at v1.15.0 with stale/missing `kit:` self-report lines (fixes routed to resident lanes via outbox); kit-self v1.0.0 pin = owner-held (c).
+- #328 heartbeat prefix now case-insensitive (76feb5d; grammar.py + dist regen, 1247 tests).
 
 ## Parked
-- PR #317 — owner ratification park (do-not-automerge), green @ 82fca96, no new commits. Landing path: owner-click. Never arm/close/rebase.
+- PR #317 — owner ratification park (do-not-automerge), green @ 82fca96. Landing path: owner-click. Never arm/close/rebase.
 
 ## Registry state
-- Remaining DRIFT rows (reconcile at source, not kit writes): kit-self pin v1.0.0 · superbot-games v1.7.1 (two lanes) · fleet-manager v1.7.0.
+- All reachable adopters tree-current at v1.15.0 (verified against trees, PR #327 evidence). DRIFT rows clear at next adopters.md regen once resident lanes land their `kit:` lines.
 kit: v1.15.0
 
 ## Next-2 baton
-1. Owner sweeps #317 → then cut release wave (main is 34+ commits past v1.15.0) + adopter upgrade PRs.
-2. Grounded-skills measurement window ~2026-07-19..26.
+1. Owner sweeps #317 → cut release wave (main 38+ commits past v1.15.0) + adopter upgrade PRs.
+2. After resident lanes land `kit:` lines → regenerate docs/adopters.md; grounded-skills measurement window ~2026-07-19..26.
 
 ⚑ FOR OWNER (paste-ready, carried from the standing set — full field blocks verbatim in git history of this file @ 86d2a57, ⚑ OWNER-ACTION 2/6 + ⚑ FOR MANAGER):
 - **P10 required-check swap (⚑ 2):** Settings → Rules → `main` ruleset → required status checks: remove "Kit test suite" + "Cold-adoption smoke (adopt + check --strict)"; add `kit-quality`; set "Require branches to be up to date" OFF. Reversible; ends the ~35-min queue-stall class. (No agent path to rulesets — verified 403/no-endpoint.)
