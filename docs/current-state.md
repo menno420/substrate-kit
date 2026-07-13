@@ -206,8 +206,13 @@ CLEARED (#36–#39 → `docs/ideas/` + `bench/results/friction/index.json`).
 backlog. DONE — the enabler-install-preflight branch-allowlist half (PR #321,
 `check_automerge_preflight.py`): a self-silencing `check`-time advisory for
 `auto-merge-enabler.yml` branch-allowlist drift vs config (the idea-engine
-hand-patch/stale-allowlist class). REMAINS — the required-context half stays
-owner-UI (offline engine, no rules API); the flip-race fail-open
+hand-patch/stale-allowlist class). DONE (ORDER 019 item 4) — the
+install-time half (`src/engine/enabler_preflight.py`, PR #344): at
+adopt/upgrade time, best-effort ONLINE verification of "Allow auto-merge" +
+required status-check contexts via the GitHub API (advisory, fail-open;
+offline/tokenless collapses to one UNVERIFIED line). REMAINS — the required
+context stays owner-UI to *set* (a workflow cannot flip repo settings); the
+flip-race fail-open
 (`session-gate-flip-race-fail-open-2026-07-13.md`) still needs the mineverse
 repro (out of scope here) before a gate-logic change; heartbeat-delegated-
 tally doctrine still open.
