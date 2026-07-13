@@ -1,3 +1,1 @@
-# Claim
-
-- claude/regen-lag-checker · staged-artifact regen-lag checker (ORDER 019 item 6) · 2026-07-13T23:09:52Z
+- `claude/regen-lag-checker` · **staged-artifact regen-lag checker (ORDER 019 item 6)** — advisory `check` finding when filled slot_values lag the staged `.substrate/` artifacts · `src/engine/checks/check_staged_regen.py`, `src/engine/cli.py`, `src/build_bootstrap.py`, `tests/test_check_staged_regen.py`, `dist/bootstrap.py` · 2026-07-13
