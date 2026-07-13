@@ -108,6 +108,9 @@ MODULE_ORDER = (
     # After seatdigest.py (byte-compares the planted doc against its fresh
     # render): the grounded-skills slice-6 drift guard.
     "checks/check_seat_digest.py",
+    # After adopt.py: reuses its enabler branch-expr generator + config
+    # params (enabler-install-preflight, the branch-allowlist drift advisory).
+    "checks/check_automerge_preflight.py",
     # After adopt.py: reuses its dist_version header parser (EAP §6.3
     # currency scanner — tree truth vs heartbeat self-report).
     "currency.py",
