@@ -65,6 +65,10 @@ MODULE_ORDER = (
     # Only needs check_docs.Finding, defined above (EAP §6.5 setup-script
     # contract enforcer — the writer half is env-setup.sh.tmpl).
     "checks/check_setup_script.py",
+    # After grammar.py + checks/check_status_current.py: the mechanical
+    # heartbeat writer (ORDER 019 item 7) reuses UPDATED_LINE_RE/KIT_LINE_RE
+    # and round-trips every write through parse_heartbeat.
+    "heartbeat.py",
     "ledger.py",
     "loop/kpis.py",
     "loop/reflections.py",
