@@ -568,3 +568,243 @@ def test_adopted_draft_flipped_to_in_progress_still_reds(tmp_path):
     text = card.read_text(encoding="utf-8").replace("`drafted`", "`in-progress`")
     card.write_text(text, encoding="utf-8")
     assert cmd_check(root, strict=True) == 1
+
+
+# ---------------------------------------------------------------------------
+# Diff-derived card selection — the sim-lab V051 mtime false-green
+# (idea-engine ASK 003, ORDER 019 item 1)
+# ---------------------------------------------------------------------------
+# The reproduced defect: `check`'s fallback lane picked the card by newest
+# mtime; after merging origin/main into a working branch, a sibling's
+# COMPLETED card had the freshest mtime, so local `check --strict` validated
+# the WRONG card and went green while the session's own card was still
+# in-progress. The fallback lane now derives the card set from the
+# merge-base diff vs origin/main (the CI gate's selection) whenever git
+# context exists; mtime survives only as the non-git fallback.
+
+import os
+import subprocess
+import time
+
+
+def _git(repo: Path, *args: str) -> None:
+    subprocess.run(
+        ["git", "-c", "user.email=t@t", "-c", "user.name=t", "-C", str(repo), *args],
+        check=True,
+        capture_output=True,
+    )
+
+
+def _init_git_with_origin_main(root: Path) -> None:
+    """A scratch repo whose current tree is the origin/main baseline."""
+    _git(root, "init", "-b", "main")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-m", "baseline")
+    _git(root, "update-ref", "refs/remotes/origin/main", "main")
+
+
+def _v051_fixture(root: Path, config) -> tuple[Path, Path]:
+    """Reproduce the V051 shape: the working branch adds its OWN in-progress
+    card, a sibling COMPLETED card lands on origin/main, and merging
+    origin/main in leaves the sibling with the freshest mtime."""
+    _init_git_with_origin_main(root)
+    _git(root, "checkout", "-b", "work")
+    own = root / config.sessions_dir / "2026-07-13-own.md"
+    own.write_text("# own\n\n> **Status:** `in-progress`\n", encoding="utf-8")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-m", "born-red card")
+    _git(root, "checkout", "main")
+    _write_complete_log(root, config)  # sibling: .sessions/2026-07-07-demo.md
+    _git(root, "add", "-A")
+    _git(root, "commit", "-m", "sibling close-out lands on main")
+    _git(root, "update-ref", "refs/remotes/origin/main", "main")
+    _git(root, "checkout", "work")
+    _git(root, "merge", "main", "-m", "merge origin/main in")
+    sibling = root / config.sessions_dir / "2026-07-07-demo.md"
+    now = time.time()
+    os.utime(sibling, (now + 300, now + 300))  # sibling: freshest mtime
+    os.utime(own, (now - 300, now - 300))
+    return own, sibling
+
+
+def test_v051_mtime_guess_still_picks_the_wrong_sibling(tmp_path):
+    from engine.checks.check_session_log import latest_session_log
+
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    own, sibling = _v051_fixture(root, config)
+    # The retained non-git fallback demonstrably picks the WRONG card in
+    # this shape — the reason the gate no longer trusts it under git.
+    assert latest_session_log(root / config.sessions_dir) == sibling
+
+
+def test_v051_diff_derived_selection_reds_on_the_own_card(tmp_path, capsys):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    own, sibling = _v051_fixture(root, config)
+    # Pre-fix behavior (pinned red): the mtime pick validated the COMPLETE
+    # sibling and returned 0 here — the false-green. The diff-derived
+    # selection gates the session's OWN in-progress card instead.
+    rc = cmd_check(root, strict=True)
+    assert rc == 1
+    out = capsys.readouterr().out
+    assert "merge-base diff vs origin/main" in out
+    assert "2026-07-13-own.md" in out
+    assert "2026-07-07-demo.md" not in out.split("session-card selection")[-1]
+
+
+def test_v051_flip_to_complete_releases_the_gate(tmp_path):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    own, _ = _v051_fixture(root, config)
+    markers = "\n".join(
+        f"{m.get('needle', '')} {m.get('label', '')}" for m in config.session_markers
+    )
+    own.write_text(
+        f"# own\n\n> **Status:** `complete`\n\n{markers}\n", encoding="utf-8"
+    )
+    # The flip is uncommitted on purpose: base-vs-worktree diff sees it.
+    assert cmd_check(root, strict=True) == 0
+    assert cmd_check(root, strict=True, require_session_log=True) == 0
+
+
+def test_untracked_own_card_is_gated_before_first_commit(tmp_path, capsys):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    _init_git_with_origin_main(root)
+    # Mid-session, pre-commit: the born-red card exists only untracked.
+    card = root / config.sessions_dir / "2026-07-13-untracked.md"
+    card.write_text("# mine\n\n> **Status:** `in-progress`\n", encoding="utf-8")
+    rc = cmd_check(root, strict=True)
+    assert rc == 1
+    assert "2026-07-13-untracked.md" in capsys.readouterr().out
+
+
+def test_branch_ahead_without_card_is_absent_not_mtime_green(tmp_path, capsys):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    _write_complete_log(root, config)  # a complete card exists on main
+    _init_git_with_origin_main(root)
+    _git(root, "checkout", "-b", "work")
+    (root / "somefile.txt").write_text("branch work, no card\n", encoding="utf-8")
+    _git(root, "add", "somefile.txt")
+    _git(root, "commit", "-m", "cardless branch commit")
+    # Bare strict: absent-card ADVISORY (never a silent green on the mtime
+    # pick, but not a red either — a host may lint mid-session).
+    rc = cmd_check(root, strict=True)
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "no session card in the merge-base diff" in out
+    assert "advisory" in out
+    # Gate mode: fail-closed — the old mtime fallback would have greened on
+    # the baseline's complete card.
+    rc = cmd_check(root, strict=True, require_session_log=True)
+    assert rc == 1
+    assert "MERGE HELD" in capsys.readouterr().out
+
+
+def test_on_origin_main_clean_keeps_the_mtime_fallback(tmp_path, capsys):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    _write_complete_log(root, config)
+    _init_git_with_origin_main(root)
+    # HEAD IS origin/main and no card differs: not a PR context — the
+    # historical newest-by-mtime behavior is kept (with a NOTE), so a clean
+    # post-merge checkout never reds on selection ambiguity.
+    rc = cmd_check(root, strict=True, require_session_log=True)
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "HEAD is origin/main" in out
+    assert "session log" in out and "complete" in out
+
+
+def test_multiple_diff_cards_gate_fail_closed_on_the_red_one(tmp_path, capsys):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    _init_git_with_origin_main(root)
+    _git(root, "checkout", "-b", "work")
+    markers = "\n".join(
+        f"{m.get('needle', '')} {m.get('label', '')}" for m in config.session_markers
+    )
+    done = root / config.sessions_dir / "2026-07-13-a-done.md"
+    done.write_text(
+        f"# done\n\n> **Status:** `complete`\n\n{markers}\n", encoding="utf-8"
+    )
+    red = root / config.sessions_dir / "2026-07-13-b-red.md"
+    red.write_text("# red\n\n> **Status:** `in-progress`\n", encoding="utf-8")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-m", "two cards, one in-progress")
+    # Name order alone would pick the complete a-done card and green; the
+    # fail-closed rank gates the in-progress sibling (any red card reds).
+    rc = cmd_check(root, strict=True)
+    assert rc == 1
+    assert "2026-07-13-b-red.md" in capsys.readouterr().out
+
+
+def test_non_git_tree_keeps_the_mtime_fallback_unchanged(tmp_path):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    # No .git at all (the non-git adopter): behavior identical to before —
+    # newest-by-mtime, complete card, green. (This is the ASK 002/003
+    # self-skip posture; the derivation must stay silent here.)
+    _write_complete_log(root, config)
+    assert cmd_check(root, strict=True, require_session_log=True) == 0
+
+
+# ---------------------------------------------------------------------------
+# Flip-race regression pin (docs/ideas/session-gate-flip-race-fail-open-
+# 2026-07-13.md): a PR-ADDED in-progress card must produce the born-red HOLD
+# (session-card-hold) and flipping the SAME card to complete must release it.
+# The CI-side fail-open itself was closed by the v1.10.0 added-card HOLD
+# (check_added_card, PR #176); these tests pin the hold→release cycle so the
+# race cannot silently reopen.
+# ---------------------------------------------------------------------------
+
+
+def test_flip_race_added_card_holds_then_releases_on_flip(tmp_path, capsys):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    card = root / config.sessions_dir / "2026-07-13-flip.md"
+    rel = Path(config.sessions_dir) / "2026-07-13-flip.md"
+    # Born-red: the PR ADDS the card in-progress → the gate HOLDS.
+    card.write_text(
+        "# flip\n\n> **Status:** `in-progress`\n\nabout to build\n",
+        encoding="utf-8",
+    )
+    rc = cmd_check(root, strict=True, session_log=_SENTINEL, added_card=rel)
+    assert rc == 1
+    out = capsys.readouterr().out
+    assert "session-card-hold" in out
+    assert "HOLD (by design)" in out
+    # The flip: the SAME card completes with every marker → the hold
+    # releases. (Pre-v1.10.0 the added card was fully exempt, so the PR
+    # could merge BEFORE this flip — the flip-race fail-open.)
+    markers = "\n".join(
+        f"{m.get('needle', '')} {m.get('label', '')}" for m in config.session_markers
+    )
+    card.write_text(
+        f"# flip\n\n> **Status:** `complete`\n\n{markers}\n", encoding="utf-8"
+    )
+    assert cmd_check(root, strict=True, session_log=_SENTINEL, added_card=rel) == 0
+
+
+def test_flip_race_hold_survives_in_the_diff_derived_lane(tmp_path, capsys):
+    root = tmp_path / "repo"
+    config = _adopt_scratch(root, tmp_path / "kit")
+    _init_git_with_origin_main(root)
+    _git(root, "checkout", "-b", "work")
+    card = root / config.sessions_dir / "2026-07-13-flip.md"
+    card.write_text("# flip\n\n> **Status:** `in-progress`\n", encoding="utf-8")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-m", "born-red first commit")
+    # The local ritual sees the same hold the CI lane enforces…
+    assert cmd_check(root, strict=True) == 1
+    assert "HOLD (by design)" in capsys.readouterr().out
+    # …and the flip releases it locally too (uncommitted flip: worktree diff).
+    markers = "\n".join(
+        f"{m.get('needle', '')} {m.get('label', '')}" for m in config.session_markers
+    )
+    card.write_text(
+        f"# flip\n\n> **Status:** `complete`\n\n{markers}\n", encoding="utf-8"
+    )
+    assert cmd_check(root, strict=True) == 0
