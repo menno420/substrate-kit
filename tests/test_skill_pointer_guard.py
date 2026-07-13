@@ -12,7 +12,11 @@ bodies, with its zero-findings kit invariant pinned ENFORCING by
 ``..._grounded_even_on_empty_target``): that scan is a *command*-grounding
 advisory — it judges a backticked span by its FIRST TOKEN and deliberately
 fails open on everything ambiguous. Verified blind spots for *doc pointers*
-at kit HEAD 7c736fa:
+at kit HEAD 7c736fa (1 and 2 CLOSED in the checker itself on 2026-07-13 —
+dot-led tokens are judged with a state-dir artifact classification, and
+markdown-link targets feed the same ladder — so adopter-rendered docs now
+inherit the coverage; this guard remains the kit-truth SKILLS floor and the
+whitelist-classification pin):
 
 1. **Dot-led paths are never judged** — ``_FIRST_TOKEN_RE`` requires an
    alnum/underscore first character, so ``.substrate/upgrade-report.md`` (a
@@ -49,7 +53,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from engine.adopt import ADOPT_PLAN
-from engine.checks.check_skill_grounds import _KIT_SHIPPED_PATHS
+from engine.checks.check_skill_grounds import (
+    _ADOPTER_PLANTED_PATHS,
+    _KIT_REPO_PATHS,
+    _KIT_SHIPPED_PATHS,
+    _WAVE_TRANSIENT_PATHS,
+)
 from engine.skills.skills import SKILLS
 
 # One extractor, one source of truth: reuse the template guard's pointer
@@ -202,12 +211,13 @@ def test_no_stale_accounting_entries():
 
 
 def test_skill_grounds_kit_path_whitelist_cannot_rot():
-    # The rot pin (blind spot 3): every _KIT_SHIPPED_PATHS entry in
-    # check_skill_grounds must be accounted for — an ADOPT_PLAN destination
-    # (planted on every adopter), a named release-wave transient, a
-    # kit-generated artifact, or a file that actually exists in the kit
-    # tree. Without this, a kit-side rename leaves a whitelist entry that
-    # resolves dead pointers forever.
+    # The rot pin (blind spot 3), now over the engine's OWN classification
+    # tables (single source of truth — check_skill_grounds ships the classes;
+    # this test pins them): every _KIT_SHIPPED_PATHS entry must be accounted
+    # for — an ADOPT_PLAN destination (planted on every adopter), a named
+    # release-wave transient, a kit-generated artifact, or a file that
+    # actually exists in the kit tree. Without this, a kit-side rename
+    # leaves a whitelist entry that resolves dead pointers forever.
     for entry in sorted(_KIT_SHIPPED_PATHS):
         if entry in _PLAN_DESTS:
             continue
@@ -222,4 +232,62 @@ def test_skill_grounds_kit_path_whitelist_cannot_rot():
             "kit tree — the whitelist entry is rot and now resolves dead "
             "pointers. Remove or fix the entry (or classify it in "
             "tests/test_skill_pointer_guard.py with a written reason)."
+        )
+
+
+def test_skill_grounds_whitelist_classes_disjoint_and_exhaustive():
+    # The classes must partition the union: an entry in two classes has two
+    # contradictory resolution stories; an entry in none is unclassified
+    # (the derived-union definition makes "in none" unreachable today —
+    # this pin keeps it that way if the union is ever hand-edited).
+    classes = {
+        "_KIT_REPO_PATHS": _KIT_REPO_PATHS,
+        "_WAVE_TRANSIENT_PATHS": _WAVE_TRANSIENT_PATHS,
+        "_ADOPTER_PLANTED_PATHS": _ADOPTER_PLANTED_PATHS,
+    }
+    names = sorted(classes)
+    for i, a in enumerate(names):
+        for b in names[i + 1 :]:
+            overlap = classes[a] & classes[b]
+            assert not overlap, (
+                f"{a} and {b} both claim {sorted(overlap)} — a whitelist "
+                "entry must have exactly one resolution story."
+            )
+    union = frozenset().union(*classes.values())
+    assert union == _KIT_SHIPPED_PATHS, (
+        "class union and _KIT_SHIPPED_PATHS diverge: "
+        f"only-in-union={sorted(union - _KIT_SHIPPED_PATHS)}, "
+        f"only-in-shipped={sorted(_KIT_SHIPPED_PATHS - union)}"
+    )
+
+
+def test_skill_grounds_kit_repo_class_pinned_to_kit_tree():
+    # The existence pin the raw in-adopter check could never be (the
+    # 2026-07-13 survey measured a raw existence pin at 14–15 FALSE findings
+    # per adopter): kit-repo-class entries must exist HERE, in the kit tree.
+    for entry in sorted(_KIT_REPO_PATHS):
+        assert (KIT_ROOT / entry).is_file(), (
+            f"check_skill_grounds._KIT_REPO_PATHS pins `{entry}` as a "
+            "kit-repo file, but it does not exist in the kit tree — a "
+            "kit-side rename must update the whitelist class AND the skill "
+            "bodies that name it."
+        )
+
+
+def test_skill_grounds_transient_and_planted_classes_agree_with_tables():
+    # Single source of truth both ways: the engine's wave-transient class
+    # and this guard's reason-annotated _WAVE_TRANSIENTS table must name the
+    # same set, and every adopter-planted entry needs a writer recorded in
+    # _GENERATED_BY_KIT — an unexplained class entry is drift.
+    assert set(_WAVE_TRANSIENTS) == set(_WAVE_TRANSIENT_PATHS), (
+        "engine _WAVE_TRANSIENT_PATHS and the guard's _WAVE_TRANSIENTS "
+        "reason table diverged: "
+        f"engine-only={sorted(set(_WAVE_TRANSIENT_PATHS) - set(_WAVE_TRANSIENTS))}, "
+        f"table-only={sorted(set(_WAVE_TRANSIENTS) - set(_WAVE_TRANSIENT_PATHS))}"
+    )
+    for entry in sorted(_ADOPTER_PLANTED_PATHS):
+        assert entry in _GENERATED_BY_KIT, (
+            f"check_skill_grounds._ADOPTER_PLANTED_PATHS names `{entry}` "
+            "but _GENERATED_BY_KIT records no writer for it — name the "
+            "adopt/upgrade code path that plants it."
         )
