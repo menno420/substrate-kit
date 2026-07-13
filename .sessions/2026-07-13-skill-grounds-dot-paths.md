@@ -1,6 +1,6 @@
 # 2026-07-13 — check_skill_grounds: dot-led pointers, markdown links, whitelist classes
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 About to: graduate the #335 card's 💡 idea into `check_skill_grounds` itself —
 widen `_FIRST_TOKEN_RE` so dot-led pointers are judged (with a deliberate
