@@ -47,10 +47,13 @@ def test_guided_standard_renders_core_sections(tmp_path):
 
 
 def test_guided_quota_suffix_counts_hidden_pending(tmp_path):
-    # 13 bank questions pending, guided quota 3 → "(+10 more later)".
+    # Every bank question pending, guided quota 3 → "(+N-3 more later)"
+    # (derived from the bank, so growth never silently breaks the pin).
+    from engine.interview.question_bank import QUESTIONS
+
     config, backend = _init(tmp_path)
     text = compose_orientation(tmp_path, config, backend)
-    assert "(+10 more later)" in text
+    assert f"(+{len(QUESTIONS) - 3} more later)" in text
 
 
 def test_guided_trigger_block_mandates(tmp_path):

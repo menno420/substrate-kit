@@ -171,4 +171,38 @@ QUESTIONS: list[dict] = [
         "critical": False,
         "trigger": "new_area",
     },
+    # Q-014..Q-016 fill the multi-repo reading path (docs/reading-path.md,
+    # provenance superbot Q-0272). None is critical: a solo repo with no
+    # fleet leaves them unfilled without blocking graduation.
+    {
+        "id": "Q-014",
+        "slot": "fleet_status_command",
+        "audience": "user",
+        "prompt": "One command that orients a session on the whole fleet's status (or 'none yet')?",
+        "routing": "templates/reading-path.md:one_command",
+        "priority": "normal",
+        "critical": False,
+        "objective": True,
+        "min_len": 4,
+    },
+    {
+        "id": "Q-015",
+        "slot": "fleet_siblings",
+        "audience": "self",
+        "prompt": "Which sibling repos may sessions here read, and which files carry each one's truth?",
+        "routing": "templates/reading-path.md:siblings",
+        "priority": "normal",
+        "critical": False,
+        "objective": True,
+        "min_len": 20,
+    },
+    {
+        "id": "Q-016",
+        "slot": "fleet_dark_repos",
+        "audience": "user",
+        "prompt": "Any private/dark sibling repos sessions must never read or guess about?",
+        "routing": "templates/reading-path.md:dark_repos",
+        "priority": "normal",
+        "critical": False,
+    },
 ]
