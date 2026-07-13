@@ -1,0 +1,1 @@
+- `claude/drift-classify-outbox` · **outbox entry re fleet-manager heartbeat self-report** — DRIFT-row classification + manager-routed heartbeat-line ask · control/outbox.md (+ this claim) · 2026-07-13
