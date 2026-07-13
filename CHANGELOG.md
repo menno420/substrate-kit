@@ -105,6 +105,34 @@ probe failed both arms; T5 ignored). **KF-8 trend at 9 scored rows: 1 PASS
 
 ### Fixed
 
+- **Local `check` no longer mtime-greens the wrong session card — the
+  fallback lane derives the card set from the merge-base diff (idea-engine
+  ASK 003, sim-lab V051; PR #342).** `cmd_check`'s no-`--session-log` lane
+  picked the gated card by newest mtime, and after merging origin/main into
+  a working branch a sibling's COMPLETED card carries the freshest mtime —
+  so a plain local `check --strict` validated the WRONG card and went green
+  while the session's own card was still in-progress (reproduced live in
+  the sim-lab V051 session; CI was never affected — its gate is
+  diff-derived). The lane now mirrors CI: `engine.cli.
+  _derive_diff_session_cards` (a documented §3.2 git carve-out exactly like
+  `_derive_inbox_base` — merge-base vs origin/main, `--diff-filter=d` over
+  `sessions_dir`, plus untracked cards so a pre-first-commit card is still
+  gated) derives the card set, and `_select_gate_card` grades it
+  fail-closed (any red card reds; session-owned reds outrank unadopted
+  drafts; in-progress holds first). Newest-by-mtime survives only where no
+  git context is derivable (bare tree / no origin/main — the non-git
+  adopter posture, self-skip with a NOTE) or when HEAD *is* origin/main
+  with no card changes (a clean post-merge checkout, not a PR context).
+  Git context with **no** card in the diff is now absent-card semantics
+  (advisory bare, MERGE HELD under `--require-session-log`) — never a
+  silent mtime-green. The kit's own `ci.yml` no-card branch inherits the
+  fail-closed behavior through the same CLI path. The flip-race idea file
+  (`docs/ideas/session-gate-flip-race-fail-open-2026-07-13.md`) closes with
+  this: its CI-side fail-open was already closed by the v1.10.0 added-card
+  HOLD (PR #176), and PR #342 pins the hold→release cycle plus the V051
+  shape with red-fixture regression tests (`tests/test_cli_gate.py`,
+  proven red against the pre-fix engine).
+
 - **Auto-merge enabler arms `claim/*` branches (the kit #293 stall class).**
   The enabler's branch-prefix condition armed `claude/*` heads only, so a
   control fast-lane claim PR on a `claim/*` head sat green+clean but unarmed
