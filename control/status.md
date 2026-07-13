@@ -1,5 +1,5 @@
 # Self Improvement seat — heartbeat
-Updated: 2026-07-13T12:51Z · coordinator session live (v3.6 boot 2026-07-13) · phase: ACTIVE
+updated: 2026-07-13T12:51Z · coordinator session live (v3.6 boot 2026-07-13) · phase: ACTIVE
 
 ## Routines (verified via paginated list_triggers, 2026-07-13T12:36Z audit)
 - Failsafe: "Self Improvement failsafe wake" trig_01LsHxvnYnpQ59n7iQTPNNF3 · cron 0 */2 * * * · bound to live coordinator session · next ~14:06Z.
