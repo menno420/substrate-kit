@@ -1,6 +1,6 @@
 # 2026-07-13 — session-gate false-green fix (ORDER 019 item 1)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 Intent: fix the session-gate mtime false-green (card selection newest-by-mtime
 → merge-base-diff derivation in `cmd_check`'s fallback lane, idea-engine ASK 003 /
