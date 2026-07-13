@@ -30,4 +30,4 @@ kit: v1.15.0
 - **⚑ 6 public-flip-or-PAT (pick one):** make this repo public (⚠️ effectively irreversible) OR mint a fine-grained read-only PAT into the fleet environments (reversible) — unblocks the B2–B4 cross-repo sweeps.
 - **Grounded-skills measurement window:** proposal to run the before/after measurement pass ~2026-07-19..26 per docs/reports/2026-07-12-grounded-skills-wrap.md §3d — say nothing to accept the window; a successor fires it when it matures.
 
-orders: acked=001–018 · done=001–018
+orders: acked=001–018 · done=001–018 · claimed-by: 019 self-improvement 2026-07-13T22:43:51Z
