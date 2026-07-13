@@ -1,1 +1,0 @@
-- `claude/enabler-allowlist-claude` · **ORDER 019 item 2 ASK-001 verification (no-op report)** — verify the auto-merge-enabler template allowlist already covers `claude/*`; land the verification record only, no template/code change · `control/`, `.sessions/` · 2026-07-13

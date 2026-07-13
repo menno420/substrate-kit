@@ -1,5 +1,5 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-13T16:03Z · coordinator session live (v3.6 boot 2026-07-13) · phase: ACTIVE
+updated: 2026-07-13T22:36Z · coordinator session live (v3.6 boot 2026-07-13) · phase: ACTIVE
 
 ## Routines
 - Failsafe: "Self Improvement failsafe wake" trig_01LsHxvnYnpQ59n7iQTPNNF3 · 0 */2 * * * · bound to live coordinator (verified fired 14:05Z).
@@ -8,6 +8,7 @@ updated: 2026-07-13T16:03Z · coordinator session live (v3.6 boot 2026-07-13) ·
 
 ## Shipped 2026-07-13 (11 PRs, all auto-merged on green; payloads verified)
 - #325 adopters.md regen (d916d94) · #326 heartbeat (04ecd6e) · #327 DRIFT classify + outbox ask (dc75e0c) · #328 heartbeat prefix case-insensitive (76feb5d) · #330 heartbeat refresh (243dd57) · #331 guard-fires announce + telemetry doctrine (f873eef) · #332 ORDER 018: check --strict runs both CI legs locally (e7737e0, done=018) · #333 heartbeat done=018 (1e50427) · #334 template-pointer guard, mutation-verified (7c736fa) · #335 skill-pointer guard kit-side (26bc73b) · #336 check_skill_grounds dead-pointer detection engine-side, advisory, 0 false findings fleet-wide (2410554). Suite: 1284 tests.
+- ORDER 019 item 2 = no-op/already-satisfied — enabler allowlist ("claude/*","claim/*") since #300 @ 18e5adc, predates ASK 001 by ~3h; idea-engine #271 merged 2026-07-12; report PR #339 (in flight).
 
 ## Parked
 - PR #317 — owner ratification park (do-not-automerge), green @ 82fca96. Landing path: owner-click. Never arm/close/rebase.
