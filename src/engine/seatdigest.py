@@ -62,6 +62,13 @@ from engine.skills.skills import SKILLS
 # block budget, long enough to keep a wall's workaround arrow readable.
 _ROW_LIMIT = 160
 
+# Readability floor for the ADAPTIVE skills-description clip (see
+# ``_adaptive_skill_clip``): below ~40 chars a truncated description reads
+# worse than no description, so rows drop to name-only before any skill NAME
+# is ever dropped — the digest's whole job is "these procedures exist, don't
+# improvise", and the pointer line carries the detail.
+_SKILL_CLIP_FLOOR = 40
+
 _WALLS_HEADING = "## Walls"
 _LEDGER_APPEND_LOG_HEADING = "## Append log"
 
@@ -109,34 +116,72 @@ def _fit_rows(
     return compose([], [f"- …plus {len(rows)} more — {more_pointer}"])
 
 
-def skills_digest_block(docs_root: str = "docs") -> str:
+def _skill_rows(skills: list[dict], clip: int | None) -> list[str]:
+    """Render one digest row per skill at ``clip`` (``None`` → name-only)."""
+    if clip is None:
+        return [f"- `{skill['name']}`" for skill in skills]
+    return [
+        f"- `{skill['name']}` — {_truncate(skill['description'], clip)}"
+        for skill in skills
+    ]
+
+
+def _adaptive_skill_clip(
+    skills: list[dict],
+    header: list[str],
+    footer: list[str],
+) -> int | None:
+    """Compute the description clip that fits EVERY skill in the budget.
+
+    Replaces the hand-ratcheted constant this module carried through
+    2026-07-13 (120 → 85 → 72, one manual lowering per new skill — every
+    registry addition was a latent test failure until a session paid the
+    ratchet toll again). Instead: scan down from the row ceiling
+    (:data:`_ROW_LIMIT`) for the LARGEST clip where the assembled block —
+    header + all rows + footer — stays within
+    :data:`SEAT_DIGEST_BLOCK_BUDGET`, floored at :data:`_SKILL_CLIP_FLOOR`;
+    if even the floor overflows, return ``None`` → name-only rows (drop
+    descriptions before ever dropping a name). Pure function of its inputs,
+    so the render stays deterministic and byte-reproducible. The descending
+    linear scan is deliberate: ~120 candidate renders is negligible, and it
+    needs no monotonicity assumption about word-boundary truncation.
+    """
+    for clip in range(_ROW_LIMIT, _SKILL_CLIP_FLOOR - 1, -1):
+        block = "\n".join(header + _skill_rows(skills, clip) + footer)
+        if len(block) <= SEAT_DIGEST_BLOCK_BUDGET:
+            return clip
+    return None
+
+
+def skills_digest_block(
+    docs_root: str = "docs",
+    skills: list[dict] | None = None,
+) -> str:
     """Render the fenced skills-index digest block from :data:`SKILLS`.
 
     One row per registered skill — name + when-to-reach-for-it one-liner,
     never the grounds column (that detail is the index's job; the digest's
-    job is "these procedures exist, don't improvise"). Deterministic given
-    the SKILLS list.
+    job is "these procedures exist, don't improvise"). The description clip
+    is COMPUTED per render (``_adaptive_skill_clip``): every skill name
+    survives within the block budget at the widest clip that fits, degrading
+    to name-only rows below the readability floor — no manual ratchet.
+    Deterministic given the skills list. ``skills`` defaults to the
+    registered :data:`SKILLS` (parameterized for growth-proof tests).
     """
+    if skills is None:
+        skills = SKILLS
     index_path = f"{docs_root}/SKILLS.md"
     header = [SKILLS_DIGEST_BEGIN, "## Skills digest", ""]
-    # Description clip 120 → 85 (2026-07-13, seed-skills slice): at 12
-    # registered skills the 120-char rows overflowed the block budget and
-    # _fit_rows silently dropped the tail skills from the digest — but the
-    # digest's whole job is "these procedures exist, don't improvise", so
-    # every NAME must survive; the pointer line carries the detail. The
-    # _fit_rows overflow line stays as the safety net for future growth.
-    # Clip 85 → 72 (2026-07-13, rationalize slice): the 13th skill left the
-    # 85-char block 75 chars over budget; 72 fits all names with headroom.
-    rows = [
-        f"- `{skill['name']}` — {_truncate(skill['description'], 72)}"
-        for skill in SKILLS
-    ]
     footer = [
         "",
         f"Full index (grounds + capabilities): `{index_path}` — the source "
         "this block derives from.",
         SKILLS_DIGEST_END,
     ]
+    rows = _skill_rows(skills, _adaptive_skill_clip(skills, header, footer))
+    # _fit_rows stays as the LAST safety net: if even name-only rows overflow
+    # (a registry so large the budget cannot name every skill), the explicit
+    # "+N more" pointer line still beats a silent overflow.
     return _fit_rows(header, rows, footer, f"read `{index_path}`.")
 
 
