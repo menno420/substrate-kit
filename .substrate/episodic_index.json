@@ -2211,6 +2211,30 @@
     "summary": "> **Status:** `complete`"
   },
   {
+    "slug": "rubric-t5-v2-align",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "rubric",
+      "3",
+      "t5",
+      "block",
+      "v1",
+      "fire",
+      "obey",
+      "ratified",
+      "v2",
+      "alignment",
+      "pin",
+      "path",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(the WORK is complete; the PR itself PARKS open \u2014"
+  },
+  {
     "slug": "run8-content-gap",
     "date": "2026-07-11",
     "tags": [
@@ -2279,6 +2303,27 @@
       "\ud83d\udcca"
     ],
     "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "t5-v3-probe-reshape",
+    "date": "2026-07-11",
+    "tags": [
+      "2026-07-11",
+      "t5",
+      "probe",
+      "v3",
+      "re-shape",
+      "runner-seeded",
+      "drafted",
+      "state",
+      "pin",
+      "path",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` *(the WORK is complete; the PR itself PARKS open \u2014"
   },
   {
     "slug": "wave-a-v1121-distribution",
@@ -2418,6 +2463,380 @@
     "summary": "> **Status:** `complete`"
   },
   {
+    "slug": "bench-run-10",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "b1",
+      "cold-start",
+      "firing",
+      "10",
+      "bench",
+      "run-10",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "bump-v1.13.0",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "release",
+      "v1",
+      "13",
+      "0",
+      "phase",
+      "1",
+      "version-bump",
+      "pr",
+      "born-red",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "bump-v1.14.0",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "release",
+      "v1",
+      "14",
+      "0",
+      "version-bump",
+      "pr",
+      "born-red",
+      "publish",
+      "verify",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "bump-v1.15.0",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "release",
+      "v1",
+      "15",
+      "0",
+      "version-bump",
+      "pr",
+      "born-red",
+      "publish",
+      "verify",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "current-state-condense",
+    "date": "2026-07-12",
+    "tags": [
+      "session",
+      "2026-07-12",
+      "current-state",
+      "md",
+      "condensation",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "enabler-claim-prefix",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "auto-merge-enabler",
+      "arm",
+      "claim",
+      "branches",
+      "end",
+      "293",
+      "stall",
+      "class",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "gate-multicard",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "gate",
+      "multi-card",
+      "shadowing",
+      "ground-truth",
+      "verify",
+      "idea-file",
+      "reconciliation",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "grounded-skills-program",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "grounded",
+      "skills",
+      "program",
+      "survey",
+      "design",
+      "plan",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "grounded-skills-slice1-index",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "grounded-skills",
+      "program",
+      "slice",
+      "1",
+      "skill",
+      "index",
+      "boot-set",
+      "wiring",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "grounded-skills-slice2-playbooks",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "grounded-skills",
+      "program",
+      "slice",
+      "2",
+      "playbook",
+      "bodies",
+      "grounds",
+      "advisory",
+      "checker",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "grounded-skills-slice3-intake",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "grounded-skills",
+      "program",
+      "slice",
+      "3",
+      "intake",
+      "owner-request",
+      "skill",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "grounded-skills-slice4-owner-assist",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "grounded-skills",
+      "program",
+      "slice",
+      "4",
+      "owner-assist",
+      "output",
+      "standard",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "grounded-skills-slice5-capability-refresh",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "grounded-skills",
+      "program",
+      "slice",
+      "5",
+      "capability",
+      "refresh",
+      "venue-scoping",
+      "staleness",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "grounded-skills-slice6-single-source-render",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "grounded-skills",
+      "program",
+      "slice",
+      "6",
+      "single-source",
+      "seat-digest",
+      "render",
+      "kit",
+      "side",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "grounded-skills-slice8-self-propagation",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "grounded-skills",
+      "program",
+      "slice",
+      "8",
+      "self-propagation",
+      "doctrine",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "grounded-skills-tail",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "grounded-skills",
+      "program",
+      "7",
+      "tail",
+      "routines",
+      "doctrine",
+      "evidence",
+      "block",
+      "preflight",
+      "reset",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "grounded-skills-wrap",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "grounded-skills",
+      "program",
+      "wrap",
+      "report",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "heartbeat-grammar-row",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "heartbeat-grammar",
+      "map",
+      "row",
+      "negative",
+      "kit",
+      "example",
+      "adopters",
+      "md",
+      "deference",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "idea-drift-guard",
+    "date": "2026-07-12",
+    "tags": [
+      "session",
+      "idea",
+      "drift",
+      "guard",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "k0-headroom",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "k0",
+      "headroom",
+      "advisory",
+      "orientation",
+      "word-budget",
+      "gauge",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
     "slug": "lab-cadence-failsafe-stopgap",
     "date": "2026-07-12",
     "tags": [
@@ -2451,7 +2870,26 @@
       "\u27f2",
       "\ud83d\udcca"
     ],
-    "summary": "> **Status:** `in-progress`"
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "model-line-family-level",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "model",
+      "line",
+      "family-level",
+      "naming",
+      "mandate",
+      "close",
+      "exact-model-id",
+      "gap",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete` \u2014 PR #286 (`claude/model-line-family-level`)."
   },
   {
     "slug": "order-014-doctrine-input",
@@ -2464,6 +2902,242 @@
       "hardening",
       "input",
       "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "order-015-boot-pointer",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "order",
+      "015",
+      "dead",
+      "boot-pointer",
+      "fix",
+      "gate-integrity",
+      "verify",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "seat-close-out",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "seat",
+      "close-out",
+      "per",
+      "v3",
+      "3",
+      "session",
+      "ender",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "trigger-forensics-report",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "trigger",
+      "forensics",
+      "report",
+      "preservation",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "wave-a-v1.15.0-closeout",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "kit",
+      "v1",
+      "15",
+      "0",
+      "distribution",
+      "wave",
+      "close-out",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "wave-a-v1130-distribution",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "wave",
+      "v1",
+      "13",
+      "0",
+      "distribution",
+      "registry",
+      "rows",
+      "1",
+      "3",
+      "5",
+      "6",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "wave-a-v1140-closeout",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "kit",
+      "v1",
+      "14",
+      "0",
+      "distribution",
+      "wave",
+      "close-out",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "wave-b-v1130-distribution",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "wave",
+      "b",
+      "v1",
+      "13",
+      "0",
+      "distribution",
+      "last",
+      "four",
+      "adopters",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "wave-b-v1140-closeout",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "kit",
+      "v1",
+      "14",
+      "0",
+      "distribution",
+      "wave",
+      "b",
+      "close-out",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "wave-b-v1150-closeout",
+    "date": "2026-07-12",
+    "tags": [
+      "2026-07-12",
+      "kit",
+      "v1",
+      "15",
+      "0",
+      "distribution",
+      "wave",
+      "b",
+      "close-out",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "automerge-preflight",
+    "date": "2026-07-13",
+    "tags": [
+      "session",
+      "auto-merge-enabler",
+      "branch-allowlist",
+      "preflight",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "night-outcomes",
+    "date": "2026-07-13",
+    "tags": [
+      "2026-07-13",
+      "night-outcomes",
+      "adopter-outcome",
+      "writeup",
+      "order",
+      "016",
+      "item",
+      "5",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "rationalization-layer",
+    "date": "2026-07-13",
+    "tags": [
+      "session",
+      "rationalization",
+      "layer",
+      "prototype",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "seed-skills",
+    "date": "2026-07-13",
+    "tags": [
+      "session",
+      "seed",
+      "skills",
+      "into",
+      "registry",
+      "\ud83d\udca1",
+      "\u2691",
       "\u27f2",
       "\ud83d\udcca"
     ],

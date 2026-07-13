@@ -38,3 +38,18 @@ need to route to the owner queue rather than assert).
 
 Small (install-step check + report line); no change to the enabler's
 runtime behavior; reversible.
+
+## Progress
+
+- **Branch-allowlist half — in flight, PR #321** (`claude/clever-sagan-bro9uh`):
+  `src/engine/checks/check_automerge_preflight.py`, a self-silencing
+  `check`-time advisory that flags when the installed
+  `auto-merge-enabler.yml`'s branch allowlist drifts from
+  `automerge.branch_patterns` (the idea-engine hand-patch/stale-allowlist
+  class). Advisory-only, compares the branch expr (version-skew-robust).
+- **Required-context half — REMAINS, owner-UI**: whether the base branch
+  actually requires a status context cannot be verified offline (the engine
+  is stdlib-only, no rules API). It stays surfaced by the enabler's own
+  PR-time `::warning::` (refuse-to-arm on zero contexts) + the adopt
+  repo-settings checklist. Deepening that surface (e.g. a one-time
+  install-run job summary) is the open follow-up.
