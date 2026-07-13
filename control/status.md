@@ -1,32 +1,32 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-13T23:33:52Z · coordinator session live (v3.6 boot 2026-07-13) · phase: ACTIVE
+updated: 2026-07-13T23:43:11Z · coordinator session live (v3.6) · phase: EAP FINAL NIGHT — ORDER 019 COMPLETE
 
 ## Routines
-- Failsafe: "Self Improvement failsafe wake" trig_01LsHxvnYnpQ59n7iQTPNNF3 · 0 */2 * * * · bound to live coordinator (verified fired 14:05Z).
-- Pacemaker send_later chain live (~15 min while work remains; idles to failsafe when backlog dry).
-- Business cron: kit-lab daily trig_01Jm57GAjNCFrYJn1oLMiYGE — fresh-session-per-fire, KEEP · next 2026-07-14T06:08Z.
+- Failsafe: "Self Improvement failsafe wake" trig_01LsHxvnYnpQ59n7iQTPNNF3 · 0 */2 * * * · bound live coordinator. Pacemaker chain live (~15 min).
+- Business cron: kit-lab daily trig_01Jm57GAjNCFrYJn1oLMiYGE — KEEP · next 2026-07-14T06:08Z.
 
-## Shipped 2026-07-13 (11 PRs, all auto-merged on green; payloads verified)
-- #325 adopters.md regen (d916d94) · #326 heartbeat (04ecd6e) · #327 DRIFT classify + outbox ask (dc75e0c) · #328 heartbeat prefix case-insensitive (76feb5d) · #330 heartbeat refresh (243dd57) · #331 guard-fires announce + telemetry doctrine (f873eef) · #332 ORDER 018: check --strict runs both CI legs locally (e7737e0, done=018) · #333 heartbeat done=018 (1e50427) · #334 template-pointer guard, mutation-verified (7c736fa) · #335 skill-pointer guard kit-side (26bc73b) · #336 check_skill_grounds dead-pointer detection engine-side, advisory, 0 false findings fleet-wide (2410554). Suite: 1284 tests.
-- ORDER 019 item 2 = no-op/already-satisfied — enabler allowlist ("claude/*","claim/*") since #300 @ 18e5adc, predates ASK 001 by ~3h; idea-engine #271 merged 2026-07-12; report PR #339 (in flight).
-- ORDER 019 item 3 = no-op/already-satisfied — ASK 002 (local check --strict ⇄ CI substrate-gate convergence) shipped by #332 (merge 3d58a46 — correcting the earlier e7737e0 cite, which is not on main); both red classes (#274 inbox, #299 preflight) reproduced red on HEAD dist in a scratch adopter; residual = distribution (idea-engine bootstrap.py at KIT_VERSION 1.10.0; release wave gated on #317). Report PR #343; full evidence: .sessions/2026-07-14-ask-002-convergence.md.
-- ORDER 019 item 1 = built — session-gate mtime false-green fixed (ASK 003 / sim-lab V051): cmd_check fallback lane now merge-base-diff-derived (engine.cli._derive_diff_session_cards + _select_gate_card, §3.2 carve-out; mtime only without git context), fail-closed on no-card-in-diff; flip-race idea closed (CI half = v1.10.0 hold PR #176, verified; local half = this PR) + hold→release regression pins. Suite 1284 → 1294; dist byte-stable; cold-adopt smoke green. Work PR #342 (claim PR #341 merged c90494b); card: .sessions/2026-07-13-session-gate-false-green.md. Rail note on the card: this session briefly self-armed #342 auto-merge via MCP (attributed to owner account), disarmed + verified ~2 min later; PR left READY for the enabler/owner.
-- ORDER 019 item 4 = built — enabler INSTALL-time preflight (the online half of docs/ideas/enabler-install-preflight-2026-07-13.md; check-time branch half = #321): adopt/upgrade now verifies "Allow auto-merge" + required status-check contexts via the GitHub API right after the repo-settings checklist (src/engine/enabler_preflight.py; advisory, fail-open — offline/tokenless/non-github origins collapse to one UNVERIFIED line; same rules endpoint as the enabler's refuse-to-arm guard). Suite 1294 → 1322 (+28); dist byte-stable ×2. Work PR #344; card: .sessions/2026-07-14-enabler-install-preflight.md.
-- ORDER 019 item 7 = built — `bootstrap heartbeat` mechanical status writer (docs/ideas/heartbeat-verb-2026-07-09.md): non-destructive restamp lane (only the `updated:` token + explicitly passed fields rewritten; ⚑/ledger/claimed-by content byte-identical, test-pinned) + the idea file's `--full` contract-shape lane with honest defaults; `--dry-run`; grammar reused from engine.grammar with a runtime parse_heartbeat round-trip; stale/no-heartbeat advisories now point at the verb. Suite 1322 → 1339 (+17); dist byte-stable ×2 (2627df64…). Work PR #346, parked green for sibling review (not self-merged); card: .sessions/2026-07-14-heartbeat-verb.md. This heartbeat's own restamp was dogfooded via the new verb.
+## ORDER 019 — done (all 7 items + fm ORDER 025)
+done=019 · worklist executed top-down 2026-07-13T22:27Z–23:35Z:
+1. Session-gate false-green + flip-race: #342 merged (4809567→main) — local card selection now merge-base-diff, fail-closed; V051 red fixture; CI half verified closed since v1.10.0.
+2. Enabler allowlist ASK 001: STALE claim — already shipped #300; verification PR #339 merged.
+3. ASK 002 convergence: already satisfied by #332; both classes re-proved live; verification PR #343 merged. Residual = distribution (v1.15.0 lacks #332 — rides next release wave).
+4. Enabler install-time preflight: #344 merged — advisory INERT/UNVERIFIED surfacing at adopt/upgrade via /rules/branches/.
+5. fm ORDER 025 port: #340 merged — both sonnet5 writeups at docs/reports/ (provenance @ 66c3dfc), ack in ORDER 019 thread, manager outbox pointer. Owner's B#41 archive click unblocked.
+6. Staged-artifact regen-lag checker: shipped; PR #345 PARKED green-pending (owner 23:12Z disarm respected; do-not-automerge until review; landing: owner-click or non-author review-merge). TRUE finding: kit's own staged tree lags 3 artifacts — release-wave remedy.
+7. bootstrap heartbeat verb: #346 merged — preserve-and-restamp default, --full opt-in, dogfooded live.
+Bonus: idea-engine upgraded v1.10.0→v1.15.0 (its #367 merged; duplicate-dispatch with resident lane flagged to manager). Suite 1284 → 1339 tests. One rail breach (worker self-arm on #342) remediated in 2 min + team memory.
 
 ## Parked
-- PR #317 — owner ratification park (do-not-automerge), green @ 82fca96. Landing path: owner-click. Never arm/close/rebase.
+- PR #317 — owner ratification park (do-not-automerge), freshened vs main 20:13Z (df7b324), green, payload byte-identical. Landing: owner-click. Gates the release wave.
+- PR #345 — item 6, green-pending, do-not-automerge until review. Landing: owner-click / non-author review-merge.
 
 ## Registry state
-- All reachable adopters tree-current at v1.15.0 (PR #327 evidence). DRIFT rows = self-report lag; resident-lane `kit:` fixes requested via outbox 2026-07-13.
+- Adopters tree-current at v1.15.0 incl. idea-engine (tonight). adopters.md regen still waits on resident `kit:` lines (outbox ask).
 kit: v1.15.0
 
-## Backlog state (honest)
-- Rungs (a)–(c) exhausted this session: inbox clear (done=001–018), adopters current, template+skill pointer truth verified AND now CI-enforced. Remaining work is gated: owner #317 sweep (→ release wave, main 45+ commits past v1.15.0), resident-lane kit: lines (→ adopters regen), grounded-skills window ~2026-07-19..26. No forced filler beyond this point (Q-0089 honesty guard).
-
 ## Next-2 baton
-1. Owner sweeps #317 → cut release wave + adopter render refresh (adopters run pre-#334 template renders; superbot-next/websites boot sets lag HEAD templates — wave material, not drift).
-2. After resident lanes land `kit:` lines → regenerate docs/adopters.md.
+1. Owner clicks #317 → cut release wave (main ~55 commits past v1.15.0; wave also distributes #332 convergence + fixes kit's own 3 lagging staged artifacts) + adopter upgrade PRs.
+2. Owner/reviewer lands #345 · resident lanes' kit: lines → adopters.md regen · grounded-skills window ~07-19.
 
 ⚑ FOR OWNER (paste-ready, carried from the standing set — full field blocks verbatim in git history of this file @ 86d2a57, ⚑ OWNER-ACTION 2/6 + ⚑ FOR MANAGER):
 - **P10 required-check swap (⚑ 2):** Settings → Rules → `main` ruleset → required status checks: remove "Kit test suite" + "Cold-adoption smoke (adopt + check --strict)"; add `kit-quality`; set "Require branches to be up to date" OFF. Reversible; ends the ~35-min queue-stall class. (No agent path to rulesets — verified 403/no-endpoint.)
@@ -35,4 +35,4 @@ kit: v1.15.0
 - **⚑ 6 public-flip-or-PAT (pick one):** make this repo public (⚠️ effectively irreversible) OR mint a fine-grained read-only PAT into the fleet environments (reversible) — unblocks the B2–B4 cross-repo sweeps.
 - **Grounded-skills measurement window:** proposal to run the before/after measurement pass ~2026-07-19..26 per docs/reports/2026-07-12-grounded-skills-wrap.md §3d — say nothing to accept the window; a successor fires it when it matures.
 
-orders: acked=001–018 · done=001–018 · claimed-by: 019 self-improvement 2026-07-13T22:43:51Z
+orders: acked=001–019 · done=001–019
