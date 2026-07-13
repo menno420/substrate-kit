@@ -101,6 +101,10 @@ why: template pointer verified at kit HEAD 8a544a6 on 2026-07-12; the adopter-si
 done-when: no template ships a dead boot pointer (target-exists enforced or boot re-routed); the gate-integrity claim is verified-and-fixed or retracted, with evidence either way.
 
 ## ORDER 016 · 2026-07-13T00:43:45Z · status: new
+priority: P0
+do: execute the owner's night-run directive carried verbatim between the BEGIN/END VERBATIM markers below — tonight's rules plus the seat's five-item work list.
+why: owner live in the Self Improvement coordinator chat, 2026-07-13 night run; top-precedence owner turn.
+done-when: night-run tally (slices landed / templates released / measurements written) posted in heartbeat + outbox by ~06:00Z per the directive's MORNING clause.
 Provenance: owner live in the Self Improvement coordinator chat, 2026-07-13 night run; landed verbatim by the coordinator seat.
 
 BEGIN VERBATIM
