@@ -49,6 +49,12 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- [Seat digest: adaptive description clip instead of a manual ratchet](seat-digest-adaptive-clip-2026-07-13.md)
+  — state: captured; origin: lab (the 120→85→72 clip ratchet — every skill
+  added to the registry is a latent digest-test failure until someone
+  hand-lowers the clip; paid twice in two consecutive sessions, #315 and
+  the rationalize slice); next: quick-win — compute the largest clip that
+  fits all names in the budget, engine change → dist byte-pin.
 - [Engagement gate: a "native-substrate consumer" state for pin-only repos](engagement-native-consumer-state-2026-07-12.md)
   — state: captured; origin: consumer (superbot, friction #37 — the pin-only
   repo with the fleet's strongest native enforcement would red

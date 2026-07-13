@@ -468,6 +468,28 @@ def test_rationalize_grounded_at_kit_root_and_on_empty_target(tmp_path):
     assert check_skill_grounds(tmp_path, skills=rationalize) == []
 
 
+# The known cross-skill name references: body → the skill names it points
+# at. PR #315's session idea, executed by the rationalize checkpoint's own
+# question 1 (contained + reversible → do now): a rename of a referenced
+# skill would otherwise orphan the pointer silently (the grounds checker
+# skips bare single words by design).
+CROSS_SKILL_REFS = {
+    "chase-references": ["intake"],
+    "rationalize": ["session-close"],
+}
+
+
+def test_cross_skill_name_references_resolve():
+    names = set(skill_names())
+    for referrer, refs in CROSS_SKILL_REFS.items():
+        body = get_skill(referrer)["body"]
+        for ref in refs:
+            assert ref in names, f"{referrer} points at unknown skill {ref!r}"
+            assert f"`{ref}`" in body, (
+                f"{referrer}: expected cross-ref `{ref}` missing from body"
+            )
+
+
 # ---------------------------------------------------------------------------
 # Skill index (grounded-skills plan §2 slice 1 — the docs/SKILLS.md table)
 # ---------------------------------------------------------------------------
