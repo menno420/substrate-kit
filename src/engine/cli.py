@@ -59,6 +59,7 @@ from engine.checks.check_session_log import (
     latest_session_log,
     status_in_progress,
 )
+from engine.checks.check_automerge_preflight import check_automerge_preflight
 from engine.checks.check_seat_digest import check_seat_digest
 from engine.checks.check_setup_script import check_setup_script
 from engine.checks.check_skill_grounds import check_skill_grounds
@@ -841,6 +842,17 @@ def cmd_check(
     # not control-lane traffic. Over-budget stays the gate's verdict — the
     # advisory self-silences there (see the checker docstring).
     headroom_advisories = check_orientation_headroom(target, config)
+    # Auto-merge-enabler branch-allowlist preflight (enabler-install-preflight
+    # idea, 2026-07-13 night-run finding): advisory-only by contract, like
+    # every nudge above — a planted auto-merge-enabler.yml whose branch
+    # allowlist drifts from `automerge.branch_patterns` (a hand-edit that
+    # `upgrade` clobbers, or a stale allowlist that never arms the branches
+    # sessions push) is a regenerate/config nudge, never a required-check red
+    # (the offline engine cannot verify the required-context half — that stays
+    # owner-UI, surfaced by the enabler's own PR-time ::warning::). Full lane
+    # only: workflows are not control-lane traffic; self-silences when the
+    # live branch expr matches config.
+    automerge_advisories = check_automerge_preflight(target, config)
     # The inbox append-only gate (issue #36 report 2): a control/inbox.md
     # change must be pure-append vs the merge-base + ORDER-grammar shaped.
     # Rides the finding loop like every checker; engages only when CI handed
@@ -1142,6 +1154,28 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=headroom_advisories,
+        )
+    if automerge_advisories and not status_only:
+        # Same warn-only contract as the advisories above
+        # (enabler-install-preflight): a drifted enabler branch allowlist is a
+        # regenerate/config nudge — surfaced + telemetry-recorded, never
+        # counted toward the exit code. The offline engine cannot see whether
+        # the base branch requires a status context (the INERT-on-zero half),
+        # so a required-check red here would be a fleet bomb during version
+        # skew; that half stays owner-UI.
+        _emit(
+            f"check: {len(automerge_advisories)} auto-merge-enabler advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in automerge_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=automerge_advisories,
         )
     if adopters_advisories and not status_only:
         # Same warn-only contract as the advisories above (EAP §6.3): a

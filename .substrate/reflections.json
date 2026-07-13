@@ -1,52 +1,52 @@
 [
   {
-    "id": "R-0166",
-    "lesson": "**Model-class deviation (D-11):** the lab loop's default is Sonnet-class;",
-    "evidence": "2026-07-12-lab-loop-run.md:L9",
-    "tags": [
-      "flag"
-    ],
-    "status": "provisional",
-    "date": "2026-07-12"
-  },
-  {
-    "id": "R-0167",
-    "lesson": "14/15 (pin PRs #220/#238) unratified, and this seat neither runs arms",
-    "evidence": "2026-07-12-lab-loop-run.md:L28",
-    "tags": [
-      "flag"
-    ],
-    "status": "provisional",
-    "date": "2026-07-12"
-  },
-  {
-    "id": "R-0168",
-    "lesson": "** Session idea:** the friction-disposition loop should leave a",
-    "evidence": "2026-07-12-lab-loop-run.md:L86",
-    "tags": [
-      "idea"
-    ],
-    "status": "provisional",
-    "date": "2026-07-12"
-  },
-  {
-    "id": "R-0169",
-    "lesson": "Recurring attention on docs/operations/lab-loop.md",
-    "evidence": "2026-07-12-lab-cadence-failsafe-stopgap.md:L38, 2026-07-12-lab-loop-run.md:L18",
+    "id": "R-0176",
+    "lesson": "Recurring attention on dist/bootstrap.py",
+    "evidence": "2026-07-12-wave-b-v1150-closeout.md:L14, 2026-07-13-automerge-preflight.md:L39, 2026-07-13-night-outcomes.md:L44, 2026-07-13-rationalization-layer.md:L48, 2026-07-13-seed-skills.md:L33",
     "tags": [
       "recurring-path"
     ],
     "status": "provisional",
-    "date": "2026-07-12"
+    "date": "2026-07-13"
   },
   {
-    "id": "R-0170",
-    "lesson": "Recurring attention on substrate/upgrade-report.md",
-    "evidence": "2026-07-11-wave-a-v1121-distribution.md:L67, 2026-07-11-wave-b-v1121-upgrades.md:L39",
+    "id": "R-0177",
+    "lesson": "Recurring attention on docs/SKILLS.md",
+    "evidence": "2026-07-13-rationalization-layer.md:L34, 2026-07-13-seed-skills.md:L34",
     "tags": [
       "recurring-path"
     ],
     "status": "provisional",
-    "date": "2026-07-12"
+    "date": "2026-07-13"
+  },
+  {
+    "id": "R-0178",
+    "lesson": "Recurring attention on src/engine/seatdigest.py",
+    "evidence": "2026-07-13-rationalization-layer.md:L30, 2026-07-13-seed-skills.md:L24",
+    "tags": [
+      "recurring-path"
+    ],
+    "status": "provisional",
+    "date": "2026-07-13"
+  },
+  {
+    "id": "R-0179",
+    "lesson": "Recurring attention on src/engine/skills/skills.py",
+    "evidence": "2026-07-13-night-outcomes.md:L55, 2026-07-13-rationalization-layer.md:L22, 2026-07-13-seed-skills.md:L12",
+    "tags": [
+      "recurring-path"
+    ],
+    "status": "provisional",
+    "date": "2026-07-13"
+  },
+  {
+    "id": "R-0180",
+    "lesson": "Recurring attention on tests/test_skills.py",
+    "evidence": "2026-07-13-rationalization-layer.md:L38, 2026-07-13-seed-skills.md:L29",
+    "tags": [
+      "recurring-path"
+    ],
+    "status": "provisional",
+    "date": "2026-07-13"
   }
 ]
