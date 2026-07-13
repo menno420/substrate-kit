@@ -1,1 +1,0 @@
-- `claude/night-outcomes` · **adopter-outcome writeup (ORDER 016 item 5)** — night-run adopter-outcome sweep + report · docs/reports/, .sessions/ · 2026-07-13 (Mon Jul 13 04:57:44 UTC 2026)
