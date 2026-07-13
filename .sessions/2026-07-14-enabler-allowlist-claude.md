@@ -1,6 +1,6 @@
 # 2026-07-14 — ORDER 019 item 2 / ASK 001: enabler allowlist `claude/*` — verification (no-op)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 About to: verify ORDER 019 item 2 (ASK 001 relay: "add `claude/` to the
 auto-merge-enabler template allowlist", evidenced by idea-engine's jammed
