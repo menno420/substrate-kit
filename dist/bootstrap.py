@@ -2788,7 +2788,9 @@ def _check_one_status(
                     "status-no-heartbeat",
                     "no parseable `updated:` ISO-8601 heartbeat — still the "
                     "adopt seed? Overwrite the whole file with your real "
-                    "status as the session's LAST step (control/README.md).",
+                    "status as the session's LAST step (control/README.md); "
+                    "mechanical writer: `python3 bootstrap.py heartbeat "
+                    '--full --phase "…"`.',
                 ),
             ],
             [],
@@ -2804,7 +2806,8 @@ def _check_one_status(
                     "status-stale",
                     f"heartbeat is ~{hours}h old (> {max_age_hours}h) — the "
                     "manager treats a stale status as a DARK Project; "
-                    f"overwrite {rel} this session.",
+                    f"overwrite {rel} this session (mechanical restamp: "
+                    "`python3 bootstrap.py heartbeat`).",
                 ),
             ],
         )
@@ -4313,6 +4316,212 @@ def check_setup_script(target: Path) -> list[Finding]:
                 ),
             )
     return findings
+
+# --- engine/heartbeat.py ---
+"""Mechanical heartbeat writer — the ``bootstrap heartbeat`` verb's logic.
+
+Why + provenance: the control protocol's LAST step — overwriting
+``control/status.md`` with a fresh heartbeat — was hand-assembled markdown,
+and the hand-written ``updated:`` timestamp is the failure surface the idea
+file names (``docs/ideas/heartbeat-verb-2026-07-09.md``, ORDER 019 item 7):
+a session that writes ``updated: 2026-7-9 13:00`` (unparseable) goes red for
+formatting, not for darkness, and a routine wake has to template the whole
+file by hand in its prompt. The engine already owns atomic writes, UTC time,
+and the contract text — this module closes the gap with two lanes:
+
+- **Restamp lane** (:func:`restamp_status`, the default) — non-destructive
+  preserve-and-restamp: ONLY the ``updated:`` timestamp token (always a
+  parseable UTC now) plus the heartbeat fields the caller explicitly passes
+  are rewritten; ⚑ blocks, ORDER ledger lines, ``claimed-by`` annotations,
+  and every human-authored section survive **byte-identical**. This is the
+  mechanical fix for the fleet-wide heartbeat-staleness class.
+- **Full-write lane** (:func:`full_status`, behind an explicit ``--full``) —
+  the idea file's contract-shape whole-file writer ("overwrite-own semantics
+  preserved — whole-file write, never append") for the first real heartbeat
+  over the adopt seed; missing flags default honestly (``blockers: none``,
+  ``⚑ needs-owner: none``).
+
+Grammar is kit-owned with ONE home — ``engine.grammar`` (EAP §6.8): the
+``updated:`` and ``kit:`` lines are located via the SAME ``UPDATED_LINE_RE``
+/ ``KIT_LINE_RE`` / ``KIT_VERSION_TOKEN_RE`` constants the ``check``
+enforcers consume, and every write is round-tripped through
+``check_status_current.parse_heartbeat`` before it leaves this module (the
+idea file's write → parse → equal recipe), so the writer can never emit a
+heartbeat the enforcer rejects. Stdlib only; sits below ``cli.py`` (which
+owns the file I/O via ``atomic_write_text``) and imports only grammar +
+``check_status_current``'s parser.
+"""
+
+
+
+
+# The heartbeat's field lines, exactly as control/README.md § "status.md
+# format" teaches them (flag name → line label). Order matters: it is the
+# contract shape full_status renders.
+HEARTBEAT_FIELD_LABELS = {
+    "phase": "phase:",
+    "health": "health:",
+    "last_shipped": "last-shipped:",
+    "blockers": "blockers:",
+    "orders": "orders:",
+    "needs_owner": "⚑ needs-owner:",
+    "notes": "notes:",
+}
+
+
+class HeartbeatError(ValueError):
+    """A heartbeat write that cannot proceed non-destructively.
+
+    Raised instead of guessing: a missing field line, an unparseable
+    ``updated:`` stamp (the adopt seed), or a ``kit:`` line without a
+    version token each name their fix in the message — never a silent
+    whole-file clobber.
+    """
+
+
+def utc_stamp(now: datetime | None = None) -> str:
+    """Render the canonical ``updated:`` timestamp (UTC, seconds precision).
+
+    The exact shape ``grammar.updated_line_example`` teaches
+    (``2026-07-10T12:00:00Z``) — always parseable by ``parse_heartbeat``.
+    """
+    moment = now or datetime.now(timezone.utc)
+    return moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _verify_roundtrip(text: str, stamp: str) -> str:
+    """Assert ``text``'s heartbeat parses back to ``stamp``; return ``text``.
+
+    The idea file's write → parse → equal recipe, run on every write (not
+    just in tests): the writer half and the enforcer half
+    (``check_status_current.parse_heartbeat``) can never disagree silently.
+    """
+    parsed = parse_heartbeat(text)
+    expected = datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ").replace(
+        tzinfo=timezone.utc
+    )
+    if parsed != expected:
+        msg = (
+            "internal round-trip failure: the written heartbeat did not "
+            f"parse back to {stamp} — refusing to emit an unparseable file."
+        )
+        raise HeartbeatError(msg)
+    return text
+
+
+def _replace_field_line(text: str, label: str, value: str) -> str:
+    """Replace the first ``<label> …`` line's value; the rest stays put."""
+    pattern = re.compile(rf"^({re.escape(label)}\s*).*$", re.MULTILINE)
+    match = pattern.search(text)
+    if match is None:
+        msg = (
+            f"no `{label}` line found — the restamp lane only rewrites "
+            "existing field lines (non-destructive); add the line by hand "
+            "or write a fresh contract-shape heartbeat with --full."
+        )
+        raise HeartbeatError(msg)
+    return text[: match.start()] + match.group(1) + value + text[match.end() :]
+
+
+def _replace_kit_version(text: str, version: str) -> str:
+    """Rewrite the ``kit:`` line's ``v<X.Y.Z>`` token, decorations intact."""
+    line = KIT_LINE_RE.search(text)
+    if line is None:
+        msg = (
+            "no parseable `kit:` line found (grammar: KIT_LINE_RE — keep "
+            "the token PLAIN, never bold) — add one, or write a fresh "
+            "contract-shape heartbeat with --full."
+        )
+        raise HeartbeatError(msg)
+    token = KIT_VERSION_TOKEN_RE.search(text, line.start(), line.end())
+    if token is None:
+        msg = (
+            "the `kit:` line carries no `v<X.Y.Z>` version token to "
+            "rewrite — fix the line by hand (format: control/README.md "
+            '§ "status.md format").'
+        )
+        raise HeartbeatError(msg)
+    return text[: token.start()] + f"v{version}" + text[token.end() :]
+
+
+def restamp_status(
+    text: str,
+    *,
+    now: datetime | None = None,
+    fields: dict[str, str] | None = None,
+    kit_version: str | None = None,
+) -> str:
+    """Return ``text`` with ONLY the mechanical heartbeat fields rewritten.
+
+    - The ``updated:`` line's timestamp token becomes a fresh UTC now;
+      everything after the token (live heartbeats decorate the line) is
+      preserved byte-for-byte.
+    - Each entry in ``fields`` (flag name → new value, labels per
+      :data:`HEARTBEAT_FIELD_LABELS`) replaces that field line's value.
+    - ``kit_version`` rewrites the ``kit:`` line's version token only.
+
+    Everything not named is preserved **byte-identical** — ⚑ blocks, ORDER
+    ledger lines, ``claimed-by`` annotations, prose sections. Raises
+    :class:`HeartbeatError` (never guesses) when the existing heartbeat
+    doesn't parse — an adopt seed or a hand-mangled stamp is a case for
+    ``--full`` or a hand fix, not for a silent rewrite of unknown content.
+    """
+    match = UPDATED_LINE_RE.search(text)
+    if match is None or parse_heartbeat(text) is None:
+        msg = (
+            "no parseable `updated:` ISO-8601 heartbeat in the existing "
+            "file — still the adopt seed? Write the first real heartbeat "
+            "with --full (whole-file contract shape), which is the seed's "
+            "own documented overwrite path."
+        )
+        raise HeartbeatError(msg)
+    stamp = utc_stamp(now)
+    result = text[: match.start(1)] + stamp + text[match.end(1) :]
+    for name, value in (fields or {}).items():
+        result = _replace_field_line(result, HEARTBEAT_FIELD_LABELS[name], value)
+    if kit_version is not None:
+        result = _replace_kit_version(result, kit_version)
+    return _verify_roundtrip(result, stamp)
+
+
+def full_status(
+    project_name: str,
+    kit_version: str,
+    *,
+    phase: str,
+    now: datetime | None = None,
+    health: str = "green",
+    orders: str = "acked= done=",
+    last_shipped: str = "none",
+    blockers: str = "none",
+    needs_owner: str = "none",
+    notes: str = "none",
+    kit_check: str = "green",
+    kit_engaged: str = "yes",
+) -> str:
+    """Render the exact contract-shape heartbeat (the idea file's lane).
+
+    The taught block from control/README.md § "status.md format", field for
+    field; missing flags default honestly (``blockers: none``,
+    ``⚑ needs-owner: none`` — the idea file's named defaults). ``phase`` has
+    no honest default — what the seat is doing is the one thing only the
+    caller knows — so it is required. The render is round-tripped through
+    the enforcer's parser before it leaves.
+    """
+    stamp = utc_stamp(now)
+    text = (
+        f"# {project_name} · status\n"
+        f"updated: {stamp}\n"
+        f"phase: {phase}\n"
+        f"health: {health}\n"
+        f"kit: v{kit_version} · check: {kit_check} · engaged: {kit_engaged}\n"
+        f"last-shipped: {last_shipped}\n"
+        f"blockers: {blockers}\n"
+        f"orders: {orders}\n"
+        f"⚑ needs-owner: {needs_owner}\n"
+        f"notes: {notes}\n"
+    )
+    return _verify_roundtrip(text, stamp)
 
 # --- engine/ledger.py ---
 """Decision ledger — the ``[D-NNNN]`` provenance-separated rulebook (Lane B6).
@@ -18754,6 +18963,118 @@ def cmd_seat_digest(target: Path, *, venues: list[str] | None = None) -> int:
     return 0
 
 
+def cmd_heartbeat(
+    target: Path,
+    *,
+    full: bool = False,
+    dry_run: bool = False,
+    status_file: str | None = None,
+    fields: dict[str, str] | None = None,
+    kit_version: str | None = None,
+    kit_check: str | None = None,
+    kit_engaged: str | None = None,
+) -> int:
+    """Write/refresh the control heartbeat mechanically (ORDER 019 item 7).
+
+    The ``bootstrap heartbeat`` verb — the idea file's mechanical LAST step
+    (``docs/ideas/heartbeat-verb-2026-07-09.md``). Default lane: a
+    non-destructive **restamp** of the existing heartbeat file — a fresh,
+    always-parseable UTC ``updated:`` stamp plus only the field lines the
+    caller passed; everything else survives byte-identical
+    (:func:`engine.heartbeat.restamp_status`). ``--full``: the whole-file
+    contract-shape write for the first real heartbeat over the adopt seed.
+    ``--dry-run`` prints the would-be diff (or full text for a new file)
+    and writes nothing. Refuses outside a control-carrying host, and on a
+    missing/unparseable heartbeat names the fix instead of guessing.
+    """
+    config = load_config(target)
+    relpaths = heartbeat_relpaths(config.heartbeat_files)
+    bus_files = [INBOX_RELPATH, CONTROL_README_RELPATH, *relpaths]
+    if not any((target / rel).is_file() for rel in bus_files):
+        _emit(
+            "heartbeat: refused — no control/ bus here (no inbox, README, "
+            "or heartbeat file); this verb writes a control-protocol "
+            "heartbeat only."
+        )
+        return 2
+    rel = status_file or relpaths[0]
+    path = target / rel
+    fields = dict(fields or {})
+    old_text: str | None = None
+    if path.is_file():
+        try:
+            old_text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            _emit(f"heartbeat: cannot read {rel} ({exc}) — fix the file first.")
+            return 2
+    if full:
+        phase = fields.pop("phase", None)
+        if not phase:
+            _emit(
+                "heartbeat: --full needs --phase — what the seat is doing "
+                "is the one field with no honest default."
+            )
+            return 2
+        backend = JsonStateBackend(_state_path(target, config))
+        context = build_context(backend.data) if backend.data else {}
+        project_name = context.get("project_name") or target.resolve().name
+        new_text = full_status(
+            project_name,
+            kit_version or KIT_VERSION,
+            phase=phase,
+            kit_check=kit_check or "green",
+            kit_engaged=kit_engaged or "yes",
+            **fields,
+        )
+        touched = "whole contract shape (--full)"
+    else:
+        if kit_check is not None or kit_engaged is not None:
+            _emit(
+                "heartbeat: --kit-check/--kit-engaged shape the --full "
+                "contract render only — the restamp lane preserves the "
+                "existing kit: line (version token via --kit-version)."
+            )
+            return 2
+        if old_text is None:
+            _emit(
+                f"heartbeat: {rel} not found — write the first heartbeat "
+                "with --full (or point --status-file at your lane's file)."
+            )
+            return 2
+        try:
+            new_text = restamp_status(
+                old_text,
+                fields=fields,
+                kit_version=kit_version,
+            )
+        except HeartbeatError as exc:
+            _emit(f"heartbeat: refused — {exc}")
+            return 2
+        parts = ["updated:", *sorted(fields)]
+        if kit_version is not None:
+            parts.append(f"kit: v{kit_version}")
+        touched = ", ".join(parts)
+    if dry_run:
+        if old_text is not None:
+            diff = difflib.unified_diff(
+                old_text.splitlines(keepends=True),
+                new_text.splitlines(keepends=True),
+                fromfile=f"a/{rel}",
+                tofile=f"b/{rel}",
+            )
+            _emit("".join(diff).rstrip("\n"))
+        else:
+            _emit(new_text.rstrip("\n"))
+        _emit(f"heartbeat: DRY RUN — {rel} not written.")
+        return 0
+    atomic_write_text(path, new_text)
+    _emit(
+        f"heartbeat: wrote {rel} ({touched}) — stamp parseable by "
+        "check_status_current (round-trip verified)."
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Construct the bootstrap argument parser."""
     parser = argparse.ArgumentParser(prog="bootstrap", description="substrate-kit")
@@ -18996,6 +19317,84 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    heartbeat_p = sub.add_parser(
+        "heartbeat",
+        help=(
+            "restamp the control/ status heartbeat mechanically — a fresh "
+            "parseable UTC updated: stamp plus only the fields you pass "
+            "(everything else preserved byte-identical); --full writes the "
+            "whole contract shape (the first real heartbeat)"
+        ),
+    )
+    heartbeat_p.add_argument("--target", type=Path, default=Path.cwd())
+    heartbeat_p.add_argument(
+        "--status-file",
+        default=None,
+        help=(
+            "heartbeat file to write (default: the first configured "
+            "heartbeat_files entry — control/status.md unless a lane "
+            "configured otherwise)"
+        ),
+    )
+    heartbeat_p.add_argument(
+        "--full",
+        action="store_true",
+        help=(
+            "write the whole contract-shape heartbeat (the adopt seed's "
+            "documented overwrite path); requires --phase, other fields "
+            "default honestly (blockers/⚑ needs-owner: none)"
+        ),
+    )
+    heartbeat_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the would-be diff (or full text for a new file) without writing",
+    )
+    heartbeat_p.add_argument("--phase", default=None, help="phase: line value")
+    heartbeat_p.add_argument("--health", default=None, help="health: line value")
+    heartbeat_p.add_argument(
+        "--orders",
+        default=None,
+        help='orders: line value (e.g. "acked=001-003 done=001,002")',
+    )
+    heartbeat_p.add_argument(
+        "--last-shipped",
+        dest="last_shipped",
+        default=None,
+        help="last-shipped: line value",
+    )
+    heartbeat_p.add_argument("--blockers", default=None, help="blockers: line value")
+    heartbeat_p.add_argument(
+        "--needs-owner",
+        dest="needs_owner",
+        default=None,
+        help="⚑ needs-owner: line value",
+    )
+    heartbeat_p.add_argument("--notes", default=None, help="notes: line value")
+    heartbeat_p.add_argument(
+        "--kit-version",
+        dest="kit_version",
+        default=None,
+        help=(
+            "rewrite the kit: line's v<X.Y.Z> token (restamp lane keeps "
+            "the line's decorations; --full default: this dist's version)"
+        ),
+    )
+    heartbeat_p.add_argument(
+        "--kit-check",
+        dest="kit_check",
+        choices=("green", "red"),
+        default=None,
+        help="kit: line check: field (--full lane only)",
+    )
+    heartbeat_p.add_argument(
+        "--kit-engaged",
+        dest="kit_engaged",
+        choices=("yes", "no"),
+        default=None,
+        help="kit: line engaged: field (--full lane only)",
+    )
+
     check = sub.add_parser("check", help="run the doc + session-log hygiene checks")
     check.add_argument("--target", type=Path, default=Path.cwd())
     check.add_argument("--strict", action="store_true", help="exit 1 if any violation")
@@ -19100,6 +19499,30 @@ def main(argv: list[str] | None = None) -> int:
             )
         if args.command == "seat-digest":
             return cmd_seat_digest(args.target, venues=args.venue)
+        if args.command == "heartbeat":
+            fields = {
+                name: value
+                for name, value in (
+                    ("phase", args.phase),
+                    ("health", args.health),
+                    ("orders", args.orders),
+                    ("last_shipped", args.last_shipped),
+                    ("blockers", args.blockers),
+                    ("needs_owner", args.needs_owner),
+                    ("notes", args.notes),
+                )
+                if value is not None
+            }
+            return cmd_heartbeat(
+                args.target,
+                full=args.full,
+                dry_run=args.dry_run,
+                status_file=args.status_file,
+                fields=fields,
+                kit_version=args.kit_version,
+                kit_check=args.kit_check,
+                kit_engaged=args.kit_engaged,
+            )
         if args.command == "check":
             return cmd_check(
                 args.target,
