@@ -1,6 +1,6 @@
 # 2026-07-13 — heartbeat `updated:` prefix case-insensitivity
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 ⚑ Self-initiated: friction → guard from PR #326 — a live heartbeat written
 as `Updated:` failed `[status-no-heartbeat]` because `UPDATED_LINE_RE`
