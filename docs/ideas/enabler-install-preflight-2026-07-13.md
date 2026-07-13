@@ -47,9 +47,23 @@ runtime behavior; reversible.
   `auto-merge-enabler.yml`'s branch allowlist drifts from
   `automerge.branch_patterns` (the idea-engine hand-patch/stale-allowlist
   class). Advisory-only, compares the branch expr (version-skew-robust).
-- **Required-context half — REMAINS, owner-UI**: whether the base branch
-  actually requires a status context cannot be verified offline (the engine
-  is stdlib-only, no rules API). It stays surfaced by the enabler's own
-  PR-time `::warning::` (refuse-to-arm on zero contexts) + the adopt
-  repo-settings checklist. Deepening that surface (e.g. a one-time
-  install-run job summary) is the open follow-up.
+- **Install-time half — SHIPPED, PR #344** (`claude/enabler-install-preflight`,
+  ORDER 019 item 4): `src/engine/enabler_preflight.py`, called by `adopt`
+  (and so by `upgrade`) whenever the live enabler is planted/regenerated,
+  right after the repo-settings checklist. Best-effort ONLINE verification
+  of the two owner-UI preconditions via the GitHub API (stdlib urllib,
+  `GITHUB_TOKEN`/`GH_TOKEN` honoured, origin slug read from `.git/config` —
+  no subprocess): `"Allow auto-merge"` OFF → loud line naming the toggle;
+  ZERO required status-check contexts on the default branch → loud INERT
+  line (same rules endpoint the enabler's refuse-to-arm guard counts);
+  required-context name mismatch → line naming the actual required contexts
+  to pin in config. Advisory + fail-open: no git / non-github origin /
+  offline / tokenless visibility / HTTP or JSON errors each collapse to one
+  honest UNVERIFIED line pointing at the manual checklist — an offline
+  install never fails or slows on this. The branch-allowlist condition is
+  deliberately NOT re-checked here (install-time regen forces workflow ==
+  config; later drift is #321's check-time advisory).
+- **Remaining owner-UI residue**: the preflight *reports* what is
+  misconfigured; it cannot *set* repo settings (no workflow/API-write path)
+  — flipping "Allow auto-merge" and requiring the context stay owner
+  clicks, now prompted at install time instead of at the first parked PR.

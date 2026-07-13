@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any
 from typing import Any, NamedTuple
 from typing import Callable
+from typing import Callable, Mapping
 from typing import NamedTuple
 import argparse
 import ast
@@ -1932,13 +1933,17 @@ The session workflow asks every session to end with a
 Each marker is a ``{"label", "needle"}`` pair from ``substrate.config.json``, so a
 host tunes the ritual without touching engine code.
 
-Unlike the host's version this port does **not** shell out to ``git`` to pick the
-"current" log — ``subprocess`` is banned in engine code and is host-CI sugar
-anyway. The current log is the newest ``*.md`` by mtime under ``sessions_dir``;
-CI workflows should prefer ``check --session-log <file>`` with the card the
-PR's diff touches, because a fresh checkout flattens every mtime to checkout
-time and silently degrades the newest-by-mtime guess. Pure stdlib; returns the
-missing markers rather than printing.
+Unlike the host's version this module does **not** shell out to ``git`` to pick
+the "current" log — ``subprocess`` is banned in engine *checker* code (§3.2).
+:func:`latest_session_log` (newest ``*.md`` by mtime under ``sessions_dir``) is
+only the LAST-RESORT guess: the CLI's fallback lane derives the card set from
+the merge-base diff vs ``origin/main`` itself (``engine.cli.
+_derive_diff_session_cards``, a documented §3.2 carve-out — the sim-lab V051
+false-green showed a post-merge sibling card carries the freshest mtime and the
+mtime guess validates the WRONG card), and CI workflows pass ``check
+--session-log <file>`` with the card the PR's diff touches (a fresh checkout
+flattens every mtime to checkout time). Pure stdlib; returns the missing
+markers rather than printing.
 """
 
 
@@ -11346,6 +11351,363 @@ def seat_digest_text(
         config.docs_root,
     )
 
+# --- engine/enabler_preflight.py ---
+"""Auto-merge-enabler INSTALL-time preflight — the online-verifiable half of
+the enabler install preflight (docs/ideas/enabler-install-preflight-
+2026-07-13.md).
+
+Why + provenance: the enabler installs cleanly into repos where it cannot
+function, and the INERT state stays silent until the first parked PR. Three
+seats hit it on the 2026-07-12→13 night run
+(docs/reports/2026-07-13-night-run-adopter-outcomes.md §a). The check-time
+branch-drift half shipped as ``checks/check_automerge_preflight.py`` (kit PR
+#321); this module is the remaining half: at adopt/upgrade time — the moment
+the live enabler is planted or regenerated — verify the two owner-UI
+preconditions the printed repo-settings checklist can only *describe*, and
+report what is actually configured:
+
+- ``"Allow auto-merge"`` (repo setting) — OFF means the enabler cannot arm
+  ANY PR (the trading-strategy class). Read from ``GET /repos/{owner}/{repo}``
+  → ``allow_auto_merge``.
+- Required status-check CONTEXTS on the default branch — zero means the
+  enabler's refuse-to-arm guard keeps it INERT forever (the superbot-idle /
+  gba-homebrew class). Read from ``GET /repos/{owner}/{repo}/rules/branches/
+  {branch}`` — deliberately the SAME rules endpoint the enabler's own guard
+  counts, so the preflight and the workflow can never disagree on semantics.
+  A non-empty set that lacks the configured ``automerge.required_context``
+  additionally flags the name mismatch (the websites class — the checklist
+  and enabler logs would tell the owner to require a context nothing
+  publishes).
+
+The branch-allowlist condition is NOT verified here on purpose: at install
+time the workflow is regenerated from ``automerge.branch_patterns``, so
+workflow == config by construction; later drift is exactly what the #321
+check-time advisory catches. Duplicating it here would double-report every
+finding.
+
+Posture is **advisory-only and fail-open** (the idea file's routing note:
+"the preflight output may need to route to the owner queue rather than
+assert"). The kit installs in varied environments — offline containers,
+tokenless CI, non-GitHub remotes — and a preflight that hard-fails installs
+offline would be worse than none. Every degradation collapses to one honest
+``UNVERIFIED`` report line pointing back at the manual checklist:
+
+- no ``.git`` / no origin remote / origin not a ``github.com`` URL
+- no network, DNS failure, timeout (5 s per request)
+- HTTP errors (404 on a private repo without a token, 403 rate limit, …)
+- tokenless visibility: ``allow_auto_merge`` is only present in the API
+  response for credentials with push scope — absence is reported as
+  unverifiable, never as OFF
+- malformed / unexpected JSON
+
+Pure stdlib (``urllib``, honouring the environment's proxy settings — the
+``currency.py`` transport precedent); no ``subprocess`` (§3.2): the origin
+remote is read from ``.git/config`` directly (worktree ``.git`` files and
+``commondir`` indirection followed best-effort). The HTTP transport is
+injectable (``http_get(url, headers) -> (status, body)``) so tests never
+touch the network; ``GITHUB_TOKEN`` / ``GH_TOKEN`` are honoured when present.
+No ``engine.adopt`` imports (adopt imports *this* module — a reverse import
+would cycle); callers pass the configured required-context name in.
+"""
+
+
+
+# One greppable prefix for every line this preflight emits into the adopt
+# report (and the report file adopt writes), so a session — or the owner —
+# can pull the verdict out of a long adopt/upgrade transcript in one grep.
+PREFLIGHT_PREFIX = "enabler preflight:"
+
+_API_ROOT = "https://api.github.com"
+_TIMEOUT_SECONDS = 5
+
+# The two github.com remote shapes worth recognizing: URL-style
+# (https://github.com/o/r[.git], ssh://git@github.com/o/r[.git]) and
+# scp-style (git@github.com:o/r[.git]). Anything else — local paths, proxy
+# remotes, other hosts — degrades to UNVERIFIED rather than guessing.
+_URL_SLUG_RE = re.compile(
+    r"^(?:https?|ssh|git)://(?:[^/@]+@)?github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$",
+)
+_SCP_SLUG_RE = re.compile(
+    r"^(?:[^@]+@)?github\.com:([^/]+?)/([^/]+?)(?:\.git)?/?$",
+)
+
+
+def _git_config_text(root: Path) -> str | None:
+    """Return the repo's git config text, or ``None`` when unreachable.
+
+    Handles the three checkout shapes best-effort: a normal ``.git/``
+    directory, a worktree/submodule ``.git`` FILE (``gitdir: <path>``), and
+    a worktree gitdir whose ``commondir`` file points at the shared
+    ``.git``. Any read failure fails open (``None`` — not a verdict).
+    """
+    git_path = root / ".git"
+    try:
+        if git_path.is_dir():
+            cfg = git_path / "config"
+            return cfg.read_text(encoding="utf-8") if cfg.is_file() else None
+        if git_path.is_file():
+            match = re.search(
+                r"^gitdir:\s*(.+)\s*$",
+                git_path.read_text(encoding="utf-8"),
+                re.MULTILINE,
+            )
+            if match is None:
+                return None
+            gitdir = Path(match.group(1).strip())
+            if not gitdir.is_absolute():
+                gitdir = (root / gitdir).resolve()
+            common = gitdir / "commondir"
+            if common.is_file():
+                rel = common.read_text(encoding="utf-8").strip()
+                base = Path(rel)
+                if not base.is_absolute():
+                    base = (gitdir / rel).resolve()
+            else:
+                base = gitdir
+            cfg = base / "config"
+            return cfg.read_text(encoding="utf-8") if cfg.is_file() else None
+    except (OSError, UnicodeDecodeError):
+        return None
+    return None
+
+
+def _origin_url(config_text: str) -> str | None:
+    """Return the ``[remote "origin"]`` url from git-config text, or None.
+
+    A deliberately small INI walk (git config is ini-shaped): track the
+    current section header, take the first ``url =`` under the origin
+    remote. No ``git`` subprocess (§3.2).
+    """
+    in_origin = False
+    for raw in config_text.split("\n"):
+        line = raw.strip()
+        if not line or line.startswith(("#", ";")):
+            continue
+        if line.startswith("["):
+            in_origin = re.match(
+                r'^\[remote\s+"origin"\]$',
+                line,
+            ) is not None
+            continue
+        if in_origin:
+            match = re.match(r"url\s*=\s*(.+)$", line)
+            if match is not None:
+                return match.group(1).strip()
+    return None
+
+
+def _github_slug(url: str) -> tuple[str, str] | None:
+    """Return ``(owner, repo)`` for a github.com remote URL, else ``None``."""
+    for pattern in (_URL_SLUG_RE, _SCP_SLUG_RE):
+        match = pattern.match(url.strip())
+        if match is not None:
+            return match.group(1), match.group(2)
+    return None
+
+
+def _preflight_urllib_get(url: str, headers: dict[str, str]) -> tuple[int, bytes]:
+    """Default HTTP transport: stdlib urllib, short timeout, status+body.
+
+    An HTTP error status is a *result* (returned), not an exception —
+    transport-level failures (DNS, refused, timeout) propagate ``OSError``
+    for the caller's fail-open handling.
+    """
+    request = urllib.request.Request(url, headers=headers)  # noqa: S310
+    try:
+        with urllib.request.urlopen(  # noqa: S310
+            request,
+            timeout=_TIMEOUT_SECONDS,
+        ) as response:
+            return response.status, response.read()
+    except urllib.error.HTTPError as exc:
+        body = exc.read() if exc.fp is not None else b""
+        return exc.code, body
+
+
+def _fetch_json(
+    get: Callable[[str, dict[str, str]], tuple[int, bytes]],
+    url: str,
+    headers: dict[str, str],
+) -> tuple[int | None, object]:
+    """Return ``(status, parsed_json)`` — ``(None, None)`` on transport failure.
+
+    ``status`` is ``None`` only when the request never completed (offline /
+    DNS / timeout); a completed request with unparseable JSON keeps its
+    status and parses to ``None``. Fail-open by contract: this helper never
+    raises.
+    """
+    try:
+        status, body = get(url, headers)
+    except (OSError, ValueError):
+        # OSError covers URLError / timeouts / refused sockets; ValueError
+        # covers a malformed URL. Either way: not a verdict.
+        return None, None
+    try:
+        return status, json.loads(body.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return status, None
+
+
+def _required_contexts(rules: list) -> list[str]:
+    """Collect required status-check context names from a rules-API response.
+
+    Mirrors the enabler workflow's own jq
+    (``.[] | select(.type == "required_status_checks") |
+    .parameters.required_status_checks // [] | .[].context``) so the
+    preflight counts exactly what the refuse-to-arm guard will count.
+    """
+    contexts: list[str] = []
+    for rule in rules:
+        if not isinstance(rule, dict):
+            continue
+        if rule.get("type") != "required_status_checks":
+            continue
+        parameters = rule.get("parameters")
+        checks = (
+            parameters.get("required_status_checks")
+            if isinstance(parameters, dict)
+            else None
+        )
+        for check in checks or []:
+            if isinstance(check, dict) and check.get("context"):
+                contexts.append(str(check["context"]))
+    return contexts
+
+
+def _unverified(reason: str) -> list[str]:
+    """One honest degradation line — the manual checklist is the fallback."""
+    return [
+        f"{PREFLIGHT_PREFIX} UNVERIFIED ({reason}) — verify the two repo "
+        "settings by hand via the repo-settings checklist above.",
+    ]
+
+
+def enabler_install_preflight(
+    root: Path,
+    required_context: str,
+    *,
+    http_get: Callable[[str, dict[str, str]], tuple[int, bytes]] | None = None,
+    env: Mapping[str, str] | None = None,
+) -> list[str]:
+    """Return advisory report lines verifying the enabler's repo settings.
+
+    Called by ``adopt`` (and therefore ``upgrade``) whenever the live
+    enabler workflow exists — right after the repo-settings checklist, which
+    it deepens with what is *actually* configured. Advisory by contract:
+    lines only, never an exception, never exit-affecting. ``http_get`` /
+    ``env`` are test seams (default: stdlib urllib + ``os.environ``).
+    """
+    get = http_get if http_get is not None else _preflight_urllib_get
+    environ: Mapping[str, str] = os.environ if env is None else env
+
+    config_text = _git_config_text(root)
+    if config_text is None:
+        return _unverified("no readable git checkout at the target")
+    origin = _origin_url(config_text)
+    if origin is None:
+        return _unverified("no origin remote in .git/config")
+    slug = _github_slug(origin)
+    if slug is None:
+        return _unverified(
+            "origin remote is not a github.com URL, so repo settings are "
+            "not reachable from here",
+        )
+    owner, repo = slug
+
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "substrate-kit-enabler-preflight",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    token = environ.get("GITHUB_TOKEN") or environ.get("GH_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    status, repo_data = _fetch_json(
+        get,
+        f"{_API_ROOT}/repos/{owner}/{repo}",
+        headers,
+    )
+    if status is None:
+        return _unverified(
+            f"could not reach the GitHub API for {owner}/{repo} — offline "
+            "or blocked network",
+        )
+    if status != 200 or not isinstance(repo_data, dict):
+        return _unverified(
+            f"GET /repos/{owner}/{repo} returned HTTP {status} — a private "
+            "repo without a token, a rate limit, or a moved repo",
+        )
+
+    lines: list[str] = []
+    allow = repo_data.get("allow_auto_merge")
+    if allow is True:
+        lines.append(
+            f'{PREFLIGHT_PREFIX} "Allow auto-merge" is ON — checklist '
+            "item 1 verified.",
+        )
+    elif allow is False:
+        lines.append(
+            f'{PREFLIGHT_PREFIX} "Allow auto-merge" is OFF — the installed '
+            "enabler cannot arm ANY PR until the owner flips Settings → "
+            'General → Pull Requests → "Allow auto-merge" = ON (checklist '
+            "item 1).",
+        )
+    else:
+        # The API only includes the merge-settings fields for credentials
+        # with push scope; absence means "cannot see", never "off".
+        lines.append(
+            f'{PREFLIGHT_PREFIX} "Allow auto-merge" UNVERIFIED — the API '
+            "hides merge settings without push-scope credentials (set "
+            "GITHUB_TOKEN/GH_TOKEN to verify); checklist item 1 is the "
+            "manual path.",
+        )
+
+    branch = str(repo_data.get("default_branch") or "main")
+    rules_status, rules = _fetch_json(
+        get,
+        f"{_API_ROOT}/repos/{owner}/{repo}/rules/branches/{branch}",
+        headers,
+    )
+    if rules_status != 200 or not isinstance(rules, list):
+        why = (
+            "offline or blocked network"
+            if rules_status is None
+            else f"HTTP {rules_status}"
+        )
+        lines.append(
+            f"{PREFLIGHT_PREFIX} required status-check contexts on "
+            f"'{branch}' UNVERIFIED ({why}); checklist item 2 is the "
+            "manual path.",
+        )
+        return lines
+
+    contexts = _required_contexts(rules)
+    if not contexts:
+        lines.append(
+            f"{PREFLIGHT_PREFIX} '{branch}' requires ZERO status-check "
+            "contexts — the enabler's refuse-to-arm guard keeps the install "
+            "INERT (arming would merge PRs instantly) until the owner makes "
+            f"'{required_context}' a required check (checklist item 2).",
+        )
+    elif required_context in contexts:
+        lines.append(
+            f"{PREFLIGHT_PREFIX} '{branch}' requires "
+            f"{len(contexts)} status-check context(s) including "
+            f"'{required_context}' — checklist item 2 verified.",
+        )
+    else:
+        listed = ", ".join(f"'{name}'" for name in sorted(set(contexts)))
+        lines.append(
+            f"{PREFLIGHT_PREFIX} '{branch}' requires {listed} but not "
+            f"'{required_context}' — the enabler still arms (its guard "
+            "counts contexts generically), but the config knob names a "
+            "context that is not required: set substrate.config.json -> "
+            'automerge."required_context" to the real gate so the '
+            "checklist + enabler logs name the right check.",
+        )
+    return lines
+
 # --- engine/adopt.py ---
 """One-step adopt flow — plant the workflow docs, stage the packs (Lane B8).
 
@@ -13209,6 +13571,13 @@ def adopt(
         # repo settings exist — say so in the adopt output itself, every
         # pass (the checklist is idempotent guidance, not a nag).
         report.extend(_repo_settings_checklist(enabler_context))
+        # Install-time preflight (the online half of enabler-install-
+        # preflight-2026-07-13; the check-time branch half is #321): verify
+        # the two settings the checklist can only describe — "Allow
+        # auto-merge" + required contexts — against the live GitHub API.
+        # Advisory + fail-open by contract: offline / tokenless / non-GitHub
+        # remotes collapse to one UNVERIFIED line, never a failed adopt.
+        report.extend(enabler_install_preflight(root, enabler_context))
     # required_context sanity (queued kit fix 3, the websites class): after
     # the gate/enabler regens above so a just-installed live gate counts as
     # a matching context. Advisory line only — see the helper's docstring.
@@ -15937,11 +16306,12 @@ rather than ``print`` to keep the engine lint-clean.
 # THE §3.2 carve-out (ORDER 018 / idea-engine ASK 002): subprocess is banned
 # in engine code — checkers never shell out; CI does the git work in bash.
 # The ONE exception is `check`'s LOCAL-RITUAL parity legs below
-# (_derive_inbox_base + _run_preflight_scripts): local `check --strict` must
-# run the SAME legs as the CI substrate-gate, and locally there is no bash
-# wrapper to extract the merge-base blob or launch the repo's preflight
-# scripts. Both helpers self-skip (fail open, NOTE line) on any failure and
-# are never on the CI path, which still hands in --inbox-base explicitly.
+# (_derive_inbox_base + _derive_diff_session_cards + _run_preflight_scripts):
+# local `check --strict` must run the SAME legs as the CI substrate-gate, and
+# locally there is no bash wrapper to extract the merge-base blob, derive the
+# PR-diff card set, or launch the repo's preflight scripts. All helpers
+# self-skip (fail open, NOTE line) on any failure and are never on the CI
+# gate path, which still hands in --inbox-base / --session-log explicitly.
 
 
 
@@ -16505,6 +16875,144 @@ def _derive_inbox_base(target: Path) -> tuple[bytes | None, str | None]:
     return (show.stdout if show.returncode == 0 else b""), None
 
 
+_MTIME_FALLBACK_NOTE = "falling back to newest-by-mtime; CI still gates diff-derived."
+
+
+def _derive_diff_session_cards(
+    target: Path,
+    sessions_dir: str,
+) -> tuple[list[Path] | None, str | None]:
+    """Derive the session cards this branch touches from the merge-base diff.
+
+    The session-gate half of the ORDER 018 local↔CI parity posture
+    (idea-engine ASK 003): ``cmd_check``'s fallback lane used to pick the
+    card to gate on by newest mtime, and after merging ``origin/main`` into
+    a working branch a sibling's COMPLETED card carries the freshest mtime —
+    so a plain local ``check --strict`` validated the WRONG card and went
+    green while the session's own card was still in-progress (reproduced
+    live, sim-lab V051). The CI substrate-gate never had this hole because
+    it derives the card set from the PR diff in bash; this helper — a
+    documented §3.2 subprocess carve-out like :func:`_derive_inbox_base`,
+    same mechanism, same self-skip posture — brings the local ritual onto
+    the same selection: ``git merge-base HEAD origin/main``, then the
+    base-vs-worktree diff under ``sessions_dir`` (``--diff-filter=d``,
+    deletions excluded, exactly the CI pathspec) plus untracked cards
+    (``git ls-files --others``) so a mid-session run still sees its own
+    card before the first commit.
+
+    Returns ``(cards, note)``:
+
+    - ``(None, note-or-None)`` — no git context to derive from (bare tree,
+      no ``origin/main``, git unavailable, or HEAD *is* origin/main with no
+      card changes — a clean post-merge checkout, not a PR context): the
+      caller keeps the historical newest-by-mtime fallback, so non-git
+      adopters are unchanged.
+    - ``(cards, None)`` — derivation succeeded; the list may be EMPTY
+      (branch ahead of origin/main but no card in the diff), which the
+      caller treats as an absent card rather than silently mtime-greening —
+      the fail-closed-on-ambiguity direction.
+    """
+    if not (target / ".git").exists():  # dir, or file for worktrees
+        return None, None  # not a git checkout — a bare tree stays quiet
+    git = ["git", "-C", str(target)]
+    pathspecs = [f"{sessions_dir}/*.md", f":!{sessions_dir}/README.md"]
+    try:
+        merge_base = subprocess.run(  # noqa: TID251 — §3.2 carve-out (import-site note)
+            [*git, "merge-base", "HEAD", "origin/main"],
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+        )
+        head = subprocess.run(  # noqa: TID251 — §3.2 carve-out (import-site note)
+            [*git, "rev-parse", "HEAD"],
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, (
+            f"session-card diff selection skipped — could not run git "
+            f"({exc.__class__.__name__}); {_MTIME_FALLBACK_NOTE}"
+        )
+    if merge_base.returncode != 0 or head.returncode != 0:
+        return None, (
+            "session-card diff selection skipped — origin/main not "
+            f"resolvable (no remote-tracking ref / unborn HEAD); "
+            f"{_MTIME_FALLBACK_NOTE}"
+        )
+    base = merge_base.stdout.decode("utf-8", "replace").strip()
+    try:
+        diff = subprocess.run(  # noqa: TID251 — §3.2 carve-out (import-site note)
+            [*git, "diff", "--name-only", "--diff-filter=d", base, "--", *pathspecs],
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+        )
+        untracked = subprocess.run(  # noqa: TID251 — §3.2 carve-out (import-site note)
+            [*git, "ls-files", "--others", "--exclude-standard", "--", *pathspecs],
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, (
+            f"session-card diff selection skipped — could not run git "
+            f"({exc.__class__.__name__}); {_MTIME_FALLBACK_NOTE}"
+        )
+    if diff.returncode != 0 or untracked.returncode != 0:
+        return None, (
+            f"session-card diff selection skipped — git diff failed; "
+            f"{_MTIME_FALLBACK_NOTE}"
+        )
+    names: set[str] = set()
+    for stream in (diff.stdout, untracked.stdout):
+        for line in stream.decode("utf-8", "replace").splitlines():
+            name = line.strip()
+            if not name or not name.endswith(".md"):
+                continue
+            if Path(name).name == "README.md":
+                continue
+            if (target / name).is_file():
+                names.add(name)
+    cards = sorted(target / name for name in names)
+    if not cards and base == head.stdout.decode("utf-8", "replace").strip():
+        # Sitting exactly on origin/main with no card changes: there is no
+        # PR context to be ambiguous about — keep the historical fallback
+        # (every merged card is complete on a healthy main) with a NOTE.
+        return None, (
+            "session-card diff selection — HEAD is origin/main and no card "
+            "differs (not a PR context); using newest-by-mtime."
+        )
+    return cards, None
+
+
+def _select_gate_card(
+    cards: list[Path],
+    markers: list[dict[str, str]],
+) -> Path:
+    """Pick the card to gate on from the diff-derived set — fail-closed.
+
+    Every card in the set is graded and a red card outranks a green one, so
+    downstream's single-log machinery reds iff ANY card in the diff is red —
+    the same every-card-never-one-picked posture as the CI gate (the
+    venture-lab #33 tail-1 shadowing lesson). Among red cards a
+    session-owned one outranks an unadopted engine draft (the B1 run-8
+    advisory lane must never mask a genuinely red sibling), and an
+    in-progress card outranks other reds (the born-red hold is the gate's
+    subject); name order breaks the remaining ties deterministically.
+    """
+
+    def _rank(card: Path) -> tuple[bool, bool, bool, str]:
+        try:
+            text = card.read_text(encoding="utf-8")
+        except OSError:
+            text = ""
+        return (
+            not check_log(card, markers),  # red cards first
+            is_unadopted_draft(text),  # session-owned reds before drafts
+            not status_in_progress(text),  # in-progress holds first
+            str(card),
+        )
+
+    return min(cards, key=_rank)
+
+
 def _run_preflight_scripts(
     target: Path,
     config: Config,
@@ -16673,12 +17181,18 @@ def cmd_check(
     ``session_log`` (CLI ``--session-log``) names the card to gate on
     *explicitly* — the diff-aware selection a CI workflow derives from which
     ``<sessions_dir>/*.md`` file the PR adds/changes. Without it the gate
-    falls back to newest-by-mtime, which a fresh CI checkout silently degrades
-    (every mtime flattens to checkout time), the trap that used to require a
-    git-mtime-restore shim before this step. A named file that does not exist
-    is treated exactly like an absent log (advisory by default, a hard failure
-    under ``require_session_log``) — an explicit selection never silently
-    falls back to a different card.
+    derives the card set itself from the merge-base diff vs ``origin/main``
+    (:func:`_derive_diff_session_cards`, idea-engine ASK 003 — the sim-lab
+    V051 false-green: after merging origin/main a sibling's COMPLETED card
+    carries the freshest mtime, so the old newest-by-mtime guess validated
+    the WRONG card), grading fail-closed via :func:`_select_gate_card`.
+    Only when no git context is derivable (bare tree, no origin/main) does
+    it fall back to newest-by-mtime with a NOTE — the non-git-adopter
+    posture; with git context but no card in the diff, the gate treats the
+    card as absent rather than silently mtime-greening. A named file that
+    does not exist is treated exactly like an absent log (advisory by
+    default, a hard failure under ``require_session_log``) — an explicit
+    selection never silently falls back to a different card.
 
     Two KL-3 mechanisms ride the finding loop (plan §5.3):
 
@@ -17194,11 +17708,50 @@ def cmd_check(
             return 0
         _announce_fires()
         return 1 if strict else 0
+    diff_no_card = False
     if session_log is not None:
         explicit = session_log if session_log.is_absolute() else target / session_log
         log = explicit if explicit.is_file() else None
     else:
-        log = latest_session_log(target / config.sessions_dir)
+        # Diff-derived selection (idea-engine ASK 003, the sim-lab V051
+        # false-green): with git context the card set comes from the
+        # merge-base diff vs origin/main — the CI gate's selection — never
+        # from mtime (a post-merge sibling card carries the freshest mtime
+        # and the mtime guess validated the WRONG card, green while the
+        # session's own card was still in-progress). No git context →
+        # the historical newest-by-mtime fallback (non-git adopters are
+        # unchanged); git context but no card in the diff → absent-card
+        # semantics, never a silent mtime-green (fail-closed on ambiguity).
+        diff_cards, diff_note = _derive_diff_session_cards(
+            target,
+            config.sessions_dir,
+        )
+        if diff_note:
+            _emit(f"check: NOTE — {diff_note}")
+        if diff_cards is None:
+            log = latest_session_log(target / config.sessions_dir)
+        elif diff_cards:
+            log = _select_gate_card(diff_cards, config.session_markers)
+            gate_rel = (
+                log.relative_to(target) if log.is_relative_to(target) else log
+            )
+            _emit(
+                f"check: session-card selection — {len(diff_cards)} card(s) "
+                f"in the merge-base diff vs origin/main; gating on {gate_rel}.",
+            )
+        else:
+            log = None
+            diff_no_card = True
+    if session_log is not None:
+        absent = f"--session-log {session_log} does not exist"
+    elif diff_no_card:
+        absent = (
+            f"no session card in the merge-base diff vs origin/main (under "
+            f"{config.sessions_dir}/; diff-derived selection never falls "
+            "back to the mtime guess when git context exists)"
+        )
+    else:
+        absent = f"no session log under {config.sessions_dir}/"
     log_missing = check_log(log, config.session_markers) if log else []
     # In gate mode an absent log is itself a failing condition, so it must feed
     # the exit code exactly like an incomplete one.
@@ -17208,9 +17761,11 @@ def cmd_check(
     # red for the NEXT session's bare `check --strict` — run-8's ON arm ended
     # exit=1 solely on its own untouched skeleton, and the next cold session
     # would inherit that red without owning the judgment slots. Applies ONLY
-    # to the mtime-fallback lane: an explicit --session-log selection or
-    # --require-session-log gate mode keeps the locked door (a PR shipping a
-    # drafted card is the born-red discipline, not this class).
+    # to the local fallback lane (no explicit --session-log — whether the
+    # card came from the diff derivation or the mtime guess): an explicit
+    # --session-log selection or --require-session-log gate mode keeps the
+    # locked door (a PR shipping a drafted card is the born-red discipline,
+    # not this class).
     draft_advisory = False
     if (
         log is not None
@@ -17223,10 +17778,6 @@ def cmd_check(
         except OSError:
             draft_advisory = False
     if log is None:
-        if session_log is not None:
-            absent = f"--session-log {session_log} does not exist"
-        else:
-            absent = f"no session log under {config.sessions_dir}/"
         if require_session_log:
             _emit(
                 f"check: MERGE HELD — {absent} "
@@ -17268,10 +17819,6 @@ def cmd_check(
         # The session gate is a guard too (the kit's flagship one) — its
         # fires feed B3 like any checker's. Never allowlistable, though.
         if log_absent_fails:
-            if session_log is not None:
-                absent = f"--session-log {session_log} does not exist"
-            else:
-                absent = f"no session log under {config.sessions_dir}/"
             gate_finding = Finding(
                 "",
                 "session-log",

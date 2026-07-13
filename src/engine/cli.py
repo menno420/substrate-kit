@@ -25,11 +25,12 @@ import shlex
 # THE §3.2 carve-out (ORDER 018 / idea-engine ASK 002): subprocess is banned
 # in engine code — checkers never shell out; CI does the git work in bash.
 # The ONE exception is `check`'s LOCAL-RITUAL parity legs below
-# (_derive_inbox_base + _run_preflight_scripts): local `check --strict` must
-# run the SAME legs as the CI substrate-gate, and locally there is no bash
-# wrapper to extract the merge-base blob or launch the repo's preflight
-# scripts. Both helpers self-skip (fail open, NOTE line) on any failure and
-# are never on the CI path, which still hands in --inbox-base explicitly.
+# (_derive_inbox_base + _derive_diff_session_cards + _run_preflight_scripts):
+# local `check --strict` must run the SAME legs as the CI substrate-gate, and
+# locally there is no bash wrapper to extract the merge-base blob, derive the
+# PR-diff card set, or launch the repo's preflight scripts. All helpers
+# self-skip (fail open, NOTE line) on any failure and are never on the CI
+# gate path, which still hands in --inbox-base / --session-log explicitly.
 import subprocess  # noqa: TID251
 import sys
 import tempfile
@@ -745,6 +746,144 @@ def _derive_inbox_base(target: Path) -> tuple[bytes | None, str | None]:
     return (show.stdout if show.returncode == 0 else b""), None
 
 
+_MTIME_FALLBACK_NOTE = "falling back to newest-by-mtime; CI still gates diff-derived."
+
+
+def _derive_diff_session_cards(
+    target: Path,
+    sessions_dir: str,
+) -> tuple[list[Path] | None, str | None]:
+    """Derive the session cards this branch touches from the merge-base diff.
+
+    The session-gate half of the ORDER 018 local↔CI parity posture
+    (idea-engine ASK 003): ``cmd_check``'s fallback lane used to pick the
+    card to gate on by newest mtime, and after merging ``origin/main`` into
+    a working branch a sibling's COMPLETED card carries the freshest mtime —
+    so a plain local ``check --strict`` validated the WRONG card and went
+    green while the session's own card was still in-progress (reproduced
+    live, sim-lab V051). The CI substrate-gate never had this hole because
+    it derives the card set from the PR diff in bash; this helper — a
+    documented §3.2 subprocess carve-out like :func:`_derive_inbox_base`,
+    same mechanism, same self-skip posture — brings the local ritual onto
+    the same selection: ``git merge-base HEAD origin/main``, then the
+    base-vs-worktree diff under ``sessions_dir`` (``--diff-filter=d``,
+    deletions excluded, exactly the CI pathspec) plus untracked cards
+    (``git ls-files --others``) so a mid-session run still sees its own
+    card before the first commit.
+
+    Returns ``(cards, note)``:
+
+    - ``(None, note-or-None)`` — no git context to derive from (bare tree,
+      no ``origin/main``, git unavailable, or HEAD *is* origin/main with no
+      card changes — a clean post-merge checkout, not a PR context): the
+      caller keeps the historical newest-by-mtime fallback, so non-git
+      adopters are unchanged.
+    - ``(cards, None)`` — derivation succeeded; the list may be EMPTY
+      (branch ahead of origin/main but no card in the diff), which the
+      caller treats as an absent card rather than silently mtime-greening —
+      the fail-closed-on-ambiguity direction.
+    """
+    if not (target / ".git").exists():  # dir, or file for worktrees
+        return None, None  # not a git checkout — a bare tree stays quiet
+    git = ["git", "-C", str(target)]
+    pathspecs = [f"{sessions_dir}/*.md", f":!{sessions_dir}/README.md"]
+    try:
+        merge_base = subprocess.run(  # noqa: TID251 — §3.2 carve-out (import-site note)
+            [*git, "merge-base", "HEAD", "origin/main"],
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+        )
+        head = subprocess.run(  # noqa: TID251 — §3.2 carve-out (import-site note)
+            [*git, "rev-parse", "HEAD"],
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, (
+            f"session-card diff selection skipped — could not run git "
+            f"({exc.__class__.__name__}); {_MTIME_FALLBACK_NOTE}"
+        )
+    if merge_base.returncode != 0 or head.returncode != 0:
+        return None, (
+            "session-card diff selection skipped — origin/main not "
+            f"resolvable (no remote-tracking ref / unborn HEAD); "
+            f"{_MTIME_FALLBACK_NOTE}"
+        )
+    base = merge_base.stdout.decode("utf-8", "replace").strip()
+    try:
+        diff = subprocess.run(  # noqa: TID251 — §3.2 carve-out (import-site note)
+            [*git, "diff", "--name-only", "--diff-filter=d", base, "--", *pathspecs],
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+        )
+        untracked = subprocess.run(  # noqa: TID251 — §3.2 carve-out (import-site note)
+            [*git, "ls-files", "--others", "--exclude-standard", "--", *pathspecs],
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, (
+            f"session-card diff selection skipped — could not run git "
+            f"({exc.__class__.__name__}); {_MTIME_FALLBACK_NOTE}"
+        )
+    if diff.returncode != 0 or untracked.returncode != 0:
+        return None, (
+            f"session-card diff selection skipped — git diff failed; "
+            f"{_MTIME_FALLBACK_NOTE}"
+        )
+    names: set[str] = set()
+    for stream in (diff.stdout, untracked.stdout):
+        for line in stream.decode("utf-8", "replace").splitlines():
+            name = line.strip()
+            if not name or not name.endswith(".md"):
+                continue
+            if Path(name).name == "README.md":
+                continue
+            if (target / name).is_file():
+                names.add(name)
+    cards = sorted(target / name for name in names)
+    if not cards and base == head.stdout.decode("utf-8", "replace").strip():
+        # Sitting exactly on origin/main with no card changes: there is no
+        # PR context to be ambiguous about — keep the historical fallback
+        # (every merged card is complete on a healthy main) with a NOTE.
+        return None, (
+            "session-card diff selection — HEAD is origin/main and no card "
+            "differs (not a PR context); using newest-by-mtime."
+        )
+    return cards, None
+
+
+def _select_gate_card(
+    cards: list[Path],
+    markers: list[dict[str, str]],
+) -> Path:
+    """Pick the card to gate on from the diff-derived set — fail-closed.
+
+    Every card in the set is graded and a red card outranks a green one, so
+    downstream's single-log machinery reds iff ANY card in the diff is red —
+    the same every-card-never-one-picked posture as the CI gate (the
+    venture-lab #33 tail-1 shadowing lesson). Among red cards a
+    session-owned one outranks an unadopted engine draft (the B1 run-8
+    advisory lane must never mask a genuinely red sibling), and an
+    in-progress card outranks other reds (the born-red hold is the gate's
+    subject); name order breaks the remaining ties deterministically.
+    """
+
+    def _rank(card: Path) -> tuple[bool, bool, bool, str]:
+        try:
+            text = card.read_text(encoding="utf-8")
+        except OSError:
+            text = ""
+        return (
+            not check_log(card, markers),  # red cards first
+            is_unadopted_draft(text),  # session-owned reds before drafts
+            not status_in_progress(text),  # in-progress holds first
+            str(card),
+        )
+
+    return min(cards, key=_rank)
+
+
 def _run_preflight_scripts(
     target: Path,
     config: Config,
@@ -913,12 +1052,18 @@ def cmd_check(
     ``session_log`` (CLI ``--session-log``) names the card to gate on
     *explicitly* — the diff-aware selection a CI workflow derives from which
     ``<sessions_dir>/*.md`` file the PR adds/changes. Without it the gate
-    falls back to newest-by-mtime, which a fresh CI checkout silently degrades
-    (every mtime flattens to checkout time), the trap that used to require a
-    git-mtime-restore shim before this step. A named file that does not exist
-    is treated exactly like an absent log (advisory by default, a hard failure
-    under ``require_session_log``) — an explicit selection never silently
-    falls back to a different card.
+    derives the card set itself from the merge-base diff vs ``origin/main``
+    (:func:`_derive_diff_session_cards`, idea-engine ASK 003 — the sim-lab
+    V051 false-green: after merging origin/main a sibling's COMPLETED card
+    carries the freshest mtime, so the old newest-by-mtime guess validated
+    the WRONG card), grading fail-closed via :func:`_select_gate_card`.
+    Only when no git context is derivable (bare tree, no origin/main) does
+    it fall back to newest-by-mtime with a NOTE — the non-git-adopter
+    posture; with git context but no card in the diff, the gate treats the
+    card as absent rather than silently mtime-greening. A named file that
+    does not exist is treated exactly like an absent log (advisory by
+    default, a hard failure under ``require_session_log``) — an explicit
+    selection never silently falls back to a different card.
 
     Two KL-3 mechanisms ride the finding loop (plan §5.3):
 
@@ -1434,11 +1579,50 @@ def cmd_check(
             return 0
         _announce_fires()
         return 1 if strict else 0
+    diff_no_card = False
     if session_log is not None:
         explicit = session_log if session_log.is_absolute() else target / session_log
         log = explicit if explicit.is_file() else None
     else:
-        log = latest_session_log(target / config.sessions_dir)
+        # Diff-derived selection (idea-engine ASK 003, the sim-lab V051
+        # false-green): with git context the card set comes from the
+        # merge-base diff vs origin/main — the CI gate's selection — never
+        # from mtime (a post-merge sibling card carries the freshest mtime
+        # and the mtime guess validated the WRONG card, green while the
+        # session's own card was still in-progress). No git context →
+        # the historical newest-by-mtime fallback (non-git adopters are
+        # unchanged); git context but no card in the diff → absent-card
+        # semantics, never a silent mtime-green (fail-closed on ambiguity).
+        diff_cards, diff_note = _derive_diff_session_cards(
+            target,
+            config.sessions_dir,
+        )
+        if diff_note:
+            _emit(f"check: NOTE — {diff_note}")
+        if diff_cards is None:
+            log = latest_session_log(target / config.sessions_dir)
+        elif diff_cards:
+            log = _select_gate_card(diff_cards, config.session_markers)
+            gate_rel = (
+                log.relative_to(target) if log.is_relative_to(target) else log
+            )
+            _emit(
+                f"check: session-card selection — {len(diff_cards)} card(s) "
+                f"in the merge-base diff vs origin/main; gating on {gate_rel}.",
+            )
+        else:
+            log = None
+            diff_no_card = True
+    if session_log is not None:
+        absent = f"--session-log {session_log} does not exist"
+    elif diff_no_card:
+        absent = (
+            f"no session card in the merge-base diff vs origin/main (under "
+            f"{config.sessions_dir}/; diff-derived selection never falls "
+            "back to the mtime guess when git context exists)"
+        )
+    else:
+        absent = f"no session log under {config.sessions_dir}/"
     log_missing = check_log(log, config.session_markers) if log else []
     # In gate mode an absent log is itself a failing condition, so it must feed
     # the exit code exactly like an incomplete one.
@@ -1448,9 +1632,11 @@ def cmd_check(
     # red for the NEXT session's bare `check --strict` — run-8's ON arm ended
     # exit=1 solely on its own untouched skeleton, and the next cold session
     # would inherit that red without owning the judgment slots. Applies ONLY
-    # to the mtime-fallback lane: an explicit --session-log selection or
-    # --require-session-log gate mode keeps the locked door (a PR shipping a
-    # drafted card is the born-red discipline, not this class).
+    # to the local fallback lane (no explicit --session-log — whether the
+    # card came from the diff derivation or the mtime guess): an explicit
+    # --session-log selection or --require-session-log gate mode keeps the
+    # locked door (a PR shipping a drafted card is the born-red discipline,
+    # not this class).
     draft_advisory = False
     if (
         log is not None
@@ -1463,10 +1649,6 @@ def cmd_check(
         except OSError:
             draft_advisory = False
     if log is None:
-        if session_log is not None:
-            absent = f"--session-log {session_log} does not exist"
-        else:
-            absent = f"no session log under {config.sessions_dir}/"
         if require_session_log:
             _emit(
                 f"check: MERGE HELD — {absent} "
@@ -1508,10 +1690,6 @@ def cmd_check(
         # The session gate is a guard too (the kit's flagship one) — its
         # fires feed B3 like any checker's. Never allowlistable, though.
         if log_absent_fails:
-            if session_log is not None:
-                absent = f"--session-log {session_log} does not exist"
-            else:
-                absent = f"no session log under {config.sessions_dir}/"
             gate_finding = Finding(
                 "",
                 "session-log",

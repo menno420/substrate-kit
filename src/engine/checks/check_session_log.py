@@ -6,13 +6,17 @@ The session workflow asks every session to end with a
 Each marker is a ``{"label", "needle"}`` pair from ``substrate.config.json``, so a
 host tunes the ritual without touching engine code.
 
-Unlike the host's version this port does **not** shell out to ``git`` to pick the
-"current" log — ``subprocess`` is banned in engine code and is host-CI sugar
-anyway. The current log is the newest ``*.md`` by mtime under ``sessions_dir``;
-CI workflows should prefer ``check --session-log <file>`` with the card the
-PR's diff touches, because a fresh checkout flattens every mtime to checkout
-time and silently degrades the newest-by-mtime guess. Pure stdlib; returns the
-missing markers rather than printing.
+Unlike the host's version this module does **not** shell out to ``git`` to pick
+the "current" log — ``subprocess`` is banned in engine *checker* code (§3.2).
+:func:`latest_session_log` (newest ``*.md`` by mtime under ``sessions_dir``) is
+only the LAST-RESORT guess: the CLI's fallback lane derives the card set from
+the merge-base diff vs ``origin/main`` itself (``engine.cli.
+_derive_diff_session_cards``, a documented §3.2 carve-out — the sim-lab V051
+false-green showed a post-merge sibling card carries the freshest mtime and the
+mtime guess validates the WRONG card), and CI workflows pass ``check
+--session-log <file>`` with the card the PR's diff touches (a fresh checkout
+flattens every mtime to checkout time). Pure stdlib; returns the missing
+markers rather than printing.
 """
 
 from __future__ import annotations
