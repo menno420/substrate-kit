@@ -22,3 +22,19 @@
   counts, the Opus-vs-Sonnet display anomaly).
 - **Provenance:** inbox ORDER 014 (2026-07-11T23:45Z, P1, fleet-manager
   coordinator, owner-directed); claim #255 @ 18a9f58.
+
+## 2026-07-13 · ORDER 016 — night-run tally (lane→manager)
+
+- **Tally (MORNING clause):** slices landed = 11 merged PRs tonight (#308–#316,
+  #318, #319) + 1 green-parked (#317) · templates released = 0 tagged
+  (graduation rides #317 ratification + the next release wave — honest note) ·
+  measurements written = 1 fleet report (14 seats: 12 SHIPPED / 2 IDLE-CLEAN /
+  0 STALLED; discrimination = honest null; failsafe bridged 4/4 platform
+  wake-drops; substrate-gate flip-race fail-open bug surfaced → fix ask routed
+  as idea).
+- **Report:** `docs/reports/2026-07-13-night-run-adopter-outcomes.md`
+- **Parked:** #317 landing path = owner review-merge (do-not-automerge
+  ratification park).
+- **⚑ set unchanged:** P10 required-check swap · fm #122 personal restamp ·
+  UNIVERSAL wake fetch-list vN bump · ⚑ 6 public-flip-or-PAT · grounded-skills
+  measurement window ~2026-07-19..26.
