@@ -125,8 +125,10 @@ def skills_digest_block(docs_root: str = "docs") -> str:
     # digest's whole job is "these procedures exist, don't improvise", so
     # every NAME must survive; the pointer line carries the detail. The
     # _fit_rows overflow line stays as the safety net for future growth.
+    # Clip 85 → 72 (2026-07-13, rationalize slice): the 13th skill left the
+    # 85-char block 75 chars over budget; 72 fits all names with headroom.
     rows = [
-        f"- `{skill['name']}` — {_truncate(skill['description'], 85)}"
+        f"- `{skill['name']}` — {_truncate(skill['description'], 72)}"
         for skill in SKILLS
     ]
     footer = [
