@@ -9106,6 +9106,129 @@ QUESTIONS FOR OWNER (structured choices, or `none`).
 
 Declared capabilities: read (the index, the ledger, the profile)."""
 
+_CHASE_REFERENCES_BODY = """\
+Resolve every reference in a ${project_name} ask before acting on it.
+
+> **Owner-directed (Q-0273, 2026-07-12).** Founding incident: the owner opened
+> a session with a comprehensive message containing a direct link to the
+> previous session's brief and multiple sibling repos by name — and the session
+> still oriented on the local repo only, costing ~3 turns of re-discovery. The
+> lesson graduates as an on-demand method (his words: "baked into a method,
+> like a skill, that prevents it from taking up too much storage in the
+> claude.md itself, but is still always loadable on demand"). superbot carries
+> the founding copy; this is the kit's generalized template, inherited by
+> every adopter.
+
+## When this runs
+
+At the start of ANY substantive ask — an opening message, an ORDER, a brief —
+and again whenever a mid-task message introduces new references. Trigger
+especially on: URLs · file paths · doc titles · repo names · PR/issue numbers ·
+question-router IDs · "as discussed in / the plan says / the brief covers"
+phrasings.
+
+## The method
+
+1. **Inventory first.** Before any substantive work, list every reference the
+   ask contains or implies (explicit links, named files, named repos, named
+   plans, "the X doc"). The ask's references ARE its context spec — the author
+   included them because reading them is cheaper than re-deriving them.
+2. **Resolve each one, in this order:**
+   - a local path → read it;
+   - a project doc named fuzzily → find it (glob/grep across the doc roots);
+   - a **sibling repo or its file** → fetch it read-only via the repo's
+     documented reading path / sibling registry, where one exists;
+   - a PR/issue number → pull it from the forge (own repo) or from the
+     sibling's committed heartbeat/pointer files;
+   - a router question ID → grep `docs/question-router.md`.
+3. **An unfound reference is a search task, never a skip.** Guess the
+   most-logical homes and look there before proceeding: the planted doc set
+   under `docs/` (orientation, current-state, plans, reports) → `.sessions/`
+   (recent session records) → `docs/ideas/` → the named sibling's committed
+   status and docs, where a sibling registry exists. If it is genuinely absent
+   after that, SAY so explicitly ("the brief references X; I could not find it
+   in A/B/C") — silent omission is how wrong pictures get built.
+4. **State the assembled picture back** (the understand-and-reflect step —
+   pair with the `intake` skill on owner asks): one short paragraph of what
+   the references collectively establish, before the work starts. A wrong
+   assumption corrected here costs one line; discovered later it costs the
+   session.
+
+## The bar
+
+You are done chasing when every reference is either **read**, **fetched**, or
+**explicitly reported unfindable with the places you looked**. "I'll read it
+if it becomes relevant" fails the bar for anything the owner linked or named
+directly — he already decided it was relevant.
+
+Declared capabilities: read-only."""
+
+_PREP_OWNER_STEPS_BODY = """\
+Hand ${project_name}'s owner finished steps, not directions.
+
+> **Owner-directed (Q-0273, 2026-07-12).** His words: agents give him
+> "directions clearly mapped out — go to github, actions, settings, rule, etc,
+> and paste this file from this github page in this repo — while they could
+> easily lead with the link and the copy/paste ready file in chat as a
+> separate block." The method: before handing the owner any step, ask *"which
+> steps will he face, and are there any text blobs he might need to enter that
+> I can send?"* — then send them. superbot carries the founding copy; this is
+> the kit's generalized template, inherited by every adopter.
+
+## When this runs
+
+Every time work surfaces an **owner-only step** (repo settings, secrets,
+portal clicks, external publish, account actions) or any instruction the
+owner must execute by hand — in chat replies, owner-queue items, ⚑ blocks,
+and run reports. It is the drafting half of the OWNER-ACTION contract
+(`control/README.md`): those fields prove the ask is necessary and verified;
+this method makes it executable in one sitting.
+
+## The method — prepare, don't describe
+
+1. **Lead with the direct link.** Deep-link the exact page (the ruleset
+   editor, the variables tab, the release form) — never a navigation trail
+   when a URL exists. A trail ("Settings → Rules → main") is the *fallback
+   annotation under* the link, for when the deep link 404s.
+2. **Every blob he must enter ships as its own fenced block.** File contents,
+   variable names, one-line replies, commit messages, form fields — each in a
+   separate copy-ready block, labeled with exactly where it goes. Never "paste
+   the file from this page" — fetch it and paste it INTO the chat/queue item
+   yourself.
+3. **Walk his path once yourself, in your head or via probe.** Enumerate
+   every click/field he will actually face (the screen he lands on, the
+   button names, the confirm dialogs) and pre-answer each. If a step's outcome
+   feeds a later step (a minted token → a variable), say what to carry
+   forward and where it lands.
+4. **Batch to one sitting.** If the task needs owner steps at multiple
+   points, restructure so they cluster into ONE block at the start or end —
+   never interleave "now go click X" through a work narrative he has to
+   babysit.
+5. **State the payoff + verification.** One line each: what completing the
+   steps unblocks, and how he (or the next agent) verifies it worked (the
+   exact URL/command that should now succeed).
+
+## The shape (use it in queue items and chat alike)
+
+````
+⚑ OWNER — <what this unblocks, one line>
+1. <deep link>  (fallback: Settings → … → …)
+   paste ↓ into <exact field>:
+   ```<the blob>```
+2. …
+verify: <command/URL that should now succeed>
+````
+
+## The bar
+
+The owner should be able to complete every step with **clicks and pastes
+only** — zero composing, zero fetching, zero deciding-what-you-meant. If he
+has to open another page to *copy something you could have copied for him*,
+the preparation failed.
+
+Declared capabilities: read-only (a drafting method — the invoking session's
+own capabilities do any writing)."""
+
 _QUALITY_GATE_BODY = """\
 Prove a change is good before pushing ${project_name}.
 
@@ -9235,6 +9358,24 @@ SKILLS: list[dict] = [
         "questions — before building (understand-and-reflect, executable).",
         "capabilities": [],
         "body": _INTAKE_BODY,
+        "grounds": [],
+    },
+    {
+        "name": "chase-references",
+        "description": "Resolve every reference in the ask before acting — "
+        "inventory, resolve or search each one, report unfindables "
+        "explicitly, state the assembled picture back (Q-0273 seed skill).",
+        "capabilities": [],
+        "body": _CHASE_REFERENCES_BODY,
+        "grounds": [],
+    },
+    {
+        "name": "prep-owner-steps",
+        "description": "Hand the owner finished steps, not directions — deep "
+        "links, paste-ready blobs, his path walked once, one batched sitting, "
+        "payoff + verification stated (Q-0273 seed skill).",
+        "capabilities": [],
+        "body": _PREP_OWNER_STEPS_BODY,
         "grounds": [],
     },
     {
@@ -10782,8 +10923,14 @@ def skills_digest_block(docs_root: str = "docs") -> str:
     """
     index_path = f"{docs_root}/SKILLS.md"
     header = [SKILLS_DIGEST_BEGIN, "## Skills digest", ""]
+    # Description clip 120 → 85 (2026-07-13, seed-skills slice): at 12
+    # registered skills the 120-char rows overflowed the block budget and
+    # _fit_rows silently dropped the tail skills from the digest — but the
+    # digest's whole job is "these procedures exist, don't improvise", so
+    # every NAME must survive; the pointer line carries the detail. The
+    # _fit_rows overflow line stays as the safety net for future growth.
     rows = [
-        f"- `{skill['name']}` — {_truncate(skill['description'], 120)}"
+        f"- `{skill['name']}` — {_truncate(skill['description'], 85)}"
         for skill in SKILLS
     ]
     footer = [
