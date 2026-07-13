@@ -154,6 +154,25 @@ def _default_automerge() -> dict:
     }
 
 
+def _default_preflight_scripts() -> list[str]:
+    """Return the repo-local preflight scripts ``check`` runs on the full lane.
+
+    Local-ritual ↔ CI-gate parity (ORDER 018 / idea-engine ASK 002): each
+    entry is a repo-relative command line (``shlex``-split; a leading
+    ``*.py`` token runs under the interpreter already running ``check``)
+    executed by ``cmd_check`` on the full — non ``--status-only`` — lane,
+    with any non-zero exit riding the strict finding loop. Because the
+    generated substrate-gate's full lane itself invokes ``bootstrap.py
+    check --strict``, this ONE list is what both the local ritual and CI
+    run — a checker added to the repo's preflight wrapper is enforced in
+    both venues with zero workflow edits. The default names the
+    conventional wrapper path (idea-engine's ``scripts/preflight.py``
+    convergence pattern) so parity arrives on upgrade without a config
+    edit; an absent script self-skips with a NOTE, never a red.
+    """
+    return ["scripts/preflight.py"]
+
+
 def _default_badge_tokens() -> list[str]:
     """Return the default Status-badge taxonomy the doc checker accepts."""
     return [
@@ -230,6 +249,11 @@ class Config:
     claims_dir: str = DEFAULT_CLAIMS_DIR
     # Auto-merge-enabler knobs (EAP §6.10 — see _default_automerge above).
     automerge: dict = field(default_factory=_default_automerge)
+    # Local preflight scripts (ORDER 018 — see _default_preflight_scripts
+    # above): the ONE check list both the local ritual and the CI gate run.
+    preflight_scripts: list[str] = field(
+        default_factory=_default_preflight_scripts,
+    )
 
     def to_json(self) -> str:
         """Serialise the config to indented, key-sorted JSON."""

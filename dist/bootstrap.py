@@ -38,7 +38,9 @@ import json
 import os
 import random
 import re
+import shlex
 import string
+import subprocess  # noqa: TID251
 import sys
 import tarfile
 import tempfile
@@ -216,6 +218,25 @@ def _default_automerge() -> dict:
     }
 
 
+def _default_preflight_scripts() -> list[str]:
+    """Return the repo-local preflight scripts ``check`` runs on the full lane.
+
+    Local-ritual ↔ CI-gate parity (ORDER 018 / idea-engine ASK 002): each
+    entry is a repo-relative command line (``shlex``-split; a leading
+    ``*.py`` token runs under the interpreter already running ``check``)
+    executed by ``cmd_check`` on the full — non ``--status-only`` — lane,
+    with any non-zero exit riding the strict finding loop. Because the
+    generated substrate-gate's full lane itself invokes ``bootstrap.py
+    check --strict``, this ONE list is what both the local ritual and CI
+    run — a checker added to the repo's preflight wrapper is enforced in
+    both venues with zero workflow edits. The default names the
+    conventional wrapper path (idea-engine's ``scripts/preflight.py``
+    convergence pattern) so parity arrives on upgrade without a config
+    edit; an absent script self-skips with a NOTE, never a red.
+    """
+    return ["scripts/preflight.py"]
+
+
 def _default_badge_tokens() -> list[str]:
     """Return the default Status-badge taxonomy the doc checker accepts."""
     return [
@@ -292,6 +313,11 @@ class Config:
     claims_dir: str = DEFAULT_CLAIMS_DIR
     # Auto-merge-enabler knobs (EAP §6.10 — see _default_automerge above).
     automerge: dict = field(default_factory=_default_automerge)
+    # Local preflight scripts (ORDER 018 — see _default_preflight_scripts
+    # above): the ONE check list both the local ritual and the CI gate run.
+    preflight_scripts: list[str] = field(
+        default_factory=_default_preflight_scripts,
+    )
 
     def to_json(self) -> str:
         """Serialise the config to indented, key-sorted JSON."""
@@ -3042,14 +3068,21 @@ IDENTITY is deliberately NOT enforced: on a single-account program it is not
 enforceable in-repo (issue #36 report 2, stated honestly in the protocol
 doc); this gate enforces the part of the law that lives in the bytes.
 
-Diff access without shelling out: engine code is pure stdlib — ``subprocess``
-is banned (§3.2). So, exactly like the session-log gate, CI does the git work
-in bash (extract the merge-base blob of ``control/inbox.md`` to a file) and
-hands the path in via ``check --inbox-base <file>``; this checker only reads
-two files and compares them. No base path (a local ``check`` with no diff
-context, or the file/base absent) → **no-op**, the same fail-open posture as
-the mtime session-log fallback. It engages only when there is a real diff to
-judge, so ``check`` stays meaningful on a tree with no inbox change.
+Diff access without shelling out: engine *checker* code is pure stdlib —
+``subprocess`` is banned (§3.2). So, exactly like the session-log gate, CI
+does the git work in bash (extract the merge-base blob of
+``control/inbox.md`` to a file) and hands the path in via ``check
+--inbox-base <file>``; this checker only reads two files and compares them.
+A base is now findable on BOTH venues (ORDER 018 / idea-engine ASK 002): when
+``--inbox-base`` is absent, ``cmd_check`` derives the merge-base blob from
+``origin/main`` itself via the ONE documented §3.2 subprocess carve-out
+(``engine.cli._derive_inbox_base`` — never this checker), so a plain local
+``check --strict`` reds where CI would red instead of silently no-opping
+(the idea-engine PR #274 local-green→CI-red class). With no base at all (no
+git context to derive from, or the file/base absent) → **no-op**, the same
+fail-open posture as the mtime session-log fallback. It engages only when
+there is a real diff to judge, so ``check`` stays meaningful on a tree with
+no inbox change.
 """
 
 
@@ -15831,6 +15864,15 @@ rather than ``print`` to keep the engine lint-clean.
 
 
 
+# THE §3.2 carve-out (ORDER 018 / idea-engine ASK 002): subprocess is banned
+# in engine code — checkers never shell out; CI does the git work in bash.
+# The ONE exception is `check`'s LOCAL-RITUAL parity legs below
+# (_derive_inbox_base + _run_preflight_scripts): local `check --strict` must
+# run the SAME legs as the CI substrate-gate, and locally there is no bash
+# wrapper to extract the merge-base blob or launch the repo's preflight
+# scripts. Both helpers self-skip (fail open, NOTE line) on any failure and
+# are never on the CI path, which still hands in --inbox-base explicitly.
+
 
 
 def _emit(line: str = "") -> None:
@@ -16323,6 +16365,165 @@ def _extra_check_findings(target: Path, config: Config) -> list:
     return findings
 
 
+# Recursion guard for the preflight-scripts leg (ORDER 018): a repo's
+# preflight wrapper conventionally invokes `bootstrap.py check` itself
+# (idea-engine's runs `check --strict --status-only`), so the leg marks its
+# children with this env var and skips itself inside one — otherwise a
+# wrapper entry that runs plain `check --strict` would recurse forever.
+_PREFLIGHT_NESTED_ENV = "SUBSTRATE_KIT_PREFLIGHT"
+
+# Git subprocess budget for the inbox merge-base derivation: local plumbing
+# reads are milliseconds; a hung git (dead network FS) must not wedge check.
+_GIT_TIMEOUT_SECONDS = 30
+
+
+def _derive_inbox_base(target: Path) -> tuple[bytes | None, str | None]:
+    """Derive the merge-base blob of ``control/inbox.md`` from ``origin/main``.
+
+    The LOCAL-RITUAL half of the inbox append-only gate (ORDER 018 /
+    idea-engine ASK 002): CI extracts the merge-base blob in bash and hands
+    it in via ``--inbox-base``, but a plain local ``check --strict`` had no
+    base to diff against, so the gate silently no-opped and the tree learned
+    about an inbox violation only from red CI (idea-engine PR #274). This
+    helper is the documented §3.2 subprocess carve-out (see the import-site
+    note): it runs only when ``--inbox-base`` was NOT given, and mirrors the
+    generated gate's bash exactly — ``git merge-base HEAD origin/main`` then
+    ``git show <base>:control/inbox.md`` (absent-at-base → empty blob, the
+    gate's ``|| : > basefile`` posture).
+
+    Returns ``(blob_bytes, note)``. ``blob_bytes`` is None when there is
+    nothing to judge or derivation failed; ``note`` carries the one-line
+    self-skip reason worth surfacing (None for the silent skips: no inbox
+    file, or not a git checkout at all — a bare tree must stay quiet).
+    """
+    if not (target / INBOX_RELPATH).is_file():
+        return None, None  # no inbox — nothing to judge, silently
+    if not (target / ".git").exists():  # dir, or file for worktrees
+        return None, None  # not a git checkout — a bare tree stays quiet
+    git = ["git", "-C", str(target)]
+    try:
+        merge_base = subprocess.run(  # noqa: TID251 — §3.2 carve-out (import-site note)
+            [*git, "merge-base", "HEAD", "origin/main"],
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, (
+            f"inbox merge-base leg skipped — could not run git "
+            f"({exc.__class__.__name__}); CI still gates with --inbox-base."
+        )
+    if merge_base.returncode != 0:
+        return None, (
+            "inbox merge-base leg skipped — origin/main not resolvable "
+            "(no remote-tracking ref / unborn HEAD); CI still gates with "
+            "--inbox-base."
+        )
+    base = merge_base.stdout.decode("utf-8", "replace").strip()
+    try:
+        show = subprocess.run(  # noqa: TID251 — §3.2 carve-out (import-site note)
+            [*git, "show", f"{base}:{INBOX_RELPATH}"],
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, (
+            f"inbox merge-base leg skipped — could not run git "
+            f"({exc.__class__.__name__}); CI still gates with --inbox-base."
+        )
+    # Path absent at the base (a fresh inbox) → empty base blob, exactly the
+    # generated gate's `git show ... || : > "$basefile"` behavior.
+    return (show.stdout if show.returncode == 0 else b""), None
+
+
+def _run_preflight_scripts(
+    target: Path,
+    config: Config,
+) -> tuple[list, list[str]]:
+    """Run the config-declared repo-local preflight scripts; return findings.
+
+    The other LOCAL-RITUAL parity leg (ORDER 018 / idea-engine ASK 002):
+    ``substrate.config.json::preflight_scripts`` is the ONE check list —
+    ``check``'s full lane runs it here, and the CI substrate-gate's full lane
+    runs it too *through this very code* (its gate step invokes
+    ``bootstrap.py check --strict``), so a checker added to the repo's
+    preflight wrapper red-flags in both venues (idea-engine PR #299's
+    local-green→CI-red class). Returns ``(findings, notes)``: a non-zero
+    exit is an exit-affecting ``preflight-script`` finding riding the strict
+    loop; an absent script is a NOTE (self-skip — the default entry names a
+    conventional path many adopters won't have); a nested run (see
+    ``_PREFLIGHT_NESTED_ENV``) skips the whole leg.
+    """
+    scripts = [s for s in (config.preflight_scripts or []) if str(s).strip()]
+    if not scripts:
+        return [], []
+    if os.environ.get(_PREFLIGHT_NESTED_ENV):
+        return [], [
+            "preflight scripts skipped — nested check run "
+            f"({_PREFLIGHT_NESTED_ENV} set; the outer run owns the leg).",
+        ]
+    findings: list = []
+    notes: list[str] = []
+    child_env = dict(os.environ)
+    child_env[_PREFLIGHT_NESTED_ENV] = "1"
+    for entry in scripts:
+        tokens = shlex.split(str(entry))
+        if not tokens:
+            continue
+        script_rel = tokens[0]
+        script = target / script_rel
+        if not script.is_file():
+            notes.append(
+                f"preflight script {script_rel} not found — skipped "
+                "(config preflight_scripts; plant one to converge the local "
+                "ritual and the CI gate on one check list).",
+            )
+            continue
+        if script_rel.endswith(".py"):
+            # The interpreter already running check exists in BOTH venues by
+            # construction (the recorded config interpreter may not exist in
+            # CI) — the same choice the conventional wrapper itself makes.
+            argv = [sys.executable or "python3", str(script), *tokens[1:]]
+        else:
+            argv = [str(script), *tokens[1:]]
+        try:
+            proc = subprocess.run(  # noqa: TID251 — §3.2 carve-out (import-site note)
+                argv,
+                cwd=target,
+                env=child_env,
+                capture_output=True,
+                timeout=900,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            findings.append(
+                Finding(
+                    script_rel,
+                    "preflight-script",
+                    f"could not run ({exc.__class__.__name__}) — the CI gate "
+                    "runs this same preflight, so a local crash is a red.",
+                ),
+            )
+            continue
+        if proc.returncode != 0:
+            tail = ""
+            for stream in (proc.stderr, proc.stdout):
+                text = stream.decode("utf-8", "replace")
+                lines = [ln for ln in text.splitlines() if ln.strip()]
+                if lines:
+                    tail = lines[-1][:200]
+                    break
+            findings.append(
+                Finding(
+                    script_rel,
+                    "preflight-script",
+                    f"exit {proc.returncode}"
+                    + (f": {tail}" if tail else "")
+                    + " — the CI substrate-gate runs this same preflight; "
+                    "fix it before pushing.",
+                ),
+            )
+    return findings, notes
+
+
 def cmd_check(
     target: Path,
     strict: bool,
@@ -16358,12 +16559,17 @@ def cmd_check(
     work needs an in-run way to verify the lane's grading.
 
     ``inbox_base`` (CLI ``--inbox-base``) names the merge-base version of
-    ``control/inbox.md`` — extracted by CI in bash, because engine code never
-    shells out to git (§3.2). When given, the append-only gate runs on both
-    lanes: the change to ``control/inbox.md`` must be pure-append vs that base
-    and its appended text must be well-formed ORDER blocks (issue #36 report
-    2). It rides the fast lane exactly like the status gate — an inbox append
-    is control-lane traffic — and self-skips when there is nothing to judge.
+    ``control/inbox.md`` — extracted by CI in bash, because engine *checker*
+    code never shells out to git (§3.2). When given, the append-only gate
+    runs on both lanes: the change to ``control/inbox.md`` must be
+    pure-append vs that base and its appended text must be well-formed ORDER
+    blocks (issue #36 report 2). It rides the fast lane exactly like the
+    status gate — an inbox append is control-lane traffic — and self-skips
+    when there is nothing to judge. When ``inbox_base`` is ABSENT (the local
+    ritual), the gate no longer no-ops: :func:`_derive_inbox_base` — the
+    documented §3.2 carve-out — derives the base blob from ``origin/main``
+    so plain local ``check --strict`` reds where CI would red (ORDER 018),
+    and self-skips with a NOTE when no git context is derivable.
 
     ``status_only`` (CLI ``--status-only``) scopes the run to the control/
     status heartbeat checker alone — the CI control fast lane's gate. A
@@ -16515,11 +16721,30 @@ def cmd_check(
     automerge_advisories = check_automerge_preflight(target, config)
     # The inbox append-only gate (issue #36 report 2): a control/inbox.md
     # change must be pure-append vs the merge-base + ORDER-grammar shaped.
-    # Rides the finding loop like every checker; engages only when CI handed
-    # in a base blob to diff against (no base → no-op, see the checker).
-    inbox_findings = (
-        check_inbox_append(target, inbox_base) if inbox_base is not None else []
-    )
+    # Rides the finding loop like every checker. CI hands in the base blob
+    # via --inbox-base; a LOCAL run without one derives it from origin/main
+    # itself (ORDER 018 — local `check --strict` must red where CI reds) and
+    # self-skips, NOTE'd, when there is no git context to derive from.
+    inbox_note: str | None = None
+    if inbox_base is not None:
+        inbox_findings = check_inbox_append(target, inbox_base)
+    else:
+        derived_blob, inbox_note = _derive_inbox_base(target)
+        if derived_blob is None:
+            inbox_findings = []
+        else:
+            base_fd, base_name = tempfile.mkstemp(prefix="inbox-base-")
+            try:
+                with os.fdopen(base_fd, "wb") as handle:
+                    handle.write(derived_blob)
+                inbox_findings = check_inbox_append(target, Path(base_name))
+            finally:
+                try:
+                    os.unlink(base_name)
+                except OSError:
+                    pass
+    if inbox_note:
+        _emit(f"check: NOTE — {inbox_note}")
     # The adopter-registry format gate (EAP §6.3): docs/adopters.md is
     # generated output (`bootstrap currency`, agent-side because CI cannot
     # auth to sibling repos); CI validates only the committed file's shape.
@@ -16553,6 +16778,21 @@ def cmd_check(
         doc_findings += _extra_check_findings(target, config) + status_gate
         doc_findings += inbox_findings
         doc_findings += adopters_gate
+        # Local preflight scripts (ORDER 018): the config-declared check
+        # list both venues run — locally right here, and in CI because the
+        # substrate-gate's full lane invokes `check --strict` (this code).
+        # Full lane only: preflights are not control-lane traffic, and the
+        # conventional wrapper itself calls `check --status-only` (the
+        # nested-run guard in _run_preflight_scripts breaks any deeper
+        # recursion). Findings ride the strict loop like every checker;
+        # an absent script is a NOTE'd self-skip, never a red.
+        preflight_findings, preflight_notes = _run_preflight_scripts(
+            target,
+            config,
+        )
+        for note in preflight_notes:
+            _emit(f"check: NOTE — {note}")
+        doc_findings += preflight_findings
     entries, allow_findings = load_allowlist(target, config.state_dir)
     doc_findings, suppressed = apply_allowlist(doc_findings, entries)
     doc_findings += allow_findings
@@ -18198,9 +18438,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "gate control/inbox.md against this merge-base copy of the file "
-            "(CI extracts the base blob with git, since engine code never "
-            "shells out): the change must be pure-append and its appended "
-            "text well-formed ORDER blocks; omit when there is no inbox diff"
+            "(CI extracts the base blob with git): the change must be "
+            "pure-append and its appended text well-formed ORDER blocks; "
+            "when omitted, a local run derives the base from origin/main "
+            "itself (ORDER 018 local↔CI parity) and self-skips with a NOTE "
+            "when no git context is derivable"
         ),
     )
     return parser
