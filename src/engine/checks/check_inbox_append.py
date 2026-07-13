@@ -19,14 +19,21 @@ IDENTITY is deliberately NOT enforced: on a single-account program it is not
 enforceable in-repo (issue #36 report 2, stated honestly in the protocol
 doc); this gate enforces the part of the law that lives in the bytes.
 
-Diff access without shelling out: engine code is pure stdlib — ``subprocess``
-is banned (§3.2). So, exactly like the session-log gate, CI does the git work
-in bash (extract the merge-base blob of ``control/inbox.md`` to a file) and
-hands the path in via ``check --inbox-base <file>``; this checker only reads
-two files and compares them. No base path (a local ``check`` with no diff
-context, or the file/base absent) → **no-op**, the same fail-open posture as
-the mtime session-log fallback. It engages only when there is a real diff to
-judge, so ``check`` stays meaningful on a tree with no inbox change.
+Diff access without shelling out: engine *checker* code is pure stdlib —
+``subprocess`` is banned (§3.2). So, exactly like the session-log gate, CI
+does the git work in bash (extract the merge-base blob of
+``control/inbox.md`` to a file) and hands the path in via ``check
+--inbox-base <file>``; this checker only reads two files and compares them.
+A base is now findable on BOTH venues (ORDER 018 / idea-engine ASK 002): when
+``--inbox-base`` is absent, ``cmd_check`` derives the merge-base blob from
+``origin/main`` itself via the ONE documented §3.2 subprocess carve-out
+(``engine.cli._derive_inbox_base`` — never this checker), so a plain local
+``check --strict`` reds where CI would red instead of silently no-opping
+(the idea-engine PR #274 local-green→CI-red class). With no base at all (no
+git context to derive from, or the file/base absent) → **no-op**, the same
+fail-open posture as the mtime session-log fallback. It engages only when
+there is a real diff to judge, so ``check`` stays meaningful on a tree with
+no inbox change.
 """
 
 from __future__ import annotations
