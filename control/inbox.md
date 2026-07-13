@@ -99,3 +99,48 @@ provenance: filed by the fleet manager — relocation of startup-prompt v3.1 ord
 do: Kill the dead-boot-pointer class: src/engine/templates/AGENT_ORIENTATION.md.tmpl routes boot reading to .claude/CLAUDE.md (lines ~10 and ~34) while adopters verifiably ship WITHOUT that file (superbot-next at c03df80 has none) — fix the template (target-exists check, or route boot to CONSTITUTION.md) and carry the fix in the next release wave. VERIFY-FIRST rider (unverified by the filer): the v3.1 census claimed a session-gate "added-card advisory loophole" + severity-tier drift — verify against the shipped gate; fix with a fixture holding red, or retract with evidence.
 why: template pointer verified at kit HEAD 8a544a6 on 2026-07-12; the adopter-side dead pointer verified live on superbot-next the same day.
 done-when: no template ships a dead boot pointer (target-exists enforced or boot re-routed); the gate-integrity claim is verified-and-fixed or retracted, with evidence either way.
+
+## ORDER 016 · 2026-07-13T00:43:45Z · status: new
+priority: P0
+do: execute the owner's night-run directive carried verbatim between the BEGIN/END VERBATIM markers below — tonight's rules plus the seat's five-item work list.
+why: owner live in the Self Improvement coordinator chat, 2026-07-13 night run; top-precedence owner turn.
+done-when: night-run tally (slices landed / templates released / measurements written) posted in heartbeat + outbox by ~06:00Z per the directive's MORNING clause.
+Provenance: owner live in the Self Improvement coordinator chat, 2026-07-13 night run; landed verbatim by the coordinator seat.
+
+BEGIN VERBATIM
+DIRECT ORDER — SELF IMPROVEMENT (owner, 2026-07-13, night run). Land this verbatim in your
+inbox (top-precedence owner turn), then execute all night.
+
+RULES FOR TONIGHT (Q-0271/Q-0273/Q-0274 — these override any instinct to wait):
+1. I am away until morning; that is the system's normal state. Silence = consent = done.
+   Never hold or re-confirm finished work.
+2. OPEN PRs STAY OPEN — new rule for tonight: land on green where auto-merge arms; where it
+   doesn't, leave the PR OPEN and take the next slice. No merge-chasing, no parking-and-
+   waiting, no counting open PRs as blockers — I sweep them when I'm back.
+3. FIND YOUR WORK, in order: your inbox ORDER carrying my goals verbatim (the manager's
+   030–036 set) → superbot docs/owner/fleet-grounding.md §7 (the self-initiative program —
+   your backlog is NOT dry; this is it) → your idea index → your generative rung.
+4. NO STALLS UNDER ANY CIRCUMSTANCES: probe before declaring a wall (attempt once, verbatim
+   error); genuinely-owner-only item (your ⚑ set: P10 check swap, ⚑6 public-or-PAT) stays
+   queued → CONTINUE same turn on non-gated work.
+5. WAKE HYGIENE: exactly one outstanding tick; verify your failsafe ALIVE each wake;
+   heartbeat re-stamped LAST each turn; a nothing-to-do wake is a silent no-op.
+6. QUALITY FLOOR: CI-green, measured claims, release hygiene (tags, never HEAD, for
+   adopters).
+MORNING: by ~06:00Z post your tally (slices landed / templates released / measurements
+written) in your heartbeat + outbox.
+
+YOUR SEAT TONIGHT (the self-initiative program — make sessions think for themselves):
+1. THE SKILL-PACK MECHANISM: how a kit repo carries on-demand loadable METHODS discoverable
+   at boot — so lessons/workarounds become skills, not CLAUDE.md bloat, and no session
+   re-discovers a solved problem.
+2. GENERALIZE THE TWO SEED SKILLS from superbot .claude/skills/ (chase-references +
+   prep-owner-steps, provenance Q-0273) into kit templates every adopter inherits.
+3. THE RATIONALIZATION LAYER: prototype the checkpoint question — "should this action also
+   be executed? does this lesson deserve a permanent home I can ship NOW?" — agents eager to
+   initiate, opportunities treated like incidents (friction→guard generalized).
+4. Graduate the autonomy rider (Q-0271) + the multi-repo reading path (Q-0272) into
+   templates.
+5. Adopter-outcome writeup: which kit mechanisms separated tonight's shipping seats from
+   stalling ones.
+END VERBATIM
