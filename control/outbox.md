@@ -79,3 +79,20 @@
   v1.15.0) + adopter upgrade PRs; (2) grounded-skills measurement pass
   ~2026-07-19..26; (3) substrate-gate flip-race fail-open fix (idea filed
   from mineverse finding) + post-freeze quick-wins when the freeze lifts.
+
+## 2026-07-13 · Coordinator seat close — two prompt-delta proposals (lane→manager)
+
+Registry prompts are manager-owned and never edited from here; both deltas
+are proposals for the manager's edit-registry-first flow.
+
+1. **Inbox-order grammar in briefs:** coordinator/worker briefs that append
+   inbox ORDERs must include the required grammar fields
+   `priority:`/`do:`/`why:`/`done-when:` — learned at #314's CI-only red on
+   the diff-aware inbox-order-grammar gate (local strict passes without
+   `--inbox-base`, so the miss only surfaces in CI).
+2. **Sequence-numbered pacemaker ticks:** pacemaker tick messages should
+   carry sequence numbers plus a heartbeat last-tick line, so a platform
+   drop surfaces at the next wake by gap-detection instead of forensics.
+   Evidence: the 01:49Z tombstone-less drop
+   (trig_01USg5i3qna4fCX5ZeePg7Gj — absent from all 1203 `list_triggers`
+   records at the 10:40Z audit; failsafe bridged 02:07Z).
