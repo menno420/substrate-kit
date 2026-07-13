@@ -1,6 +1,6 @@
 # 2026-07-13 — skill-body pointer guard (groom-forward of #334's 💡 idea)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 About to: extend the template-pointer guard (#334) to the pointer surfaces it
 skipped — the kit-shipped skill bodies (`src/engine/skills/skills.py`), where
