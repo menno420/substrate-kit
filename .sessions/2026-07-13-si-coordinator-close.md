@@ -1,12 +1,13 @@
 # 2026-07-13 · si-coordinator-close — coordinator seat ender (retro + capability bake + heartbeat)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
-About to do: close the Self Improvement coordinator seat (boot
-2026-07-12T20:4xZ → close 2026-07-13T10:4xZ) — full retro in this card,
-bake the send_later tombstone-less-drop finding into `docs/CAPABILITIES.md`,
-file two prompt-delta proposals to `control/outbox.md`, and post the
-SEAT CLOSED heartbeat to `control/status.md`.
+Did: closed the Self Improvement coordinator seat (boot 2026-07-12T20:4xZ
+→ close 2026-07-13T10:4xZ) — full retro in this card, baked the send_later
+tombstone-less-drop finding into `docs/CAPABILITIES.md`, filed two
+prompt-delta proposals to `control/outbox.md`, and posted the SEAT CLOSED
+heartbeat to `control/status.md`. Verify: pytest 1245 passed; `check
+--strict` red only on this card's own designed born-red hold pre-flip.
 
 ## Retro — SI coordinator seat, 2026-07-12T20:4xZ → 2026-07-13T10:4xZ
 
