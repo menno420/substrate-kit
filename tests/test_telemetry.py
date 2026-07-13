@@ -508,6 +508,46 @@ def test_cmd_check_records_guard_fires(tmp_path, capsys):
     assert all(r["posture"] == "blocking" for r in fires)
 
 
+def test_cmd_check_announces_guard_fire_writes(tmp_path, capsys):
+    # A run that appends records says so once (the ledger is a TRACKED file
+    # by design — the announcement is what stops sessions reverting the
+    # "mystery" dirty tree, PR #328 card's ⟲ finding).
+    root = _repo_with_finding(tmp_path)
+    cli.cmd_check(root, strict=True)
+    out = capsys.readouterr().out
+    lines = [line for line in out.splitlines() if "guard-fire record(s)" in line]
+    assert len(lines) == 1
+    n = len(_fires(root))
+    assert lines[0] == (
+        f"check: {n} guard-fire record(s) appended to "
+        ".substrate/guard-fires.jsonl — telemetry ledger; commit the delta "
+        "with your session (do not revert)."
+    )
+
+
+def test_cmd_check_no_announcement_when_nothing_written(tmp_path, capsys):
+    # Unadopted tree: findings exist but telemetry never writes — no line.
+    root = tmp_path / "bare"
+    (root / "docs").mkdir(parents=True)
+    (root / "docs" / "bad.md").write_text("no badge\n", encoding="utf-8")
+    cli.cmd_check(root, strict=True)
+    out = capsys.readouterr().out
+    assert "guard-fire record(s)" not in out
+
+
+def test_cmd_check_deduped_second_run_stays_silent(tmp_path, capsys):
+    # A re-run inside the dedupe window appends 0 records, so the
+    # announcement must track ACTUAL writes, never finding counts.
+    root = _repo_with_finding(tmp_path)
+    cli.cmd_check(root, strict=True)
+    capsys.readouterr()
+    n_before = len(_fires(root))
+    cli.cmd_check(root, strict=True)
+    out = capsys.readouterr().out
+    assert len(_fires(root)) == n_before
+    assert "guard-fire record(s)" not in out
+
+
 def test_cmd_check_unadopted_tree_writes_no_telemetry(tmp_path, capsys):
     root = tmp_path / "bare"
     (root / "docs").mkdir(parents=True)
