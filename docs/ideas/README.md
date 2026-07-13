@@ -49,6 +49,12 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- [Engage slot lists: derive from the bank instead of triple-pinning](engage-slot-list-derived-2026-07-13.md)
+  — state: captured; origin: lab (three surfaces enumerate "every interview
+  slot" — the bank, bench `ENGAGE_SLOTS`, the ci.yml cold-adopt loop — and
+  nothing asserts the pinned two still cover the bank; paid in the
+  rider-graduation session when Q-014..016 missed both); next: quick-win —
+  a coverage test over the pins (order stays pinned for reproducibility).
 - [Seat digest: adaptive description clip instead of a manual ratchet](seat-digest-adaptive-clip-2026-07-13.md)
   — state: captured; origin: lab (the 120→85→72 clip ratchet — every skill
   added to the registry is a latent digest-test failure until someone
