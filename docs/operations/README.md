@@ -43,3 +43,12 @@
   landings, three failsafe-bridged wake drops, born-red gate + one
   flip-race bug, control fast lane, ORDER fan-out), and the honest null on
   shipped-vs-stalled discrimination.
+- [../reports/2026-07-13-fleet-cleanup-audit.md](../reports/2026-07-13-fleet-cleanup-audit.md)
+  — EAP final-night fleet-cleanup audit (dated audit, external read-only
+  pass, complementary to owner fm ORDER 045): live-vs-heartbeat activity
+  finding (repo was ACTIVE mid-session despite a stale `updated:` line),
+  local CI-mirror verification (1284 tests, ruff, idea-index, program-law,
+  `check --strict` all clean), disposition of the 3 open PRs at audit time
+  (#317/#340/#345, all correctly left untouched), and fleet-wide
+  suggestions (mechanical heartbeat writer, the P10 required-check swap,
+  a liveness-signal convention for outside audits).
