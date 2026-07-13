@@ -70,7 +70,9 @@ def parse_heartbeat(text: str) -> datetime | None:
     """Return the ``updated:`` line's timestamp as an aware UTC datetime.
 
     Accepts the contract's ISO-8601 shapes (``2026-07-09T12:07Z``,
-    ``...T12:07:00+00:00``, minutes or seconds precision). A trailing ``Z``
+    ``...T12:07:00+00:00``, minutes or seconds precision) behind a
+    case-insensitive ``updated:`` prefix (``Updated:`` is a writer spelling
+    variant, not a dead heartbeat — kit #326). A trailing ``Z``
     is normalized for ``fromisoformat`` (Python 3.10 floor). A naive
     timestamp is taken as UTC — the contract says ISO8601, sessions write
     UTC, and treating it otherwise would fabricate staleness. None when the

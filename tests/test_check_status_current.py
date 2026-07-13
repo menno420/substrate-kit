@@ -64,6 +64,17 @@ def test_parse_heartbeat_naive_is_taken_as_utc():
     assert ts == datetime(2026, 7, 9, 12, 7, tzinfo=timezone.utc)
 
 
+def test_parse_heartbeat_accepts_case_variant_prefix():
+    # kit #326: a live heartbeat wrote `Updated:` and went red on
+    # [status-no-heartbeat] — a casing slip is a writer spelling variant,
+    # not a dead heartbeat. The prefix match is case-insensitive; the
+    # canonical writer form stays lowercase (pinned in test_grammar.py).
+    ts = parse_heartbeat("Updated: 2026-07-09T12:07Z\n")
+    assert ts == datetime(2026, 7, 9, 12, 7, tzinfo=timezone.utc)
+    ts = parse_heartbeat("UPDATED: 2026-07-09T12:07:00+00:00\n")
+    assert ts == datetime(2026, 7, 9, 12, 7, tzinfo=timezone.utc)
+
+
 def test_parse_heartbeat_rejects_seed_prose_and_garbage():
     assert parse_heartbeat("updated: (seeded at adopt — overwrite me)\n") is None
     assert parse_heartbeat("updated: not-a-date\n") is None
@@ -102,6 +113,19 @@ def test_seed_status_has_no_heartbeat_and_gates_red(tmp_path):
 
 def test_fresh_heartbeat_is_clean(tmp_path):
     _write(tmp_path, STATUS_RELPATH, _status("2026-07-09T10:00Z"))
+    gate, advisory = check_status_current(tmp_path, now=NOW)
+    assert gate == [] and advisory == []
+
+
+def test_fresh_capitalized_heartbeat_is_clean_too(tmp_path):
+    # The gate-level twin of the parse_heartbeat casing pin: a heartbeat
+    # differing only in prefix casing must not red [status-no-heartbeat]
+    # (kit #326's exact failure).
+    _write(
+        tmp_path,
+        STATUS_RELPATH,
+        _status("2026-07-09T10:00Z").replace("updated:", "Updated:", 1),
+    )
     gate, advisory = check_status_current(tmp_path, now=NOW)
     assert gate == [] and advisory == []
 
