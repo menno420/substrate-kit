@@ -1,1 +1,0 @@
-- `claude/rationalization-layer` · **rationalization checkpoint** — ORDER 016 seat-item 3 (Q-0273) prototype · src/engine/templates/CONSTITUTION.md.tmpl + collaboration-model.md.tmpl, src/engine/skills/skills.py, tests/test_skills.py, dist · 2026-07-13
