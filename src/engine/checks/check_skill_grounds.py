@@ -24,8 +24,8 @@ not exist costs every session an improvisation.
 What it scans:
 
 - The kit-truth :data:`engine.skills.skills.SKILLS` list — every body's
-  backticked spans and every ``grounds`` entry (the self-check that travels
-  with the kit).
+  backticked spans, markdown-link targets, and every ``grounds`` entry (the
+  self-check that travels with the kit).
 - The target's installed/staged skill documents (``.claude/skills/*/
   SKILL.md`` and ``<state_dir>/skills/*/SKILL.md``) when present — the
   RENDERED bodies, so a host-edited or host-added skill gets the same scan.
@@ -35,11 +35,16 @@ Skip rules (fail-open classes, in order): a span carrying an unfilled
 a span carrying non-ASCII characters (``·``/``→``/``✔`` mark report-format
 prose, never commands);
 a first token that is not identifier/path-shaped (prose, ``<placeholders>``,
-``[brackets]``, flags, globs); a token ending ``/`` (directory prose); a
-token under the state dir (runtime artifacts, not committed files); a single
-bare word with no path shape (``complete``, ``in-progress`` — status tokens,
-not commands). Pure stdlib; no ``subprocess`` (§3.2) — resolution is
-existence checks, never execution.
+``[brackets]``, flags, globs; a leading ``.`` is path-shaped — dot-led
+pointers like ``.claude/skills/x/SKILL.md`` ARE judged); a token ending
+``/`` (directory prose); a state-dir token naming a known kit-written
+artifact class (:data:`_STATE_DIR_ARTIFACTS` / :data:`_STATE_DIR_PREFIXES`
+— runtime artifacts grounded by construction; any OTHER state-dir path is
+judged by existence like every pointer); a markdown-link target carrying a
+URL scheme, a bare ``#anchor``, or whitespace; a single bare word with no
+path shape (``complete``, ``in-progress`` — status tokens, not commands).
+Pure stdlib; no ``subprocess`` (§3.2) — resolution is existence checks,
+never execution.
 """
 
 from __future__ import annotations
@@ -55,9 +60,18 @@ from engine.skills.skills import SKILLS
 # a grounds-matching invariant the skills tests pin).
 _SPAN_RE = re.compile(r"`([^`\n]+)`")
 
-# A judgeable first token: identifier/path-shaped. Anything else (``>``,
-# ``[Unreleased]``, ``<repo>:``, ``<!--``, unicode prose) is skipped as prose.
-_FIRST_TOKEN_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.\-/]*$")
+# A judgeable first token: identifier/path-shaped, optionally dot-led
+# (``.substrate/upgrade-report.md``, ``.claude/skills/x/SKILL.md``, ``.env``).
+# The optional leading ``.`` must be followed by an identifier character so
+# pure-punctuation prose (``..``, ``...``, ``./``) stays unjudged. Anything
+# else (``>``, ``[Unreleased]``, ``<repo>:``, ``<!--``, unicode prose) is
+# skipped as prose.
+_FIRST_TOKEN_RE = re.compile(r"^\.?[A-Za-z0-9_][A-Za-z0-9_.\-/]*$")
+
+# One markdown link target: ``[text](target)``. Same extraction precedent as
+# the kit-side template pointer guard (tests/test_template_pointer_guard.py
+# ``_MD_LINK_TARGET_RE``); targets feed the SAME skip ladder as backtick spans.
+_MD_LINK_TARGET_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 
 # A real file extension (lowercase — ``vX.Y.Z`` version placeholders end in
 # uppercase pseudo-extensions and must stay prose).
@@ -116,18 +130,21 @@ _EXECUTABLES = frozenset(
     }
 )
 
-# Paths that are grounded by construction even when absent from the target
-# tree: the kit's own release/distribution artifacts (the ``release`` and
-# ``upgrade-distribution`` runbooks name kit-repo files and transient wave
-# files that no adopter tree carries) plus the vendored-dist names the
-# consumer flow uses. ADOPT_PLAN destinations join this set below — a path
-# the kit plants is grounded wherever the kit is adopted.
-_KIT_SHIPPED_PATHS = frozenset(
+# Paths grounded by construction even when absent from the target tree,
+# split into explicit classes so each entry states WHY it resolves and the
+# kit-side guard (tests/test_skill_pointer_guard.py
+# ``test_skill_grounds_kit_path_whitelist_cannot_rot``) can pin each class
+# against rot. A raw "must exist in the adopter tree" pin is deliberately
+# NOT used: a 4-adopter survey (2026-07-13, kit 1.15.0) measured it at 14–15
+# FALSE findings per adopter — these paths never live in adopter trees by
+# design. Classes must stay disjoint; the guard test asserts it.
+
+# Kit-repo source/runbook files the ``release`` / ``upgrade-distribution``
+# skills name ("the commands below run in the kit repo"). They resolve by
+# class in ANY target; the guard test pins each to exist in the KIT tree so
+# a kit-side rename cannot leave the whitelist resolving dead pointers.
+_KIT_REPO_PATHS = frozenset(
     {
-        "bootstrap.py",
-        "bootstrap.py.new",
-        "bootstrap.py.sha256",
-        "release.json",
         "dist/bootstrap.py",
         "src/build_bootstrap.py",
         "src/build_release_json.py",
@@ -137,11 +154,43 @@ _KIT_SHIPPED_PATHS = frozenset(
         ".github/workflows/release.yml",
         "docs/adopters.md",
         "docs/operations/release-runbook.md",
-        "docs/SKILLS.md",
     }
 )
 
+# Release-wave transients: files that exist only mid-wave or as published
+# release assets (release.yml / the consumer flow in release.json) — never
+# in any committed tree, kit or adopter. Resolve by class.
+_WAVE_TRANSIENT_PATHS = frozenset(
+    {
+        "bootstrap.py.new",
+        "bootstrap.py.sha256",
+        "release.json",
+    }
+)
+
+# Files the kit plants in ADOPTER trees outside ADOPT_PLAN (which joins
+# _KNOWN_PATHS below on its own): the vendored single-file dist copied to
+# the repo root by adopt (_vendor_bootstrap, skip-if-exists). Class-resolved
+# because a not-yet-adopted / empty target legitimately lacks it while the
+# shipped skill bodies already name it.
+_ADOPTER_PLANTED_PATHS = frozenset({"bootstrap.py"})
+
+# The full grounded-by-construction set — kept as the single derived union
+# so resolution behavior is exactly the historical whitelist's.
+_KIT_SHIPPED_PATHS = _KIT_REPO_PATHS | _WAVE_TRANSIENT_PATHS | _ADOPTER_PLANTED_PATHS
+
 _KNOWN_PATHS = _KIT_SHIPPED_PATHS | {dest for _tmpl, dest in ADOPT_PLAN}
+
+# State-dir artifacts the kit itself writes/stages, grounded by construction
+# even when absent (they appear only after an upgrade / ``skills --build`` /
+# a backup): the upgrade report (engine.upgrade.UPGRADE_REPORT_FILENAME),
+# the pre-upgrade byte backup dir, and the staged-skills tree. Derived from
+# what kit SKILLS bodies + staged skill docs actually reference under the
+# state dir. Any OTHER state-dir path is judged by existence like every
+# pointer — the pre-2026-07-13 blanket state-dir skip failed dead dot-led
+# pointers open.
+_STATE_DIR_ARTIFACTS = frozenset({"upgrade-report.md"})
+_STATE_DIR_PREFIXES = ("backup/", "skills/")
 
 
 def _unresolved(span: str, target: Path, state_dir: str) -> bool:
@@ -160,8 +209,13 @@ def _unresolved(span: str, target: Path, state_dir: str) -> bool:
     first = tokens[0]
     if not _FIRST_TOKEN_RE.match(first):
         return False  # prose / placeholder / flag / bracket shapes
-    if first.endswith("/") or first.startswith(f"{state_dir}/"):
-        return False  # directory prose; runtime state artifacts
+    if first.endswith("/"):
+        return False  # directory prose
+    if first.startswith(f"{state_dir}/"):
+        rest = first[len(state_dir) + 1 :]
+        if rest in _STATE_DIR_ARTIFACTS or rest.startswith(_STATE_DIR_PREFIXES):
+            return False  # kit-written runtime artifacts — grounded by class
+        # any other state-dir path falls through to the existence lanes
     if first in _EXECUTABLES or first in _KNOWN_PATHS:
         return False
     if (target / first).exists():
@@ -175,8 +229,24 @@ def _unresolved(span: str, target: Path, state_dir: str) -> bool:
 
 
 def _spans(body: str) -> list[str]:
-    """Return the backticked inline spans of ``body``, in order."""
-    return _SPAN_RE.findall(body)
+    """Return the judgeable spans of ``body``, in order.
+
+    Backticked inline spans first, then markdown-link targets fed through
+    the same downstream skip ladder. Link targets carrying a URL scheme, a
+    bare ``#anchor``, or whitespace (titles, prose parentheticals) are
+    skipped here; fragments are stripped (``docs/x.md#section`` judges
+    ``docs/x.md``).
+    """
+    spans = _SPAN_RE.findall(body)
+    for raw in _MD_LINK_TARGET_RE.findall(body):
+        candidate = raw.strip()
+        if candidate.startswith(("http://", "https://", "mailto:", "#")):
+            continue
+        candidate = candidate.split("#", 1)[0].strip()
+        if not candidate or any(ch.isspace() for ch in candidate):
+            continue  # empty after fragment-strip, or title/prose-bearing
+        spans.append(candidate)
+    return spans
 
 
 def _skill_doc_paths(target: Path, state_dir: str) -> list[Path]:
