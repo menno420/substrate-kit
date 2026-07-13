@@ -97,6 +97,10 @@ MODULE_ORDER = (
     # derived-render refresh), and the slice-6 drift checker: the
     # seat-digest render surface imports only grammar/skills/config.
     "seatdigest.py",
+    # Before adopt.py (which calls it at enabler plant/regen time): the
+    # install-time enabler preflight imports only stdlib — no adopt imports,
+    # by design (the reverse edge would cycle).
+    "enabler_preflight.py",
     "adopt.py",
     # After adopt.py on purpose: the engagement gate scans the ADOPT_PLAN
     # destinations and keys off adopt's UNRENDERED banner marker.
