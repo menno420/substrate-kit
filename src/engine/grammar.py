@@ -367,6 +367,27 @@ def walls_digest_begin_marker(venues: tuple[str, ...]) -> str:
 WORK_CLAIM_BULLET_RE = re.compile(r"^-\s.*`([^`\n]+)`", re.MULTILINE)
 WORK_CLAIM_DATE_RE = re.compile(r"\b(20\d{2}-\d{2}-\d{2})\b")
 
+# The optional ORDER reference on a work-claim bullet (the #362/#363
+# cross-branch collision fix, idea order-claim-cross-branch-collision-
+# 2026-07-14): a claim serving an inbox ORDER carries an ` · order NNN`
+# segment (written by `bootstrap claim --order NNN`), and the SAME regex
+# also recognizes a free-text `ORDER 020` mention in the scope — so
+# hand-written claims that name their order in prose still key the
+# cross-branch overlap scan. One parsing home (EAP §6.8): the writer's
+# round-trip verify, the claim verb's refusal scan, and check_claims'
+# collision advisory all consume :func:`work_claim_order_ids`.
+WORK_CLAIM_ORDER_RE = re.compile(r"\border\s+(\d{1,4})\b", re.IGNORECASE)
+
+
+def work_claim_order_ids(bullet_line: str) -> set[str]:
+    """Return the 3-digit-normalized order ids named on a claim bullet line.
+
+    ``order 20`` / ``ORDER 020`` → ``{"020"}``. Only the bullet LINE is the
+    contract's surface (mirroring the post-#353 date rule — segments beyond
+    the bullet are commentary, not claim grammar).
+    """
+    return {f"{int(m):03d}" for m in WORK_CLAIM_ORDER_RE.findall(bullet_line)}
+
 
 def work_claim_bullet_example(date: str = "2026-07-10") -> str:
     """Canonical work-claim bullet dated ``date``."""
