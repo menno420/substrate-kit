@@ -25,6 +25,9 @@
 
 ## 2. The version bump (one commit set)
 
+- **Mechanized:** `python3 scripts/cut_release.py X.Y.Z` (dry-run; `--write`
+  applies) performs this section's file edits — both version homes + the
+  CHANGELOG transform — and prints the remaining manual steps.
 - **Version homes (both, same commit):** `src/engine/lib/config.py:31`
   (`KIT_VERSION`) and `pyproject.toml:17` (`version`).
 - **CHANGELOG:** rename `[Unreleased]` → `[X.Y.Z] - <date>` (fresh empty
