@@ -50,6 +50,23 @@ probe failed both arms; T5 ignored). **KF-8 trend at 9 scored rows: 1 PASS
 
 ### Added
 
+- **Cross-branch ORDER-collision guard — `claim --order NNN` +
+  `claims-order-collision` advisory (idea
+  `order-claim-cross-branch-collision-2026-07-14`, the #362/#363 twin-build
+  root cause, PR #365).** The work-claim grammar gains an optional
+  structured ` · order NNN` segment (kit-owned `WORK_CLAIM_ORDER_RE` +
+  `work_claim_order_ids()` in `engine.grammar` — the same parsing home for
+  writer and enforcer, EAP §6.8; a free-text `ORDER NNN` mention on the
+  bullet line also counts, so hand-written claims still key the scan).
+  `bootstrap claim --order NNN` renders the segment (round-trip verified)
+  and REFUSES to write when another live claim on a DIFFERENT branch
+  already names that order — `--force` overrides for a deliberate split of
+  one order across branches. `check_claims` gains the matching
+  `claims-order-collision` advisory (two-plus live claim files on distinct
+  branch tokens naming one order id), advisory-only like every claims
+  finding — never exit-affecting. The claims README template teaches the
+  segment; order-less claims stay valid and invisible to the scan.
+
 - **`check_idea_index` merged-reality leg — grace-windowed git-truth
   verification of shipped claims (idea from the PR #349 session card, PR
   #355).** The idea-index checker now verifies `outcome: shipped`

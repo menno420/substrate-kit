@@ -32,5 +32,6 @@ kit: v1.15.0
 - ⚑ 6 public-flip-or-PAT (unblocks B2–B4 cross-repo sweeps).
 - Grounded-skills measurement window ~2026-07-19..26 — silence accepts.
 
+2026-07-14T08:26Z self-initiated slice (no ORDER served): PR #365 OPEN, parked for review-merge (auto-merge deliberately NOT armed) — cross-branch ORDER-collision guard built from the #364 groomed idea (`docs/ideas/order-claim-cross-branch-collision-2026-07-14.md`, the #362/#363 twin-build root cause): `bootstrap claim --order NNN` structured segment + refuse-unless-`--force` + `check_claims` `claims-order-collision` advisory (advisory posture preserved, never exit-affecting). Suite 1499→1523 passed (+1 skipped unchanged); preflight 7/7 green; dist regen byte-stable ×3.
 done=020 facts: PR #362 — ORDER 020 items d+e shipped: (d) cmd_check friction-outbox pending-count advisory (advisory-only, never exit-affecting, full lane) · (e) INC-29 lowercase docs/capabilities.md → docs/CAPABILITIES.md pointer fix in CAPABILITIES.md.tmpl + seatdigest.py, with casing regression tests; (a)–(c) SATISFIED per the thread's premise-check at a4d858e.
 orders: acked=001–020 · done=001–020

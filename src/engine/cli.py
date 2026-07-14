@@ -48,7 +48,7 @@ from engine.agents.agents import AGENTS, agent_document, agent_relpath
 from engine.checks.allowlist import apply_allowlist, load_allowlist
 from engine.checks.check_adopters_current import check_adopters_current
 from engine.checks.check_capability_xref import check_capability_xref
-from engine.checks.check_claims import check_claims
+from engine.checks.check_claims import check_claims, claim_scan_dirs
 from engine.checks.check_docs import Finding, run_doc_checks
 from engine.checks.check_engagement import (
     check_engagement,
@@ -82,6 +82,8 @@ from engine.claim import (
     ClaimError,
     branch_for,
     claim_filename,
+    claim_order_ids,
+    normalize_order,
     owner_token,
     render_claim,
 )
@@ -2843,6 +2845,8 @@ def cmd_claim(
     *,
     scope: str | None = None,
     area: str | None = None,
+    order: str | None = None,
+    force: bool = False,
     delete: bool = False,
     dry_run: bool = False,
 ) -> int:
@@ -2853,9 +2857,13 @@ def cmd_claim(
     lane: render + write ``<claims_dir>/claude-<slug>.md`` with ONE bullet
     the ``check_claims`` enforcer is guaranteed to parse
     (:func:`engine.claim.render_claim` — same grammar constants, round-trip
-    verified, current UTC date last on the line). ``--delete`` removes YOUR
-    OWN claim at session close. Both lanes refuse a FOREIGN claim at the
-    target path — an existing file whose bullet token is not this slug's
+    verified, current UTC date last on the line). ``--order NNN`` renders
+    the structured inbox-ORDER segment AND refuses to write when another
+    live claim on a DIFFERENT branch already names that order — the
+    #362/#363 twin-build guard; ``--force`` overrides for a deliberate
+    one-order-two-branch split. ``--delete`` removes YOUR OWN claim at
+    session close. Both lanes refuse a FOREIGN claim at the target path —
+    an existing file whose bullet token is not this slug's
     ``claude/<slug>`` branch (or that the grammar cannot parse, so ownership
     is unprovable) — leaving the file intact. ``--dry-run`` prints the
     would-be content (or the would-be deletion) and touches nothing.
@@ -2915,10 +2923,49 @@ def cmd_claim(
         )
         return 2
     try:
-        new_text = render_claim(slug, scope, area=area)
+        new_text = render_claim(slug, scope, area=area, order=order)
+        norm_order = normalize_order(order) if order is not None else None
     except ClaimError as exc:
         _emit(f"claim: refused — {exc}")
         return 2
+    if norm_order is not None:
+        # The cross-branch ORDER-collision guard (the #362/#363 twin-build):
+        # scan every dir check_claims scans for a LIVE claim on a DIFFERENT
+        # branch naming this order. Same parsing home (engine.claim /
+        # engine.grammar) as the enforcer, so verb and checker cannot
+        # disagree about what "names this order" means.
+        holders: list[str] = []
+        for dir_rel, _is_legacy in claim_scan_dirs(target, config.claims_dir):
+            for other in sorted((target / dir_rel).glob("*.md")):
+                other_rel = f"{dir_rel}/{other.name}"
+                if other.name == "README.md" or other_rel == rel:
+                    continue
+                try:
+                    other_text = other.read_text(encoding="utf-8")
+                except (OSError, UnicodeDecodeError):
+                    continue  # fail open — unreadable is not a verdict
+                other_token = owner_token(other_text)
+                if other_token is None or other_token == branch:
+                    continue
+                if norm_order in claim_order_ids(other_text):
+                    holders.append(f"{other_rel} (`{other_token}`)")
+        if holders and not force:
+            _emit(
+                f"claim: refused — order {norm_order} already has a live "
+                f"claim on a different branch: {', '.join(holders)}. Two "
+                "branches serving one ORDER is the #362/#363 twin-build; "
+                "coordinate with the claim holder (or pass --force for a "
+                "deliberate split of the order across branches). "
+                "Nothing written."
+            )
+            return 2
+        if holders:
+            _emit(
+                f"claim: --force override — order {norm_order} is also "
+                f"claimed by {', '.join(holders)}; proceeding as a "
+                "deliberate cross-branch split (check_claims will keep "
+                "flagging the overlap as claims-order-collision)."
+            )
     if dry_run:
         _emit(new_text.rstrip("\n"))
         _emit(f"claim: DRY RUN — {rel} not written.")
@@ -3286,6 +3333,27 @@ def build_parser() -> argparse.ArgumentParser:
         help='optional expected files/area segment (e.g. "src/ + tests/")',
     )
     claim_p.add_argument(
+        "--order",
+        default=None,
+        metavar="NNN",
+        help=(
+            "the inbox ORDER this claim serves (e.g. 020) — renders the "
+            "structured `order NNN` segment the cross-branch overlap scan "
+            "keys on, and refuses to write when another live claim on a "
+            "different branch already names that order (the #362/#363 "
+            "twin-build guard)"
+        ),
+    )
+    claim_p.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "override the --order collision refusal for a deliberate split "
+            "of one order across branches (check_claims keeps flagging the "
+            "overlap as claims-order-collision)"
+        ),
+    )
+    claim_p.add_argument(
         "--delete",
         action="store_true",
         help=(
@@ -3433,6 +3501,8 @@ def main(argv: list[str] | None = None) -> int:
                 args.slug,
                 scope=args.scope,
                 area=args.area,
+                order=args.order,
+                force=args.force,
                 delete=args.delete,
                 dry_run=args.dry_run,
             )

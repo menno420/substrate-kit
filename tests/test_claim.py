@@ -22,6 +22,8 @@ from engine.claim import (
     ClaimError,
     branch_for,
     claim_filename,
+    claim_order_ids,
+    normalize_order,
     owner_token,
     render_claim,
     utc_date,
@@ -238,3 +240,164 @@ def test_cli_delete_of_a_missing_claim_names_it(tmp_path, capsys):
     rc = main(["claim", "widget-fix", "--target", str(root), "--delete"])
     assert rc == 2
     assert "nothing to delete" in capsys.readouterr().out
+
+
+# ── the --order lane (the #362/#363 cross-branch collision guard) ────────────
+
+
+def test_render_claim_with_order_appends_the_segment_before_the_date():
+    text = render_claim("order-020-d", "sub-items (d)+(e)", order="20", now=_NOW)
+    assert text == (
+        "- `claude/order-020-d` · **sub-items (d)+(e)** · order 020 · 2026-07-14\n"
+    )
+    assert claim_order_ids(text) == {"020"}
+
+
+def test_normalize_order_accepts_the_taught_shapes():
+    assert normalize_order("20") == "020"
+    assert normalize_order("020") == "020"
+    assert normalize_order("ORDER 020") == "020"
+    assert normalize_order(" order 7 ") == "007"
+
+
+@pytest.mark.parametrize("bad", ["", "abc", "1,2", "001-006", "order", "20a"])
+def test_normalize_order_refuses_non_single_ids(bad):
+    with pytest.raises(ClaimError, match="not a single order id"):
+        normalize_order(bad)
+
+
+def test_claim_order_ids_reads_only_the_bullet_line():
+    text = (
+        "- `claude/lane-a` · **scope** · order 020 · 2026-07-14\n"
+        "\nprose mentioning ORDER 019 below the bullet\n"
+    )
+    assert claim_order_ids(text) == {"020"}
+
+
+def test_cli_order_writes_the_segment_and_check_claims_stays_clean(tmp_path):
+    root = _control_host(tmp_path)
+    rc = main(
+        [
+            "claim",
+            "lane-a",
+            "--target",
+            str(root),
+            "--scope",
+            "serve the order",
+            "--order",
+            "020",
+        ]
+    )
+    assert rc == 0
+    text = _claim_path(root, "lane-a").read_text(encoding="utf-8")
+    assert "· order 020 ·" in text
+    assert check_claims(root) == []
+
+
+def test_cli_refuses_a_second_branch_claiming_the_same_order(tmp_path, capsys):
+    # The verb-side half of the guard: lane-b reaching for ORDER 020 while
+    # lane-a's live claim names it is refused with the holder named.
+    root = _control_host(tmp_path)
+    assert (
+        main(
+            ["claim", "lane-a", "--target", str(root), "--scope", "first", "--order", "020"]
+        )
+        == 0
+    )
+    capsys.readouterr()
+    rc = main(
+        ["claim", "lane-b", "--target", str(root), "--scope", "second", "--order", "020"]
+    )
+    assert rc == 2
+    out = capsys.readouterr().out
+    assert "order 020 already has a live claim on a different branch" in out
+    assert "claude-lane-a.md" in out
+    assert "--force" in out
+    assert not _claim_path(root, "lane-b").exists()
+
+
+def test_cli_force_overrides_the_order_collision_refusal(tmp_path, capsys):
+    root = _control_host(tmp_path)
+    assert (
+        main(
+            ["claim", "lane-a", "--target", str(root), "--scope", "first", "--order", "020"]
+        )
+        == 0
+    )
+    capsys.readouterr()
+    rc = main(
+        [
+            "claim",
+            "lane-b",
+            "--target",
+            str(root),
+            "--scope",
+            "deliberate split",
+            "--order",
+            "020",
+            "--force",
+        ]
+    )
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "--force override" in out
+    assert _claim_path(root, "lane-b").exists()
+    # The checker keeps flagging the (now deliberate) overlap — advisory.
+    kinds = [f.kind for f in check_claims(root)]
+    assert kinds == ["claims-order-collision", "claims-order-collision"]
+
+
+def test_cli_distinct_orders_do_not_refuse(tmp_path):
+    root = _control_host(tmp_path)
+    assert (
+        main(
+            ["claim", "lane-a", "--target", str(root), "--scope", "first", "--order", "019"]
+        )
+        == 0
+    )
+    assert (
+        main(
+            ["claim", "lane-b", "--target", str(root), "--scope", "second", "--order", "020"]
+        )
+        == 0
+    )
+    assert check_claims(root) == []
+
+
+def test_cli_own_claim_refresh_with_same_order_is_not_a_collision(tmp_path, capsys):
+    root = _control_host(tmp_path)
+    assert (
+        main(
+            ["claim", "lane-a", "--target", str(root), "--scope", "v1", "--order", "020"]
+        )
+        == 0
+    )
+    rc = main(
+        ["claim", "lane-a", "--target", str(root), "--scope", "v2", "--order", "020"]
+    )
+    assert rc == 0
+    assert "refreshed own claim" in capsys.readouterr().out
+
+
+def test_cli_order_less_write_ignores_order_holders(tmp_path):
+    # No --order → no collision scan; an order-carrying sibling never blocks
+    # an order-less claim (backward compatibility).
+    root = _control_host(tmp_path)
+    assert (
+        main(
+            ["claim", "lane-a", "--target", str(root), "--scope", "first", "--order", "020"]
+        )
+        == 0
+    )
+    assert (
+        main(["claim", "lane-b", "--target", str(root), "--scope", "unrelated"]) == 0
+    )
+
+
+def test_cli_refuses_a_malformed_order_value(tmp_path, capsys):
+    root = _control_host(tmp_path)
+    rc = main(
+        ["claim", "lane-a", "--target", str(root), "--scope", "s", "--order", "1-3"]
+    )
+    assert rc == 2
+    assert "not a single order id" in capsys.readouterr().out

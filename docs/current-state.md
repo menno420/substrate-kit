@@ -229,11 +229,15 @@ this fire shipped the higher-value thing the collision exposed: a groomed
 idea + team memory on the root cause — the `check_claims` duplicate scan keys
 on **branch token, not ORDER/work overlap**, so two branches doing the same
 order never see each other
-(`docs/ideas/order-claim-cross-branch-collision-2026-07-14.md`). REMAINS —
-build that cross-branch overlap advisory (`· order NNN` claim segment +
-`bootstrap claim --order` + `check_claims` advisory); adjacent
-unacked-order-vs-heartbeat visibility gap still open. Where-stopped: #363
-closed, groom PR opened.
+(`docs/ideas/order-claim-cross-branch-collision-2026-07-14.md`). The
+cross-branch overlap guard is now BUILT — PR #365 (self-initiated per the
+groom's named next step; parked for review-merge, auto-merge deliberately
+not armed): `bootstrap claim --order NNN` structured segment +
+refuse-unless-`--force` + `check_claims` `claims-order-collision` advisory
+(advisory posture preserved). REMAINS — #365 review-merge; the idea file's
+frontmatter ship-flip waits for that merge; adjacent
+unacked-order-vs-heartbeat visibility gap still open. Where-stopped: #365
+parked green.
 
 ### Owner gates — each with its one-line unblock
 
