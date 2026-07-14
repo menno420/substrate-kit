@@ -309,6 +309,29 @@ def test_document_carries_both_fences_and_the_contracts():
     assert "> **Status:** `reference`" in doc
 
 
+def test_fleet_master_pointer_casing_is_uppercase():
+    # INC-29 / ORDER 020 item (e): the fleet-manager master capability
+    # ledger lives at `docs/CAPABILITIES.md` (uppercase); the lowercase
+    # `docs/capabilities.md` form shipped as a DEAD pointer in this
+    # module's rendered no-third-copy chain (and its docstring). Pin the
+    # casing in both the render and the module source so it cannot regress.
+    doc = seat_digest_document("demo", _MINI_LEDGER)
+    assert "docs/capabilities.md" not in doc, (
+        "the rendered seat digest emits the lowercase `docs/capabilities.md`"
+        " pointer — the fleet-manager master ledger is `docs/CAPABILITIES.md`"
+        " (INC-29); fix the casing in engine.seatdigest."
+    )
+    assert "fleet-manager `docs/CAPABILITIES.md`" in doc
+    module_source = Path(
+        __import__("engine.seatdigest", fromlist=["__file__"]).__file__
+    ).read_text(encoding="utf-8")
+    assert "docs/capabilities.md" not in module_source, (
+        "engine/seatdigest.py carries the lowercase `docs/capabilities.md` "
+        "pointer somewhere (docstring or render string) — INC-29; fix the "
+        "casing."
+    )
+
+
 # ── adopt: the plant ─────────────────────────────────────────────────────────
 
 

@@ -1207,6 +1207,32 @@ def cmd_check(
         target,
         sessions_dir=config.sessions_dir,
     )
+    # Friction-outbox pending-count advisory (ORDER 020 item d, fm plan A10):
+    # advisory-only by contract, like every nudge above — pending friction
+    # envelopes previously surfaced only at session-close (the
+    # cmd_session_close list_outbox advisory), so a session that never ran
+    # the ritual sat on undrained reports through every `check --strict`.
+    # Surfaced + telemetry-recorded, never counted toward the exit code —
+    # the engine cannot file the issue itself (stdlib-only, no credentials);
+    # the nudge is the mechanism. Full lane only: friction envelopes are not
+    # control-lane traffic.
+    outbox_pending = (
+        [] if status_only else list_outbox(target, config.state_dir)
+    )
+    outbox_advisories = (
+        [
+            Finding(
+                f"{config.state_dir}/friction-outbox/",
+                "friction-outbox-pending",
+                f"{len(outbox_pending)} friction report(s) pending — file "
+                f"each as a `{FRICTION_LABEL}`-labeled issue on the kit "
+                "repo (`friction show <name>` prints the issue title+body), "
+                "then delete the drained file.",
+            )
+        ]
+        if outbox_pending
+        else []
+    )
     # The inbox append-only gate (issue #36 report 2): a control/inbox.md
     # change must be pure-append vs the merge-base + ORDER-grammar shaped.
     # Rides the finding loop like every checker. CI hands in the base blob
@@ -1600,6 +1626,26 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=model_line_advisories,
+        )
+    if outbox_advisories and not status_only:
+        # Same warn-only contract as the advisories above (ORDER 020 item d,
+        # fm plan A10): a pending friction envelope is a drain-me nudge —
+        # surfaced + telemetry-recorded, never counted toward the exit code;
+        # the session-close ritual keeps its own copy of this advisory, this
+        # one just makes the backlog visible at check time too.
+        _emit(
+            f"check: {len(outbox_advisories)} friction-outbox advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in outbox_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=outbox_advisories,
         )
     if adopters_advisories and not status_only:
         # Same warn-only contract as the advisories above (EAP §6.3): a
