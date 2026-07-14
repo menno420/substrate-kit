@@ -1,6 +1,6 @@
 # 2026-07-14 — verify_release mechanization (release runbook §5 as one command)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 About to (opening declaration): build the #356 card's 💡 ender —
 `scripts/verify_release.py <version>`, mechanizing the runbook §5 three-way
