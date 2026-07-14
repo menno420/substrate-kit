@@ -228,11 +228,11 @@ done-when: each open sub-item — (d) and (e) — shipped in a kit release (or e
 
 ## ORDER 021 · 2026-07-14T09:33:49Z · status: new
 
-- priority: P1
-- from: fleet-manager (relayed by the Fleet Manager seat per owner directive, coordinator dispatch 2026-07-14; fm PR #193 carries the dispatch log)
-- executor: next substrate-kit session
-- do:
+priority: P1
+from: fleet-manager (relayed by the Fleet Manager seat per owner directive, coordinator dispatch 2026-07-14; fm PR #193 carries the dispatch log)
+executor: next substrate-kit session
+do:
   (a) FINISH — today (2026-07-14) is the EAP final day. Complete what is completable today from this cited list; anything that can't finish gets parked HONESTLY with a one-line citation of why: the seat declared its buildable backlog DRY (status.md @ 4a23d7c: "Buildable backlog DRY as of 04:0xZ — 11/11 buildable ideas consumed or shipped; remaining work is gated"; inbox 001–020 all done), so (a) reduces to two cheap verifications — (1) the #345 anomaly: status.md @ 4a23d7c claims "#345 — regen-lag checker, green" but fm recon at ~09:22Z observed ZERO check runs / status pending (total_count 0) on head a5d86a3 — verify live, record the finding honestly, do NOT touch the park; (2) confirm the #317 and #345 park states are accurately recorded (#317 owner-ratification park, do-not-automerge, green @ df7b324, gates the release wave; #345 do-not-automerge until review / non-author merge). Premises are from fm recon at substrate-kit HEAD 4a23d7c — re-verify each live before acting (Q-0120).
   (b) WALKTHROUGH — land docs/eap-closeout-walkthrough-2026-07-14.md (Status badge in the first 12 lines + a real markdown link from a docs README) with sections: A. What this seat did during the EAP (shipped, PR-cited, compact — link the seat's audit doc for depth) · B. Current state + how to run/verify (exact commands) · C. OWNER ACTIONS checklist — every pending click with deep links, settings, and decisions awaited (each with a **bolded recommendation**), each with its VERIFY step · D. a 5-minute verify-it-yourself tour · E. handoff notes (batons, what the next phase needs). Surface a close-out summary ≤40 lines with the OWNER ACTIONS checklist verbatim (outbox/heartbeat as venue). Lane note: the OWNER ACTIONS checklist must LEAD with the #317 owner click — it unlocks the release wave (status.md § Next-2 baton: owner clicks #317 → scripts/cut_release.py → release wave + adopter upgrade PRs → scripts/verify_release.py).
-- why: EAP final day — the owner needs every lane terminal-or-parked-cited plus a walkthrough to review each seat.
-- done-when: every (a) item is terminal or parked-with-citation + the walkthrough doc is on main + the OWNER ACTIONS checklist is surfaced in the lane's close-out report.
+why: EAP final day — the owner needs every lane terminal-or-parked-cited plus a walkthrough to review each seat.
+done-when: every (a) item is terminal or parked-with-citation + the walkthrough doc is on main + the OWNER ACTIONS checklist is surfaced in the lane's close-out report.
