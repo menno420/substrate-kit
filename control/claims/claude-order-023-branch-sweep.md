@@ -1,1 +1,0 @@
-- `claude/order-023-branch-sweep` · **ORDER 023 BUILD half: kit-templated scheduled branch-sweep.yml workflow (staged + wire-enforcement install, kit-owned regen) + tests** · src/engine/adopt.py + src/engine/lib/config.py + src/engine/upgrade.py + tests/ + dist regen · order 023 · 2026-07-14
