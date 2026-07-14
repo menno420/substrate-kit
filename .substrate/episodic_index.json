@@ -3081,6 +3081,21 @@
     "summary": "> **Status:** `complete`"
   },
   {
+    "slug": "adopters-currency-refresh",
+    "date": "2026-07-13",
+    "tags": [
+      "2026-07-13",
+      "adopters",
+      "registry",
+      "currency",
+      "refresh",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
     "slug": "automerge-preflight",
     "date": "2026-07-13",
     "tags": [
@@ -3089,6 +3104,39 @@
       "branch-allowlist",
       "preflight",
       "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "guard-fires-clean-check",
+    "date": "2026-07-13",
+    "tags": [
+      "2026-07-13",
+      "announce",
+      "guard-fire",
+      "ledger",
+      "writes",
+      "during",
+      "check",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "heartbeat-case-fix",
+    "date": "2026-07-13",
+    "tags": [
+      "2026-07-13",
+      "heartbeat",
+      "updated",
+      "prefix",
+      "case-insensitivity",
+      "\ud83d\udca1",
+      "\u2691",
       "\u27f2",
       "\ud83d\udcca"
     ],
@@ -3107,6 +3155,71 @@
       "item",
       "5",
       "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "order-018-check-parity",
+    "date": "2026-07-13",
+    "tags": [
+      "session",
+      "2026-07-13",
+      "order",
+      "018",
+      "check",
+      "strict",
+      "runs",
+      "ci",
+      "substrate-gate",
+      "preflight",
+      "legs",
+      "locally",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "order-025-port",
+    "date": "2026-07-13",
+    "tags": [
+      "2026-07-13",
+      "order",
+      "019",
+      "item",
+      "5",
+      "port",
+      "fm",
+      "025",
+      "sonnet5",
+      "writeups",
+      "into",
+      "bench",
+      "docs",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "pointer-guard-skills",
+    "date": "2026-07-13",
+    "tags": [
+      "2026-07-13",
+      "skill-body",
+      "pointer",
+      "guard",
+      "groom-forward",
+      "334",
+      "s",
+      "idea",
+      "\ud83d\udca1",
+      "\u2691",
       "\u27f2",
       "\ud83d\udcca"
     ],
@@ -3138,6 +3251,363 @@
       "registry",
       "\ud83d\udca1",
       "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "session-gate-false-green",
+    "date": "2026-07-13",
+    "tags": [
+      "2026-07-13",
+      "session-gate",
+      "false-green",
+      "fix",
+      "order",
+      "019",
+      "item",
+      "1",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "si-coordinator-close",
+    "date": "2026-07-13",
+    "tags": [
+      "2026-07-13",
+      "si-coordinator-close",
+      "coordinator",
+      "seat",
+      "ender",
+      "retro",
+      "capability",
+      "bake",
+      "heartbeat",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "skill-grounds-dot-paths",
+    "date": "2026-07-13",
+    "tags": [
+      "2026-07-13",
+      "check_skill_grounds",
+      "dot-led",
+      "pointers",
+      "markdown",
+      "links",
+      "whitelist",
+      "classes",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "template-pointer-guard",
+    "date": "2026-07-13",
+    "tags": [
+      "2026-07-13",
+      "template",
+      "pointer",
+      "guard",
+      "dead-pointer",
+      "class",
+      "enforcing",
+      "test",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "ask-002-convergence",
+    "date": "2026-07-14",
+    "tags": [
+      "2026-07-14",
+      "order",
+      "019",
+      "item",
+      "3",
+      "ask",
+      "002",
+      "check",
+      "strict",
+      "ci",
+      "substrate-gate",
+      "convergence",
+      "verification",
+      "no-op",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "changelog-structure-check",
+    "date": "2026-07-14",
+    "tags": [
+      "2026-07-14",
+      "changelog",
+      "unreleased",
+      "structure",
+      "checker",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "check-claims-date-fix",
+    "date": "2026-07-14",
+    "tags": [
+      "2026-07-14",
+      "check_claims",
+      "own-date",
+      "fix",
+      "false",
+      "claims-stale",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "claim-verb",
+    "date": "2026-07-14",
+    "tags": [
+      "2026-07-14",
+      "bootstrap",
+      "claim",
+      "verb",
+      "mechanical",
+      "grammar-valid",
+      "writer",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "cut-release-mechanization",
+    "date": "2026-07-14",
+    "tags": [
+      "2026-07-14",
+      "cut_release",
+      "mechanization",
+      "release-cut",
+      "preparation",
+      "as",
+      "one",
+      "command",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "enabler-allowlist-claude",
+    "date": "2026-07-14",
+    "tags": [
+      "2026-07-14",
+      "order",
+      "019",
+      "item",
+      "2",
+      "ask",
+      "001",
+      "enabler",
+      "allowlist",
+      "claude",
+      "verification",
+      "no-op",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "enabler-install-preflight",
+    "date": "2026-07-14",
+    "tags": [
+      "2026-07-14",
+      "order",
+      "019",
+      "item",
+      "4",
+      "auto-merge-enabler",
+      "install-time",
+      "preflight",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "git-truth-helper",
+    "date": "2026-07-14",
+    "tags": [
+      "2026-07-14",
+      "shared",
+      "git-truth",
+      "helper",
+      "shallow",
+      "graft",
+      "degradation",
+      "extracted",
+      "once",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "heartbeat-verb",
+    "date": "2026-07-14",
+    "tags": [
+      "2026-07-14",
+      "bootstrap",
+      "heartbeat",
+      "mechanical",
+      "status",
+      "md",
+      "restamp",
+      "verb",
+      "order",
+      "019",
+      "item",
+      "7",
+      "\ud83d\udca1",
+      "\u2691",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "idea-index-merged-reality",
+    "date": "2026-07-14",
+    "tags": [
+      "2026-07-14",
+      "check_idea_index",
+      "merged-reality",
+      "leg",
+      "grace-windowed",
+      "git",
+      "truth",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "kit-preflight-dogfood",
+    "date": "2026-07-14",
+    "tags": [
+      "2026-07-14",
+      "kit-side",
+      "scripts",
+      "preflight",
+      "py",
+      "ci-convergence",
+      "dogfood",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "model-line-lint",
+    "date": "2026-07-14",
+    "tags": [
+      "2026-07-14",
+      "model-line",
+      "payload",
+      "lint",
+      "advisory",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "order-020-outbox-advisory-capabilities-casing",
+    "date": "2026-07-14",
+    "tags": [
+      "2026-07-14",
+      "order",
+      "020",
+      "d",
+      "e",
+      "check-time",
+      "outbox",
+      "advisory",
+      "fleet-master",
+      "pointer",
+      "casing",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `in-progress`"
+  },
+  {
+    "slug": "seat-digest-adaptive-clip",
+    "date": "2026-07-14",
+    "tags": [
+      "2026-07-14",
+      "seat",
+      "digest",
+      "adaptive",
+      "description",
+      "clip",
+      "retire",
+      "manual",
+      "ratchet",
+      "\ud83d\udca1",
+      "\u27f2",
+      "\ud83d\udcca"
+    ],
+    "summary": "> **Status:** `complete`"
+  },
+  {
+    "slug": "verify-release",
+    "date": "2026-07-14",
+    "tags": [
+      "2026-07-14",
+      "verify_release",
+      "mechanization",
+      "release",
+      "runbook",
+      "5",
+      "as",
+      "one",
+      "command",
+      "\ud83d\udca1",
       "\u27f2",
       "\ud83d\udcca"
     ],

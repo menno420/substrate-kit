@@ -217,6 +217,21 @@ flip-race fail-open
 repro (out of scope here) before a gate-logic change; heartbeat-delegated-
 tally doctrine still open.
 
+**→ Post-2026-07-14 lab loop (ORDER 020 d+e, PR #363):** friction inbox EMPTY;
+backlog buildable-dry, so served ORDER 020's two open BUILD sub-items (a/b/c
+were premise-checked SATISFIED at HEAD by the order). DONE — (d) A10 check-time
+friction-outbox advisory (`src/engine/checks/check_outbox.py`,
+`check_outbox_pending` wired into `cmd_check`'s full lane; lifts the
+`session-close` drain reminder into the check lane, advisory-only/never
+exit-affecting, silent when the outbox is empty) + (e) INC-29/fm-plan-B2 dead
+lowercase `docs/capabilities.md` → uppercase `docs/CAPABILITIES.md` at the
+three seat-digest/CAPABILITIES surfaces (one template fix heals ~14 adopters;
+stale `_EXTERNAL_REPO_REFS` guard entry removed — uppercase resolves via
+`_PLAN_DESTS`). Suite 1495→1501, dist byte-stable, 7-leg preflight green.
+REMAINS — ORDER 020 done-when's release-ship half rides the gated release wave
+(owner #317 click); enabler `claude/*` line (sub-item a) unchanged and pinned.
+Where-stopped: PR #363 born-red, ORDER-020 ack appended to `control/inbox.md`.
+
 ### Owner gates — each with its one-line unblock
 
 *(Stale #17 rubric-bless gate removed — owner merged it 2026-07-09,
