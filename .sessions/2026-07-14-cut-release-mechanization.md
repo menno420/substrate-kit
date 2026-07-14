@@ -1,6 +1,6 @@
 # 2026-07-14 — cut_release mechanization (release-cut preparation as one command)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 About to (opening declaration): build the Night-9 (#351 card) 💡 ender —
 `scripts/cut_release.py`, a dry-run-by-default mechanization of the release
