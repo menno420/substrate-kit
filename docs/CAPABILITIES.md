@@ -84,6 +84,24 @@ credential is missing:
 
 Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
 
+- 2026-07-14 · wall+recipe · **negative git ancestry answers are UNRELIABLE
+  on shallow/grafted clones — container clones here are routinely shallow,
+  so `git merge-base --is-ancestor` (and kin) returning non-zero proves
+  NOTHING about real ancestry.** A grafted history severs ancestry paths
+  (rc 1 for commits that ARE ancestors upstream) and truncates old commits
+  away entirely (rc 128 "Not a valid commit name" for commits that exist on
+  origin). · evidence: PR #355 (check_idea_index merged-reality leg — the
+  session's own container clone was shallow at 51 of 441 commits, absence
+  proved nothing) · PR #357 (verify_release tag leg — live FALSE
+  `merge-base --is-ancestor` negative for v1.15.0's REAL bump commit
+  `eaf4f23`, disconnected from origin/main by the graft; the same skip note
+  surfaces through `scripts/preflight.py`'s idea-index leg) · **RECIPE:
+  never FAIL/red on a negative ancestry answer without first checking
+  `git rev-parse --is-shallow-repository` — on `true`, degrade the answer
+  to SKIP/unprovable honestly (a positive answer is still a proof). Don't
+  re-implement: import `scripts/_git_truth.py`
+  (`is_shallow()` / `provable_ancestry() -> yes|no|unprovable`), the shared
+  home of this rule since PR #358.**
 - 2026-07-13 · wall · **send_later one-shots can drop platform-side and
   leave NO tombstone** — the dropped trigger is absent from `list_triggers`
   entirely (0 hits across 1203 records, 13 pages, audited

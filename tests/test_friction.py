@@ -261,3 +261,52 @@ def test_session_close_advises_on_pending_outbox(tmp_path, capsys):
     capsys.readouterr()
     assert main(["session-close", "--target", str(root)]) == 0
     assert "friction report(s) pending" in capsys.readouterr().out
+
+
+def test_check_advises_on_pending_outbox(tmp_path, capsys):
+    # ORDER 020 item (d), fm plan A10: `check --strict` surfaces the
+    # pending friction-outbox count as an advisory — previously the
+    # list_outbox nudge lived only in cmd_session_close, so a session that
+    # never ran the ritual sat on undrained envelopes through every check.
+    root, config = _install(tmp_path)
+    sessions = root / config.sessions_dir
+    sessions.mkdir(parents=True)
+    (sessions / "2026-07-14-x.md").write_text(
+        "# log\n> **Status:** `complete`\n- ⚑ friction\n",
+        encoding="utf-8",
+    )
+    baseline_exit = main(["check", "--strict", "--target", str(root)])
+    baseline_out = capsys.readouterr().out
+    assert "friction-outbox advisory" not in baseline_out
+    main(["friction", "export", "--repo", "o/r", "--target", str(root)])
+    capsys.readouterr()
+    exit_code = main(["check", "--strict", "--target", str(root)])
+    out = capsys.readouterr().out
+    # Advisory-only by contract: the pending envelope changes the OUTPUT,
+    # never the exit code — whatever the tree's exit was without it.
+    assert exit_code == baseline_exit
+    assert "friction-outbox advisory" in out
+    assert "never exit-affecting" in out
+    assert "[friction-outbox-pending]" in out
+    assert "1 friction report(s) pending" in out
+
+
+def test_check_status_only_skips_the_outbox_advisory(tmp_path, capsys):
+    # The fast lane never pays the outbox scan: friction envelopes are not
+    # control-lane traffic (same full-lane-only posture as every non-control
+    # advisory in cmd_check).
+    root, config = _install(tmp_path)
+    sessions = root / config.sessions_dir
+    sessions.mkdir(parents=True)
+    (sessions / "2026-07-14-x.md").write_text(
+        "# log\n> **Status:** `complete`\n- ⚑ friction\n",
+        encoding="utf-8",
+    )
+    main(["friction", "export", "--repo", "o/r", "--target", str(root)])
+    (root / "control").mkdir(exist_ok=True)
+    (root / "control" / "status.md").write_text(
+        "# seat\nupdated: 2026-07-14T05:00Z\n", encoding="utf-8"
+    )
+    capsys.readouterr()
+    main(["check", "--strict", "--status-only", "--target", str(root)])
+    assert "friction-outbox advisory" not in capsys.readouterr().out

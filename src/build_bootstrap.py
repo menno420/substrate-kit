@@ -44,6 +44,10 @@ MODULE_ORDER = (
     "checks/check_docs.py",
     "checks/allowlist.py",
     "checks/check_session_log.py",
+    # After grammar.py (the model-line constants + payload parser) and
+    # check_session_log.py (the completeness gate it reuses): the 📊 Model
+    # payload lint (idea model-line-payload-lint-advisory-2026-07-11).
+    "checks/check_model_line.py",
     "checks/check_namespace.py",
     "checks/check_seam_authority.py",
     "checks/check_orientation_budget.py",
@@ -65,6 +69,16 @@ MODULE_ORDER = (
     # Only needs check_docs.Finding, defined above (EAP §6.5 setup-script
     # contract enforcer — the writer half is env-setup.sh.tmpl).
     "checks/check_setup_script.py",
+    # After grammar.py + checks/check_status_current.py: the mechanical
+    # heartbeat writer (ORDER 019 item 7) reuses UPDATED_LINE_RE/KIT_LINE_RE
+    # and round-trips every write through parse_heartbeat.
+    "heartbeat.py",
+    # After grammar.py: the mechanical work-claim writer (#358 card's 💡
+    # ender) renders from and round-trips through the same
+    # WORK_CLAIM_BULLET_RE / WORK_CLAIM_DATE_RE constants check_claims
+    # consumes. Grammar-only imports, so anywhere after grammar.py works;
+    # kept beside its sibling writer heartbeat.py.
+    "claim.py",
     "ledger.py",
     "loop/kpis.py",
     "loop/reflections.py",

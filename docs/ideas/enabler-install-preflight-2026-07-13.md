@@ -1,18 +1,19 @@
 ---
-state: captured
+state: promoted
 origin: consumer:menno420/idea-engine
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 344
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-13
+outcome: shipped
 ---
 
 # Auto-merge-enabler: install-time preflight for required checks + branch allowlist (2026-07-13)
 
 > **Status:** `ideas`
 >
-> **State:** captured → route: quick-win (install-step verification in the
-> enabler distribution path / install docs).
+> **State:** captured → shipped (PR #344, 2026-07-13, ORDER 019 item 4 —
+> the install-time preflight half; the check-time half shipped earlier in
+> #321).
 > **Origin:** consumer — three independent hits on the 2026-07-12→13 night
 > run: superbot-idle's enabler sat INERT ("zero required checks — safely
 > refuses to arm", fm OQ B#50), gba-homebrew #76 merged with the enabler

@@ -50,6 +50,68 @@ probe failed both arms; T5 ignored). **KF-8 trend at 9 scored rows: 1 PASS
 
 ### Added
 
+- **`check_idea_index` merged-reality leg — grace-windowed git-truth
+  verification of shipped claims (idea from the PR #349 session card, PR
+  #355).** The idea-index checker now verifies `outcome: shipped`
+  frontmatter against actual local git history (no GitHub API): a
+  `shipped_pr` needs a merge marker on main (`(#N)` squash tail /
+  `Merge pull request #N`), the real merge date reconciles the in-PR
+  flip's anticipated `merged_date` (drift > 1 day flagged with the real
+  date), and an optional well-formed `merged_sha` must be an ancestor of
+  main. Advisory-first with a 7-day grace window so in-flight/parked
+  shipping PRs never false-red; only malformed `merged_sha` syntax fails
+  hard. Degrades gracefully (self-skip with a note) on gitless trees,
+  shallow clones, and claims about other repos. Kit-repo tooling only —
+  no adopter surface, no dist change.
+- **Kit-side `scripts/preflight.py` — CI-convergence dogfood (idea
+  2026-07-14, PR #354).** The kit repo now plants the preflight wrapper its
+  own config default has named since PR #332
+  (`_default_preflight_scripts()` → `["scripts/preflight.py"]`), retiring
+  the standing "preflight script not found" NOTE on every full `check` and
+  closing the local-green→CI-red gap (idea-engine ASK 002 / #274/#299) in
+  the kit itself. Stdlib-only, idea-engine pattern: a `CHECKS` table of the
+  seven ci.yml kit-quality legs (pytest · dist byte-pin · ruff, skipped
+  with a NOTE when not importable locally · idea index · changelog
+  structure · program law without `--label-gate` — labels are CI-only ·
+  bench integrity) + a worst-exit runner where a red leg never stops the
+  rest. Honors the `SUBSTRATE_KIT_PREFLIGHT` nested-run marker
+  (`_run_preflight_scripts` stamps it on its children) by self-skipping
+  exit-0, so the pytest leg's check-invoking tests can never recurse;
+  `--list` / `--only <name>` support testing without ever spawning the real
+  suite. The CI cold-adoption smoke leg is deliberately excluded
+  (shell-heavy/slow; CI keeps it). Kit-repo tooling only: no engine change,
+  no dist regen, no adopter surface.
+- **📊 Model-line payload lint (idea 2026-07-11, PR #352).** `check` (full
+  lane) now lints the newest completed session cards' `📊 Model:` payload —
+  advisory-only, never exit-affecting: a needle-bearing line with no valid
+  three-field `·` payload (`model-line-shape` — the harvest silently records
+  NOTHING from such a card), an exact model-ID token in the model segment
+  (`model-line-exact-id`, the ORDER 012 family-level bar), an off-taxonomy
+  effort segment (`model-line-effort`), or a task-class segment that does
+  not prefix-match one of the 9 PL-004 classes (`model-line-class`). Every
+  finding quotes the taught byte-form verbatim as the fix path. The
+  model-line grammar (needle, taught form, effort values, task classes,
+  exact-ID detector, payload parser) moved to `engine.grammar` (EAP §6.8
+  one-home pattern); `loop.telemetry` consumes the same objects, pinned by
+  identity tests. Measured at build time: 124 of the kit's own 178 completed
+  cards drifted (174 findings), so the check-time scan is bounded to the
+  newest-10 window (`window=0` = the unbounded measurement lane); 10 of the
+  newest 10 failed, so the nudge is live from this PR's first run.
+- **CHANGELOG `[Unreleased]` structure checker (idea 2026-07-09, PR #351).**
+  `scripts/check_changelog_structure.py` (kit-repo tooling, ci.yml
+  kit-quality lane — NOT wired into `bootstrap check` or any adopter
+  surface) validates this file's `[Unreleased]` section shape: only the six
+  keep-a-changelog headings, each at most once, in canonical order, no
+  bullet before the first heading, and no prose paragraph after the
+  headings begin — free prose (the KF-5 benchmark blocks) lives in the
+  section preamble, so a release cut lifts it verbatim above the machine
+  comment with zero hand-reordering. Born from the 2026-07-09 docs-drift
+  audit finding the same mid-section `### Fixed` defect made twice
+  independently in one run (KL-4 / PR #14, PR #17's patch). Findings name
+  the expected layout; code fences and lazy bullet continuations are
+  exempt (`tests/test_check_changelog_structure.py`, 22 tests, incl. the
+  malformed→fires / corrected→clean mutation arc).
+
 - **Local `check --strict` runs the CI substrate-gate's preflight legs
   (ORDER 018 / idea-engine ASK 002, PR #332).** Two local-green→CI-red
   round-trips in one night (idea-engine #274 — the inbox grammar gate only
@@ -105,6 +167,18 @@ probe failed both arms; T5 ignored). **KF-8 trend at 9 scored rows: 1 PASS
 
 ### Fixed
 
+- **`check_claims` no longer falsely nags a fresh work claim as
+  `claims-stale` when its scope text mentions a dated filename (PR #353).**
+  The work-claim half dated a claim by the FIRST `YYYY-MM-DD` match anywhere
+  in the file, so a dated idea-filename in the scope text (e.g.
+  `…-2026-07-09.md`) shadowed the claim's real trailing date and a
+  today-dated claim nagged as days-stale (found live by the 2026-07-14
+  model-line-lint session, which had to reword its claim). The claim's date
+  is now the LAST date on the claim bullet line — the taught grammar ends
+  the bullet `· YYYY-MM-DD` — so filename mentions can never shadow it; a
+  date outside the bullet line no longer counts (that claim is
+  `claims-format`, still advisory). Exit posture unchanged: every claims
+  finding stays advisory, never exit-affecting.
 - **Local `check` no longer mtime-greens the wrong session card — the
   fallback lane derives the card set from the merge-base diff (idea-engine
   ASK 003, sim-lab V051; PR #342).** `cmd_check`'s no-`--session-log` lane

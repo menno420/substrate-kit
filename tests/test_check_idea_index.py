@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import datetime as dt
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -287,3 +289,229 @@ class TestLiveRepo:
     def test_main_exit_code(self, capsys):
         assert cii.main(["--root", str(REPO_ROOT)]) == 0
         assert "OK" in capsys.readouterr().out
+
+
+# --- merged reality (enforcement item 6) -----------------------------------
+
+_KIT_REMOTE = "https://github.com/menno420/substrate-kit.git"
+
+
+def _run_git(root, *args, date=None):
+    env = dict(os.environ, GIT_CONFIG_NOSYSTEM="1", HOME=str(root))
+    if date is not None:
+        stamp = f"{date}T12:00:00 +0000"
+        env["GIT_AUTHOR_DATE"] = stamp
+        env["GIT_COMMITTER_DATE"] = stamp
+    proc = subprocess.run(
+        [
+            "git", "-C", str(root),
+            "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+            *args,
+        ],
+        capture_output=True, text=True, env=env, check=True,
+    )
+    return proc.stdout.strip()
+
+
+def _make_git_history(root, entries, remote=_KIT_REMOTE):
+    """init a real repo at ``root`` with one empty commit per (subject, date)."""
+    _run_git(root, "init", "-q", "-b", "main")
+    for subject, date in entries:
+        _run_git(root, "commit", "-q", "--allow-empty", "-m", subject, date=date)
+    if remote:
+        _run_git(root, "remote", "add", "origin", remote)
+    return _run_git(root, "rev-parse", "HEAD")
+
+
+def _reality_idea(
+    pr="42",
+    repo="menno420/substrate-kit",
+    merged="2026-07-01",
+    sha=None,
+    outcome="shipped",
+):
+    sha_line = f"merged_sha: {sha}\n" if sha is not None else ""
+    return (
+        "---\n"
+        "state: promoted\n"
+        "origin: lab\n"
+        f"shipped_pr: {pr}\n"
+        f"shipped_repo: {repo}\n"
+        f"merged_date: {merged}\n"
+        f"outcome: {outcome}\n"
+        f"{sha_line}"
+        "---\n\n# Idea\n\nBody.\n"
+    )
+
+
+class TestMergedReality:
+    """The four-case mutation arc + graceful degradation."""
+
+    def _check(self, root, today=TODAY):
+        return cii.check_merged_reality(root, today=today)
+
+    def test_arc_a_unreachable_claims_past_grace_advise(self, tmp_path):
+        # (a) shipped idea citing a PR + SHA that never merged, claim 19 days
+        # old (grace is 7) -> both advisory legs fire; nothing enforcing.
+        root = _make_repo(
+            tmp_path,
+            {"bogus-2026-06-20.md": _reality_idea(pr="777", merged="2026-06-20", sha="deadbeef" * 5)},
+        )
+        _make_git_history(root, [("Unrelated work (#1)", "2026-06-01")])
+        findings, advisories, note = self._check(root)
+        assert note == ""
+        assert findings == []
+        assert _kinds(advisories) == ["pr-not-on-main", "sha-not-on-main"]
+
+    def test_arc_b_really_merged_is_clean(self, tmp_path):
+        # (b) the claim matches git truth: marker on main, date within
+        # tolerance, SHA an ancestor -> fully clean.
+        root = _make_repo(
+            tmp_path,
+            {"real-2026-07-01.md": _reality_idea(pr="42", merged="2026-07-01")},
+        )
+        head = _make_git_history(root, [("Ship the thing (#42)", "2026-07-01")])
+        (root / "docs" / "ideas" / "real-2026-07-01.md").write_text(
+            _reality_idea(pr="42", merged="2026-07-01", sha=head), encoding="utf-8"
+        )
+        findings, advisories, note = self._check(root)
+        assert (findings, advisories, note) == ([], [], "")
+
+    def test_arc_c_fresh_claim_within_grace_is_clean(self, tmp_path):
+        # (c) in-PR flip: idea marked shipped TODAY while its PR is still
+        # open -> unreachable, but within the 7d grace window -> clean.
+        root = _make_repo(
+            tmp_path,
+            {"fresh-2026-07-08.md": _reality_idea(pr="888", merged="2026-07-08", sha="deadbeef" * 5)},
+        )
+        _make_git_history(root, [("Unrelated work (#1)", "2026-07-01")])
+        findings, advisories, note = self._check(root)
+        assert (findings, advisories) == ([], [])
+
+    def test_arc_d_malformed_sha_is_enforcing_even_without_git(self, tmp_path):
+        # (d) a malformed merged_sha is a typo -> hard finding, and it needs
+        # no git history at all (tmp_path is not a repo).
+        root = _make_repo(
+            tmp_path,
+            {"typo-2026-06-01.md": _reality_idea(pr="777", merged="2026-06-01", sha="not-a-sha")},
+        )
+        findings, advisories, note = self._check(root)
+        assert _kinds(findings) == ["bad-merged-sha"]
+        assert advisories == []  # garbage SHA gets no reachability run
+        assert "not a git work tree" in note
+
+    def test_merged_date_drift_advises_with_real_date(self, tmp_path):
+        root = _make_repo(
+            tmp_path,
+            {"drift-2026-06-10.md": _reality_idea(pr="43", merged="2026-06-10")},
+        )
+        _make_git_history(root, [("Ship it (#43)", "2026-07-01")])
+        findings, advisories, _ = self._check(root)
+        assert findings == []
+        assert _kinds(advisories) == ["merged-date-drift"]
+        assert "2026-07-01" in advisories[0].message  # the mechanical fix
+
+    def test_one_day_skew_is_tolerated(self, tmp_path):
+        root = _make_repo(
+            tmp_path,
+            {"skew-2026-06-30.md": _reality_idea(pr="44", merged="2026-06-30")},
+        )
+        _make_git_history(root, [("Ship it (#44)", "2026-07-01")])
+        assert self._check(root)[:2] == ([], [])
+
+    def test_merge_pull_request_style_matches(self, tmp_path):
+        root = _make_repo(
+            tmp_path,
+            {"merge-2026-06-15.md": _reality_idea(pr="45", merged="2026-06-15")},
+        )
+        _make_git_history(
+            root, [("Merge pull request #45 from menno420/claude/x", "2026-06-15")]
+        )
+        assert self._check(root)[:2] == ([], [])
+
+    def test_foreign_shipped_repo_is_skipped(self, tmp_path):
+        # A claim about an adopter repo can't be verified against this
+        # repo's history -> silently skipped, even when stale + bogus.
+        root = _make_repo(
+            tmp_path,
+            {"foreign-2026-06-01.md": _reality_idea(pr="777", repo="menno420/websites", merged="2026-06-01")},
+        )
+        _make_git_history(root, [("Unrelated (#1)", "2026-06-01")])
+        assert self._check(root)[:2] == ([], [])
+
+    def test_shallow_clone_self_skips_with_note(self, tmp_path):
+        # History truncated -> absence of a commit proves nothing.
+        upstream = tmp_path / "upstream"
+        upstream.mkdir()
+        _make_git_history(
+            upstream,
+            [("Old work (#9)", "2026-06-01"), ("New work (#10)", "2026-07-01")],
+            remote=None,
+        )
+        shallow = tmp_path / "shallow"
+        subprocess.run(
+            ["git", "clone", "-q", "--depth", "1",
+             f"file://{upstream}", str(shallow)],
+            check=True, capture_output=True,
+            env=dict(os.environ, GIT_CONFIG_NOSYSTEM="1", HOME=str(tmp_path)),
+        )
+        ideas = shallow / "docs" / "ideas"
+        ideas.mkdir(parents=True)
+        (ideas / "stale-2026-06-01.md").write_text(
+            _reality_idea(pr="9", merged="2026-06-01"), encoding="utf-8"
+        )
+        (ideas / "README.md").write_text("- [x](stale-2026-06-01.md)\n", encoding="utf-8")
+        findings, advisories, note = self._check(shallow)
+        assert (findings, advisories) == ([], [])
+        assert "shallow" in note
+
+    def test_non_git_tree_self_skips_with_note(self, tmp_path):
+        root = _make_repo(
+            tmp_path,
+            {"stale-2026-06-01.md": _reality_idea(pr="777", merged="2026-06-01")},
+        )
+        findings, advisories, note = self._check(root)
+        assert (findings, advisories) == ([], [])
+        assert "not a git work tree" in note
+
+    def test_unshipped_ideas_never_touch_git(self, tmp_path):
+        root = _make_repo(tmp_path, {"open-2026-07-01.md": GOOD_FM})
+        assert self._check(root)[:2] == ([], [])
+
+    def test_main_no_reality_flag(self, tmp_path, capsys):
+        root = _make_repo(
+            tmp_path,
+            {"bogus-2026-06-20.md": _reality_idea(pr="777", merged="2026-06-20")},
+        )
+        _make_git_history(root, [("Unrelated (#1)", "2026-06-01")])
+        assert cii.main(["--root", str(root), "--no-reality"]) == 0
+        assert "skipped (--no-reality)" in capsys.readouterr().out
+
+    def test_main_advisories_do_not_affect_exit(self, tmp_path, capsys):
+        root = _make_repo(
+            tmp_path,
+            {"bogus-2026-06-20.md": _reality_idea(pr="777", merged="2026-06-20")},
+        )
+        _make_git_history(root, [("Unrelated (#1)", "2026-06-01")])
+        rc = cii.main(["--root", str(root)])
+        out = capsys.readouterr().out
+        # NOTE: main() uses date.today(); by then 2026-06-20 is long past
+        # grace, so the advisory prints -- and the exit stays 0.
+        assert rc == 0
+        assert "[advisory] [pr-not-on-main]" in out
+
+    def test_main_malformed_sha_exits_1(self, tmp_path, capsys):
+        root = _make_repo(
+            tmp_path,
+            {"typo-2026-06-01.md": _reality_idea(sha="xyz")},
+        )
+        assert cii.main(["--root", str(root)]) == 1
+        assert "bad-merged-sha" in capsys.readouterr().out
+
+    def test_live_repo_reality_clean(self):
+        # The real corpus must hold: zero enforcing findings; advisories
+        # allowed only if history is available (they'd surface real drift).
+        findings, advisories, note = cii.check_merged_reality(REPO_ROOT)
+        assert findings == []
+        if not note:
+            assert advisories == []

@@ -43,6 +43,17 @@ results/<family>/<date>-runNN/ #   allocation, guards, ideas, friction) + commit
   — why guard-firing stopped discriminating (runs 4–5) and what the
   response-to-visible-signal probe measures (pin PR #181, owner ratification).
 
+## Method + practice writeups (ported per fm ORDER 025 / inbox ORDER 019 item 5)
+
+- [`docs/reports/2026-07-09-cfgdiff-differential-testing-method.md`](../docs/reports/2026-07-09-cfgdiff-differential-testing-method.md)
+  — differential-oracle testing (the codetool-lab-sonnet5 flagship lesson):
+  a corpus vs a reference parser found 3 real bugs behind 114 green tests;
+  the code-level instance of this tree's oracle-outside-the-measured-system
+  law.
+- [`docs/reports/2026-07-09-cfgdiff-v0.1.1-release-decision.md`](../docs/reports/2026-07-09-cfgdiff-v0.1.1-release-decision.md)
+  — the cfgdiff v0.1.1 release-decision writeup (rides with the method doc):
+  decide-and-flag release reasoning, exact walls, paste-ready owner tag path.
+
 ## Running B1 (who does what)
 
 1. **The runner** (a dedicated fresh session the loop spawns — never the

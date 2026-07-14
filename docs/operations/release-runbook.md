@@ -25,6 +25,9 @@
 
 ## 2. The version bump (one commit set)
 
+- **Mechanized:** `python3 scripts/cut_release.py X.Y.Z` (dry-run; `--write`
+  applies) performs this section's file edits — both version homes + the
+  CHANGELOG transform — and prints the remaining manual steps.
 - **Version homes (both, same commit):** `src/engine/lib/config.py:31`
   (`KIT_VERSION`) and `pyproject.toml:17` (`version`).
 - **CHANGELOG:** rename `[Unreleased]` → `[X.Y.Z] - <date>` (fresh empty
@@ -57,10 +60,14 @@
 
 ## 5. Three-way verification (never skip)
 
-Independently download the released `bootstrap.py`; its sha256 must equal
-BOTH the `release.json` `sha256` field AND the committed
-`dist/bootstrap.py` at the bump SHA. Record run id, tag object, commit SHA,
-and the hash in the release record.
+- **Mechanized:** `python3 scripts/verify_release.py X.Y.Z` runs this
+  section — tag→bump-commit, the three-way sha256, the run's conclusion —
+  printing PASS/FAIL/SKIPPED per check + the paste-ready record line
+  (walled legs SKIP loudly, never silently pass).
+- Independently download the released `bootstrap.py`; its sha256 must equal
+  BOTH the `release.json` `sha256` field AND the committed
+  `dist/bootstrap.py` at the bump SHA. Record run id, tag object, commit
+  SHA, and the hash in the release record.
 
 ## 6. Aftermath
 

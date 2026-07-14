@@ -36,6 +36,17 @@
   (lane-owed · owner asks · backlog candidates · the unmeasured-effect gap +
   a #247-methodology measurement proposal), and the ORDER 015 rider
   disposition.
+- [../reports/2026-07-09-cfgdiff-differential-testing-method.md](../reports/2026-07-09-cfgdiff-differential-testing-method.md)
+  — differential-oracle testing method (bench-practice reference, ported from
+  `menno420/codetool-lab-sonnet5` per fm ORDER 025 / inbox ORDER 019 item 5):
+  a corpus vs a reference parser (python-dotenv) found 3 real bugs behind
+  114 green self-written tests; the corpus design and the fleet-wide rule it
+  proposed.
+- [../reports/2026-07-09-cfgdiff-v0.1.1-release-decision.md](../reports/2026-07-09-cfgdiff-v0.1.1-release-decision.md)
+  — cfgdiff v0.1.1 release-decision writeup (dated audit, ported from
+  `menno420/codetool-lab-sonnet5` per the same order): the decide-and-flag
+  release reasoning, the tag-push/MCP/api walls with exact errors, and the
+  paste-ready owner release path.
 - [../reports/2026-07-13-night-run-adopter-outcomes.md](../reports/2026-07-13-night-run-adopter-outcomes.md)
   — night-run adopter outcomes (dated audit, ORDER 016 item 5): 13-seat
   sweep of the 2026-07-12→13 night run (11 SHIPPED · 2 IDLE-CLEAN ·

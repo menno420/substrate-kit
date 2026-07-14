@@ -137,11 +137,12 @@ _KIT_SELF_REFS: dict[str, str] = {
 #    the owning repo's name in the same template. pointer -> (owner marker
 #    that must appear in every referencing template, reason).
 _EXTERNAL_REPO_REFS: dict[str, tuple[str, str]] = {
-    "docs/capabilities.md": (
-        "fleet-manager",
-        "master capability ledger — CAPABILITIES.md.tmpl names "
-        "`menno420/fleet-manager` as its home",
-    ),
+    # NOTE: the fleet-manager master capability ledger pointer
+    # (CAPABILITIES.md.tmpl → `docs/CAPABILITIES.md`) needs no entry here:
+    # the uppercase path is also an ADOPT_PLAN destination, so it resolves
+    # via _PLAN_DESTS. Its casing is pinned by
+    # test_capabilities_pointer_casing_is_uppercase below (INC-29 — the
+    # lowercase `docs/capabilities.md` form shipped as a dead pointer).
     "docs/planning/fleet-coordination-protocol-2026-07-09.md": (
         "superbot",
         "canonical control-protocol spec — control-README.md.tmpl names "
@@ -297,3 +298,25 @@ def test_no_stale_accounting_entries():
                 "cross-repo path reads as a dead local pointer to a cold "
                 "session; name the repo next to the ref."
             )
+
+
+def test_capabilities_pointer_casing_is_uppercase():
+    # INC-29 / ORDER 020 item (e): the fleet-manager master capability
+    # ledger lives at `docs/CAPABILITIES.md` (uppercase). The lowercase
+    # `docs/capabilities.md` form shipped as a DEAD pointer via
+    # CAPABILITIES.md.tmpl (line 8) — one template heals ~14 adopters, so
+    # pin the casing at the source: no template may emit the lowercase
+    # form, and the CAPABILITIES template must keep the uppercase
+    # fleet-master pointer it exists to teach.
+    templates = load_templates()
+    for name, text in sorted(templates.items()):
+        assert "docs/capabilities.md" not in text, (
+            f"{name} emits the lowercase `docs/capabilities.md` pointer — "
+            "the fleet-manager master ledger is `docs/CAPABILITIES.md` "
+            "(INC-29); fix the casing."
+        )
+    assert "docs/CAPABILITIES.md" in templates["CAPABILITIES.md.tmpl"], (
+        "CAPABILITIES.md.tmpl no longer names the fleet-master "
+        "`docs/CAPABILITIES.md` pointer — update this pin if the fleet "
+        "aggregation point deliberately moved."
+    )

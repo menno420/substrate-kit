@@ -35,6 +35,12 @@ from engine.checks.check_session_log import (
     status_in_progress,
     unresolved_fill_count,
 )
+from engine.grammar import (
+    EXACT_MODEL_ID_RE,
+    MODEL_LINE_NEEDLE,
+    MODEL_TASK_CLASSES,
+    parse_model_payload,
+)
 
 GUARD_FIRES_FILENAME = "guard-fires.jsonl"
 MODEL_USAGE_RELPATH = "telemetry/model-usage.jsonl"
@@ -53,34 +59,18 @@ GUARD_FIRES_DEDUPE_WINDOW_S = 600
 # a long-lived fires log; a burst larger than this simply dedupes less.
 _GUARD_FIRES_DEDUPE_SCAN = 200
 
-# The run-report needle. \N escape keeps the engine source ASCII-safe.
-MODEL_LINE_NEEDLE = "\N{BAR CHART} Model:"  # 📊 Model:
-
-# The 9 PL-004 task classes, verbatim (docs/program/rulings.md): the 8
-# founding Q-0248 classes + `feature build` (the PL-010 amendment).
-TASK_CLASSES = (
-    "docs-only",
-    "mechanical refactor",
-    "test writing",
-    "runtime bugfix",
-    "kernel/architecture design",
-    "review/verify",
-    "research",
-    "idea/planning",
-    "feature build",
-)
+# The model-line grammar — needle, taxonomy, exact-ID detector, payload
+# parser — moved to ``engine.grammar`` (EAP §6.8, the model-line payload lint
+# session): ONE home shared by this harvest, the writer-side docs, and
+# ``checks.check_model_line`` so they cannot drift apart. Body-level aliases
+# (not import-as) keep this module's public/internal names stable — the dist
+# builder drops intra-package import lines, so an aliased import would leave
+# the name undefined in the concatenated bootstrap.
+TASK_CLASSES = MODEL_TASK_CLASSES
+_EXACT_MODEL_ID_RE = EXACT_MODEL_ID_RE
+_parse_model_payload = parse_model_payload
 
 _DATE_PREFIX_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
-
-# Exact model-ID token detector for the 📊 model segment (fleet reporting
-# bar, ORDER 012 widened 2026-07-12): repo artifacts carry FAMILY-LEVEL model
-# names only (`fable-5`, `opus-4.8`), never an exact model-ID token — and
-# exact IDs are not always dated, so a dated-suffix test alone is too narrow
-# (the websites #178 cleanup class: cards recording `claude-`-prefixed exact
-# ID tokens passed the old "no full dated model ID" wording). Flags the two
-# exact-ID shapes seen in the wild: a provider-prefixed ID token
-# (`claude-…`, incl. `us.anthropic.…` forms) and a dated `-YYYYMMDD` suffix.
-_EXACT_MODEL_ID_RE = re.compile(r"^(?:us\.)?(?:anthropic\.)?claude-|-\d{8}$")
 
 
 def guard_fires_path(root: Path, state_dir: str) -> Path:
@@ -210,26 +200,6 @@ def record_guard_fires(
         return written
     except Exception:  # noqa: BLE001 — telemetry fails open by contract
         return 0
-
-
-def _parse_model_payload(payload: str) -> dict | None:
-    """Parse one needle line's payload; None when it under-fills (<3 segments)."""
-    parts = [p.strip(" *`") for p in payload.split("\N{MIDDLE DOT}")]
-    parts = [p for p in parts if p]
-    if len(parts) < 3:
-        return None
-    tokens_out: int | None = None
-    if len(parts) >= 4:
-        try:
-            tokens_out = int(parts[3].replace(",", "").replace("_", ""))
-        except ValueError:
-            tokens_out = None
-    return {
-        "model": parts[0],
-        "effort": parts[1],
-        "task_class": parts[2],
-        "tokens_out": tokens_out,
-    }
 
 
 def parse_model_line(text: str) -> dict | None:

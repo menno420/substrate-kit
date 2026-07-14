@@ -217,6 +217,24 @@ flip-race fail-open
 repro (out of scope here) before a gate-logic change; heartbeat-delegated-
 tally doctrine still open.
 
+**→ Post-2026-07-14 lab loop (concurrent-ORDER collision):** friction inbox
+EMPTY; backlog buildable-dry, so served ORDER 020's two open BUILD sub-items —
+but a CONCURRENT routine fire had already landed the identical work as **#362**
+(`e7c0a5e`: d = A10 friction-outbox `check` advisory · e = INC-29
+`docs/CAPABILITIES.md` pointer casing, both with tests). This fire's duplicate
+**#363** was closed as superseded (source-wins; no delta to salvage). ORDER 020
+(d)+(e) is DONE via #362; done-when's release-ship half still rides the gated
+release wave (owner #317 click). With the build slot spent on the collision,
+this fire shipped the higher-value thing the collision exposed: a groomed
+idea + team memory on the root cause — the `check_claims` duplicate scan keys
+on **branch token, not ORDER/work overlap**, so two branches doing the same
+order never see each other
+(`docs/ideas/order-claim-cross-branch-collision-2026-07-14.md`). REMAINS —
+build that cross-branch overlap advisory (`· order NNN` claim segment +
+`bootstrap claim --order` + `check_claims` advisory); adjacent
+unacked-order-vs-heartbeat visibility gap still open. Where-stopped: #363
+closed, groom PR opened.
+
 ### Owner gates — each with its one-line unblock
 
 *(Stale #17 rubric-bless gate removed — owner merged it 2026-07-09,

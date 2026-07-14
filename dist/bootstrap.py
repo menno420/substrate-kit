@@ -1043,6 +1043,94 @@ def work_claim_bullet_example(date: str = "2026-07-10") -> str:
     )
 
 
+# ── .sessions/<card>.md — the 📊 Model run-report line (PL-004 / KL-3) ──────
+#
+# Taught in the planted ``.sessions/README.md`` (``adopt._adopt_sessions_readme``
+# renders the needle byte-form + the ORDER 012 family-level attribution
+# doctrine) and harvested by session-close into ``telemetry/model-usage.jsonl``:
+#   - **📊 Model:** <model> · <effort> · <task-class>
+# The `·` is U+00B7 (the protocol's separator; an optional 4th integer segment
+# fills ``tokens_out``, KF-9). Consumed by ``loop.telemetry`` (the harvest +
+# the write-at-commit reconcile) and ``checks.check_model_line`` (the advisory
+# payload lint) — ONE home for needle/taxonomy/parser so the writer half, the
+# harvest, and the lint cannot drift apart (EAP §6.8; idea
+# model-line-payload-lint-advisory-2026-07-11: 4 of the 5 newest complete
+# cards carried off-taxonomy segment-2/3 payloads and the harvest recorded
+# the drift as ground truth).
+
+MODEL_LINE_NEEDLE = "\N{BAR CHART} Model:"  # 📊 Model:
+# The taught byte-form, verbatim — lint messages quote it so a finding always
+# names the exact expected shape (the run-1 ON-arm false-red lesson: a red
+# that contradicts what the agent can see on the card is the check's bug).
+MODEL_LINE_TAUGHT_FORMAT = (
+    "- **\N{BAR CHART} Model:** <model> \N{MIDDLE DOT} <effort> "
+    "\N{MIDDLE DOT} <task-class>"
+)
+# The 9 PL-004 task classes, verbatim (docs/program/rulings.md): the 8
+# founding Q-0248 classes + `feature build` (the PL-010 amendment).
+MODEL_TASK_CLASSES = (
+    "docs-only",
+    "mechanical refactor",
+    "test writing",
+    "runtime bugfix",
+    "kernel/architecture design",
+    "review/verify",
+    "research",
+    "idea/planning",
+    "feature build",
+)
+# The effort tiers the segment-2 payload files. Declared from the measured
+# dataset (telemetry/model-usage.jsonl: low/medium/high are the only values
+# that recur; everything else is drift — "high effort", lane names) and the
+# harness's own effort levels. Off-list values are an ADVISORY nudge only —
+# the lint never rejects, and the harvest records verbatim either way.
+MODEL_EFFORT_VALUES = ("low", "medium", "high")
+# Exact model-ID token detector for the 📊 model segment (fleet reporting
+# bar, ORDER 012 widened 2026-07-12): repo artifacts carry FAMILY-LEVEL model
+# names only (`fable-5`, `opus-4.8`), never an exact model-ID token — and
+# exact IDs are not always dated, so a dated-suffix test alone is too narrow
+# (the websites #178 cleanup class: cards recording `claude-`-prefixed exact
+# ID tokens passed the old "no full dated model ID" wording). Flags the two
+# exact-ID shapes seen in the wild: a provider-prefixed ID token
+# (`claude-…`, incl. `us.anthropic.…` forms) and a dated `-YYYYMMDD` suffix.
+EXACT_MODEL_ID_RE = re.compile(r"^(?:us\.)?(?:anthropic\.)?claude-|-\d{8}$")
+
+
+def parse_model_payload(payload: str) -> dict | None:
+    """Parse one needle line's payload; None when it under-fills (<3 segments).
+
+    Byte-identical move of ``loop.telemetry._parse_model_payload`` (the
+    harvest keeps consuming it from here — one parser, shared by writer-side
+    docs, the harvest, and the payload lint). Bold markers and the list dash
+    are cosmetic and stripped; an optional 4th integer segment fills
+    ``tokens_out`` (KF-9 — null until a meter exists).
+    """
+    parts = [p.strip(" *`") for p in payload.split("\N{MIDDLE DOT}")]
+    parts = [p for p in parts if p]
+    if len(parts) < 3:
+        return None
+    tokens_out: int | None = None
+    if len(parts) >= 4:
+        try:
+            tokens_out = int(parts[3].replace(",", "").replace("_", ""))
+        except ValueError:
+            tokens_out = None
+    return {
+        "model": parts[0],
+        "effort": parts[1],
+        "task_class": parts[2],
+        "tokens_out": tokens_out,
+    }
+
+
+def model_line_example() -> str:
+    """Canonical 📊 Model run-report line — what a correct card carries."""
+    return (
+        "- **\N{BAR CHART} Model:** fable-5 \N{MIDDLE DOT} high "
+        "\N{MIDDLE DOT} feature build\n"
+    )
+
+
 # ── Self-propagation doctrine — the registration reflex (grounded-skills §7.8) ─
 #
 # Taught in the CONSTITUTION.md.tmpl working-agreement clause and in the
@@ -2165,6 +2253,206 @@ def check_log(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
         missing.append("a completed Status (badge still says in-progress)")
     return missing
 
+# --- engine/checks/check_model_line.py ---
+"""📊 Model-line payload lint — the run-report line's VALUES, not just its needle.
+
+Why + provenance: idea ``docs/ideas/model-line-payload-lint-advisory-2026-07-11.md``
+(Night-8 triage #3). The ``- **📊 Model:** <model> · <effort> · <task-class>``
+run-report line is grammar-checked for the needle's presence
+(``session_markers``), but its PAYLOAD drifts silently: the ORDER 013
+self-review measured 4 of the 5 newest complete cards carrying off-PL-004
+segment-2/3 values (W-10a — fixed by hand in a later flip commit), and the
+telemetry harvest then records the drifted values as ground truth. The
+harvest's own payload advisories fire once, at session-close time, on the
+single card being closed; nothing re-checks at ``check`` time, so drift that
+slips past one close-out is invisible until a human sweep.
+
+This lint closes that gap: every ``check`` full-lane run scans the newest
+COMPLETED cards under ``sessions_dir`` (a bounded window — see
+:data:`MODEL_LINE_LINT_WINDOW`; ``window=0`` is the unbounded measurement
+lane) and warns when a card's harvested Model line
+
+- has the needle but no valid three-field ``·`` payload (``model-line-shape``),
+- carries an exact model-ID token in the model segment instead of a
+  family-level name (``model-line-exact-id`` — fleet reporting bar, ORDER 012),
+- files an effort segment outside the taxonomy (``model-line-effort``), or
+- files a task-class segment that does not prefix-match one of the 9 PL-004
+  classes (``model-line-class`` — prefix-match on purpose: a decorated class
+  like ``docs-only — oracle pin edit`` is a valid report, not drift).
+
+Every finding quotes the expected byte-form verbatim
+(:data:`engine.grammar.MODEL_LINE_TAUGHT_FORMAT`) — the run-1 ON-arm
+false-red lesson: a message must name the exact expected form, never
+contradict what the agent can see on the card.
+
+Posture: **advisory-only, never exit-affecting** (PL-008 / the §8 Q2=B
+advisory-first pattern, same contract as ``check_owner_actions`` /
+``check_seat_digest``) — existing adopters carry drifted historical cards
+today, and a gate would pre-redden every one of them on upgrade. Migration
+pressure without a locked door; the fix is editing one line on one card.
+
+Scope discipline (mirrors ``loop.telemetry`` exactly, by shared constants —
+the EAP §6.8 writer/enforcer pattern; the grammar lives in
+``engine.grammar``):
+
+- Only **completed** cards are judged (``status_in_progress`` /
+  ``unresolved_fill_count`` gate, the same machinery ``reconcile_model_usage``
+  uses) — a born-red / drafted card has no finished report to lint.
+- Inline code spans and fenced blocks are stripped first — prose that
+  *mentions* the marker (docs about the mechanism do) never fires.
+- ``[[fill:]]`` stand-in lines are skipped (an auto-draft is not a report).
+- **Last-valid-wins**, exactly like ``parse_model_line``: the payload checks
+  judge the line the harvest would record, so a corrected report later in
+  the card supersedes an earlier one and the lint flags precisely what would
+  pollute (or, for shape, silently miss) ``telemetry/model-usage.jsonl``.
+
+Reliability (PL-008): UNVERIFIED — added 2026-07-14; confirm its findings
+against ground truth a few times across sessions before trusting it, and
+**delete this check if it proves unreliable over multiple sessions.** It is
+advisory-only by contract either way. Stdlib only; unreadable files fail open.
+"""
+
+
+
+
+# The code-span/fence stripping is check_session_log's — imported, not
+# mirrored: the namespace guard (test_check_namespace) rejects duplicate
+# top-level names because the dist concatenation would silently shadow the
+# earlier definition. A card whose prose mentions the needle in backticks or
+# a fenced example is not a report.
+
+# How many of the NEWEST completed cards the check-time scan judges.
+# Measured at build time (2026-07-14, this lint's own session): an unbounded
+# scan over the kit's own tree found 124 of 178 completed cards drifted (174
+# findings) — surfacing all of it on every `check` run would bury the
+# actionable signal in archaeology and burst the guard-fires journal past its
+# dedupe scan window. The lint's job is friction→guard at session velocity
+# (the W-10a evidence was "4 of the 5 NEWEST complete cards"), so the shipped
+# default judges the newest window only; ``window=0`` scans unbounded (the
+# drift-measurement lane). Sorted by filename — cards are date-prefixed by
+# convention, so name order IS date order.
+MODEL_LINE_LINT_WINDOW = 10
+
+# The loud fix-path tail every finding carries — quotes the taught byte-form
+# verbatim so the fix is a copy-edit, never a re-derivation.
+_FIX_PATH = (
+    f"fix the card's line to the taught form `{MODEL_LINE_TAUGHT_FORMAT}` "
+    "(family-level model · effort · PL-004 task class; see .sessions/README.md)"
+)
+
+
+def model_line_findings(text: str) -> list[tuple[str, str]]:
+    """Lint one completed card's text; return ``(kind, message)`` pairs.
+
+    Returns ``[]`` when the card carries no needle at all — marker PRESENCE
+    is the session-log gate's job (``missing_markers``), not this lint's;
+    double-reporting the same miss would be advisory noise.
+    """
+    stripped = _CODE_SPAN_RE.sub("", _FENCE_RE.sub("", text))
+    candidates = [
+        line
+        for line in stripped.splitlines()
+        if MODEL_LINE_NEEDLE in line and DRAFT_FILL_TOKEN not in line
+    ]
+    if not candidates:
+        return []
+    last_valid: dict | None = None
+    first_malformed: str | None = None
+    for line in candidates:
+        parsed = parse_model_payload(line.split(MODEL_LINE_NEEDLE, 1)[1])
+        if parsed is not None:
+            last_valid = parsed
+        elif first_malformed is None:
+            first_malformed = line.strip()
+    if last_valid is None:
+        return [
+            (
+                "model-line-shape",
+                f"the `{MODEL_LINE_NEEDLE}` line {first_malformed!r} has no "
+                "valid three-field payload (needs two `\N{MIDDLE DOT}` "
+                "separators: model \N{MIDDLE DOT} effort \N{MIDDLE DOT} "
+                "task-class) — the telemetry harvest records NOTHING from "
+                f"this card; {_FIX_PATH}",
+            ),
+        ]
+    findings: list[tuple[str, str]] = []
+    model = last_valid["model"]
+    if EXACT_MODEL_ID_RE.search(model):
+        findings.append(
+            (
+                "model-line-exact-id",
+                f"model segment {model!r} looks like an exact model-ID token "
+                "— record the family-level model name only (e.g. `fable-5`, "
+                "`opus-4.8`), never an exact model ID, dated or not (fleet "
+                f"reporting bar, ORDER 012); {_FIX_PATH}",
+            ),
+        )
+    effort = last_valid["effort"]
+    if effort not in MODEL_EFFORT_VALUES:
+        known = " | ".join(MODEL_EFFORT_VALUES)
+        findings.append(
+            (
+                "model-line-effort",
+                f"effort segment {effort!r} is not one of the taxonomy "
+                f"values ({known}) — the PL-004 dataset records it verbatim; "
+                f"{_FIX_PATH}",
+            ),
+        )
+    task_class = last_valid["task_class"]
+    if not any(task_class.startswith(known) for known in MODEL_TASK_CLASSES):
+        known = " | ".join(MODEL_TASK_CLASSES)
+        findings.append(
+            (
+                "model-line-class",
+                f"task-class segment {task_class!r} does not prefix-match "
+                f"any of the {len(MODEL_TASK_CLASSES)} PL-004 classes "
+                f"({known}) — the PL-004 dataset records it verbatim; "
+                f"{_FIX_PATH}",
+            ),
+        )
+    return findings
+
+
+def check_model_line(
+    root: Path,
+    *,
+    sessions_dir: str,
+    window: int = MODEL_LINE_LINT_WINDOW,
+) -> list[Finding]:
+    """Lint the ``window`` newest completed session cards under ``root/sessions_dir``.
+
+    ``window=0`` lints every completed card (the drift-measurement lane; see
+    :data:`MODEL_LINE_LINT_WINDOW` for why the check-time default is bounded).
+    Advisory-only by contract — the caller (``cmd_check``'s full lane) emits
+    these as never-exit-affecting warnings. Input-gated: a missing sessions
+    directory (un-adopted tree) returns nothing; unreadable cards fail open;
+    in-progress / drafted / fill-carrying cards are never judged.
+    """
+    findings: list[Finding] = []
+    directory = root / sessions_dir
+    if not directory.is_dir():
+        return findings
+    completed: list[tuple[Path, str]] = []
+    for card in sorted(directory.glob("*.md")):
+        if card.name == "README.md":
+            continue
+        try:
+            text = card.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if status_in_progress(text) or unresolved_fill_count(text):
+            continue
+        completed.append((card, text))
+    if window:
+        completed = completed[-window:]
+    for card, text in completed:
+        rel = f"{sessions_dir}/{card.name}"
+        findings.extend(
+            Finding(path=rel, kind=kind, message=message)
+            for kind, message in model_line_findings(text)
+        )
+    return findings
+
 # --- engine/checks/check_namespace.py ---
 """Portable namespace / shadowing guard (Lane B6, the Q-0200 class).
 
@@ -2788,7 +3076,9 @@ def _check_one_status(
                     "status-no-heartbeat",
                     "no parseable `updated:` ISO-8601 heartbeat — still the "
                     "adopt seed? Overwrite the whole file with your real "
-                    "status as the session's LAST step (control/README.md).",
+                    "status as the session's LAST step (control/README.md); "
+                    "mechanical writer: `python3 bootstrap.py heartbeat "
+                    '--full --phase "…"`.',
                 ),
             ],
             [],
@@ -2804,7 +3094,8 @@ def _check_one_status(
                     "status-stale",
                     f"heartbeat is ~{hours}h old (> {max_age_hours}h) — the "
                     "manager treats a stale status as a DARK Project; "
-                    f"overwrite {rel} this session.",
+                    f"overwrite {rel} this session (mechanical restamp: "
+                    "`python3 bootstrap.py heartbeat`).",
                 ),
             ],
         )
@@ -3436,8 +3727,22 @@ def _work_claim_findings(
             except (OSError, UnicodeDecodeError):
                 continue  # fail open — an unreadable file is not a verdict
             bullet = WORK_CLAIM_BULLET_RE.search(text)
-            date_match = WORK_CLAIM_DATE_RE.search(text)
-            if bullet is None or date_match is None:
+            # The claim's OWN date is the LAST date on the bullet line — the
+            # taught grammar ends the bullet with `· YYYY-MM-DD`
+            # (work_claim_bullet_example), while scope text legitimately
+            # mentions dated filenames (…-2026-07-09.md). Grepping the FIRST
+            # date anywhere in the file let such a mention shadow a fresh
+            # claim date and fire a false claims-stale (found live on the
+            # 2026-07-14 model-line-lint session; guard recipe in that card).
+            claim_dates: list[str] = []
+            if bullet is not None:
+                line_end = text.find("\n", bullet.start())
+                if line_end == -1:
+                    line_end = len(text)
+                claim_dates = WORK_CLAIM_DATE_RE.findall(
+                    text[bullet.start() : line_end]
+                )
+            if bullet is None or not claim_dates:
                 findings.append(
                     Finding(
                         rel,
@@ -3451,7 +3756,8 @@ def _work_claim_findings(
                 )
                 continue
             holders.setdefault(bullet.group(1).strip(), []).append(rel)
-            claimed = _parse_iso(date_match.group(1))
+            claim_date = claim_dates[-1]
+            claimed = _parse_iso(claim_date)
             if claimed is None:
                 continue
             age_hours = (now - claimed).total_seconds() / 3600
@@ -3460,7 +3766,7 @@ def _work_claim_findings(
                     Finding(
                         rel,
                         "claims-stale",
-                        f"work claim dated {date_match.group(1)} is "
+                        f"work claim dated {claim_date} is "
                         f"{age_hours / 24:.0f} day(s) old (> "
                         f"{WORK_CLAIM_STALE_HOURS}h work-claim horizon) — "
                         "claim files are deleted at session close, so this "
@@ -4313,6 +4619,376 @@ def check_setup_script(target: Path) -> list[Finding]:
                 ),
             )
     return findings
+
+# --- engine/heartbeat.py ---
+"""Mechanical heartbeat writer — the ``bootstrap heartbeat`` verb's logic.
+
+Why + provenance: the control protocol's LAST step — overwriting
+``control/status.md`` with a fresh heartbeat — was hand-assembled markdown,
+and the hand-written ``updated:`` timestamp is the failure surface the idea
+file names (``docs/ideas/heartbeat-verb-2026-07-09.md``, ORDER 019 item 7):
+a session that writes ``updated: 2026-7-9 13:00`` (unparseable) goes red for
+formatting, not for darkness, and a routine wake has to template the whole
+file by hand in its prompt. The engine already owns atomic writes, UTC time,
+and the contract text — this module closes the gap with two lanes:
+
+- **Restamp lane** (:func:`restamp_status`, the default) — non-destructive
+  preserve-and-restamp: ONLY the ``updated:`` timestamp token (always a
+  parseable UTC now) plus the heartbeat fields the caller explicitly passes
+  are rewritten; ⚑ blocks, ORDER ledger lines, ``claimed-by`` annotations,
+  and every human-authored section survive **byte-identical**. This is the
+  mechanical fix for the fleet-wide heartbeat-staleness class.
+- **Full-write lane** (:func:`full_status`, behind an explicit ``--full``) —
+  the idea file's contract-shape whole-file writer ("overwrite-own semantics
+  preserved — whole-file write, never append") for the first real heartbeat
+  over the adopt seed; missing flags default honestly (``blockers: none``,
+  ``⚑ needs-owner: none``).
+
+Grammar is kit-owned with ONE home — ``engine.grammar`` (EAP §6.8): the
+``updated:`` and ``kit:`` lines are located via the SAME ``UPDATED_LINE_RE``
+/ ``KIT_LINE_RE`` / ``KIT_VERSION_TOKEN_RE`` constants the ``check``
+enforcers consume, and every write is round-tripped through
+``check_status_current.parse_heartbeat`` before it leaves this module (the
+idea file's write → parse → equal recipe), so the writer can never emit a
+heartbeat the enforcer rejects. Stdlib only; sits below ``cli.py`` (which
+owns the file I/O via ``atomic_write_text``) and imports only grammar +
+``check_status_current``'s parser.
+"""
+
+
+
+
+# The heartbeat's field lines, exactly as control/README.md § "status.md
+# format" teaches them (flag name → line label). Order matters: it is the
+# contract shape full_status renders.
+HEARTBEAT_FIELD_LABELS = {
+    "phase": "phase:",
+    "health": "health:",
+    "last_shipped": "last-shipped:",
+    "blockers": "blockers:",
+    "orders": "orders:",
+    "needs_owner": "⚑ needs-owner:",
+    "notes": "notes:",
+}
+
+
+class HeartbeatError(ValueError):
+    """A heartbeat write that cannot proceed non-destructively.
+
+    Raised instead of guessing: a missing field line, an unparseable
+    ``updated:`` stamp (the adopt seed), or a ``kit:`` line without a
+    version token each name their fix in the message — never a silent
+    whole-file clobber.
+    """
+
+
+def utc_stamp(now: datetime | None = None) -> str:
+    """Render the canonical ``updated:`` timestamp (UTC, seconds precision).
+
+    The exact shape ``grammar.updated_line_example`` teaches
+    (``2026-07-10T12:00:00Z``) — always parseable by ``parse_heartbeat``.
+    """
+    moment = now or datetime.now(timezone.utc)
+    return moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _verify_roundtrip(text: str, stamp: str) -> str:
+    """Assert ``text``'s heartbeat parses back to ``stamp``; return ``text``.
+
+    The idea file's write → parse → equal recipe, run on every write (not
+    just in tests): the writer half and the enforcer half
+    (``check_status_current.parse_heartbeat``) can never disagree silently.
+    """
+    parsed = parse_heartbeat(text)
+    expected = datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ").replace(
+        tzinfo=timezone.utc
+    )
+    if parsed != expected:
+        msg = (
+            "internal round-trip failure: the written heartbeat did not "
+            f"parse back to {stamp} — refusing to emit an unparseable file."
+        )
+        raise HeartbeatError(msg)
+    return text
+
+
+def _replace_field_line(text: str, label: str, value: str) -> str:
+    """Replace the first ``<label> …`` line's value; the rest stays put."""
+    pattern = re.compile(rf"^({re.escape(label)}\s*).*$", re.MULTILINE)
+    match = pattern.search(text)
+    if match is None:
+        msg = (
+            f"no `{label}` line found — the restamp lane only rewrites "
+            "existing field lines (non-destructive); add the line by hand "
+            "or write a fresh contract-shape heartbeat with --full."
+        )
+        raise HeartbeatError(msg)
+    return text[: match.start()] + match.group(1) + value + text[match.end() :]
+
+
+def _replace_kit_version(text: str, version: str) -> str:
+    """Rewrite the ``kit:`` line's ``v<X.Y.Z>`` token, decorations intact."""
+    line = KIT_LINE_RE.search(text)
+    if line is None:
+        msg = (
+            "no parseable `kit:` line found (grammar: KIT_LINE_RE — keep "
+            "the token PLAIN, never bold) — add one, or write a fresh "
+            "contract-shape heartbeat with --full."
+        )
+        raise HeartbeatError(msg)
+    token = KIT_VERSION_TOKEN_RE.search(text, line.start(), line.end())
+    if token is None:
+        msg = (
+            "the `kit:` line carries no `v<X.Y.Z>` version token to "
+            "rewrite — fix the line by hand (format: control/README.md "
+            '§ "status.md format").'
+        )
+        raise HeartbeatError(msg)
+    return text[: token.start()] + f"v{version}" + text[token.end() :]
+
+
+def restamp_status(
+    text: str,
+    *,
+    now: datetime | None = None,
+    fields: dict[str, str] | None = None,
+    kit_version: str | None = None,
+) -> str:
+    """Return ``text`` with ONLY the mechanical heartbeat fields rewritten.
+
+    - The ``updated:`` line's timestamp token becomes a fresh UTC now;
+      everything after the token (live heartbeats decorate the line) is
+      preserved byte-for-byte.
+    - Each entry in ``fields`` (flag name → new value, labels per
+      :data:`HEARTBEAT_FIELD_LABELS`) replaces that field line's value.
+    - ``kit_version`` rewrites the ``kit:`` line's version token only.
+
+    Everything not named is preserved **byte-identical** — ⚑ blocks, ORDER
+    ledger lines, ``claimed-by`` annotations, prose sections. Raises
+    :class:`HeartbeatError` (never guesses) when the existing heartbeat
+    doesn't parse — an adopt seed or a hand-mangled stamp is a case for
+    ``--full`` or a hand fix, not for a silent rewrite of unknown content.
+    """
+    match = UPDATED_LINE_RE.search(text)
+    if match is None or parse_heartbeat(text) is None:
+        msg = (
+            "no parseable `updated:` ISO-8601 heartbeat in the existing "
+            "file — still the adopt seed? Write the first real heartbeat "
+            "with --full (whole-file contract shape), which is the seed's "
+            "own documented overwrite path."
+        )
+        raise HeartbeatError(msg)
+    stamp = utc_stamp(now)
+    result = text[: match.start(1)] + stamp + text[match.end(1) :]
+    for name, value in (fields or {}).items():
+        result = _replace_field_line(result, HEARTBEAT_FIELD_LABELS[name], value)
+    if kit_version is not None:
+        result = _replace_kit_version(result, kit_version)
+    return _verify_roundtrip(result, stamp)
+
+
+def full_status(
+    project_name: str,
+    kit_version: str,
+    *,
+    phase: str,
+    now: datetime | None = None,
+    health: str = "green",
+    orders: str = "acked= done=",
+    last_shipped: str = "none",
+    blockers: str = "none",
+    needs_owner: str = "none",
+    notes: str = "none",
+    kit_check: str = "green",
+    kit_engaged: str = "yes",
+) -> str:
+    """Render the exact contract-shape heartbeat (the idea file's lane).
+
+    The taught block from control/README.md § "status.md format", field for
+    field; missing flags default honestly (``blockers: none``,
+    ``⚑ needs-owner: none`` — the idea file's named defaults). ``phase`` has
+    no honest default — what the seat is doing is the one thing only the
+    caller knows — so it is required. The render is round-tripped through
+    the enforcer's parser before it leaves.
+    """
+    stamp = utc_stamp(now)
+    text = (
+        f"# {project_name} · status\n"
+        f"updated: {stamp}\n"
+        f"phase: {phase}\n"
+        f"health: {health}\n"
+        f"kit: v{kit_version} · check: {kit_check} · engaged: {kit_engaged}\n"
+        f"last-shipped: {last_shipped}\n"
+        f"blockers: {blockers}\n"
+        f"orders: {orders}\n"
+        f"⚑ needs-owner: {needs_owner}\n"
+        f"notes: {notes}\n"
+    )
+    return _verify_roundtrip(text, stamp)
+
+# --- engine/claim.py ---
+"""Mechanical work-claim writer — the ``bootstrap claim`` verb's logic.
+
+Why + provenance: the one-file-per-claim work-claim convention (EAP §6.4,
+``control/claims/README.md``) only protects parallel sessions when the claim
+bullet PARSES — an unparseable claim is invisible to ``check_claims``'
+duplicate scan, which silently defeats the claim system during the exact
+window it exists for. That failure is realized, not theoretical: the
+2026-07-14 git-truth session (#358 card, 💡 ender) hand-wrote a bullet
+without the backticked token and fired ``claims-format`` mid-session. This
+module closes the gap the same way ``engine.heartbeat`` closed the
+hand-stamped ``updated:`` line: a mechanical writer that renders from — and
+round-trips through — the SAME ``engine.grammar`` constants the enforcer
+consumes (``WORK_CLAIM_BULLET_RE`` / ``WORK_CLAIM_DATE_RE``, EAP §6.8), so
+the verb can never emit a claim ``check_claims`` cannot parse.
+
+Two lanes, both refuse-and-name (never a silent clobber):
+
+- **Write lane** (:func:`render_claim` + the CLI's default) — renders the
+  one-bullet claim file for branch ``claude/<slug>``: backticked branch
+  token first (the duplicate scan's key), bold scope, optional files/area
+  segment, and the current UTC date as the LAST ``YYYY-MM-DD`` on the line
+  (the post-#353 rule: the claim's own date is the last date on the bullet,
+  so a dated filename mentioned in the scope can never shadow it).
+  Overwriting an existing file is allowed only when :func:`owner_token`
+  proves it is this branch's own claim (a refresh).
+- **Delete lane** (``--delete``) — removes YOUR OWN claim at session close;
+  a foreign claim (different branch token, or a file the grammar cannot
+  parse — ownership unprovable) is refused with the file left intact.
+
+Ownership check shape (decided-and-flagged): the existing file's bullet
+token must equal the branch this invocation derives from the slug — the
+same token the duplicate scan keys on, so "who owns this file" and "who
+holds this claim" can never disagree. Stdlib only; sits below ``cli.py``
+(which owns file I/O via ``atomic_write_text``) and imports only grammar.
+"""
+
+
+
+
+# Work branches are claude/<slug> by fleet convention (the auto-merge-enabler
+# allowlist + every session card in .sessions/); the claim FILE flattens the
+# slash so the filename stays a single path segment: claude-<slug>.md.
+BRANCH_PREFIX = "claude/"
+FILENAME_PREFIX = "claude-"
+
+# Filename-safe slug: starts alphanumeric, then alphanumerics, dot, dash,
+# underscore. Everything else (slashes, spaces, backticks) is refused — the
+# slug names both a git branch and a file.
+_SLUG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+
+class ClaimError(ValueError):
+    """A claim write/delete that cannot proceed safely.
+
+    Raised instead of guessing: a malformed slug, scope text that would
+    break the bullet grammar, or a foreign claim at the target path each
+    name their fix in the message — never a silent clobber.
+    """
+
+
+def branch_for(slug: str) -> str:
+    """Return the claim's branch (``claude/<slug>``); refuse a bad slug."""
+    if not _SLUG_RE.match(slug):
+        msg = (
+            f"slug {slug!r} is not filename-safe — use alphanumerics, dots, "
+            "dashes, underscores (the slug names both the claude/<slug> "
+            "branch and the claude-<slug>.md claim file)."
+        )
+        raise ClaimError(msg)
+    return f"{BRANCH_PREFIX}{slug}"
+
+
+def claim_filename(slug: str) -> str:
+    """Return the claim file's name (``claude-<slug>.md``); refuse a bad slug."""
+    branch_for(slug)  # same validation, one home
+    return f"{FILENAME_PREFIX}{slug}.md"
+
+
+def utc_date(now: datetime | None = None) -> str:
+    """Render the claim date (UTC ``YYYY-MM-DD``) — computed at call time.
+
+    Always the CURRENT UTC date, never a cached module-load value: a claim
+    stamped with a stale date starts life closer to the ~72h staleness
+    horizon than it should.
+    """
+    moment = now or datetime.now(timezone.utc)
+    return moment.astimezone(timezone.utc).strftime("%Y-%m-%d")
+
+
+def _refuse_grammar_breakers(label: str, value: str) -> str:
+    """Refuse text that would break the one-line bullet grammar."""
+    if "\n" in value or "\r" in value:
+        msg = f"{label} must be one line — the claim grammar is a single bullet."
+        raise ClaimError(msg)
+    if "`" in value:
+        msg = (
+            f"{label} must not contain backticks — the enforcer's bullet "
+            "regex keys the duplicate scan on the LAST backticked token, so "
+            f"a backtick in the {label} would shadow the branch token."
+        )
+        raise ClaimError(msg)
+    stripped = value.strip()
+    if not stripped:
+        msg = f"{label} must be non-empty."
+        raise ClaimError(msg)
+    return stripped
+
+
+def owner_token(text: str) -> str | None:
+    """Return the claim file's bullet token (its owning branch), or None.
+
+    None means the grammar cannot parse the file — ownership is unprovable,
+    which the write/delete lanes treat as foreign (refuse, leave intact).
+    """
+    match = WORK_CLAIM_BULLET_RE.search(text)
+    return match.group(1).strip() if match else None
+
+
+def _verify_claim_roundtrip(text: str, branch: str, date: str) -> str:
+    """Assert ``text`` parses back to ``(branch, date)``; return ``text``.
+
+    The write → parse → equal recipe (same shape as
+    ``engine.heartbeat._verify_roundtrip``), run on every render: the token
+    the duplicate scan will key on must be exactly ``branch``, and the LAST
+    ``YYYY-MM-DD`` on the bullet line — the claim's own date under the
+    post-#353 rule — must be exactly ``date``.
+    """
+    parsed = owner_token(text)
+    line = text.splitlines()[0] if text else ""
+    dates = WORK_CLAIM_DATE_RE.findall(line)
+    if parsed != branch or not dates or dates[-1] != date:
+        msg = (
+            "internal round-trip failure: the rendered claim did not parse "
+            f"back to token {branch!r} + date {date} — refusing to emit a "
+            "claim the enforcer cannot read."
+        )
+        raise ClaimError(msg)
+    return text
+
+
+def render_claim(
+    slug: str,
+    scope: str,
+    *,
+    area: str | None = None,
+    now: datetime | None = None,
+) -> str:
+    """Render the one-bullet claim file for ``claude/<slug>``.
+
+    Shape (``grammar.work_claim_bullet_example`` / control/claims/README.md):
+    backticked branch token · bold scope [· files/area] · UTC date last.
+    Raises :class:`ClaimError` on a slug/scope/area that would break the
+    grammar; every render is round-trip verified before it leaves.
+    """
+    branch = branch_for(slug)
+    scope = _refuse_grammar_breakers("scope", scope)
+    date = utc_date(now)
+    parts = [f"- `{branch}`", f"**{scope}**"]
+    if area is not None:
+        parts.append(_refuse_grammar_breakers("area", area))
+    parts.append(date)
+    return _verify_claim_roundtrip(" · ".join(parts) + "\n", branch, date)
 
 # --- engine/ledger.py ---
 """Decision ledger — the ``[D-NNNN]`` provenance-separated rulebook (Lane B6).
@@ -5229,34 +5905,18 @@ GUARD_FIRES_DEDUPE_WINDOW_S = 600
 # a long-lived fires log; a burst larger than this simply dedupes less.
 _GUARD_FIRES_DEDUPE_SCAN = 200
 
-# The run-report needle. \N escape keeps the engine source ASCII-safe.
-MODEL_LINE_NEEDLE = "\N{BAR CHART} Model:"  # 📊 Model:
-
-# The 9 PL-004 task classes, verbatim (docs/program/rulings.md): the 8
-# founding Q-0248 classes + `feature build` (the PL-010 amendment).
-TASK_CLASSES = (
-    "docs-only",
-    "mechanical refactor",
-    "test writing",
-    "runtime bugfix",
-    "kernel/architecture design",
-    "review/verify",
-    "research",
-    "idea/planning",
-    "feature build",
-)
+# The model-line grammar — needle, taxonomy, exact-ID detector, payload
+# parser — moved to ``engine.grammar`` (EAP §6.8, the model-line payload lint
+# session): ONE home shared by this harvest, the writer-side docs, and
+# ``checks.check_model_line`` so they cannot drift apart. Body-level aliases
+# (not import-as) keep this module's public/internal names stable — the dist
+# builder drops intra-package import lines, so an aliased import would leave
+# the name undefined in the concatenated bootstrap.
+TASK_CLASSES = MODEL_TASK_CLASSES
+_EXACT_MODEL_ID_RE = EXACT_MODEL_ID_RE
+_parse_model_payload = parse_model_payload
 
 _DATE_PREFIX_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
-
-# Exact model-ID token detector for the 📊 model segment (fleet reporting
-# bar, ORDER 012 widened 2026-07-12): repo artifacts carry FAMILY-LEVEL model
-# names only (`fable-5`, `opus-4.8`), never an exact model-ID token — and
-# exact IDs are not always dated, so a dated-suffix test alone is too narrow
-# (the websites #178 cleanup class: cards recording `claude-`-prefixed exact
-# ID tokens passed the old "no full dated model ID" wording). Flags the two
-# exact-ID shapes seen in the wild: a provider-prefixed ID token
-# (`claude-…`, incl. `us.anthropic.…` forms) and a dated `-YYYYMMDD` suffix.
-_EXACT_MODEL_ID_RE = re.compile(r"^(?:us\.)?(?:anthropic\.)?claude-|-\d{8}$")
 
 
 def guard_fires_path(root: Path, state_dir: str) -> Path:
@@ -5386,26 +6046,6 @@ def record_guard_fires(
         return written
     except Exception:  # noqa: BLE001 — telemetry fails open by contract
         return 0
-
-
-def _parse_model_payload(payload: str) -> dict | None:
-    """Parse one needle line's payload; None when it under-fills (<3 segments)."""
-    parts = [p.strip(" *`") for p in payload.split("\N{MIDDLE DOT}")]
-    parts = [p for p in parts if p]
-    if len(parts) < 3:
-        return None
-    tokens_out: int | None = None
-    if len(parts) >= 4:
-        try:
-            tokens_out = int(parts[3].replace(",", "").replace("_", ""))
-        except ValueError:
-            tokens_out = None
-    return {
-        "model": parts[0],
-        "effort": parts[1],
-        "task_class": parts[2],
-        "tokens_out": tokens_out,
-    }
 
 
 def parse_model_line(text: str) -> dict | None:
@@ -10960,7 +11600,7 @@ silently overflowing. **No third copy** (plan §4.2e): the adopter's
 ``docs/CAPABILITIES.md`` ledger is the seat-local source of truth; this doc
 is a DERIVED RENDER of it (regenerated — by adopt, upgrade, or
 ``bootstrap.py seat-digest`` — never edited, never a copy of record);
-fleet-manager's ``docs/capabilities.md`` master is the fleet aggregation
+fleet-manager's ``docs/CAPABILITIES.md`` master is the fleet aggregation
 point; no third authored copy is ever minted.
 
 Layering: below ``adopt.py`` on purpose (adopt plants the doc, upgrade
@@ -10975,6 +11615,13 @@ module imports only grammar/skills/config). Pure stdlib.
 # ellipsis) — compact enough that ~8 rows + fences + pointer stay inside the
 # block budget, long enough to keep a wall's workaround arrow readable.
 _ROW_LIMIT = 160
+
+# Readability floor for the ADAPTIVE skills-description clip (see
+# ``_adaptive_skill_clip``): below ~40 chars a truncated description reads
+# worse than no description, so rows drop to name-only before any skill NAME
+# is ever dropped — the digest's whole job is "these procedures exist, don't
+# improvise", and the pointer line carries the detail.
+_SKILL_CLIP_FLOOR = 40
 
 _WALLS_HEADING = "## Walls"
 _LEDGER_APPEND_LOG_HEADING = "## Append log"
@@ -11023,34 +11670,72 @@ def _fit_rows(
     return compose([], [f"- …plus {len(rows)} more — {more_pointer}"])
 
 
-def skills_digest_block(docs_root: str = "docs") -> str:
+def _skill_rows(skills: list[dict], clip: int | None) -> list[str]:
+    """Render one digest row per skill at ``clip`` (``None`` → name-only)."""
+    if clip is None:
+        return [f"- `{skill['name']}`" for skill in skills]
+    return [
+        f"- `{skill['name']}` — {_truncate(skill['description'], clip)}"
+        for skill in skills
+    ]
+
+
+def _adaptive_skill_clip(
+    skills: list[dict],
+    header: list[str],
+    footer: list[str],
+) -> int | None:
+    """Compute the description clip that fits EVERY skill in the budget.
+
+    Replaces the hand-ratcheted constant this module carried through
+    2026-07-13 (120 → 85 → 72, one manual lowering per new skill — every
+    registry addition was a latent test failure until a session paid the
+    ratchet toll again). Instead: scan down from the row ceiling
+    (:data:`_ROW_LIMIT`) for the LARGEST clip where the assembled block —
+    header + all rows + footer — stays within
+    :data:`SEAT_DIGEST_BLOCK_BUDGET`, floored at :data:`_SKILL_CLIP_FLOOR`;
+    if even the floor overflows, return ``None`` → name-only rows (drop
+    descriptions before ever dropping a name). Pure function of its inputs,
+    so the render stays deterministic and byte-reproducible. The descending
+    linear scan is deliberate: ~120 candidate renders is negligible, and it
+    needs no monotonicity assumption about word-boundary truncation.
+    """
+    for clip in range(_ROW_LIMIT, _SKILL_CLIP_FLOOR - 1, -1):
+        block = "\n".join(header + _skill_rows(skills, clip) + footer)
+        if len(block) <= SEAT_DIGEST_BLOCK_BUDGET:
+            return clip
+    return None
+
+
+def skills_digest_block(
+    docs_root: str = "docs",
+    skills: list[dict] | None = None,
+) -> str:
     """Render the fenced skills-index digest block from :data:`SKILLS`.
 
     One row per registered skill — name + when-to-reach-for-it one-liner,
     never the grounds column (that detail is the index's job; the digest's
-    job is "these procedures exist, don't improvise"). Deterministic given
-    the SKILLS list.
+    job is "these procedures exist, don't improvise"). The description clip
+    is COMPUTED per render (``_adaptive_skill_clip``): every skill name
+    survives within the block budget at the widest clip that fits, degrading
+    to name-only rows below the readability floor — no manual ratchet.
+    Deterministic given the skills list. ``skills`` defaults to the
+    registered :data:`SKILLS` (parameterized for growth-proof tests).
     """
+    if skills is None:
+        skills = SKILLS
     index_path = f"{docs_root}/SKILLS.md"
     header = [SKILLS_DIGEST_BEGIN, "## Skills digest", ""]
-    # Description clip 120 → 85 (2026-07-13, seed-skills slice): at 12
-    # registered skills the 120-char rows overflowed the block budget and
-    # _fit_rows silently dropped the tail skills from the digest — but the
-    # digest's whole job is "these procedures exist, don't improvise", so
-    # every NAME must survive; the pointer line carries the detail. The
-    # _fit_rows overflow line stays as the safety net for future growth.
-    # Clip 85 → 72 (2026-07-13, rationalize slice): the 13th skill left the
-    # 85-char block 75 chars over budget; 72 fits all names with headroom.
-    rows = [
-        f"- `{skill['name']}` — {_truncate(skill['description'], 72)}"
-        for skill in SKILLS
-    ]
     footer = [
         "",
         f"Full index (grounds + capabilities): `{index_path}` — the source "
         "this block derives from.",
         SKILLS_DIGEST_END,
     ]
+    rows = _skill_rows(skills, _adaptive_skill_clip(skills, header, footer))
+    # _fit_rows stays as the LAST safety net: if even name-only rows overflow
+    # (a registry so large the budget cannot name every skill), the explicit
+    # "+N more" pointer line still beats a silent overflow.
     return _fit_rows(header, rows, footer, f"read `{index_path}`.")
 
 
@@ -11308,7 +11993,7 @@ def seat_digest_document(
             "the kit's",
             "   `SKILLS` list (skills). Regenerated, never edited; never a "
             "copy of record.",
-            "3. **fleet-manager `docs/capabilities.md`** — the fleet "
+            "3. **fleet-manager `docs/CAPABILITIES.md`** — the fleet "
             "aggregation point;",
             "   cross-repo findings are consolidated there by the manager.",
             "",
@@ -17303,6 +17988,47 @@ def cmd_check(
     # only: workflows are not control-lane traffic; self-silences when the
     # live branch expr matches config.
     automerge_advisories = check_automerge_preflight(target, config)
+    # 📊 Model-line payload lint (idea model-line-payload-lint-advisory-
+    # 2026-07-11, Night-8 triage #3): advisory-only by contract, like every
+    # nudge above — a completed card whose Model line breaks the three-field
+    # `·` shape, carries an exact model-ID token instead of a family-level
+    # name, or files off-taxonomy effort/task-class segments is a copy-edit
+    # nudge quoting the taught form verbatim, never a required-check red
+    # (UNVERIFIED per its PL-008 provenance header; adopters carry drifted
+    # historical cards today, so a gate would pre-redden them all on
+    # upgrade). Scans the newest completed cards only (the checker's bounded
+    # window — historical drift is measured, not nagged). Full lane only:
+    # session cards are not control-lane traffic.
+    model_line_advisories = check_model_line(
+        target,
+        sessions_dir=config.sessions_dir,
+    )
+    # Friction-outbox pending-count advisory (ORDER 020 item d, fm plan A10):
+    # advisory-only by contract, like every nudge above — pending friction
+    # envelopes previously surfaced only at session-close (the
+    # cmd_session_close list_outbox advisory), so a session that never ran
+    # the ritual sat on undrained reports through every `check --strict`.
+    # Surfaced + telemetry-recorded, never counted toward the exit code —
+    # the engine cannot file the issue itself (stdlib-only, no credentials);
+    # the nudge is the mechanism. Full lane only: friction envelopes are not
+    # control-lane traffic.
+    outbox_pending = (
+        [] if status_only else list_outbox(target, config.state_dir)
+    )
+    outbox_advisories = (
+        [
+            Finding(
+                f"{config.state_dir}/friction-outbox/",
+                "friction-outbox-pending",
+                f"{len(outbox_pending)} friction report(s) pending — file "
+                f"each as a `{FRICTION_LABEL}`-labeled issue on the kit "
+                "repo (`friction show <name>` prints the issue title+body), "
+                "then delete the drained file.",
+            )
+        ]
+        if outbox_pending
+        else []
+    )
     # The inbox append-only gate (issue #36 report 2): a control/inbox.md
     # change must be pure-append vs the merge-base + ORDER-grammar shaped.
     # Rides the finding loop like every checker. CI hands in the base blob
@@ -17675,6 +18401,47 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=automerge_advisories,
+        )
+    if model_line_advisories and not status_only:
+        # Same warn-only contract as the advisories above (the model-line
+        # payload lint, idea 2026-07-11): a drifted 📊 Model payload on a
+        # completed card is a one-line copy-edit nudge — surfaced +
+        # telemetry-recorded, never counted toward the exit code; the PL-004
+        # dataset records drift verbatim either way, the lint just makes it
+        # visible at check time instead of a later hand sweep.
+        _emit(
+            f"check: {len(model_line_advisories)} model-line payload advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in model_line_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=model_line_advisories,
+        )
+    if outbox_advisories and not status_only:
+        # Same warn-only contract as the advisories above (ORDER 020 item d,
+        # fm plan A10): a pending friction envelope is a drain-me nudge —
+        # surfaced + telemetry-recorded, never counted toward the exit code;
+        # the session-close ritual keeps its own copy of this advisory, this
+        # one just makes the backlog visible at check time too.
+        _emit(
+            f"check: {len(outbox_advisories)} friction-outbox advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in outbox_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=outbox_advisories,
         )
     if adopters_advisories and not status_only:
         # Same warn-only contract as the advisories above (EAP §6.3): a
@@ -18754,6 +19521,215 @@ def cmd_seat_digest(target: Path, *, venues: list[str] | None = None) -> int:
     return 0
 
 
+def cmd_heartbeat(
+    target: Path,
+    *,
+    full: bool = False,
+    dry_run: bool = False,
+    status_file: str | None = None,
+    fields: dict[str, str] | None = None,
+    kit_version: str | None = None,
+    kit_check: str | None = None,
+    kit_engaged: str | None = None,
+) -> int:
+    """Write/refresh the control heartbeat mechanically (ORDER 019 item 7).
+
+    The ``bootstrap heartbeat`` verb — the idea file's mechanical LAST step
+    (``docs/ideas/heartbeat-verb-2026-07-09.md``). Default lane: a
+    non-destructive **restamp** of the existing heartbeat file — a fresh,
+    always-parseable UTC ``updated:`` stamp plus only the field lines the
+    caller passed; everything else survives byte-identical
+    (:func:`engine.heartbeat.restamp_status`). ``--full``: the whole-file
+    contract-shape write for the first real heartbeat over the adopt seed.
+    ``--dry-run`` prints the would-be diff (or full text for a new file)
+    and writes nothing. Refuses outside a control-carrying host, and on a
+    missing/unparseable heartbeat names the fix instead of guessing.
+    """
+    config = load_config(target)
+    relpaths = heartbeat_relpaths(config.heartbeat_files)
+    bus_files = [INBOX_RELPATH, CONTROL_README_RELPATH, *relpaths]
+    if not any((target / rel).is_file() for rel in bus_files):
+        _emit(
+            "heartbeat: refused — no control/ bus here (no inbox, README, "
+            "or heartbeat file); this verb writes a control-protocol "
+            "heartbeat only."
+        )
+        return 2
+    rel = status_file or relpaths[0]
+    path = target / rel
+    fields = dict(fields or {})
+    old_text: str | None = None
+    if path.is_file():
+        try:
+            old_text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            _emit(f"heartbeat: cannot read {rel} ({exc}) — fix the file first.")
+            return 2
+    if full:
+        phase = fields.pop("phase", None)
+        if not phase:
+            _emit(
+                "heartbeat: --full needs --phase — what the seat is doing "
+                "is the one field with no honest default."
+            )
+            return 2
+        backend = JsonStateBackend(_state_path(target, config))
+        context = build_context(backend.data) if backend.data else {}
+        project_name = context.get("project_name") or target.resolve().name
+        new_text = full_status(
+            project_name,
+            kit_version or KIT_VERSION,
+            phase=phase,
+            kit_check=kit_check or "green",
+            kit_engaged=kit_engaged or "yes",
+            **fields,
+        )
+        touched = "whole contract shape (--full)"
+    else:
+        if kit_check is not None or kit_engaged is not None:
+            _emit(
+                "heartbeat: --kit-check/--kit-engaged shape the --full "
+                "contract render only — the restamp lane preserves the "
+                "existing kit: line (version token via --kit-version)."
+            )
+            return 2
+        if old_text is None:
+            _emit(
+                f"heartbeat: {rel} not found — write the first heartbeat "
+                "with --full (or point --status-file at your lane's file)."
+            )
+            return 2
+        try:
+            new_text = restamp_status(
+                old_text,
+                fields=fields,
+                kit_version=kit_version,
+            )
+        except HeartbeatError as exc:
+            _emit(f"heartbeat: refused — {exc}")
+            return 2
+        parts = ["updated:", *sorted(fields)]
+        if kit_version is not None:
+            parts.append(f"kit: v{kit_version}")
+        touched = ", ".join(parts)
+    if dry_run:
+        if old_text is not None:
+            diff = difflib.unified_diff(
+                old_text.splitlines(keepends=True),
+                new_text.splitlines(keepends=True),
+                fromfile=f"a/{rel}",
+                tofile=f"b/{rel}",
+            )
+            _emit("".join(diff).rstrip("\n"))
+        else:
+            _emit(new_text.rstrip("\n"))
+        _emit(f"heartbeat: DRY RUN — {rel} not written.")
+        return 0
+    atomic_write_text(path, new_text)
+    _emit(
+        f"heartbeat: wrote {rel} ({touched}) — stamp parseable by "
+        "check_status_current (round-trip verified)."
+    )
+    return 0
+
+
+def cmd_claim(
+    target: Path,
+    slug: str,
+    *,
+    scope: str | None = None,
+    area: str | None = None,
+    delete: bool = False,
+    dry_run: bool = False,
+) -> int:
+    """Write/delete a grammar-valid work claim mechanically (#358 💡 ender).
+
+    The ``bootstrap claim`` verb — the one-file-per-claim convention's
+    mechanical writer (``control/claims/README.md``, EAP §6.4). Default
+    lane: render + write ``<claims_dir>/claude-<slug>.md`` with ONE bullet
+    the ``check_claims`` enforcer is guaranteed to parse
+    (:func:`engine.claim.render_claim` — same grammar constants, round-trip
+    verified, current UTC date last on the line). ``--delete`` removes YOUR
+    OWN claim at session close. Both lanes refuse a FOREIGN claim at the
+    target path — an existing file whose bullet token is not this slug's
+    ``claude/<slug>`` branch (or that the grammar cannot parse, so ownership
+    is unprovable) — leaving the file intact. ``--dry-run`` prints the
+    would-be content (or the would-be deletion) and touches nothing.
+    Refuses outside a control-carrying host, like the heartbeat verb.
+    """
+    config = load_config(target)
+    relpaths = heartbeat_relpaths(config.heartbeat_files)
+    bus_files = [INBOX_RELPATH, CONTROL_README_RELPATH, *relpaths]
+    has_bus = any((target / rel).is_file() for rel in bus_files)
+    if not has_bus and not (target / config.claims_dir).is_dir():
+        _emit(
+            "claim: refused — no control/ bus here (no inbox, README, "
+            "heartbeat file, or claims dir); this verb writes the control "
+            "protocol's work claims only."
+        )
+        return 2
+    try:
+        branch = branch_for(slug)
+        rel = f"{config.claims_dir}/{claim_filename(slug)}"
+    except ClaimError as exc:
+        _emit(f"claim: refused — {exc}")
+        return 2
+    path = target / rel
+    old_text: str | None = None
+    if path.is_file():
+        try:
+            old_text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            _emit(f"claim: cannot read {rel} ({exc}) — fix the file first.")
+            return 2
+    if old_text is not None:
+        token = owner_token(old_text)
+        if token != branch:
+            whose = f"`{token}`" if token else "an unparseable bullet (ownership unprovable)"
+            _emit(
+                f"claim: refused — {rel} exists and belongs to {whose}, not "
+                f"`{branch}`; a session only "
+                f"{'deletes' if delete else 'overwrites'} its OWN claim "
+                "(control/claims/README.md — the loser of a collision "
+                "stands down; reconcile by hand). File left intact."
+            )
+            return 2
+    if delete:
+        if old_text is None:
+            _emit(f"claim: {rel} not found — nothing to delete.")
+            return 2
+        if dry_run:
+            _emit(f"claim: DRY RUN — would delete {rel} (own claim, `{branch}`).")
+            return 0
+        path.unlink()
+        _emit(f"claim: deleted {rel} (own claim, `{branch}` — session close).")
+        return 0
+    if scope is None:
+        _emit(
+            "claim: --scope is required to write a claim (one line: what "
+            "this session is building) — or use --delete at session close."
+        )
+        return 2
+    try:
+        new_text = render_claim(slug, scope, area=area)
+    except ClaimError as exc:
+        _emit(f"claim: refused — {exc}")
+        return 2
+    if dry_run:
+        _emit(new_text.rstrip("\n"))
+        _emit(f"claim: DRY RUN — {rel} not written.")
+        return 0
+    path.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_text(path, new_text)
+    refreshed = " (refreshed own claim)" if old_text is not None else ""
+    _emit(
+        f"claim: wrote {rel}{refreshed} — bullet parseable by check_claims "
+        "(round-trip verified). Delete it at session close: "
+        f"bootstrap claim {slug} --delete."
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Construct the bootstrap argument parser."""
     parser = argparse.ArgumentParser(prog="bootstrap", description="substrate-kit")
@@ -18996,6 +19972,129 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    heartbeat_p = sub.add_parser(
+        "heartbeat",
+        help=(
+            "restamp the control/ status heartbeat mechanically — a fresh "
+            "parseable UTC updated: stamp plus only the fields you pass "
+            "(everything else preserved byte-identical); --full writes the "
+            "whole contract shape (the first real heartbeat)"
+        ),
+    )
+    heartbeat_p.add_argument("--target", type=Path, default=Path.cwd())
+    heartbeat_p.add_argument(
+        "--status-file",
+        default=None,
+        help=(
+            "heartbeat file to write (default: the first configured "
+            "heartbeat_files entry — control/status.md unless a lane "
+            "configured otherwise)"
+        ),
+    )
+    heartbeat_p.add_argument(
+        "--full",
+        action="store_true",
+        help=(
+            "write the whole contract-shape heartbeat (the adopt seed's "
+            "documented overwrite path); requires --phase, other fields "
+            "default honestly (blockers/⚑ needs-owner: none)"
+        ),
+    )
+    heartbeat_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the would-be diff (or full text for a new file) without writing",
+    )
+    heartbeat_p.add_argument("--phase", default=None, help="phase: line value")
+    heartbeat_p.add_argument("--health", default=None, help="health: line value")
+    heartbeat_p.add_argument(
+        "--orders",
+        default=None,
+        help='orders: line value (e.g. "acked=001-003 done=001,002")',
+    )
+    heartbeat_p.add_argument(
+        "--last-shipped",
+        dest="last_shipped",
+        default=None,
+        help="last-shipped: line value",
+    )
+    heartbeat_p.add_argument("--blockers", default=None, help="blockers: line value")
+    heartbeat_p.add_argument(
+        "--needs-owner",
+        dest="needs_owner",
+        default=None,
+        help="⚑ needs-owner: line value",
+    )
+    heartbeat_p.add_argument("--notes", default=None, help="notes: line value")
+    heartbeat_p.add_argument(
+        "--kit-version",
+        dest="kit_version",
+        default=None,
+        help=(
+            "rewrite the kit: line's v<X.Y.Z> token (restamp lane keeps "
+            "the line's decorations; --full default: this dist's version)"
+        ),
+    )
+    heartbeat_p.add_argument(
+        "--kit-check",
+        dest="kit_check",
+        choices=("green", "red"),
+        default=None,
+        help="kit: line check: field (--full lane only)",
+    )
+    heartbeat_p.add_argument(
+        "--kit-engaged",
+        dest="kit_engaged",
+        choices=("yes", "no"),
+        default=None,
+        help="kit: line engaged: field (--full lane only)",
+    )
+
+    claim_p = sub.add_parser(
+        "claim",
+        help=(
+            "write a grammar-valid work claim file (control/claims/"
+            "claude-<slug>.md, one bullet check_claims is guaranteed to "
+            "parse — branch token · scope · UTC date); --delete removes "
+            "your OWN claim at session close, refusing foreign claims"
+        ),
+    )
+    claim_p.add_argument(
+        "slug",
+        help=(
+            "branch slug — the claim's branch is claude/<slug>, its file "
+            "claude-<slug>.md under the configured claims_dir"
+        ),
+    )
+    claim_p.add_argument("--target", type=Path, default=Path.cwd())
+    claim_p.add_argument(
+        "--scope",
+        default=None,
+        help=(
+            "one-line scope (rendered bold) — required to write; dated "
+            "filenames in it are safe (the claim's own date is appended "
+            "LAST on the bullet, the post-#353 rule)"
+        ),
+    )
+    claim_p.add_argument(
+        "--area",
+        default=None,
+        help='optional expected files/area segment (e.g. "src/ + tests/")',
+    )
+    claim_p.add_argument(
+        "--delete",
+        action="store_true",
+        help=(
+            "delete your OWN claim file (session close); a foreign claim — "
+            "different branch token, or unparseable — is refused intact"
+        ),
+    )
+    claim_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the would-be claim content (or deletion) without touching disk",
+    )
+
     check = sub.add_parser("check", help="run the doc + session-log hygiene checks")
     check.add_argument("--target", type=Path, default=Path.cwd())
     check.add_argument("--strict", action="store_true", help="exit 1 if any violation")
@@ -19100,6 +20199,39 @@ def main(argv: list[str] | None = None) -> int:
             )
         if args.command == "seat-digest":
             return cmd_seat_digest(args.target, venues=args.venue)
+        if args.command == "heartbeat":
+            fields = {
+                name: value
+                for name, value in (
+                    ("phase", args.phase),
+                    ("health", args.health),
+                    ("orders", args.orders),
+                    ("last_shipped", args.last_shipped),
+                    ("blockers", args.blockers),
+                    ("needs_owner", args.needs_owner),
+                    ("notes", args.notes),
+                )
+                if value is not None
+            }
+            return cmd_heartbeat(
+                args.target,
+                full=args.full,
+                dry_run=args.dry_run,
+                status_file=args.status_file,
+                fields=fields,
+                kit_version=args.kit_version,
+                kit_check=args.kit_check,
+                kit_engaged=args.kit_engaged,
+            )
+        if args.command == "claim":
+            return cmd_claim(
+                args.target,
+                args.slug,
+                scope=args.scope,
+                area=args.area,
+                delete=args.delete,
+                dry_run=args.dry_run,
+            )
         if args.command == "check":
             return cmd_check(
                 args.target,
@@ -19195,7 +20327,7 @@ def main(argv: list[str] | None = None) -> int:
 
 _TEMPLATES = {
     'AGENT_ORIENTATION.md.tmpl': "# ${project_name} — agent orientation & reading order\n\n> **Status:** `reference`\n>\n> Generated by substrate-kit. The task reading-router: start here to find which\n> docs a given task needs. **NOT SOURCE OF TRUTH** — the binding contracts win.\n\n## Start every session\n\n**Preflight first — land on origin's HEAD before reading anything else:**\n\n```\ngit fetch origin main && git reset --hard origin/main\n```\n\n(or `git checkout -B main origin/main`; substitute your default branch).\nThen verify: local HEAD (`git rev-parse HEAD`) must equal\n`git ls-remote origin main`. A warm container clone can lag origin by\ndozens of commits, and a stale clone reads stale orders and stale state —\nevery orientation read below assumes this step already ran. The hard reset\ndiscards uncommitted local changes by design: at session START there should\nbe none; if `git status` shows work you did not author, stop and report it\ninstead of resetting over it.\n\nThe boot set lives in the working agreement — `${agreement_home}` — and its\norientation guidance (one list, one home). This file is not boot reading —\nopen it when a task needs a route into the deeper docs.\n\n## Binding contracts\n\n- **Architecture / layering:** ${architecture_layers}\n- **Ownership** (who owns each write path): ${ownership_model}\n- **Mutation seam** (how writes are gated): ${mutation_seam}\n\n## Where things live\n\nDocumentation root(s): ${doc_roots}\n\nThe planted doc set (this router reaches every live doc — keep it that way):\n`docs/architecture.md` · `docs/ownership.md` · `docs/runtime_contracts.md` ·\n`docs/collaboration-model.md` · `docs/helper-policy.md` ·\n`docs/repo-navigation-map.md` · `docs/ai-project-workflow.md` ·\n`docs/owner-profile.md` · `docs/current-state.md` · `docs/decisions.md` ·\n`docs/question-router.md` · `docs/CAPABILITIES.md` · `docs/SKILLS.md` ·\n`docs/ROUTINES.md` · `docs/ideas/README.md` — plus the root\n`CONSTITUTION.md` (the working agreement) and `.session-journal.md`.\n\nRecurring action? **`docs/SKILLS.md`** — the skill index — names every\nkit-shipped skill and when to reach for it; check it before improvising a\nprocedure.\n\nArming, deleting, or auditing a scheduled trigger/routine/wake chain?\n**`docs/ROUTINES.md`** — binding choice, delivery verification,\nprobe-not-record, scheduler-health signatures, pacing — read it before\ntouching the trigger registry.\n\n## Verifying any change\n\nSee the working agreement (`${agreement_home}`) and its verify guidance\n(one home, never two copies).\n",
-    'CAPABILITIES.md.tmpl': '# ${project_name} — session capabilities & walls\n\n> **Status:** `living-ledger`\n>\n> Generated by substrate-kit. What agent sessions in THIS environment can and\n> cannot do — **verified findings, never assumptions**. Read at session start\n> (it is in the orientation reading order); append at session close. Fleet\n> master copy: `menno420/fleet-manager` → `docs/capabilities.md` — sync new\n> fleet-wide findings there via the manager when cross-repo access allows.\n\n## Why this file exists\n\nSessions repeatedly fail to discover what they CAN do (claiming `.mp4`s\nunviewable though ffmpeg frame-extraction is standard; forgetting provisioned\nenv tokens exist) and stall on imagined walls — burning owner attention as\nhand reminders. This ledger makes capability knowledge durable across\nsessions: one session\'s discovery is every later session\'s starting fact.\n\n<!-- substrate-kit:capability-seed BEGIN — kit-owned, refreshed at upgrade. Append your findings BELOW the fence (## Append log), never inside it. -->\n\n## Posture decision rule — establish your venue first\n\n- **Owner-live session:** assume NO special limitations apply — act and merge\n  directly (superbot Q-0269).\n- **Autonomous / routine-fired seat:** pre-route around every known stall\n  class recorded below; park only on a REAL denial, never preemptively\n  (superbot Q-0270 boot triad: model · venue · ability envelope).\n\nVenue tokens (every entry names where it was verified): `owner-live` ·\n`autonomous-project` · `routine-fired` · `subagent` · `any`. Capabilities are\n**venue-scoped, not global** — the same operation can work owner-live, be\norg-refused on a cross-session binding, and prompt-stall in a plain-started\nseat while never prompting in a Routine-spawned one (fleet night review,\n2026-07-12). A flat CAN/CANNOT ledger is wrong somewhere by construction.\n\n## THE DISCOVERY RULE\n\nBefore declaring anything impossible, and before assuming a tool or\ncredential is missing:\n\n1. **Check this file** — the capability or wall may already be recorded for\n   your venue.\n2. **Check the environment** — `printenv` / list the available tools BEFORE\n   assuming no credentials exist (provisioned env tokens are routinely\n   forgotten, not absent).\n3. **Attempt once** — try the operation and capture the **exact** error text;\n   a guessed wall and a verified wall are different facts.\n4. **Append the finding same session** — capability or wall, dated, with the\n   venue token, the evidence (exact error, or proof it worked) and the\n   workaround if one was found. An unrecorded discovery is re-paid by every\n   future session.\n5. **Staleness — re-verify what you build on**: an entry older than the\n   staleness window (config `cadence.staleness_days`, default 14) that your\n   work depends on is a **claim, not a fact** — re-verify it with one cheap\n   attempt and append the result. Re-verifications APPEND, never edit: a\n   refuted wall can self-resolve platform-side, and a ledger with no\n   freshness data is confidently stale — worse than ignorant.\n\n## Capabilities — verified working\n\n- `any` · **Media is readable**: a video is never "unviewable" — extract\n  frames (`ffmpeg -i in.mp4 -vf fps=1 frame_%04d.png`) and read the images;\n  same idea for audio (transcribe) and PDFs (render pages). Try the recipe\n  before reporting a format wall. — LAST-VERIFIED: 2026-07-10\n- `any` · **Provisioned credentials**: the environment often carries\n  tokens/keys as env vars — `printenv` first; a missing-looking credential is\n  usually a missing *look*. — LAST-VERIFIED: 2026-07-10\n- `any` · **Release cutting despite the tag wall**: `workflow_dispatch` on\n  the release workflow (with a version input) creates the tag in-Actions —\n  proven repeatedly fleet-wide after direct tag pushes 403\'d.\n  — LAST-VERIFIED: 2026-07-12\n\n## Walls — verified blocked (use the workaround; don\'t rediscover)\n\n- `any` · **Tag push / release create via git**: HTTP 403 from the\n  environment\'s git proxy → use the workflow_dispatch release path.\n  — LAST-VERIFIED: 2026-07-12\n- `any` · **Branch deletion**: 403 on every path (git push `:branch` and\n  API) → owner deletes by hand / enables "Automatically delete head\n  branches". — LAST-VERIFIED: 2026-07-10\n- `any` · **`api.github.com` direct HTTP**: blocked → GitHub access is\n  MCP-tools-only. — LAST-VERIFIED: 2026-07-10\n- `any` · **Environment / Project creation**: owner-click actions in the\n  console — queue them as structured owner asks, never wait silently.\n  Routine/schedule creation is NO LONGER a blanket wall: `create_trigger`\n  arms routines agent-side (proven 2026-07-11); the console-only knobs\n  (model class, branch-push, auto-fix PRs) remain owner-only.\n  — LAST-VERIFIED: 2026-07-11\n- `subagent` · **Self-merge classifier**: sessions can be refused merging\n  owner-gated PRs while their other capabilities work — and the boundary\n  differs by venue (a child session was refused where a coordinator was\n  not). Record which venue hit which boundary. — LAST-VERIFIED: 2026-07-10\n- `any` · **GraphQL API quota**: tight — batch queries and prefer the\n  REST-backed MCP tools for bulk reads. — LAST-VERIFIED: 2026-07-10\n- `routine-fired` · **Silent prompt-stalls**: a permission prompt in an\n  unattended seat is a silent stall, and grant boundaries differ by venue —\n  the same tool call can be pre-granted in a Routine-spawned seat and prompt\n  in a plain-started one. Pre-route around recorded stall classes; verify\n  grants per venue, never globally. — LAST-VERIFIED: 2026-07-12\n\n<!-- substrate-kit:capability-seed END -->\n\n## Append log — newest first\n\nFormat: `- YYYY-MM-DD · capability|wall · <venue> · finding · evidence · workaround`\n(venue ∈ `owner-live` · `autonomous-project` · `routine-fired` · `subagent` ·\n`any`; older five-field lines without a venue token stay valid — read them\nas venue `any`.)\n\n(Hand-filled by sessions, per the discovery rule. Seed rows above are\nkit-owned — they refresh at upgrade between the fence markers; local\nfindings go here, below the fence.)\n',
+    'CAPABILITIES.md.tmpl': '# ${project_name} — session capabilities & walls\n\n> **Status:** `living-ledger`\n>\n> Generated by substrate-kit. What agent sessions in THIS environment can and\n> cannot do — **verified findings, never assumptions**. Read at session start\n> (it is in the orientation reading order); append at session close. Fleet\n> master copy: `menno420/fleet-manager` → `docs/CAPABILITIES.md` — sync new\n> fleet-wide findings there via the manager when cross-repo access allows.\n\n## Why this file exists\n\nSessions repeatedly fail to discover what they CAN do (claiming `.mp4`s\nunviewable though ffmpeg frame-extraction is standard; forgetting provisioned\nenv tokens exist) and stall on imagined walls — burning owner attention as\nhand reminders. This ledger makes capability knowledge durable across\nsessions: one session\'s discovery is every later session\'s starting fact.\n\n<!-- substrate-kit:capability-seed BEGIN — kit-owned, refreshed at upgrade. Append your findings BELOW the fence (## Append log), never inside it. -->\n\n## Posture decision rule — establish your venue first\n\n- **Owner-live session:** assume NO special limitations apply — act and merge\n  directly (superbot Q-0269).\n- **Autonomous / routine-fired seat:** pre-route around every known stall\n  class recorded below; park only on a REAL denial, never preemptively\n  (superbot Q-0270 boot triad: model · venue · ability envelope).\n\nVenue tokens (every entry names where it was verified): `owner-live` ·\n`autonomous-project` · `routine-fired` · `subagent` · `any`. Capabilities are\n**venue-scoped, not global** — the same operation can work owner-live, be\norg-refused on a cross-session binding, and prompt-stall in a plain-started\nseat while never prompting in a Routine-spawned one (fleet night review,\n2026-07-12). A flat CAN/CANNOT ledger is wrong somewhere by construction.\n\n## THE DISCOVERY RULE\n\nBefore declaring anything impossible, and before assuming a tool or\ncredential is missing:\n\n1. **Check this file** — the capability or wall may already be recorded for\n   your venue.\n2. **Check the environment** — `printenv` / list the available tools BEFORE\n   assuming no credentials exist (provisioned env tokens are routinely\n   forgotten, not absent).\n3. **Attempt once** — try the operation and capture the **exact** error text;\n   a guessed wall and a verified wall are different facts.\n4. **Append the finding same session** — capability or wall, dated, with the\n   venue token, the evidence (exact error, or proof it worked) and the\n   workaround if one was found. An unrecorded discovery is re-paid by every\n   future session.\n5. **Staleness — re-verify what you build on**: an entry older than the\n   staleness window (config `cadence.staleness_days`, default 14) that your\n   work depends on is a **claim, not a fact** — re-verify it with one cheap\n   attempt and append the result. Re-verifications APPEND, never edit: a\n   refuted wall can self-resolve platform-side, and a ledger with no\n   freshness data is confidently stale — worse than ignorant.\n\n## Capabilities — verified working\n\n- `any` · **Media is readable**: a video is never "unviewable" — extract\n  frames (`ffmpeg -i in.mp4 -vf fps=1 frame_%04d.png`) and read the images;\n  same idea for audio (transcribe) and PDFs (render pages). Try the recipe\n  before reporting a format wall. — LAST-VERIFIED: 2026-07-10\n- `any` · **Provisioned credentials**: the environment often carries\n  tokens/keys as env vars — `printenv` first; a missing-looking credential is\n  usually a missing *look*. — LAST-VERIFIED: 2026-07-10\n- `any` · **Release cutting despite the tag wall**: `workflow_dispatch` on\n  the release workflow (with a version input) creates the tag in-Actions —\n  proven repeatedly fleet-wide after direct tag pushes 403\'d.\n  — LAST-VERIFIED: 2026-07-12\n\n## Walls — verified blocked (use the workaround; don\'t rediscover)\n\n- `any` · **Tag push / release create via git**: HTTP 403 from the\n  environment\'s git proxy → use the workflow_dispatch release path.\n  — LAST-VERIFIED: 2026-07-12\n- `any` · **Branch deletion**: 403 on every path (git push `:branch` and\n  API) → owner deletes by hand / enables "Automatically delete head\n  branches". — LAST-VERIFIED: 2026-07-10\n- `any` · **`api.github.com` direct HTTP**: blocked → GitHub access is\n  MCP-tools-only. — LAST-VERIFIED: 2026-07-10\n- `any` · **Environment / Project creation**: owner-click actions in the\n  console — queue them as structured owner asks, never wait silently.\n  Routine/schedule creation is NO LONGER a blanket wall: `create_trigger`\n  arms routines agent-side (proven 2026-07-11); the console-only knobs\n  (model class, branch-push, auto-fix PRs) remain owner-only.\n  — LAST-VERIFIED: 2026-07-11\n- `subagent` · **Self-merge classifier**: sessions can be refused merging\n  owner-gated PRs while their other capabilities work — and the boundary\n  differs by venue (a child session was refused where a coordinator was\n  not). Record which venue hit which boundary. — LAST-VERIFIED: 2026-07-10\n- `any` · **GraphQL API quota**: tight — batch queries and prefer the\n  REST-backed MCP tools for bulk reads. — LAST-VERIFIED: 2026-07-10\n- `routine-fired` · **Silent prompt-stalls**: a permission prompt in an\n  unattended seat is a silent stall, and grant boundaries differ by venue —\n  the same tool call can be pre-granted in a Routine-spawned seat and prompt\n  in a plain-started one. Pre-route around recorded stall classes; verify\n  grants per venue, never globally. — LAST-VERIFIED: 2026-07-12\n\n<!-- substrate-kit:capability-seed END -->\n\n## Append log — newest first\n\nFormat: `- YYYY-MM-DD · capability|wall · <venue> · finding · evidence · workaround`\n(venue ∈ `owner-live` · `autonomous-project` · `routine-fired` · `subagent` ·\n`any`; older five-field lines without a venue token stay valid — read them\nas venue `any`.)\n\n(Hand-filled by sessions, per the discovery rule. Seed rows above are\nkit-owned — they refresh at upgrade between the fence markers; local\nfindings go here, below the fence.)\n',
     'CLAUDE.md.tmpl': '# ${project_name} — agent working agreement\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit from the staged interview. **NOT SOURCE OF TRUTH**\n> for code — source files always win. Re-render (`bootstrap render`) after the\n> interview fills more slots.\n\n## What this project is\n\n${project_name} is built in ${primary_language}.\n\n## Orientation — read first, in order\n\n0. **Preflight — land on origin\'s HEAD before reading anything else:**\n   `git fetch origin main && git reset --hard origin/main` (or\n   `git checkout -B main origin/main`). A warm container clone can lag\n   origin by dozens of commits, and a stale clone reads stale orders.\n   Mechanics + safety notes: `docs/AGENT_ORIENTATION.md` § "Start every\n   session".\n1. This file — the working agreement.\n2. `HANDOFF.md` at repo root (when present) — the previous session\'s trail:\n   newest session card + where to pick up. Regenerated at every session\n   boot, untracked by design — read it before re-deriving history from\n   `git log`/`git show`; never commit or edit it.\n3. `docs/current-state.md` — what is true right now.\n\nThat is the whole boot set. Everything else is routed, **not front-loaded**\n(reading every planted doc up front buys ceremony, not context — measured):\nopen `docs/AGENT_ORIENTATION.md` when a task needs its reading route,\n`docs/SKILLS.md` (the skill index) **before improvising a procedure for a\nrecurring action**, and\n`docs/CAPABILITIES.md` (the verified can/cannot ledger) **before declaring\nany wall or missing credential** — its discovery rule: check the file →\ncheck the env → attempt once + capture the exact error → append the finding\nsame session — and `docs/ROUTINES.md` (the wake-chain/trigger doctrine)\n**before arming, deleting, or auditing any scheduled trigger/routine**.\n\n## Kit machinery — search hygiene\n\n`bootstrap.py` (~12k generated lines) and `.substrate/` (kit state + a byte\nbackup of the previous dist) are substrate-kit machinery, not project code.\nExclude them from repo-wide searches: `grep -r --exclude=bootstrap.py\n--exclude-dir=.substrate …`, or ripgrep `rg -g \'!bootstrap.py\' -g\n\'!.substrate\' …`.\n\n## Architecture — layers & import rules\n\n${architecture_layers}\n\n## Verifying a change\n\nRun before every push:\n\n```\n${verify_command}\n```\n\n## How the maintainer works\n\n${owner_profile}\n\n## Workflow adoption\n\nCurrent adoption pace for the substrate workflow: **${integration_mode}**.\n',
     'CONSTITUTION.md.tmpl': '# ${project_name} — constitution\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. The working agreement + autonomy rails. **NOT\n> SOURCE OF TRUTH** for code — source files always win. Rules state their\n> **current value only**; provenance lives in `docs/decisions.md` as [D-NNNN]\n> links and is never narrated inline.\n\n## Working agreement\n\n- **The goal comes first.** Achieve the session\'s goal end-to-end; don\'t ship\n  the smallest safe slice.\n- **Session prompts are guidance, not orders.** Weigh every prompt (and every\n  cross-agent report) against source and the binding docs before acting.\n- **Approved plan = execute.** Once a plan is approved, finish it in the same\n  session, with the planning context still loaded — no re-confirming.\n- **Understand-and-reflect.** The owner hands over fragments, not full\n  specs. Before substantive work, restate the fuller picture built from the\n  ask — the implied specs, and the possibility space when feasibility is\n  uncertain — inline in the first substantive response, never as a blocking\n  question. It catches a misread early, and the filled-in picture is itself\n  new material the owner redirects.\n- **Capabilities are discovered, never assumed.** Before declaring a wall or\n  a missing credential: check `docs/CAPABILITIES.md` (the verified ledger) →\n  check the environment → attempt once and capture the exact error → append\n  the finding same session.\n- **Recurring actions run through the skill index.** `docs/SKILLS.md` names\n  every kit-shipped skill and when to reach for it — check it before\n  improvising a procedure or repo-searching "how do we do X here".\n- **Skills self-propagate — the registration reflex.** A recurring action\n  with no skill — or a skill whose body doesn\'t actually cover it — is a\n  gap to register, not to route around: the standard move is to **add or\n  extend the skill** — a registry entry, not ad-hoc prose — via the growth\n  loop prose workflow → index row → promoted skill (`docs/SKILLS.md`\n  § "Growing the set"). The boundary: skill bodies, grounds, and index rows\n  are free to ship directly, flagged self-initiated on the run report;\n  **binding working-agreement text and executable config** (this file,\n  `CLAUDE.md`-level rules, hooks, settings) route through\n  `docs/question-router.md` as a proposal — never self-applied — unless the\n  owner directs the change live in-session, recorded with its provenance id\n  ("Changing the rules" below; superbot Q-0194 · Q-0106 · Q-0172).\n  The reflex generalizes beyond incidents to **opportunities** — the\n  rationalization checkpoint: at natural pauses (a slice lands · a\n  lesson/workaround surfaces · session enders) ask *"should this action\n  also be executed?"* and *"does this lesson deserve a permanent home —\n  skill / checker / template / idea — I can ship NOW?"* Method + routing\n  table: the `rationalize` skill (Q-0273).\n- **Evidence — verify, don\'t trust.** A record is a claim; the live surface\n  is the proof — probe the registry/API/tree before acting on any recorded\n  state (probe-not-record). The committed **tree wins over a self-report**:\n  heartbeat/registry `kit:` lines chronically lag the target repo\'s tree by\n  1–3 releases — verify against the tree. A red or green **check is judged\n  by its job log, never its name** (alias/mirror jobs red without measuring\n  anything; a designed hold is not a failure). Staleness-sensitive reads are\n  **cross-checked before acting** (MCP PR-state reads observed ~25 min\n  stale — confirm merge/CI state via git fetch or the Actions runs). A green\n  check that contradicts visible evidence is **a bug in the CHECK, not a\n  clearance** (PL-006). Every load-bearing claim cites a commit / PR / tag /\n  run.\n- When a doc and a source file disagree: ${drift_resolution}\n\n## Autonomy rails — act vs. ask\n\n- **Act** on contained, reversible, verifiable changes — including a\n  root-cause fix discovered mid-task.\n- **Ask** before anything irreversible (data loss, external publish),\n  large / cross-cutting (architectural), or when the goal itself is\n  genuinely ambiguous. No live owner to ask? Record the question in\n  `docs/question-router.md` instead of skipping it or guessing.\n- **Owner attention is the scarcest resource.** Before routing anything to\n  the owner: attempt it yourself, or cite the exact wall — assumption-based\n  asks are banned. Every ask carries the OWNER-ACTION fields — WHAT / WHERE\n  / HOW / WHY-IT-MATTERS / UNBLOCKS / VERIFIED-NEEDED (format:\n  `control/README.md`) — phrased so a non-technical owner can act directly.\n  Expire stale asks; fewer, clearer asks beat complete lists. Owner-facing\n  output follows the owner-assist standard — paste-ready finished values, a\n  risk class (✅ / ↩️ / ⚠️) on every manual step, decisions as structured\n  choices with a **bolded recommendation**, answerable with one letter\n  (standard: `control/README.md`).\n\n## Changing the rules — propose, don\'t apply\n\n- A binding rule in this file changes by **proposal**, never by silent edit:\n  record the decision in `docs/decisions.md`, cite it here as its [D-NNNN]\n  id, and let the owner (or the review ritual) confirm before the rule text\n  changes.\n- Every rule change ships with its provenance id. This file carries **no\n  history** — the ledger does; superseded rules are looked up there.\n\n## Program law\n\nRulings that bind **every** repo in this program live canonically in the\nsubstrate-kit repo at `docs/program/rulings.md` — the [PL-NNN] register\n(https://github.com/menno420/substrate-kit/blob/main/docs/program/rulings.md),\ne.g. PL-001 decide-and-flag · PL-006 source-wins / false-green.\n**Cite PL-IDs — never copy ruling bodies into this repo** (the register is\nthe one home; a local copy is drift by construction). Repo-local rulings\nstay in `docs/decisions.md` / `docs/question-router.md`.\n\n## Rails specific to ${project_name}\n\n(Hand-filled: the project\'s own hard rules, one bullet each, each citing its\n[D-NNNN]. Keep the whole hand-filled file under 150 lines.)\n',
     'SKILLS-index.md.tmpl': '# ${project_name} — skill index\n\n> **Status:** `reference`\n>\n> Generated by substrate-kit. The table below renders FROM the kit\'s\n> `SKILLS` list — the same source that emits the skills — and regenerates\n> at adopt/upgrade, so it cannot hand-drift. **NOT SOURCE OF TRUTH** for\n> skill bodies: the installed `.claude/skills/<name>/SKILL.md` wins.\n\n## What this is\n\nThe registered skill set for ${project_name}: every recurring action that\nhas a defined, kit-shipped procedure. **Check this index before improvising\na workflow or repo-searching "how do we do X here"** — when a row covers\nthe action, invoke the skill (or read its installed body) instead of\nderiving the procedure from scratch.\n\n## The skills\n\n${skills_index}\n\n## Where the bodies live\n\n- **Installed (live):** `.claude/skills/<name>/SKILL.md` — invoke as\n  `/<name>`.\n- **Staged (regenerated at every adopt/upgrade):** the kit state dir\'s\n  `skills/` tree (default `.substrate/skills/`); install with\n  `python3 bootstrap.py skills --build`.\n- **Precedence:** a skill\'s declared capability **wins over the ambient\n  stance** (an invoked `session-close` may write the session log even under\n  a `review` stance); stances stay advisory for anything a skill has not\n  declared.\n\n## Machine consumption — the seat digest\n\n`docs/seat-digest.md` is the machine-extractable DERIVED RENDER of this\nindex plus the capability ledger\'s venue-relevant walls — two fence-marked\nblocks sized for seat-prompt budgets, consumed by fleet-manager\'s\nseat-prompt regen via fence-prefix extraction + byte match. Never edit it;\nregenerate with `python3 bootstrap.py seat-digest` (adopt/upgrade refresh\nit too). The extraction contract and the no-third-copy deferral chain are\ndocumented in that file itself.\n\n## Growing the set\n\nThe skill set is kit-owned (the `SKILLS` list in the kit\'s\n`src/engine/skills/skills.py`) and this index regenerates from it — never\nhand-edit the table. A recurring action without a row here — or a row\nwhose body doesn\'t actually cover it — is the registration reflex firing:\nthe standard move is to **add or extend the skill**, as a registry entry,\nnot ad-hoc prose. The growth loop is prose workflow → index row → promoted\nskill: capture the procedure as an idea (`docs/ideas/README.md`) or\npropose it upstream to the kit, and it reaches every adopter at the next\nrelease. Skill bodies, grounds, and index rows are free to ship directly —\nflag them self-initiated on the run report; binding working-agreement text\nis proposed through `docs/question-router.md`, never self-applied — the\nfull clause and its provenance live in the working agreement\n(`${agreement_home}`, superbot Q-0194 · Q-0106 · Q-0172).\n',
@@ -19203,7 +20335,7 @@ _TEMPLATES = {
     'architecture.md.tmpl': '# ${project_name} — architecture\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. Layering, invariants, and decomposition rules.\n> **NOT SOURCE OF TRUTH** for code — source files always win.\n\n## Layers & import rules\n\n${architecture_layers}\n\n| Layer | May import | Must NOT import |\n|---|---|---|\n| (one row per layer, expanded from the summary above) | | |\n\n## Invariants\n\n(The rules that must survive every refactor — write each one as a testable\nstatement, and name the check that enforces it where one exists.)\n\n## Namespace protection — two mechanisms, both required\n\nTwo separate mechanisms guard the namespace, and they catch different\nfailure classes:\n\n1. **A registry for runtime string identities** — event names, command\n   names, settings keys, and any other string that selects behavior at\n   runtime. Collisions here are invisible to static analysis.\n2. **A static AST pass for Python symbol shadowing** — a later top-level\n   `def` / `class` with the same name silently shadows the earlier one, and\n   no import fails.\n\nNeither mechanism subsumes the other. The registry cannot see symbol\nshadowing; the AST pass cannot see string-keyed dispatch. Do not delete one\nbelieving the other covers it.\n\n## Verifying a change\n\n```\n${verify_command}\n```\n',
     'collaboration-model.md.tmpl': '# ${project_name} — collaboration model\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. How the owner and agents work together. **NOT\n> SOURCE OF TRUTH** for code — source files always win.\n\n## The model\n\n- **Goal first.** The owner designs and directs; agents build. Each session\n  achieves its goal end-to-end — not the smallest safe slice.\n- **Session prompts are guidance, not orders.** Weigh every prompt (and every\n  cross-agent report) against source and the binding docs before acting; a\n  prompt is one input, never a command list.\n- **Approved plan = execute.** Once a plan is approved, finish it in the same\n  session, with the planning context still loaded — code, verify, ship —\n  without re-confirming.\n\n## Act vs. ask\n\n- **Act** on contained, reversible, verifiable changes — including a\n  root-cause fix discovered mid-task (that is expected, not scope creep).\n- **Ask** when the change is irreversible (data loss / external publish),\n  large and cross-cutting (architectural), or the goal itself is genuinely\n  ambiguous.\n\n## Routing work to the owner\n\nThe owner is the scarcest resource in the program. An ask reaches the owner\nonly when the agent has **attempted the action itself** or can name the\n**exact wall** (error text, permission denial) proving only the owner can do\nit — assumption-based asks are banned. Every ask uses the OWNER-ACTION\nformat — WHAT / WHERE / HOW / WHY-IT-MATTERS / UNBLOCKS / VERIFIED-NEEDED\n(canonical: `control/README.md`) — phrased so a non-technical owner can act\ndirectly: one plain sentence, an exact click path, paste-ready text.\nWithdraw asks that have gone stale; fewer, clearer asks beat complete lists.\n\nEvery owner-facing OUTPUT — not just asks — follows the owner-assist output\nstandard (canonical: `control/README.md` § "Owner-assist output standard"):\nvalues arrive finished and paste-ready, with the exact link to where each\none goes (a full file in one copyable block — never a recipe the owner must\nderive); every manual step carries a risk class (✅ safe / ↩️ reversible /\n⚠️ irreversible); a decision put to the owner is a structured choice —\noptions A/B(/C) with a **bolded recommendation** and a one-line rationale,\nanswerable with one letter — never an ask that requires the owner to\nparse, derive, or transform anything; a large output ships as a control-plane\nrendered link plus a 3-line digest in chat, with full text in one copyable\nblock in chat as the fallback where the plane cannot render the repo yet.\n\n## Friction → guard\n\nAnything that interrupts a session\'s workflow — a stale file, a checker that\nlied, a footgun — is converted into the **cheapest enforcing prevention**\nbefore the session ends: checker / CI / test first, then hook, then written\nrule. Enforce, don\'t exhort. The same reflex runs on opportunities, not only\ninterruptions — the rationalization checkpoint (`rationalize` skill, Q-0273).\n\n## Guiding questions\n\nDuring exploratory / brainstorming work, surface the single most useful\nquestion about the owner\'s idea that the agent genuinely cannot derive\nitself — rare and selective, never during routine execution, and only when\nthe answer would actually matter and be actionable. A big or vague idea\nearns a dedicated research pass or its own session before being answered\nfrom memory alone.\n\n## Program law\n\nThis model\'s program-wide form, and the rulings that bind every repo in the\nprogram, live canonically in the substrate-kit repo at\n`docs/program/rulings.md` (the [PL-NNN] register — e.g. PL-001\ndecide-and-flag, PL-002 never-wait, PL-007 enforce-don\'t-exhort) and\n`docs/program/collaboration-model.md`\n(https://github.com/menno420/substrate-kit/tree/main/docs/program).\n**Cite PL-IDs — never copy ruling bodies into this repo.**\n\n## Drift & staleness\n\n- When a doc and a source file disagree: ${drift_resolution}\n- Staleness review cadence: ${staleness_review}\n',
     'control-README.md.tmpl': '# Fleet coordination protocol — `control/`\n\n> **Status:** `binding`\n>\n> Local copy for ${project_name}. Canonical spec: `menno420/superbot` →\n> `docs/planning/fleet-coordination-protocol-2026-07-09.md` (§1). Projects cannot talk to each\n> other directly — committed git files are the only shared medium; this directory is the bus.\n\n## The two files\n\n- `control/inbox.md` — ORDERS to this Project. **One writer: the manager** (appends via the\n  GitHub Contents API). Never edit this file.\n- `control/status.md` — STATE from this Project. **One writer: this Project** (overwrite it each\n  session).\n\n## The one rule that keeps it conflict-free\n\n**One writer per file.** The manager is the sole writer of `inbox.md`; this Project is the sole\nwriter of its own `status.md`. Two writers never touch the same file, so there are no merge\nconflicts. Everything is append-only / overwrite-own — forward-only git.\n\n## Multi-Project repos — per-lane heartbeats (optional extension)\n\nA SHARED repo can host several Projects ("lanes" — e.g. a mining lane and an exploration lane\ncohabiting one game repo). The one-writer rule scales by **splitting the heartbeat, never by\nsharing it**:\n\n- **One status file per lane** — `control/status-<lane>.md` (e.g. `control/status-mining.md` +\n  `control/status-exploration.md`). Each lane is the sole writer of its own file and overwrites\n  it as its session\'s deliberate LAST step; no lane ever edits another lane\'s heartbeat.\n- **`control/inbox.md` stays single** — the manager remains its one writer; a lane-specific\n  order names its lane in `do:`.\n- **Declare every lane heartbeat to the kit** — `substrate.config.json` →\n  `"heartbeat_files": ["control/status-mining.md", "control/status-exploration.md"]` (default\n  when unset: `["control/status.md"]`). The status checker then gates each listed file\n  independently (missing / heartbeat-less lane = strict RED; per-lane staleness warns), and the\n  Stop hook\'s overwrite reminder clears when any lane\'s heartbeat is fresh (it cannot know which\n  lane a session belongs to). An empty list falls back to the default — misconfiguration never\n  silently disables the gate.\n- **One command, not hand-edits** — a Project joining a SHARED repo runs\n  `bootstrap adopt --lane <name>`: it plants `control/status-<name>.md` (skip-if-exists),\n  declares it in `heartbeat_files`, and leaves `inbox.md`/`README.md` single — a second lane\n  never re-plants the first Project\'s files (the double-adoption fix).\n\n## Per-session ritual (every session, and every routine wake)\n\n- **FIRST:** git pull (a stale clone reads stale orders); read `control/inbox.md`; execute any\n  order whose status is `new`, in priority order (P0 before P1) — **claim it first** (see\n  "Claiming an order" below). An order\'s `do:` is a pointer to\n  a committed doc — read it. If an order is ambiguous or you disagree, do NOT guess: write it in\n  your status under `⚑ needs-owner` and proceed with the rest.\n- **LAST (deliberate final step):** overwrite `control/status.md` — updated timestamp, current\n  phase, health (green / red-by-design+why / broken+what), last-shipped PR, blockers, orders\n  acked/done, `⚑ needs-owner`. You report order progress ONLY here; never edit `inbox.md`\n  (the manager owns it — one writer per file).\n\nThe kit enforces this loop: `check` flags a missing or heartbeat-less `status.md`\n(strict = red), warns when the heartbeat goes stale, and the Stop hook reminds you when\n`status.md` was not overwritten this session.\n\n## Claiming an order — one executor per order (claim FIRST, build second)\n\nAn order\'s `status: new` is visible to every session that wakes, so two readers can both\nbelieve they are its executor — a realized failure, not a theoretical one (substrate-kit\nPRs #50/#51: two lanes independently executed the same ORDER 005 the same day, and a whole\nsession\'s work had to be reconciled as twins). The manager only flips `new→done` after\nseeing the status report; the claim covers the gap in between.\n\nBefore executing any `new` order:\n\n1. **Re-read the bus at origin/main HEAD** — `control/inbox.md` AND every sibling status\n   file (`control/status*.md`). If another lane\'s status already claims the order\n   (`claimed-by:` naming its id) or reports it in `done=`, stand down and pick other work.\n2. **Claim FIRST, on your own status file\'s orders line** — append\n   `claimed-by: <order-ids> <lane-or-session> <ISO8601>` — and land it on **main** BEFORE\n   any build work (a control-only fast-lane PR, or a direct commit where your rules allow\n   one). A claim that exists only on a branch is invisible; only main counts.\n3. **Re-read once more after the claim merges** — two claims can race in flight; the\n   tiebreak is the earliest claim merged to main. The loser withdraws its claim line in\n   its next status overwrite and stands down.\n4. **Claims expire** — a claim with no visible build activity (no open PR, no fresh\n   heartbeat referencing the order) after ~24h may be treated as abandoned and re-claimed;\n   note the takeover in your status `notes:`. A dead lane must never deadlock an order.\n\nWith an active claim the `orders:` line reads e.g.:\n`orders: acked=001-008 done=001-006 claimed-by: 007+008 coordinator-lane 2026-07-09T18:38Z`\n— the executor drops the `claimed-by:` annotation in the overwrite that moves those ids\ninto `done=`. One writer per file is preserved: you only ever claim on your OWN status.\n(Shipped by inbox ORDER 007 — the root-cause fix for the twin-execution failure; the\nritual was live-proven manually on this repo\'s own orders before graduating here.)\n\n## Claiming work (not an ORDER) — one file per claim under `control/claims/`\n\nOrder claims cover the inbox; **work claims** cover everything else two\nparallel sessions could both pick up — a coordinator-assigned slice, a\nself-initiated build, a shared-surface change. Before starting such work,\ncreate **one file per claim** — `control/claims/<branch-or-scope>.md`, a\nsingle bullet `` - `branch-or-scope` · **scope** — detail · YYYY-MM-DD `` —\nland it on main FAST (claims are `control/**` traffic and ride the CI fast\nlane), re-read the directory at HEAD, build, then **delete the file at\nsession close**. Per-file is the measured winner over any shared list (~98%\nmerge-conflict rate for shared-append vs 0% per-file — superbot\n`tools/sim/claim_layout_sim.py`); first claim merged to main wins a\ncollision; ~72h with no activity = abandoned, prune on sight. Full\nconvention + checker contract: `control/claims/README.md`. (`check` nags —\nadvisory-only — on unparseable, stale, duplicate, or legacy-located claims;\nlegacy homes `docs/owner/claims/` and root `claims/` are auto-detected\nduring the migration window, and a deliberate different home is pinned via\n`substrate.config.json` → `claims_dir`.)\n\n## `status.md` format (what you write every session — your heartbeat)\n\n```markdown\n# <project> · status\nupdated: <ISO8601>            # heartbeat — stale = the manager treats the Project as dark\nphase: <what I\'m doing right now, one line>\nhealth: green | red-by-design (<why>) | broken (<what>)\nkit: v<X.Y.Z> · check: green|red · engaged: yes|no   # kit self-report — see below\nlast-shipped: #<PR> — <one line>\nblockers: <what\'s stopping me, or `none`>\norders: acked=<ids> done=<ids> [claimed-by: <ids> <lane-or-session> <ISO8601>]\n⚑ needs-owner: <a decision/action only the owner can give, or `none`>\nnotes: <anything the manager should know>\n```\n\nGrammar source of truth: the tokens, field lists, and regexes of this format are kit-owned constants in the kit\'s `src/engine/grammar.py` (EAP §6.8) — the SAME module the `check` enforcers consume, so writer and enforcer cannot drift; agreement is pinned by the kit\'s `tests/test_grammar.py`.\n\nThe `kit:` line is the **substrate-coordinator visibility** channel (kit-lab reads it via the\nmanager relay — zero write access to this repo): `v<X.Y.Z>` = the vendored kit version this\nrepo actually runs (update it in the same session as every `bootstrap upgrade`); `check:` =\nthe latest `check --strict` verdict on this tree; `engaged:` = the post-adopt engagement gate\n(`yes` once no UNRENDERED banner/slot remains, live CI runs the gate, and the session loop\nhas engaged).\n\n**Exact grammar or invisible — keep the `kit:` token PLAIN.** The parser accepts a bold label\n*before* a plain token (`- **kit heartbeat:** kit: v1.2.3 · check: green · engaged: yes` is a\nlive valid shape), but bolding the token itself does NOT parse — the fleet registry then reads\nthe row as "no `kit:` line" and the lane\'s engaged signal silently vanishes (a live adopter\nincident, not a hypothetical). The taught negative example:\n\n```markdown\n- **kit:** v1.2.3 · check: green · engaged: yes\n```\n\n← does NOT parse (`KIT_LINE_RE`, kit `src/engine/grammar.py` — the optional bold group cannot\ncontain the `kit:` token). If your heartbeat wants a bold label, put it *before* a plain\n`kit:` token.\n\n**Version truth defers to the generated registry, never to this line.** Heartbeat `kit:`\nlines are self-reports and chronically lag 1–3 releases behind the tree (the fleet\'s\nrecurring self-report DRIFT class); the kit repo\'s generated `docs/adopters.md` —\nregenerated from each adopter\'s committed tree — is the fleet\'s version truth, and your own\ncommitted tree (the vendored dist) is yours. Never hand-assert a fleet version spread from\nheartbeat lines; keep this line in sync as a courtesy signal, not as proof.\n\n## ⚑ needs-owner — the OWNER-ACTION item format (quality contract)\n\nThe owner is the scarcest resource in the program: every ask routed to the owner costs\nattention, and an unclear or unnecessary ask stalls your own lane on top of burning his.\n**Before routing ANYTHING to the owner, try it yourself or cite the exact wall** — an\nassumption-based ask ("agents probably can\'t do X") is banned; the bar is the capability\nledger (`docs/CAPABILITIES.md`) plus one real attempt with the captured error.\n\nEvery ⚑ needs-owner item carries ALL of these REQUIRED fields — inline on the item, or as a\nstructured block the item links to:\n\n```markdown\n⚑ OWNER-ACTION\nWHAT: <one plain sentence, zero jargon — the thing the owner does>\nWHERE: <exact click path or URL>\nHOW: <paste-ready text/values where applicable, or "click only">\nRISK: <one class per manual step — ✅ safe / read-only · ↩️ reversible (say how to undo) · ⚠️ irreversible / destructive>\nWHY-IT-MATTERS: <one sentence, in product terms>\nUNBLOCKS: <what starts moving the moment it\'s done>\nVERIFIED-NEEDED: <the attempt you made + the exact error/wall proving only the owner can do\nthis — never an assumption>\n```\n\nHygiene: **expire or withdraw stale asks every session** (an answered or obsolete ask left in\nthe list is drift), and **fewer, clearer asks beat complete lists**. `check` warns — advisory,\nnever exit-affecting — when a non-`none` ⚑ needs-owner list lacks these fields.\n\nGrammar source of truth: the tokens, field lists, and regexes of this format are kit-owned constants in the kit\'s `src/engine/grammar.py` (EAP §6.8) — the SAME module the `check` enforcers consume, so writer and enforcer cannot drift; agreement is pinned by the kit\'s `tests/test_grammar.py`.\n\n## Owner-assist output standard — every owner-facing output, not just asks\n\nThe OWNER-ACTION block above covers the *needs-owner ask*; this standard\ncovers ALL output routed to the owner — reports, questions, values to paste,\nlinks. The contract in one line: **the owner never derives anything** — an\noutput that requires the owner to parse, derive, or transform anything is a\ndrafting defect, not an owner task.\n\n1. **Paste-ready, finished values.** Every value the owner must enter is\n   computed and printed final — `NAME=value`, the full command, the full\n   file body — never a recipe for deriving it. When the owner must paste\n   something, give the exact link to where it goes; a full file goes in ONE\n   copyable fenced block, directly in chat.\n2. **Exact destination, always.** Every action names its exact destination:\n   a deep URL, a console path to the exact field (surface → section →\n   field, e.g. `Railway → project → service → Variables`), or a repo path +\n   line. Never a bare "go to settings" — `check` nags that class (advisory).\n3. **Risk class on every manual step:** ✅ safe / read-only · ↩️ reversible\n   (say how to undo) · ⚠️ irreversible / destructive. One class per step,\n   stated on the step (the `RISK:` line in an OWNER-ACTION block).\n4. **Structured choices, recommendation first.** A decision put to the\n   owner is options A/B(/C) with a **bolded recommendation** and a one-line\n   rationale, answerable with one letter — never an ask that requires the\n   owner to parse, derive, or transform anything.\n5. **Large outputs: digest + rendered link, never a wall of text.** Default\n   delivery is a control-plane rendered link plus a 3-line digest in chat;\n   the fallback — full text in one copyable block directly in chat — applies\n   where the control plane cannot render the repo yet. Link rules: deep-link\n   the exact file, never the repo root; the rendered view for things the\n   owner should *read*, the GitHub blob URL for things the owner should\n   *edit*; post-merge, link `ref=main`; the control-plane render cache is\n   180 s — append `&refresh=1` when the owner must see a just-pushed change.\n\nWorked example — digest + rendered deep link + a six-field ask carrying its\nrisk class (every rule above in one output):\n\n```\n📄 Adopter-outcomes report — shipped (PR #247, merged b862e9a)\n\nDigest: before/after adoption is unmeasurable (9/10 adopters born <20h\nbefore their kit-install PR); false-claim audit near-clean (1 confirmed,\nself-corrected in 6 min); post-adoption time-to-ship baselines recorded.\n\nFull report (rendered, phone-readable):\nhttps://control-plane-production-abb0.up.railway.app/journal/substrate-kit/file?path=docs/reports/2026-07-11-adopter-outcomes-measurement.md\n\n⚑ OWNER-ACTION — set GITHUB_TOKEN on the control-plane service\nWHAT: paste one variable into Railway so private-repo pages stop degrading.\nWHERE: railway.app → project `websites` → service `control-plane` →\n       Variables → New Variable.\nHOW (paste-ready): name `GITHUB_TOKEN`, value = the fine-grained PAT you\n       created for the fleet\'s repos (contents: read). One paste, Save.\nRISK: ↩️ reversible — delete the variable to undo.\nWHY-IT-MATTERS: private-repo renders show "not-configured" banners until\n       this is set.\nUNBLOCKS: rendered file links + queue items for private repos.\nVERIFIED-NEEDED: attempted 2026-07-11 — raw fetch of a private path\n       returns 404 without a token (token-on-raw also verified NOT to\n       work, so the API fallback is the only private path).\n```\n\nGrammar source of truth: the risk-class tokens, the structured-choice phrases, and the vague-destination scan of this standard are kit-owned constants in the kit\'s `src/engine/grammar.py` — the SAME module the `check` enforcers AND the `/intake` skill pins consume, so writer, skill, and enforcer cannot drift; agreement is pinned by the kit\'s `tests/test_owner_assist.py`.\n\n## `inbox.md` order format (manager-written, append-only)\n\n```markdown\n## ORDER <nnn> · <ISO8601> · status: new     # manager flips new→done after seeing status done=\npriority: P0 | P1 | P2\ndo: <pointer to a committed doc/section + the ask, kept short>\nwhy: <one line>\ndone-when: <acceptance test>\n```\n\nGrammar source of truth: the tokens, field lists, and regexes of this format are kit-owned constants in the kit\'s `src/engine/grammar.py` (EAP §6.8) — the SAME module the `check` enforcers consume, so writer and enforcer cannot drift; agreement is pinned by the kit\'s `tests/test_grammar.py`.\n\n## CI + auto-merge notes (learned live, 2026-07-09)\n\n- **Heartbeat commits ride a fast lane, not a `paths-ignore`.** A control-only diff (only\n  `control/**` files changed) must still *report* every required status check, or GitHub treats\n  the missing contexts as pending and auto-merge jams forever. The kit\'s planted\n  `substrate-gate.yml` therefore short-circuits GREEN inside the job on control-only diffs\n  instead of skipping the workflow — copy that pattern (an in-job early exit) into any other\n  heavy suite rather than adding `paths-ignore: [control/**]` to a workflow whose check is\n  required.\n- **API-authored PRs may not trigger CI.** A PR created purely through an app/integration token\n  (e.g. the GitHub Contents API + a REST PR create) can sit with **zero check runs** — required\n  checks then never report and the PR cannot auto-merge. The manager\'s canonical write path is\n  therefore a **direct Contents-API commit to the default branch of `inbox.md`** (it is the sole\n  writer, so no PR is needed). When this Project ships control changes by PR, push the branch\n  over git (a real `git push` triggers `pull_request`/`push` events) before or after creating\n  the PR, and verify the PR shows check runs before relying on auto-merge.\n',
-    'control-claims-README.md.tmpl': '# `control/claims/` — claim before build, one file per claim\n\n> **Status:** `binding`\n>\n> Local copy for ${project_name}. The kit-owned work-claim convention\n> (EAP program review 2026-07-10 §6.4 — the fleet\'s forked claim mechanisms\n> unified on the measured winner). Order claims are different and stay on\n> your heartbeat — see `control/README.md` § "Claiming an order".\n\n## What this is\n\nA lightweight **claim ledger** so parallel agent sessions don\'t duplicate each\nother\'s work. Several sessions can run at once; two of them picking up the\nsame task is pure waste. This directory makes "is someone already on this?"\nanswerable **before a PR exists** — the claim is the early in-flight signal,\nthe PR is the late one.\n\n## Why one file per claim (measured, not vibes)\n\nA shared "active work" list that every session appends to and prunes is a\nmerge-conflict machine: a real-`git merge` simulation\n(menno420/superbot `tools/sim/claim_layout_sim.py`) measured the shared-append\npattern at a **~98% conflict rate** under concurrent sessions; splitting by\nsector only halved it. **One file per claim is structurally conflict-free —\n0% at every concurrency level** — because two sessions never touch the same\nfile. The rule that preserves that 0%: **no hand-edited shared index**.\nDiscover claims with `ls control/claims/` — this README never lists them.\n\n## How to use it\n\n1. **Before starting work**, scan this directory AND the open PRs. If your\n   task is already claimed or in flight, coordinate or pick something else.\n2. **Create one claim file** — `control/claims/<branch-or-scope>.md` — with a\n   single bullet:\n   `` - `branch-or-scope` · **scope** — one-line detail · expected files/area · YYYY-MM-DD ``\n   (Keep the backticks around the branch/scope token and the ISO date — the\n   `check_claims` checker parses both; an unparseable claim is invisible to\n   its duplicate scan.)\n   Grammar source of truth: the bullet\'s regexes (backticked token + ISO date) are kit-owned constants in the kit\'s `src/engine/grammar.py` (EAP §6.8) — the SAME module `check_claims` consumes; agreement is pinned by the kit\'s `tests/test_grammar.py`.\n3. **Land the claim on main FAST** (claims are `control/**` traffic — they\n   ride the CI control fast lane), then re-read this directory at HEAD before\n   you build: if both lanes do this, the second claimer always sees the first.\n4. **Delete your own claim file at session close.** The durable record is the\n   PR and the living ledger — a claim is a whiteboard note, not an audit\n   trail.\n\n## Arbitration + expiry\n\n- **First claim merged to main wins** a collision — a deterministic tiebreak\n  beats re-litigating every race; the loser deletes its file and stands down.\n- **Claims expire**: a claim file older than ~72h with no visible build\n  activity may be treated as abandoned — prune it on sight (the checker nags\n  with `claims-stale`).\n\n## What the checker enforces (all advisory, never exit-affecting)\n\n`check` warns on: `claims-format` (no parseable bullet), `claims-stale`\n(older than the ~72h horizon), `claims-duplicate` (two files, one\nbranch/scope token), and `claims-legacy-location` (claims living in a\npre-unification home — `docs/owner/claims/` or root `claims/`; move them\nhere, or pin your deliberate location via `substrate.config.json` →\n`claims_dir`).\n\n## Not for inbox ORDERS\n\nAn inbox ORDER is claimed on your OWN heartbeat\'s `orders:` line\n(`claimed-by: <ids> <lane> <ISO8601>` — `control/README.md` § "Claiming an\norder"), never here: the heartbeat annotation preserves one-writer-per-file\nfor the order lifecycle the manager reconciles. This directory is for\n**work** — coordinator-assigned slices, self-initiated builds, anything that\nisn\'t an ORDER id.\n',
+    'control-claims-README.md.tmpl': '# `control/claims/` — claim before build, one file per claim\n\n> **Status:** `binding`\n>\n> Local copy for ${project_name}. The kit-owned work-claim convention\n> (EAP program review 2026-07-10 §6.4 — the fleet\'s forked claim mechanisms\n> unified on the measured winner). Order claims are different and stay on\n> your heartbeat — see `control/README.md` § "Claiming an order".\n\n## What this is\n\nA lightweight **claim ledger** so parallel agent sessions don\'t duplicate each\nother\'s work. Several sessions can run at once; two of them picking up the\nsame task is pure waste. This directory makes "is someone already on this?"\nanswerable **before a PR exists** — the claim is the early in-flight signal,\nthe PR is the late one.\n\n## Why one file per claim (measured, not vibes)\n\nA shared "active work" list that every session appends to and prunes is a\nmerge-conflict machine: a real-`git merge` simulation\n(menno420/superbot `tools/sim/claim_layout_sim.py`) measured the shared-append\npattern at a **~98% conflict rate** under concurrent sessions; splitting by\nsector only halved it. **One file per claim is structurally conflict-free —\n0% at every concurrency level** — because two sessions never touch the same\nfile. The rule that preserves that 0%: **no hand-edited shared index**.\nDiscover claims with `ls control/claims/` — this README never lists them.\n\n## How to use it\n\n1. **Before starting work**, scan this directory AND the open PRs. If your\n   task is already claimed or in flight, coordinate or pick something else.\n2. **Create one claim file** — `control/claims/<branch-or-scope>.md` — with a\n   single bullet:\n   `` - `branch-or-scope` · **scope** — one-line detail · expected files/area · YYYY-MM-DD ``\n   (Keep the backticks around the branch/scope token and the ISO date — the\n   `check_claims` checker parses both; an unparseable claim is invisible to\n   its duplicate scan.)\n   Grammar source of truth: the bullet\'s regexes (backticked token + ISO date) are kit-owned constants in the kit\'s `src/engine/grammar.py` (EAP §6.8) — the SAME module `check_claims` consumes; agreement is pinned by the kit\'s `tests/test_grammar.py`.\n   **Don\'t hand-write it** — `bootstrap claim <slug> --scope "<scope>"\n   [--area "<files/area>"]` renders the bullet from those same constants\n   (round-trip verified, current UTC date last; `--dry-run` previews), so\n   the claim can never be invisible to the duplicate scan.\n3. **Land the claim on main FAST** (claims are `control/**` traffic — they\n   ride the CI control fast lane), then re-read this directory at HEAD before\n   you build: if both lanes do this, the second claimer always sees the first.\n4. **Delete your own claim file at session close** — `bootstrap claim\n   <slug> --delete` (it refuses to touch a foreign claim). The durable\n   record is the PR and the living ledger — a claim is a whiteboard note,\n   not an audit trail.\n\n## Arbitration + expiry\n\n- **First claim merged to main wins** a collision — a deterministic tiebreak\n  beats re-litigating every race; the loser deletes its file and stands down.\n- **Claims expire**: a claim file older than ~72h with no visible build\n  activity may be treated as abandoned — prune it on sight (the checker nags\n  with `claims-stale`).\n\n## What the checker enforces (all advisory, never exit-affecting)\n\n`check` warns on: `claims-format` (no parseable bullet), `claims-stale`\n(older than the ~72h horizon), `claims-duplicate` (two files, one\nbranch/scope token), and `claims-legacy-location` (claims living in a\npre-unification home — `docs/owner/claims/` or root `claims/`; move them\nhere, or pin your deliberate location via `substrate.config.json` →\n`claims_dir`).\n\n## Not for inbox ORDERS\n\nAn inbox ORDER is claimed on your OWN heartbeat\'s `orders:` line\n(`claimed-by: <ids> <lane> <ISO8601>` — `control/README.md` § "Claiming an\norder"), never here: the heartbeat annotation preserves one-writer-per-file\nfor the order lifecycle the manager reconciles. This directory is for\n**work** — coordinator-assigned slices, self-initiated builds, anything that\nisn\'t an ORDER id.\n',
     'control-inbox.md.tmpl': '# ${project_name} · inbox\n\n> ORDERS to this Project. **ONE writer: the manager** — never edit this file. Report order\n> progress in `control/status.md` (`orders: acked=… done=…`). Protocol: `control/README.md`.\n\n*(no orders yet — the manager appends `## ORDER 001 · <ISO8601> · status: new` blocks here)*\n',
     'control-status.md.tmpl': '# ${project_name} · status\nupdated: (seeded at adopt — no real heartbeat yet: overwrite this whole file at your first session close)\nphase: adopted — first session not yet run\nhealth: green\nkit: v${kit_version} · check: red · engaged: no\nlast-shipped: none\nblockers: none\norders: acked= done=\n⚑ needs-owner: none\nnotes: seeded skeleton planted by substrate-kit adopt. This Project is the SOLE writer of this\nfile — overwrite it (never append) as the deliberate LAST step of every session, per\n`control/README.md`. `check` holds strict RED until the first real heartbeat replaces this seed.\nThe `kit:` line is your kit self-report (substrate-coordinator visibility): keep the version in\nsync with your vendored kit on every upgrade, `check:` = your last `check --strict` verdict,\n`engaged:` = the post-adopt engagement gate (yes once `check` reports ENGAGED/green live CI).\nKeep the `kit:` token PLAIN — the bold-label form `- **kit:** v1.2.3 · check: green · engaged: yes`\ndoes NOT parse and the fleet registry reads it as no `kit:` line at all (grammar + the valid\nbold-label-before-plain-token shape: `control/README.md` § "status.md format"). And this line is\na self-report, not version truth — self-reports chronically lag; the kit repo\'s generated\n`docs/adopters.md` and your committed tree are the version truth to defer to.\n',
     'current-state.md.tmpl': '# ${project_name} — Current State\n\n> **Status:** `living-ledger`\n>\n> Generated by substrate-kit. **Living status ledger.** Source code and merged\n> work always win over this file. Read it second (right after the working\n> agreement) and keep it current as the project moves.\n\n## Stability baseline\n\n(Describe the accepted-stable baseline once established — what is known-good and\nshould not be re-audited without a reported regression.)\n\n## In flight\n\n(Verify against live source control — this section is a dated snapshot.)\n\n## Recently shipped (newest first)\n\n(Merged work only, newest first.)\n\n## Review rhythm\n\n${review_ritual}\n',

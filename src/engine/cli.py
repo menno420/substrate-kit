@@ -18,6 +18,7 @@ rather than ``print`` to keep the engine lint-clean.
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import os
 import shlex
@@ -55,9 +56,14 @@ from engine.checks.check_engagement import (
     scan_relpaths,
 )
 from engine.checks.check_inbox_append import INBOX_RELPATH, check_inbox_append
+from engine.checks.check_model_line import check_model_line
 from engine.checks.check_namespace import check_namespace
 from engine.checks.check_owner_actions import check_owner_actions
-from engine.checks.check_status_current import check_status_current
+from engine.checks.check_status_current import (
+    CONTROL_README_RELPATH,
+    check_status_current,
+    heartbeat_relpaths,
+)
 from engine.checks.check_orientation_budget import (
     check_orientation_budget,
     check_orientation_headroom,
@@ -72,6 +78,13 @@ from engine.checks.check_session_log import (
     status_in_progress,
 )
 from engine.checks.check_automerge_preflight import check_automerge_preflight
+from engine.claim import (
+    ClaimError,
+    branch_for,
+    claim_filename,
+    owner_token,
+    render_claim,
+)
 from engine.checks.check_seat_digest import check_seat_digest
 from engine.checks.check_setup_script import check_setup_script
 from engine.checks.check_skill_grounds import check_skill_grounds
@@ -89,6 +102,11 @@ from engine.economy.engine import economy_actuate, economy_check, issue_body
 from engine.economy.harvest import harvest_sources, parse_harvest_tables
 from engine.economy.simulator import calibration_recipe, default_calibration, run_search
 from engine.grammar import CAPABILITY_VENUE_TOKENS, SEAT_DIGEST_DEFAULT_VENUES
+from engine.heartbeat import (
+    HeartbeatError,
+    full_status,
+    restamp_status,
+)
 from engine.hooks.post_edit import evaluate_edit
 from engine.hooks.session_start import compose_orientation
 from engine.hooks.settings import full_settings_template, hooks_fill_table
@@ -1174,6 +1192,47 @@ def cmd_check(
     # only: workflows are not control-lane traffic; self-silences when the
     # live branch expr matches config.
     automerge_advisories = check_automerge_preflight(target, config)
+    # 📊 Model-line payload lint (idea model-line-payload-lint-advisory-
+    # 2026-07-11, Night-8 triage #3): advisory-only by contract, like every
+    # nudge above — a completed card whose Model line breaks the three-field
+    # `·` shape, carries an exact model-ID token instead of a family-level
+    # name, or files off-taxonomy effort/task-class segments is a copy-edit
+    # nudge quoting the taught form verbatim, never a required-check red
+    # (UNVERIFIED per its PL-008 provenance header; adopters carry drifted
+    # historical cards today, so a gate would pre-redden them all on
+    # upgrade). Scans the newest completed cards only (the checker's bounded
+    # window — historical drift is measured, not nagged). Full lane only:
+    # session cards are not control-lane traffic.
+    model_line_advisories = check_model_line(
+        target,
+        sessions_dir=config.sessions_dir,
+    )
+    # Friction-outbox pending-count advisory (ORDER 020 item d, fm plan A10):
+    # advisory-only by contract, like every nudge above — pending friction
+    # envelopes previously surfaced only at session-close (the
+    # cmd_session_close list_outbox advisory), so a session that never ran
+    # the ritual sat on undrained reports through every `check --strict`.
+    # Surfaced + telemetry-recorded, never counted toward the exit code —
+    # the engine cannot file the issue itself (stdlib-only, no credentials);
+    # the nudge is the mechanism. Full lane only: friction envelopes are not
+    # control-lane traffic.
+    outbox_pending = (
+        [] if status_only else list_outbox(target, config.state_dir)
+    )
+    outbox_advisories = (
+        [
+            Finding(
+                f"{config.state_dir}/friction-outbox/",
+                "friction-outbox-pending",
+                f"{len(outbox_pending)} friction report(s) pending — file "
+                f"each as a `{FRICTION_LABEL}`-labeled issue on the kit "
+                "repo (`friction show <name>` prints the issue title+body), "
+                "then delete the drained file.",
+            )
+        ]
+        if outbox_pending
+        else []
+    )
     # The inbox append-only gate (issue #36 report 2): a control/inbox.md
     # change must be pure-append vs the merge-base + ORDER-grammar shaped.
     # Rides the finding loop like every checker. CI hands in the base blob
@@ -1546,6 +1605,47 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=automerge_advisories,
+        )
+    if model_line_advisories and not status_only:
+        # Same warn-only contract as the advisories above (the model-line
+        # payload lint, idea 2026-07-11): a drifted 📊 Model payload on a
+        # completed card is a one-line copy-edit nudge — surfaced +
+        # telemetry-recorded, never counted toward the exit code; the PL-004
+        # dataset records drift verbatim either way, the lint just makes it
+        # visible at check time instead of a later hand sweep.
+        _emit(
+            f"check: {len(model_line_advisories)} model-line payload advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in model_line_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=model_line_advisories,
+        )
+    if outbox_advisories and not status_only:
+        # Same warn-only contract as the advisories above (ORDER 020 item d,
+        # fm plan A10): a pending friction envelope is a drain-me nudge —
+        # surfaced + telemetry-recorded, never counted toward the exit code;
+        # the session-close ritual keeps its own copy of this advisory, this
+        # one just makes the backlog visible at check time too.
+        _emit(
+            f"check: {len(outbox_advisories)} friction-outbox advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in outbox_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=outbox_advisories,
         )
     if adopters_advisories and not status_only:
         # Same warn-only contract as the advisories above (EAP §6.3): a
@@ -2625,6 +2725,215 @@ def cmd_seat_digest(target: Path, *, venues: list[str] | None = None) -> int:
     return 0
 
 
+def cmd_heartbeat(
+    target: Path,
+    *,
+    full: bool = False,
+    dry_run: bool = False,
+    status_file: str | None = None,
+    fields: dict[str, str] | None = None,
+    kit_version: str | None = None,
+    kit_check: str | None = None,
+    kit_engaged: str | None = None,
+) -> int:
+    """Write/refresh the control heartbeat mechanically (ORDER 019 item 7).
+
+    The ``bootstrap heartbeat`` verb — the idea file's mechanical LAST step
+    (``docs/ideas/heartbeat-verb-2026-07-09.md``). Default lane: a
+    non-destructive **restamp** of the existing heartbeat file — a fresh,
+    always-parseable UTC ``updated:`` stamp plus only the field lines the
+    caller passed; everything else survives byte-identical
+    (:func:`engine.heartbeat.restamp_status`). ``--full``: the whole-file
+    contract-shape write for the first real heartbeat over the adopt seed.
+    ``--dry-run`` prints the would-be diff (or full text for a new file)
+    and writes nothing. Refuses outside a control-carrying host, and on a
+    missing/unparseable heartbeat names the fix instead of guessing.
+    """
+    config = load_config(target)
+    relpaths = heartbeat_relpaths(config.heartbeat_files)
+    bus_files = [INBOX_RELPATH, CONTROL_README_RELPATH, *relpaths]
+    if not any((target / rel).is_file() for rel in bus_files):
+        _emit(
+            "heartbeat: refused — no control/ bus here (no inbox, README, "
+            "or heartbeat file); this verb writes a control-protocol "
+            "heartbeat only."
+        )
+        return 2
+    rel = status_file or relpaths[0]
+    path = target / rel
+    fields = dict(fields or {})
+    old_text: str | None = None
+    if path.is_file():
+        try:
+            old_text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            _emit(f"heartbeat: cannot read {rel} ({exc}) — fix the file first.")
+            return 2
+    if full:
+        phase = fields.pop("phase", None)
+        if not phase:
+            _emit(
+                "heartbeat: --full needs --phase — what the seat is doing "
+                "is the one field with no honest default."
+            )
+            return 2
+        backend = JsonStateBackend(_state_path(target, config))
+        context = build_context(backend.data) if backend.data else {}
+        project_name = context.get("project_name") or target.resolve().name
+        new_text = full_status(
+            project_name,
+            kit_version or KIT_VERSION,
+            phase=phase,
+            kit_check=kit_check or "green",
+            kit_engaged=kit_engaged or "yes",
+            **fields,
+        )
+        touched = "whole contract shape (--full)"
+    else:
+        if kit_check is not None or kit_engaged is not None:
+            _emit(
+                "heartbeat: --kit-check/--kit-engaged shape the --full "
+                "contract render only — the restamp lane preserves the "
+                "existing kit: line (version token via --kit-version)."
+            )
+            return 2
+        if old_text is None:
+            _emit(
+                f"heartbeat: {rel} not found — write the first heartbeat "
+                "with --full (or point --status-file at your lane's file)."
+            )
+            return 2
+        try:
+            new_text = restamp_status(
+                old_text,
+                fields=fields,
+                kit_version=kit_version,
+            )
+        except HeartbeatError as exc:
+            _emit(f"heartbeat: refused — {exc}")
+            return 2
+        parts = ["updated:", *sorted(fields)]
+        if kit_version is not None:
+            parts.append(f"kit: v{kit_version}")
+        touched = ", ".join(parts)
+    if dry_run:
+        if old_text is not None:
+            diff = difflib.unified_diff(
+                old_text.splitlines(keepends=True),
+                new_text.splitlines(keepends=True),
+                fromfile=f"a/{rel}",
+                tofile=f"b/{rel}",
+            )
+            _emit("".join(diff).rstrip("\n"))
+        else:
+            _emit(new_text.rstrip("\n"))
+        _emit(f"heartbeat: DRY RUN — {rel} not written.")
+        return 0
+    atomic_write_text(path, new_text)
+    _emit(
+        f"heartbeat: wrote {rel} ({touched}) — stamp parseable by "
+        "check_status_current (round-trip verified)."
+    )
+    return 0
+
+
+def cmd_claim(
+    target: Path,
+    slug: str,
+    *,
+    scope: str | None = None,
+    area: str | None = None,
+    delete: bool = False,
+    dry_run: bool = False,
+) -> int:
+    """Write/delete a grammar-valid work claim mechanically (#358 💡 ender).
+
+    The ``bootstrap claim`` verb — the one-file-per-claim convention's
+    mechanical writer (``control/claims/README.md``, EAP §6.4). Default
+    lane: render + write ``<claims_dir>/claude-<slug>.md`` with ONE bullet
+    the ``check_claims`` enforcer is guaranteed to parse
+    (:func:`engine.claim.render_claim` — same grammar constants, round-trip
+    verified, current UTC date last on the line). ``--delete`` removes YOUR
+    OWN claim at session close. Both lanes refuse a FOREIGN claim at the
+    target path — an existing file whose bullet token is not this slug's
+    ``claude/<slug>`` branch (or that the grammar cannot parse, so ownership
+    is unprovable) — leaving the file intact. ``--dry-run`` prints the
+    would-be content (or the would-be deletion) and touches nothing.
+    Refuses outside a control-carrying host, like the heartbeat verb.
+    """
+    config = load_config(target)
+    relpaths = heartbeat_relpaths(config.heartbeat_files)
+    bus_files = [INBOX_RELPATH, CONTROL_README_RELPATH, *relpaths]
+    has_bus = any((target / rel).is_file() for rel in bus_files)
+    if not has_bus and not (target / config.claims_dir).is_dir():
+        _emit(
+            "claim: refused — no control/ bus here (no inbox, README, "
+            "heartbeat file, or claims dir); this verb writes the control "
+            "protocol's work claims only."
+        )
+        return 2
+    try:
+        branch = branch_for(slug)
+        rel = f"{config.claims_dir}/{claim_filename(slug)}"
+    except ClaimError as exc:
+        _emit(f"claim: refused — {exc}")
+        return 2
+    path = target / rel
+    old_text: str | None = None
+    if path.is_file():
+        try:
+            old_text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            _emit(f"claim: cannot read {rel} ({exc}) — fix the file first.")
+            return 2
+    if old_text is not None:
+        token = owner_token(old_text)
+        if token != branch:
+            whose = f"`{token}`" if token else "an unparseable bullet (ownership unprovable)"
+            _emit(
+                f"claim: refused — {rel} exists and belongs to {whose}, not "
+                f"`{branch}`; a session only "
+                f"{'deletes' if delete else 'overwrites'} its OWN claim "
+                "(control/claims/README.md — the loser of a collision "
+                "stands down; reconcile by hand). File left intact."
+            )
+            return 2
+    if delete:
+        if old_text is None:
+            _emit(f"claim: {rel} not found — nothing to delete.")
+            return 2
+        if dry_run:
+            _emit(f"claim: DRY RUN — would delete {rel} (own claim, `{branch}`).")
+            return 0
+        path.unlink()
+        _emit(f"claim: deleted {rel} (own claim, `{branch}` — session close).")
+        return 0
+    if scope is None:
+        _emit(
+            "claim: --scope is required to write a claim (one line: what "
+            "this session is building) — or use --delete at session close."
+        )
+        return 2
+    try:
+        new_text = render_claim(slug, scope, area=area)
+    except ClaimError as exc:
+        _emit(f"claim: refused — {exc}")
+        return 2
+    if dry_run:
+        _emit(new_text.rstrip("\n"))
+        _emit(f"claim: DRY RUN — {rel} not written.")
+        return 0
+    path.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_text(path, new_text)
+    refreshed = " (refreshed own claim)" if old_text is not None else ""
+    _emit(
+        f"claim: wrote {rel}{refreshed} — bullet parseable by check_claims "
+        "(round-trip verified). Delete it at session close: "
+        f"bootstrap claim {slug} --delete."
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Construct the bootstrap argument parser."""
     parser = argparse.ArgumentParser(prog="bootstrap", description="substrate-kit")
@@ -2867,6 +3176,129 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    heartbeat_p = sub.add_parser(
+        "heartbeat",
+        help=(
+            "restamp the control/ status heartbeat mechanically — a fresh "
+            "parseable UTC updated: stamp plus only the fields you pass "
+            "(everything else preserved byte-identical); --full writes the "
+            "whole contract shape (the first real heartbeat)"
+        ),
+    )
+    heartbeat_p.add_argument("--target", type=Path, default=Path.cwd())
+    heartbeat_p.add_argument(
+        "--status-file",
+        default=None,
+        help=(
+            "heartbeat file to write (default: the first configured "
+            "heartbeat_files entry — control/status.md unless a lane "
+            "configured otherwise)"
+        ),
+    )
+    heartbeat_p.add_argument(
+        "--full",
+        action="store_true",
+        help=(
+            "write the whole contract-shape heartbeat (the adopt seed's "
+            "documented overwrite path); requires --phase, other fields "
+            "default honestly (blockers/⚑ needs-owner: none)"
+        ),
+    )
+    heartbeat_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the would-be diff (or full text for a new file) without writing",
+    )
+    heartbeat_p.add_argument("--phase", default=None, help="phase: line value")
+    heartbeat_p.add_argument("--health", default=None, help="health: line value")
+    heartbeat_p.add_argument(
+        "--orders",
+        default=None,
+        help='orders: line value (e.g. "acked=001-003 done=001,002")',
+    )
+    heartbeat_p.add_argument(
+        "--last-shipped",
+        dest="last_shipped",
+        default=None,
+        help="last-shipped: line value",
+    )
+    heartbeat_p.add_argument("--blockers", default=None, help="blockers: line value")
+    heartbeat_p.add_argument(
+        "--needs-owner",
+        dest="needs_owner",
+        default=None,
+        help="⚑ needs-owner: line value",
+    )
+    heartbeat_p.add_argument("--notes", default=None, help="notes: line value")
+    heartbeat_p.add_argument(
+        "--kit-version",
+        dest="kit_version",
+        default=None,
+        help=(
+            "rewrite the kit: line's v<X.Y.Z> token (restamp lane keeps "
+            "the line's decorations; --full default: this dist's version)"
+        ),
+    )
+    heartbeat_p.add_argument(
+        "--kit-check",
+        dest="kit_check",
+        choices=("green", "red"),
+        default=None,
+        help="kit: line check: field (--full lane only)",
+    )
+    heartbeat_p.add_argument(
+        "--kit-engaged",
+        dest="kit_engaged",
+        choices=("yes", "no"),
+        default=None,
+        help="kit: line engaged: field (--full lane only)",
+    )
+
+    claim_p = sub.add_parser(
+        "claim",
+        help=(
+            "write a grammar-valid work claim file (control/claims/"
+            "claude-<slug>.md, one bullet check_claims is guaranteed to "
+            "parse — branch token · scope · UTC date); --delete removes "
+            "your OWN claim at session close, refusing foreign claims"
+        ),
+    )
+    claim_p.add_argument(
+        "slug",
+        help=(
+            "branch slug — the claim's branch is claude/<slug>, its file "
+            "claude-<slug>.md under the configured claims_dir"
+        ),
+    )
+    claim_p.add_argument("--target", type=Path, default=Path.cwd())
+    claim_p.add_argument(
+        "--scope",
+        default=None,
+        help=(
+            "one-line scope (rendered bold) — required to write; dated "
+            "filenames in it are safe (the claim's own date is appended "
+            "LAST on the bullet, the post-#353 rule)"
+        ),
+    )
+    claim_p.add_argument(
+        "--area",
+        default=None,
+        help='optional expected files/area segment (e.g. "src/ + tests/")',
+    )
+    claim_p.add_argument(
+        "--delete",
+        action="store_true",
+        help=(
+            "delete your OWN claim file (session close); a foreign claim — "
+            "different branch token, or unparseable — is refused intact"
+        ),
+    )
+    claim_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the would-be claim content (or deletion) without touching disk",
+    )
+
     check = sub.add_parser("check", help="run the doc + session-log hygiene checks")
     check.add_argument("--target", type=Path, default=Path.cwd())
     check.add_argument("--strict", action="store_true", help="exit 1 if any violation")
@@ -2971,6 +3403,39 @@ def main(argv: list[str] | None = None) -> int:
             )
         if args.command == "seat-digest":
             return cmd_seat_digest(args.target, venues=args.venue)
+        if args.command == "heartbeat":
+            fields = {
+                name: value
+                for name, value in (
+                    ("phase", args.phase),
+                    ("health", args.health),
+                    ("orders", args.orders),
+                    ("last_shipped", args.last_shipped),
+                    ("blockers", args.blockers),
+                    ("needs_owner", args.needs_owner),
+                    ("notes", args.notes),
+                )
+                if value is not None
+            }
+            return cmd_heartbeat(
+                args.target,
+                full=args.full,
+                dry_run=args.dry_run,
+                status_file=args.status_file,
+                fields=fields,
+                kit_version=args.kit_version,
+                kit_check=args.kit_check,
+                kit_engaged=args.kit_engaged,
+            )
+        if args.command == "claim":
+            return cmd_claim(
+                args.target,
+                args.slug,
+                scope=args.scope,
+                area=args.area,
+                delete=args.delete,
+                dry_run=args.dry_run,
+            )
         if args.command == "check":
             return cmd_check(
                 args.target,
