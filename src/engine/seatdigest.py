@@ -28,7 +28,7 @@ silently overflowing. **No third copy** (plan §4.2e): the adopter's
 ``docs/CAPABILITIES.md`` ledger is the seat-local source of truth; this doc
 is a DERIVED RENDER of it (regenerated — by adopt, upgrade, or
 ``bootstrap.py seat-digest`` — never edited, never a copy of record);
-fleet-manager's ``docs/capabilities.md`` master is the fleet aggregation
+fleet-manager's ``docs/CAPABILITIES.md`` master is the fleet aggregation
 point; no third authored copy is ever minted.
 
 Layering: below ``adopt.py`` on purpose (adopt plants the doc, upgrade
@@ -439,7 +439,7 @@ def seat_digest_document(
             "the kit's",
             "   `SKILLS` list (skills). Regenerated, never edited; never a "
             "copy of record.",
-            "3. **fleet-manager `docs/capabilities.md`** — the fleet "
+            "3. **fleet-manager `docs/CAPABILITIES.md`** — the fleet "
             "aggregation point;",
             "   cross-repo findings are consolidated there by the manager.",
             "",

@@ -137,11 +137,13 @@ _KIT_SELF_REFS: dict[str, str] = {
 #    the owning repo's name in the same template. pointer -> (owner marker
 #    that must appear in every referencing template, reason).
 _EXTERNAL_REPO_REFS: dict[str, tuple[str, str]] = {
-    "docs/capabilities.md": (
-        "fleet-manager",
-        "master capability ledger — CAPABILITIES.md.tmpl names "
-        "`menno420/fleet-manager` as its home",
-    ),
+    # (fleet-manager's master capability ledger was `docs/capabilities.md`
+    # here until INC-29 / fm plan B2 — the real fleet-master file is uppercase
+    # `docs/CAPABILITIES.md`, so the lowercase pointer was a dead link. Fixed
+    # at CAPABILITIES.md.tmpl:8; the corrected uppercase pointer now resolves
+    # via _PLAN_DESTS as an ADOPT_PLAN destination — no cross-repo entry
+    # needed, and CAPABILITIES.md.tmpl still names `menno420/fleet-manager`
+    # next to it.)
     "docs/planning/fleet-coordination-protocol-2026-07-09.md": (
         "superbot",
         "canonical control-protocol spec — control-README.md.tmpl names "

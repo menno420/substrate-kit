@@ -83,6 +83,10 @@ MODULE_ORDER = (
     "loop/kpis.py",
     "loop/reflections.py",
     "loop/friction.py",
+    # After loop/friction.py: the check-time friction-outbox pending-count
+    # advisory (fm plan A10, ORDER 020 sub-item d) consumes list_outbox +
+    # FRICTION_LABEL defined there; only needs check_docs.Finding besides.
+    "checks/check_outbox.py",
     "loop/telemetry.py",
     # Before loop/handoff.py + hooks/session_start.py: both import its
     # shared handoff-lines composer / pointer writer (the B1 run-6

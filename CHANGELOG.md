@@ -50,6 +50,18 @@ probe failed both arms; T5 ignored). **KF-8 trend at 9 scored rows: 1 PASS
 
 ### Added
 
+- **Check-time friction-outbox advisory (fm plan A10, ORDER 020 sub-item d;
+  PR #363).** `check` (full lane) now surfaces the friction-outbox
+  pending-count reminder that previously fired only at `session-close`: a
+  §9.1 friction report the engine could not file (no GitHub reach) sits in
+  `<state_dir>/friction-outbox/` until a session drains it, and between
+  session-close seams nothing flagged a stranded envelope. New
+  `check_outbox.py` (`check_outbox_pending`) emits a one-line count naming
+  the head envelopes and the drain verbs (`friction show` / `friction
+  export`), wired with the same warn-only + guard-fire block as every other
+  advisory. **Advisory-only, never exit-affecting** (the envelope may be
+  un-drainable precisely because CI has no auth); self-silent when the
+  outbox is empty; full lane only.
 - **`check_idea_index` merged-reality leg — grace-windowed git-truth
   verification of shipped claims (idea from the PR #349 session card, PR
   #355).** The idea-index checker now verifies `outcome: shipped`
@@ -167,6 +179,18 @@ probe failed both arms; T5 ignored). **KF-8 trend at 9 scored rows: 1 PASS
 
 ### Fixed
 
+- **Dead lowercase `docs/capabilities.md` fleet-master pointer corrected to
+  `docs/CAPABILITIES.md` (INC-29 / fm plan B2, ORDER 020 sub-item e; PR
+  #363).** The "Fleet master copy" pointer planted into every adopter's
+  `docs/CAPABILITIES.md` (via `CAPABILITIES.md.tmpl`) and the seat-digest
+  "No third copy" block named fleet-manager's ledger with the wrong casing —
+  the real fleet-master file is uppercase `docs/CAPABILITIES.md`, so the
+  lowercase pointer was a dead link. Fixed at all three surfaces
+  (`CAPABILITIES.md.tmpl`, `seatdigest.py` docstring + rendered block); one
+  template fix heals ~14 adopters on their next upgrade. The corrected
+  pointer resolves as an ADOPT_PLAN destination (the stale lowercase
+  `_EXTERNAL_REPO_REFS` guard entry was removed accordingly), and the
+  template still names `menno420/fleet-manager` next to it.
 - **`check_claims` no longer falsely nags a fresh work claim as
   `claims-stale` when its scope text mentions a dated filename (PR #353).**
   The work-claim half dated a claim by the FIRST `YYYY-MM-DD` match anywhere

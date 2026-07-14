@@ -58,6 +58,7 @@ from engine.checks.check_engagement import (
 from engine.checks.check_inbox_append import INBOX_RELPATH, check_inbox_append
 from engine.checks.check_model_line import check_model_line
 from engine.checks.check_namespace import check_namespace
+from engine.checks.check_outbox import check_outbox_pending
 from engine.checks.check_owner_actions import check_owner_actions
 from engine.checks.check_status_current import (
     CONTROL_README_RELPATH,
@@ -1241,6 +1242,15 @@ def cmd_check(
     # never reds on wall-clock time alone). Engages only when the registry
     # exists — adopter repos add nothing here.
     adopters_gate, adopters_advisories = check_adopters_current(target)
+    # Friction-outbox pending-count advisory (fm plan A10, ORDER 020 sub-item
+    # d): advisory-only by contract, like every nudge above — a §9.1 friction
+    # report the engine could not file (no GitHub reach) sits in
+    # <state_dir>/friction-outbox/ until a session drains it, and that drain
+    # reminder otherwise fires only at session-close; surfacing the count here
+    # makes a stranded outbox visible on every check, never exit-affecting (the
+    # envelope may be un-drainable precisely because CI has no auth). Full lane
+    # only: the outbox is not control-lane traffic; self-silences when empty.
+    outbox_advisories = check_outbox_pending(target, config.state_dir)
     if status_only:
         # --status-only: the fast lane's scoped gate (see docstring). Only the
         # control-lane checkers run — the heartbeat gate, the control-scoped
@@ -1619,6 +1629,27 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=adopters_advisories,
+        )
+    if outbox_advisories and not status_only:
+        # Same warn-only contract as the advisories above (fm plan A10): a
+        # stranded friction-outbox envelope is a drain-it nudge — surfaced +
+        # telemetry-recorded, never counted toward the exit code (the report
+        # may be un-drainable here, so a required-check red would be a bomb).
+        # This lifts the session-close drain reminder into the check lane so a
+        # stranded outbox is visible between session-close seams.
+        _emit(
+            f"check: {len(outbox_advisories)} friction-outbox advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in outbox_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=outbox_advisories,
         )
 
     log_missing: list[str] = []
