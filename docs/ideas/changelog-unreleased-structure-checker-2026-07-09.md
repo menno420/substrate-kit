@@ -1,18 +1,20 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 351
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-14
+outcome: shipped
 ---
 
 # CHANGELOG `[Unreleased]` structure checker (2026-07-09)
 
 > **Status:** `ideas`
 >
-> **State:** captured (run close-out 2026-07-09). **Origin:** lab — the
-> docs-drift audit found the same defect made twice independently in one run.
+> **State:** captured (run close-out 2026-07-09) → promoted → **shipped**
+> (PR #351, 2026-07-14 — the in-PR flip convention; merged_date is the
+> anticipated park-green date). **Origin:** lab — the docs-drift audit
+> found the same defect made twice independently in one run.
 
 **One line:** a cheap kit-quality checker that validates the `[Unreleased]`
 section's keep-a-changelog shape — each of

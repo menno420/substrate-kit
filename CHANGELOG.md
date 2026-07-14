@@ -50,6 +50,21 @@ probe failed both arms; T5 ignored). **KF-8 trend at 9 scored rows: 1 PASS
 
 ### Added
 
+- **CHANGELOG `[Unreleased]` structure checker (idea 2026-07-09, PR #351).**
+  `scripts/check_changelog_structure.py` (kit-repo tooling, ci.yml
+  kit-quality lane — NOT wired into `bootstrap check` or any adopter
+  surface) validates this file's `[Unreleased]` section shape: only the six
+  keep-a-changelog headings, each at most once, in canonical order, no
+  bullet before the first heading, and no prose paragraph after the
+  headings begin — free prose (the KF-5 benchmark blocks) lives in the
+  section preamble, so a release cut lifts it verbatim above the machine
+  comment with zero hand-reordering. Born from the 2026-07-09 docs-drift
+  audit finding the same mid-section `### Fixed` defect made twice
+  independently in one run (KL-4 / PR #14, PR #17's patch). Findings name
+  the expected layout; code fences and lazy bullet continuations are
+  exempt (`tests/test_check_changelog_structure.py`, 22 tests, incl. the
+  malformed→fires / corrected→clean mutation arc).
+
 - **Local `check --strict` runs the CI substrate-gate's preflight legs
   (ORDER 018 / idea-engine ASK 002, PR #332).** Two local-green→CI-red
   round-trips in one night (idea-engine #274 — the inbox grammar gate only
