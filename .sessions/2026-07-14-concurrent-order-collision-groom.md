@@ -1,6 +1,6 @@
 # 2026-07-14 · concurrent-ORDER collision — close the duplicate, groom the root cause
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 About to happen (opening declaration): this routine lab-loop fire picked up the
 two open BUILD sub-items of ORDER 020 (d = A10 friction-outbox `check`
