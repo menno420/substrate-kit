@@ -49,6 +49,14 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- [Work claims miss cross-branch ORDER collisions](order-claim-cross-branch-collision-2026-07-14.md)
+  — state: captured; origin: lab (two routine fires the same night both
+  consumed the same unacked ORDER 020 and built duplicate PRs — #362 landed,
+  #363 closed as superseded; the `check_claims` duplicate scan keys on branch
+  token, not work/ORDER overlap, so cross-branch same-work is invisible);
+  next: structured fix — an optional `· order NNN` claim-grammar segment +
+  `bootstrap claim --order` + a cross-branch overlap advisory, engine change →
+  dist byte-pin.
 - [Session gate: fix the born-red fail-open on PR-added cards (flip-race)](session-gate-flip-race-fail-open-2026-07-13.md)
   — state: captured; origin: consumer (superbot-mineverse — stranded
   close-out flips swept by its PR #50, root-caused in #52; finding at
