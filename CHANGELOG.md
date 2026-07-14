@@ -136,6 +136,18 @@ probe failed both arms; T5 ignored). **KF-8 trend at 9 scored rows: 1 PASS
 
 ### Fixed
 
+- **`check_claims` no longer falsely nags a fresh work claim as
+  `claims-stale` when its scope text mentions a dated filename (PR #353).**
+  The work-claim half dated a claim by the FIRST `YYYY-MM-DD` match anywhere
+  in the file, so a dated idea-filename in the scope text (e.g.
+  `…-2026-07-09.md`) shadowed the claim's real trailing date and a
+  today-dated claim nagged as days-stale (found live by the 2026-07-14
+  model-line-lint session, which had to reword its claim). The claim's date
+  is now the LAST date on the claim bullet line — the taught grammar ends
+  the bullet `· YYYY-MM-DD` — so filename mentions can never shadow it; a
+  date outside the bullet line no longer counts (that claim is
+  `claims-format`, still advisory). Exit posture unchanged: every claims
+  finding stays advisory, never exit-affecting.
 - **Local `check` no longer mtime-greens the wrong session card — the
   fallback lane derives the card set from the merge-base diff (idea-engine
   ASK 003, sim-lab V051; PR #342).** `cmd_check`'s no-`--session-log` lane
