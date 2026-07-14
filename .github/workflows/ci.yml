@@ -124,6 +124,13 @@ jobs:
         # backlog indexes every file. A convention ships with its checker.
         run: python3 scripts/check_idea_index.py
 
+      - name: CHANGELOG structure ([Unreleased] keep-a-changelog shape)
+        if: steps.lane.outputs.control_only != 'true'
+        # Idea 2026-07-09 (twice-reproduced mid-section `### Fixed` defect +
+        # the KF-5 hand-move at every cut): known headings only, each at most
+        # once, canonical order, bullets under headings, prose in the preamble.
+        run: python3 scripts/check_changelog_structure.py
+
       - name: Program law (§8.3 — PL register grammar + planted pointers + owner-gate label)
         if: steps.lane.outputs.control_only != 'true'
         # (Safe to skip on the control lane: control-only means NOTHING

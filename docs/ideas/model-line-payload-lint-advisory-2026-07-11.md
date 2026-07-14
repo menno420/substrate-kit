@@ -1,10 +1,10 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 352
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-14
+outcome: shipped
 ---
 
 # 📊 Model-line payload lint advisory (2026-07-11)
@@ -14,7 +14,13 @@ outcome: open
 > **State:** captured — groomed off the `control/status.md` heartbeat at the
 > archive-prep close-out (it had been carried only as a 💡 line in the
 > heartbeat's next-queue since the #170 session card; the heartbeat is
-> overwrite-on-every-session, so this file is its durable home).
+> overwrite-on-every-session, so this file is its durable home) →
+> **shipped** (kit PR #352, 2026-07-14: `engine.checks.check_model_line`
+> advisory in `check`'s full lane + the model-line grammar moved to
+> `engine.grammar`, telemetry consuming the same objects; scope grew from
+> effort/task-class to also cover shape + exact-ID per the fleet reporting
+> bar, and the scan is bounded to the newest-10 completed cards — the
+> unbounded measure found 124/178 drifted).
 
 ## The idea
 

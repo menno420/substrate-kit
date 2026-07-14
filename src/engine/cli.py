@@ -18,6 +18,7 @@ rather than ``print`` to keep the engine lint-clean.
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import os
 import shlex
@@ -25,11 +26,12 @@ import shlex
 # THE §3.2 carve-out (ORDER 018 / idea-engine ASK 002): subprocess is banned
 # in engine code — checkers never shell out; CI does the git work in bash.
 # The ONE exception is `check`'s LOCAL-RITUAL parity legs below
-# (_derive_inbox_base + _run_preflight_scripts): local `check --strict` must
-# run the SAME legs as the CI substrate-gate, and locally there is no bash
-# wrapper to extract the merge-base blob or launch the repo's preflight
-# scripts. Both helpers self-skip (fail open, NOTE line) on any failure and
-# are never on the CI path, which still hands in --inbox-base explicitly.
+# (_derive_inbox_base + _derive_diff_session_cards + _run_preflight_scripts):
+# local `check --strict` must run the SAME legs as the CI substrate-gate, and
+# locally there is no bash wrapper to extract the merge-base blob, derive the
+# PR-diff card set, or launch the repo's preflight scripts. All helpers
+# self-skip (fail open, NOTE line) on any failure and are never on the CI
+# gate path, which still hands in --inbox-base / --session-log explicitly.
 import subprocess  # noqa: TID251
 import sys
 import tempfile
@@ -46,7 +48,7 @@ from engine.agents.agents import AGENTS, agent_document, agent_relpath
 from engine.checks.allowlist import apply_allowlist, load_allowlist
 from engine.checks.check_adopters_current import check_adopters_current
 from engine.checks.check_capability_xref import check_capability_xref
-from engine.checks.check_claims import check_claims
+from engine.checks.check_claims import check_claims, claim_scan_dirs
 from engine.checks.check_docs import Finding, run_doc_checks
 from engine.checks.check_engagement import (
     check_engagement,
@@ -54,9 +56,14 @@ from engine.checks.check_engagement import (
     scan_relpaths,
 )
 from engine.checks.check_inbox_append import INBOX_RELPATH, check_inbox_append
+from engine.checks.check_model_line import check_model_line
 from engine.checks.check_namespace import check_namespace
 from engine.checks.check_owner_actions import check_owner_actions
-from engine.checks.check_status_current import check_status_current
+from engine.checks.check_status_current import (
+    CONTROL_README_RELPATH,
+    check_status_current,
+    heartbeat_relpaths,
+)
 from engine.checks.check_orientation_budget import (
     check_orientation_budget,
     check_orientation_headroom,
@@ -71,6 +78,15 @@ from engine.checks.check_session_log import (
     status_in_progress,
 )
 from engine.checks.check_automerge_preflight import check_automerge_preflight
+from engine.claim import (
+    ClaimError,
+    branch_for,
+    claim_filename,
+    claim_order_ids,
+    normalize_order,
+    owner_token,
+    render_claim,
+)
 from engine.checks.check_seat_digest import check_seat_digest
 from engine.checks.check_setup_script import check_setup_script
 from engine.checks.check_skill_grounds import check_skill_grounds
@@ -88,6 +104,11 @@ from engine.economy.engine import economy_actuate, economy_check, issue_body
 from engine.economy.harvest import harvest_sources, parse_harvest_tables
 from engine.economy.simulator import calibration_recipe, default_calibration, run_search
 from engine.grammar import CAPABILITY_VENUE_TOKENS, SEAT_DIGEST_DEFAULT_VENUES
+from engine.heartbeat import (
+    HeartbeatError,
+    full_status,
+    restamp_status,
+)
 from engine.hooks.post_edit import evaluate_edit
 from engine.hooks.session_start import compose_orientation
 from engine.hooks.settings import full_settings_template, hooks_fill_table
@@ -745,6 +766,144 @@ def _derive_inbox_base(target: Path) -> tuple[bytes | None, str | None]:
     return (show.stdout if show.returncode == 0 else b""), None
 
 
+_MTIME_FALLBACK_NOTE = "falling back to newest-by-mtime; CI still gates diff-derived."
+
+
+def _derive_diff_session_cards(
+    target: Path,
+    sessions_dir: str,
+) -> tuple[list[Path] | None, str | None]:
+    """Derive the session cards this branch touches from the merge-base diff.
+
+    The session-gate half of the ORDER 018 local↔CI parity posture
+    (idea-engine ASK 003): ``cmd_check``'s fallback lane used to pick the
+    card to gate on by newest mtime, and after merging ``origin/main`` into
+    a working branch a sibling's COMPLETED card carries the freshest mtime —
+    so a plain local ``check --strict`` validated the WRONG card and went
+    green while the session's own card was still in-progress (reproduced
+    live, sim-lab V051). The CI substrate-gate never had this hole because
+    it derives the card set from the PR diff in bash; this helper — a
+    documented §3.2 subprocess carve-out like :func:`_derive_inbox_base`,
+    same mechanism, same self-skip posture — brings the local ritual onto
+    the same selection: ``git merge-base HEAD origin/main``, then the
+    base-vs-worktree diff under ``sessions_dir`` (``--diff-filter=d``,
+    deletions excluded, exactly the CI pathspec) plus untracked cards
+    (``git ls-files --others``) so a mid-session run still sees its own
+    card before the first commit.
+
+    Returns ``(cards, note)``:
+
+    - ``(None, note-or-None)`` — no git context to derive from (bare tree,
+      no ``origin/main``, git unavailable, or HEAD *is* origin/main with no
+      card changes — a clean post-merge checkout, not a PR context): the
+      caller keeps the historical newest-by-mtime fallback, so non-git
+      adopters are unchanged.
+    - ``(cards, None)`` — derivation succeeded; the list may be EMPTY
+      (branch ahead of origin/main but no card in the diff), which the
+      caller treats as an absent card rather than silently mtime-greening —
+      the fail-closed-on-ambiguity direction.
+    """
+    if not (target / ".git").exists():  # dir, or file for worktrees
+        return None, None  # not a git checkout — a bare tree stays quiet
+    git = ["git", "-C", str(target)]
+    pathspecs = [f"{sessions_dir}/*.md", f":!{sessions_dir}/README.md"]
+    try:
+        merge_base = subprocess.run(  # noqa: TID251 — §3.2 carve-out (import-site note)
+            [*git, "merge-base", "HEAD", "origin/main"],
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+        )
+        head = subprocess.run(  # noqa: TID251 — §3.2 carve-out (import-site note)
+            [*git, "rev-parse", "HEAD"],
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, (
+            f"session-card diff selection skipped — could not run git "
+            f"({exc.__class__.__name__}); {_MTIME_FALLBACK_NOTE}"
+        )
+    if merge_base.returncode != 0 or head.returncode != 0:
+        return None, (
+            "session-card diff selection skipped — origin/main not "
+            f"resolvable (no remote-tracking ref / unborn HEAD); "
+            f"{_MTIME_FALLBACK_NOTE}"
+        )
+    base = merge_base.stdout.decode("utf-8", "replace").strip()
+    try:
+        diff = subprocess.run(  # noqa: TID251 — §3.2 carve-out (import-site note)
+            [*git, "diff", "--name-only", "--diff-filter=d", base, "--", *pathspecs],
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+        )
+        untracked = subprocess.run(  # noqa: TID251 — §3.2 carve-out (import-site note)
+            [*git, "ls-files", "--others", "--exclude-standard", "--", *pathspecs],
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, (
+            f"session-card diff selection skipped — could not run git "
+            f"({exc.__class__.__name__}); {_MTIME_FALLBACK_NOTE}"
+        )
+    if diff.returncode != 0 or untracked.returncode != 0:
+        return None, (
+            f"session-card diff selection skipped — git diff failed; "
+            f"{_MTIME_FALLBACK_NOTE}"
+        )
+    names: set[str] = set()
+    for stream in (diff.stdout, untracked.stdout):
+        for line in stream.decode("utf-8", "replace").splitlines():
+            name = line.strip()
+            if not name or not name.endswith(".md"):
+                continue
+            if Path(name).name == "README.md":
+                continue
+            if (target / name).is_file():
+                names.add(name)
+    cards = sorted(target / name for name in names)
+    if not cards and base == head.stdout.decode("utf-8", "replace").strip():
+        # Sitting exactly on origin/main with no card changes: there is no
+        # PR context to be ambiguous about — keep the historical fallback
+        # (every merged card is complete on a healthy main) with a NOTE.
+        return None, (
+            "session-card diff selection — HEAD is origin/main and no card "
+            "differs (not a PR context); using newest-by-mtime."
+        )
+    return cards, None
+
+
+def _select_gate_card(
+    cards: list[Path],
+    markers: list[dict[str, str]],
+) -> Path:
+    """Pick the card to gate on from the diff-derived set — fail-closed.
+
+    Every card in the set is graded and a red card outranks a green one, so
+    downstream's single-log machinery reds iff ANY card in the diff is red —
+    the same every-card-never-one-picked posture as the CI gate (the
+    venture-lab #33 tail-1 shadowing lesson). Among red cards a
+    session-owned one outranks an unadopted engine draft (the B1 run-8
+    advisory lane must never mask a genuinely red sibling), and an
+    in-progress card outranks other reds (the born-red hold is the gate's
+    subject); name order breaks the remaining ties deterministically.
+    """
+
+    def _rank(card: Path) -> tuple[bool, bool, bool, str]:
+        try:
+            text = card.read_text(encoding="utf-8")
+        except OSError:
+            text = ""
+        return (
+            not check_log(card, markers),  # red cards first
+            is_unadopted_draft(text),  # session-owned reds before drafts
+            not status_in_progress(text),  # in-progress holds first
+            str(card),
+        )
+
+    return min(cards, key=_rank)
+
+
 def _run_preflight_scripts(
     target: Path,
     config: Config,
@@ -913,12 +1072,18 @@ def cmd_check(
     ``session_log`` (CLI ``--session-log``) names the card to gate on
     *explicitly* — the diff-aware selection a CI workflow derives from which
     ``<sessions_dir>/*.md`` file the PR adds/changes. Without it the gate
-    falls back to newest-by-mtime, which a fresh CI checkout silently degrades
-    (every mtime flattens to checkout time), the trap that used to require a
-    git-mtime-restore shim before this step. A named file that does not exist
-    is treated exactly like an absent log (advisory by default, a hard failure
-    under ``require_session_log``) — an explicit selection never silently
-    falls back to a different card.
+    derives the card set itself from the merge-base diff vs ``origin/main``
+    (:func:`_derive_diff_session_cards`, idea-engine ASK 003 — the sim-lab
+    V051 false-green: after merging origin/main a sibling's COMPLETED card
+    carries the freshest mtime, so the old newest-by-mtime guess validated
+    the WRONG card), grading fail-closed via :func:`_select_gate_card`.
+    Only when no git context is derivable (bare tree, no origin/main) does
+    it fall back to newest-by-mtime with a NOTE — the non-git-adopter
+    posture; with git context but no card in the diff, the gate treats the
+    card as absent rather than silently mtime-greening. A named file that
+    does not exist is treated exactly like an absent log (advisory by
+    default, a hard failure under ``require_session_log``) — an explicit
+    selection never silently falls back to a different card.
 
     Two KL-3 mechanisms ride the finding loop (plan §5.3):
 
@@ -1029,6 +1194,47 @@ def cmd_check(
     # only: workflows are not control-lane traffic; self-silences when the
     # live branch expr matches config.
     automerge_advisories = check_automerge_preflight(target, config)
+    # 📊 Model-line payload lint (idea model-line-payload-lint-advisory-
+    # 2026-07-11, Night-8 triage #3): advisory-only by contract, like every
+    # nudge above — a completed card whose Model line breaks the three-field
+    # `·` shape, carries an exact model-ID token instead of a family-level
+    # name, or files off-taxonomy effort/task-class segments is a copy-edit
+    # nudge quoting the taught form verbatim, never a required-check red
+    # (UNVERIFIED per its PL-008 provenance header; adopters carry drifted
+    # historical cards today, so a gate would pre-redden them all on
+    # upgrade). Scans the newest completed cards only (the checker's bounded
+    # window — historical drift is measured, not nagged). Full lane only:
+    # session cards are not control-lane traffic.
+    model_line_advisories = check_model_line(
+        target,
+        sessions_dir=config.sessions_dir,
+    )
+    # Friction-outbox pending-count advisory (ORDER 020 item d, fm plan A10):
+    # advisory-only by contract, like every nudge above — pending friction
+    # envelopes previously surfaced only at session-close (the
+    # cmd_session_close list_outbox advisory), so a session that never ran
+    # the ritual sat on undrained reports through every `check --strict`.
+    # Surfaced + telemetry-recorded, never counted toward the exit code —
+    # the engine cannot file the issue itself (stdlib-only, no credentials);
+    # the nudge is the mechanism. Full lane only: friction envelopes are not
+    # control-lane traffic.
+    outbox_pending = (
+        [] if status_only else list_outbox(target, config.state_dir)
+    )
+    outbox_advisories = (
+        [
+            Finding(
+                f"{config.state_dir}/friction-outbox/",
+                "friction-outbox-pending",
+                f"{len(outbox_pending)} friction report(s) pending — file "
+                f"each as a `{FRICTION_LABEL}`-labeled issue on the kit "
+                "repo (`friction show <name>` prints the issue title+body), "
+                "then delete the drained file.",
+            )
+        ]
+        if outbox_pending
+        else []
+    )
     # The inbox append-only gate (issue #36 report 2): a control/inbox.md
     # change must be pure-append vs the merge-base + ORDER-grammar shaped.
     # Rides the finding loop like every checker. CI hands in the base blob
@@ -1402,6 +1608,47 @@ def cmd_check(
             posture="advisory",
             findings=automerge_advisories,
         )
+    if model_line_advisories and not status_only:
+        # Same warn-only contract as the advisories above (the model-line
+        # payload lint, idea 2026-07-11): a drifted 📊 Model payload on a
+        # completed card is a one-line copy-edit nudge — surfaced +
+        # telemetry-recorded, never counted toward the exit code; the PL-004
+        # dataset records drift verbatim either way, the lint just makes it
+        # visible at check time instead of a later hand sweep.
+        _emit(
+            f"check: {len(model_line_advisories)} model-line payload advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in model_line_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=model_line_advisories,
+        )
+    if outbox_advisories and not status_only:
+        # Same warn-only contract as the advisories above (ORDER 020 item d,
+        # fm plan A10): a pending friction envelope is a drain-me nudge —
+        # surfaced + telemetry-recorded, never counted toward the exit code;
+        # the session-close ritual keeps its own copy of this advisory, this
+        # one just makes the backlog visible at check time too.
+        _emit(
+            f"check: {len(outbox_advisories)} friction-outbox advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in outbox_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=outbox_advisories,
+        )
     if adopters_advisories and not status_only:
         # Same warn-only contract as the advisories above (EAP §6.3): a
         # stale `Generated:` stamp is a rerun-the-scan nudge — CI cannot
@@ -1434,11 +1681,50 @@ def cmd_check(
             return 0
         _announce_fires()
         return 1 if strict else 0
+    diff_no_card = False
     if session_log is not None:
         explicit = session_log if session_log.is_absolute() else target / session_log
         log = explicit if explicit.is_file() else None
     else:
-        log = latest_session_log(target / config.sessions_dir)
+        # Diff-derived selection (idea-engine ASK 003, the sim-lab V051
+        # false-green): with git context the card set comes from the
+        # merge-base diff vs origin/main — the CI gate's selection — never
+        # from mtime (a post-merge sibling card carries the freshest mtime
+        # and the mtime guess validated the WRONG card, green while the
+        # session's own card was still in-progress). No git context →
+        # the historical newest-by-mtime fallback (non-git adopters are
+        # unchanged); git context but no card in the diff → absent-card
+        # semantics, never a silent mtime-green (fail-closed on ambiguity).
+        diff_cards, diff_note = _derive_diff_session_cards(
+            target,
+            config.sessions_dir,
+        )
+        if diff_note:
+            _emit(f"check: NOTE — {diff_note}")
+        if diff_cards is None:
+            log = latest_session_log(target / config.sessions_dir)
+        elif diff_cards:
+            log = _select_gate_card(diff_cards, config.session_markers)
+            gate_rel = (
+                log.relative_to(target) if log.is_relative_to(target) else log
+            )
+            _emit(
+                f"check: session-card selection — {len(diff_cards)} card(s) "
+                f"in the merge-base diff vs origin/main; gating on {gate_rel}.",
+            )
+        else:
+            log = None
+            diff_no_card = True
+    if session_log is not None:
+        absent = f"--session-log {session_log} does not exist"
+    elif diff_no_card:
+        absent = (
+            f"no session card in the merge-base diff vs origin/main (under "
+            f"{config.sessions_dir}/; diff-derived selection never falls "
+            "back to the mtime guess when git context exists)"
+        )
+    else:
+        absent = f"no session log under {config.sessions_dir}/"
     log_missing = check_log(log, config.session_markers) if log else []
     # In gate mode an absent log is itself a failing condition, so it must feed
     # the exit code exactly like an incomplete one.
@@ -1448,9 +1734,11 @@ def cmd_check(
     # red for the NEXT session's bare `check --strict` — run-8's ON arm ended
     # exit=1 solely on its own untouched skeleton, and the next cold session
     # would inherit that red without owning the judgment slots. Applies ONLY
-    # to the mtime-fallback lane: an explicit --session-log selection or
-    # --require-session-log gate mode keeps the locked door (a PR shipping a
-    # drafted card is the born-red discipline, not this class).
+    # to the local fallback lane (no explicit --session-log — whether the
+    # card came from the diff derivation or the mtime guess): an explicit
+    # --session-log selection or --require-session-log gate mode keeps the
+    # locked door (a PR shipping a drafted card is the born-red discipline,
+    # not this class).
     draft_advisory = False
     if (
         log is not None
@@ -1463,10 +1751,6 @@ def cmd_check(
         except OSError:
             draft_advisory = False
     if log is None:
-        if session_log is not None:
-            absent = f"--session-log {session_log} does not exist"
-        else:
-            absent = f"no session log under {config.sessions_dir}/"
         if require_session_log:
             _emit(
                 f"check: MERGE HELD — {absent} "
@@ -1508,10 +1792,6 @@ def cmd_check(
         # The session gate is a guard too (the kit's flagship one) — its
         # fires feed B3 like any checker's. Never allowlistable, though.
         if log_absent_fails:
-            if session_log is not None:
-                absent = f"--session-log {session_log} does not exist"
-            else:
-                absent = f"no session log under {config.sessions_dir}/"
             gate_finding = Finding(
                 "",
                 "session-log",
@@ -2447,6 +2727,260 @@ def cmd_seat_digest(target: Path, *, venues: list[str] | None = None) -> int:
     return 0
 
 
+def cmd_heartbeat(
+    target: Path,
+    *,
+    full: bool = False,
+    dry_run: bool = False,
+    status_file: str | None = None,
+    fields: dict[str, str] | None = None,
+    kit_version: str | None = None,
+    kit_check: str | None = None,
+    kit_engaged: str | None = None,
+) -> int:
+    """Write/refresh the control heartbeat mechanically (ORDER 019 item 7).
+
+    The ``bootstrap heartbeat`` verb — the idea file's mechanical LAST step
+    (``docs/ideas/heartbeat-verb-2026-07-09.md``). Default lane: a
+    non-destructive **restamp** of the existing heartbeat file — a fresh,
+    always-parseable UTC ``updated:`` stamp plus only the field lines the
+    caller passed; everything else survives byte-identical
+    (:func:`engine.heartbeat.restamp_status`). ``--full``: the whole-file
+    contract-shape write for the first real heartbeat over the adopt seed.
+    ``--dry-run`` prints the would-be diff (or full text for a new file)
+    and writes nothing. Refuses outside a control-carrying host, and on a
+    missing/unparseable heartbeat names the fix instead of guessing.
+    """
+    config = load_config(target)
+    relpaths = heartbeat_relpaths(config.heartbeat_files)
+    bus_files = [INBOX_RELPATH, CONTROL_README_RELPATH, *relpaths]
+    if not any((target / rel).is_file() for rel in bus_files):
+        _emit(
+            "heartbeat: refused — no control/ bus here (no inbox, README, "
+            "or heartbeat file); this verb writes a control-protocol "
+            "heartbeat only."
+        )
+        return 2
+    rel = status_file or relpaths[0]
+    path = target / rel
+    fields = dict(fields or {})
+    old_text: str | None = None
+    if path.is_file():
+        try:
+            old_text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            _emit(f"heartbeat: cannot read {rel} ({exc}) — fix the file first.")
+            return 2
+    if full:
+        phase = fields.pop("phase", None)
+        if not phase:
+            _emit(
+                "heartbeat: --full needs --phase — what the seat is doing "
+                "is the one field with no honest default."
+            )
+            return 2
+        backend = JsonStateBackend(_state_path(target, config))
+        context = build_context(backend.data) if backend.data else {}
+        project_name = context.get("project_name") or target.resolve().name
+        new_text = full_status(
+            project_name,
+            kit_version or KIT_VERSION,
+            phase=phase,
+            kit_check=kit_check or "green",
+            kit_engaged=kit_engaged or "yes",
+            **fields,
+        )
+        touched = "whole contract shape (--full)"
+    else:
+        if kit_check is not None or kit_engaged is not None:
+            _emit(
+                "heartbeat: --kit-check/--kit-engaged shape the --full "
+                "contract render only — the restamp lane preserves the "
+                "existing kit: line (version token via --kit-version)."
+            )
+            return 2
+        if old_text is None:
+            _emit(
+                f"heartbeat: {rel} not found — write the first heartbeat "
+                "with --full (or point --status-file at your lane's file)."
+            )
+            return 2
+        try:
+            new_text = restamp_status(
+                old_text,
+                fields=fields,
+                kit_version=kit_version,
+            )
+        except HeartbeatError as exc:
+            _emit(f"heartbeat: refused — {exc}")
+            return 2
+        parts = ["updated:", *sorted(fields)]
+        if kit_version is not None:
+            parts.append(f"kit: v{kit_version}")
+        touched = ", ".join(parts)
+    if dry_run:
+        if old_text is not None:
+            diff = difflib.unified_diff(
+                old_text.splitlines(keepends=True),
+                new_text.splitlines(keepends=True),
+                fromfile=f"a/{rel}",
+                tofile=f"b/{rel}",
+            )
+            _emit("".join(diff).rstrip("\n"))
+        else:
+            _emit(new_text.rstrip("\n"))
+        _emit(f"heartbeat: DRY RUN — {rel} not written.")
+        return 0
+    atomic_write_text(path, new_text)
+    _emit(
+        f"heartbeat: wrote {rel} ({touched}) — stamp parseable by "
+        "check_status_current (round-trip verified)."
+    )
+    return 0
+
+
+def cmd_claim(
+    target: Path,
+    slug: str,
+    *,
+    scope: str | None = None,
+    area: str | None = None,
+    order: str | None = None,
+    force: bool = False,
+    delete: bool = False,
+    dry_run: bool = False,
+) -> int:
+    """Write/delete a grammar-valid work claim mechanically (#358 💡 ender).
+
+    The ``bootstrap claim`` verb — the one-file-per-claim convention's
+    mechanical writer (``control/claims/README.md``, EAP §6.4). Default
+    lane: render + write ``<claims_dir>/claude-<slug>.md`` with ONE bullet
+    the ``check_claims`` enforcer is guaranteed to parse
+    (:func:`engine.claim.render_claim` — same grammar constants, round-trip
+    verified, current UTC date last on the line). ``--order NNN`` renders
+    the structured inbox-ORDER segment AND refuses to write when another
+    live claim on a DIFFERENT branch already names that order — the
+    #362/#363 twin-build guard; ``--force`` overrides for a deliberate
+    one-order-two-branch split. ``--delete`` removes YOUR OWN claim at
+    session close. Both lanes refuse a FOREIGN claim at the target path —
+    an existing file whose bullet token is not this slug's
+    ``claude/<slug>`` branch (or that the grammar cannot parse, so ownership
+    is unprovable) — leaving the file intact. ``--dry-run`` prints the
+    would-be content (or the would-be deletion) and touches nothing.
+    Refuses outside a control-carrying host, like the heartbeat verb.
+    """
+    config = load_config(target)
+    relpaths = heartbeat_relpaths(config.heartbeat_files)
+    bus_files = [INBOX_RELPATH, CONTROL_README_RELPATH, *relpaths]
+    has_bus = any((target / rel).is_file() for rel in bus_files)
+    if not has_bus and not (target / config.claims_dir).is_dir():
+        _emit(
+            "claim: refused — no control/ bus here (no inbox, README, "
+            "heartbeat file, or claims dir); this verb writes the control "
+            "protocol's work claims only."
+        )
+        return 2
+    try:
+        branch = branch_for(slug)
+        rel = f"{config.claims_dir}/{claim_filename(slug)}"
+    except ClaimError as exc:
+        _emit(f"claim: refused — {exc}")
+        return 2
+    path = target / rel
+    old_text: str | None = None
+    if path.is_file():
+        try:
+            old_text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            _emit(f"claim: cannot read {rel} ({exc}) — fix the file first.")
+            return 2
+    if old_text is not None:
+        token = owner_token(old_text)
+        if token != branch:
+            whose = f"`{token}`" if token else "an unparseable bullet (ownership unprovable)"
+            _emit(
+                f"claim: refused — {rel} exists and belongs to {whose}, not "
+                f"`{branch}`; a session only "
+                f"{'deletes' if delete else 'overwrites'} its OWN claim "
+                "(control/claims/README.md — the loser of a collision "
+                "stands down; reconcile by hand). File left intact."
+            )
+            return 2
+    if delete:
+        if old_text is None:
+            _emit(f"claim: {rel} not found — nothing to delete.")
+            return 2
+        if dry_run:
+            _emit(f"claim: DRY RUN — would delete {rel} (own claim, `{branch}`).")
+            return 0
+        path.unlink()
+        _emit(f"claim: deleted {rel} (own claim, `{branch}` — session close).")
+        return 0
+    if scope is None:
+        _emit(
+            "claim: --scope is required to write a claim (one line: what "
+            "this session is building) — or use --delete at session close."
+        )
+        return 2
+    try:
+        new_text = render_claim(slug, scope, area=area, order=order)
+        norm_order = normalize_order(order) if order is not None else None
+    except ClaimError as exc:
+        _emit(f"claim: refused — {exc}")
+        return 2
+    if norm_order is not None:
+        # The cross-branch ORDER-collision guard (the #362/#363 twin-build):
+        # scan every dir check_claims scans for a LIVE claim on a DIFFERENT
+        # branch naming this order. Same parsing home (engine.claim /
+        # engine.grammar) as the enforcer, so verb and checker cannot
+        # disagree about what "names this order" means.
+        holders: list[str] = []
+        for dir_rel, _is_legacy in claim_scan_dirs(target, config.claims_dir):
+            for other in sorted((target / dir_rel).glob("*.md")):
+                other_rel = f"{dir_rel}/{other.name}"
+                if other.name == "README.md" or other_rel == rel:
+                    continue
+                try:
+                    other_text = other.read_text(encoding="utf-8")
+                except (OSError, UnicodeDecodeError):
+                    continue  # fail open — unreadable is not a verdict
+                other_token = owner_token(other_text)
+                if other_token is None or other_token == branch:
+                    continue
+                if norm_order in claim_order_ids(other_text):
+                    holders.append(f"{other_rel} (`{other_token}`)")
+        if holders and not force:
+            _emit(
+                f"claim: refused — order {norm_order} already has a live "
+                f"claim on a different branch: {', '.join(holders)}. Two "
+                "branches serving one ORDER is the #362/#363 twin-build; "
+                "coordinate with the claim holder (or pass --force for a "
+                "deliberate split of the order across branches). "
+                "Nothing written."
+            )
+            return 2
+        if holders:
+            _emit(
+                f"claim: --force override — order {norm_order} is also "
+                f"claimed by {', '.join(holders)}; proceeding as a "
+                "deliberate cross-branch split (check_claims will keep "
+                "flagging the overlap as claims-order-collision)."
+            )
+    if dry_run:
+        _emit(new_text.rstrip("\n"))
+        _emit(f"claim: DRY RUN — {rel} not written.")
+        return 0
+    path.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_text(path, new_text)
+    refreshed = " (refreshed own claim)" if old_text is not None else ""
+    _emit(
+        f"claim: wrote {rel}{refreshed} — bullet parseable by check_claims "
+        "(round-trip verified). Delete it at session close: "
+        f"bootstrap claim {slug} --delete."
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Construct the bootstrap argument parser."""
     parser = argparse.ArgumentParser(prog="bootstrap", description="substrate-kit")
@@ -2689,6 +3223,150 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    heartbeat_p = sub.add_parser(
+        "heartbeat",
+        help=(
+            "restamp the control/ status heartbeat mechanically — a fresh "
+            "parseable UTC updated: stamp plus only the fields you pass "
+            "(everything else preserved byte-identical); --full writes the "
+            "whole contract shape (the first real heartbeat)"
+        ),
+    )
+    heartbeat_p.add_argument("--target", type=Path, default=Path.cwd())
+    heartbeat_p.add_argument(
+        "--status-file",
+        default=None,
+        help=(
+            "heartbeat file to write (default: the first configured "
+            "heartbeat_files entry — control/status.md unless a lane "
+            "configured otherwise)"
+        ),
+    )
+    heartbeat_p.add_argument(
+        "--full",
+        action="store_true",
+        help=(
+            "write the whole contract-shape heartbeat (the adopt seed's "
+            "documented overwrite path); requires --phase, other fields "
+            "default honestly (blockers/⚑ needs-owner: none)"
+        ),
+    )
+    heartbeat_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the would-be diff (or full text for a new file) without writing",
+    )
+    heartbeat_p.add_argument("--phase", default=None, help="phase: line value")
+    heartbeat_p.add_argument("--health", default=None, help="health: line value")
+    heartbeat_p.add_argument(
+        "--orders",
+        default=None,
+        help='orders: line value (e.g. "acked=001-003 done=001,002")',
+    )
+    heartbeat_p.add_argument(
+        "--last-shipped",
+        dest="last_shipped",
+        default=None,
+        help="last-shipped: line value",
+    )
+    heartbeat_p.add_argument("--blockers", default=None, help="blockers: line value")
+    heartbeat_p.add_argument(
+        "--needs-owner",
+        dest="needs_owner",
+        default=None,
+        help="⚑ needs-owner: line value",
+    )
+    heartbeat_p.add_argument("--notes", default=None, help="notes: line value")
+    heartbeat_p.add_argument(
+        "--kit-version",
+        dest="kit_version",
+        default=None,
+        help=(
+            "rewrite the kit: line's v<X.Y.Z> token (restamp lane keeps "
+            "the line's decorations; --full default: this dist's version)"
+        ),
+    )
+    heartbeat_p.add_argument(
+        "--kit-check",
+        dest="kit_check",
+        choices=("green", "red"),
+        default=None,
+        help="kit: line check: field (--full lane only)",
+    )
+    heartbeat_p.add_argument(
+        "--kit-engaged",
+        dest="kit_engaged",
+        choices=("yes", "no"),
+        default=None,
+        help="kit: line engaged: field (--full lane only)",
+    )
+
+    claim_p = sub.add_parser(
+        "claim",
+        help=(
+            "write a grammar-valid work claim file (control/claims/"
+            "claude-<slug>.md, one bullet check_claims is guaranteed to "
+            "parse — branch token · scope · UTC date); --delete removes "
+            "your OWN claim at session close, refusing foreign claims"
+        ),
+    )
+    claim_p.add_argument(
+        "slug",
+        help=(
+            "branch slug — the claim's branch is claude/<slug>, its file "
+            "claude-<slug>.md under the configured claims_dir"
+        ),
+    )
+    claim_p.add_argument("--target", type=Path, default=Path.cwd())
+    claim_p.add_argument(
+        "--scope",
+        default=None,
+        help=(
+            "one-line scope (rendered bold) — required to write; dated "
+            "filenames in it are safe (the claim's own date is appended "
+            "LAST on the bullet, the post-#353 rule)"
+        ),
+    )
+    claim_p.add_argument(
+        "--area",
+        default=None,
+        help='optional expected files/area segment (e.g. "src/ + tests/")',
+    )
+    claim_p.add_argument(
+        "--order",
+        default=None,
+        metavar="NNN",
+        help=(
+            "the inbox ORDER this claim serves (e.g. 020) — renders the "
+            "structured `order NNN` segment the cross-branch overlap scan "
+            "keys on, and refuses to write when another live claim on a "
+            "different branch already names that order (the #362/#363 "
+            "twin-build guard)"
+        ),
+    )
+    claim_p.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "override the --order collision refusal for a deliberate split "
+            "of one order across branches (check_claims keeps flagging the "
+            "overlap as claims-order-collision)"
+        ),
+    )
+    claim_p.add_argument(
+        "--delete",
+        action="store_true",
+        help=(
+            "delete your OWN claim file (session close); a foreign claim — "
+            "different branch token, or unparseable — is refused intact"
+        ),
+    )
+    claim_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the would-be claim content (or deletion) without touching disk",
+    )
+
     check = sub.add_parser("check", help="run the doc + session-log hygiene checks")
     check.add_argument("--target", type=Path, default=Path.cwd())
     check.add_argument("--strict", action="store_true", help="exit 1 if any violation")
@@ -2793,6 +3471,41 @@ def main(argv: list[str] | None = None) -> int:
             )
         if args.command == "seat-digest":
             return cmd_seat_digest(args.target, venues=args.venue)
+        if args.command == "heartbeat":
+            fields = {
+                name: value
+                for name, value in (
+                    ("phase", args.phase),
+                    ("health", args.health),
+                    ("orders", args.orders),
+                    ("last_shipped", args.last_shipped),
+                    ("blockers", args.blockers),
+                    ("needs_owner", args.needs_owner),
+                    ("notes", args.notes),
+                )
+                if value is not None
+            }
+            return cmd_heartbeat(
+                args.target,
+                full=args.full,
+                dry_run=args.dry_run,
+                status_file=args.status_file,
+                fields=fields,
+                kit_version=args.kit_version,
+                kit_check=args.kit_check,
+                kit_engaged=args.kit_engaged,
+            )
+        if args.command == "claim":
+            return cmd_claim(
+                args.target,
+                args.slug,
+                scope=args.scope,
+                area=args.area,
+                order=args.order,
+                force=args.force,
+                delete=args.delete,
+                dry_run=args.dry_run,
+            )
         if args.command == "check":
             return cmd_check(
                 args.target,

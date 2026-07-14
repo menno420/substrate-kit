@@ -206,11 +206,38 @@ CLEARED (#36–#39 → `docs/ideas/` + `bench/results/friction/index.json`).
 backlog. DONE — the enabler-install-preflight branch-allowlist half (PR #321,
 `check_automerge_preflight.py`): a self-silencing `check`-time advisory for
 `auto-merge-enabler.yml` branch-allowlist drift vs config (the idea-engine
-hand-patch/stale-allowlist class). REMAINS — the required-context half stays
-owner-UI (offline engine, no rules API); the flip-race fail-open
+hand-patch/stale-allowlist class). DONE (ORDER 019 item 4) — the
+install-time half (`src/engine/enabler_preflight.py`, PR #344): at
+adopt/upgrade time, best-effort ONLINE verification of "Allow auto-merge" +
+required status-check contexts via the GitHub API (advisory, fail-open;
+offline/tokenless collapses to one UNVERIFIED line). REMAINS — the required
+context stays owner-UI to *set* (a workflow cannot flip repo settings); the
+flip-race fail-open
 (`session-gate-flip-race-fail-open-2026-07-13.md`) still needs the mineverse
 repro (out of scope here) before a gate-logic change; heartbeat-delegated-
 tally doctrine still open.
+
+**→ Post-2026-07-14 lab loop (concurrent-ORDER collision):** friction inbox
+EMPTY; backlog buildable-dry, so served ORDER 020's two open BUILD sub-items —
+but a CONCURRENT routine fire had already landed the identical work as **#362**
+(`e7c0a5e`: d = A10 friction-outbox `check` advisory · e = INC-29
+`docs/CAPABILITIES.md` pointer casing, both with tests). This fire's duplicate
+**#363** was closed as superseded (source-wins; no delta to salvage). ORDER 020
+(d)+(e) is DONE via #362; done-when's release-ship half still rides the gated
+release wave (owner #317 click). With the build slot spent on the collision,
+this fire shipped the higher-value thing the collision exposed: a groomed
+idea + team memory on the root cause — the `check_claims` duplicate scan keys
+on **branch token, not ORDER/work overlap**, so two branches doing the same
+order never see each other
+(`docs/ideas/order-claim-cross-branch-collision-2026-07-14.md`). The
+cross-branch overlap guard is now BUILT — PR #365 (self-initiated per the
+groom's named next step; parked for review-merge, auto-merge deliberately
+not armed): `bootstrap claim --order NNN` structured segment +
+refuse-unless-`--force` + `check_claims` `claims-order-collision` advisory
+(advisory posture preserved). REMAINS — #365 review-merge; the idea file's
+frontmatter ship-flip waits for that merge; adjacent
+unacked-order-vs-heartbeat visibility gap still open. Where-stopped: #365
+parked green.
 
 ### Owner gates — each with its one-line unblock
 

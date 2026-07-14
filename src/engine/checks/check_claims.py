@@ -38,6 +38,14 @@ posture as the staleness + owner-action warnings):
   a claim file whose bullet date is older than the ~72h work horizon —
   claim files are deleted at session close, so an old one is likely an
   orphan the GC convention says to prune on sight.
+- ``claims-order-collision`` — (work) two or more live claim files on
+  DIFFERENT branch tokens name the SAME inbox-order id (the optional
+  ``· order NNN`` segment, or a free-text ``ORDER NNN`` mention on the
+  bullet line). Branch-keyed dedupe is silent by construction when two
+  branches serve one ORDER — the realized #362/#363 twin-build (two full
+  green implementations of ORDER 020, one closed as pure waste). A
+  deliberate split of one order across branches is legitimate, so this is
+  a nudge, never a lock.
 - ``claims-format`` — (work) a claim file without a parseable claim bullet
   (a ``- `` bullet carrying a backticked branch/scope token and a
   ``YYYY-MM-DD`` date). Unparseable claims are invisible to the duplicate
@@ -86,6 +94,7 @@ from engine.grammar import (
     ORDERS_LINE_RE,
     WORK_CLAIM_BULLET_RE,
     WORK_CLAIM_DATE_RE,
+    work_claim_order_ids,
 )
 from engine.lib.config import DEFAULT_CLAIMS_DIR
 
@@ -194,7 +203,7 @@ def _claim(orders_value: str) -> tuple[set[str], str, datetime | None] | None:
     return ids, match.group(2), _parse_iso(match.group(3))
 
 
-def _claim_dirs(target: Path, claims_dir: str) -> list[tuple[str, bool]]:
+def claim_scan_dirs(target: Path, claims_dir: str) -> list[tuple[str, bool]]:
     """Return existing claims dirs as ``(relpath, is_legacy)`` pairs.
 
     The configured/canonical dir first, then every §6.4 legacy location that
@@ -223,7 +232,12 @@ def _work_claim_findings(
     # token -> [relpath, ...] across every scanned dir (cross-location
     # duplicates are still one collision).
     holders: dict[str, list[str]] = {}
-    for dir_rel, is_legacy in _claim_dirs(target, claims_dir):
+    # order id -> token -> [relpath, ...] — the cross-branch overlap key
+    # (the #362/#363 collision fix): two live claims on DIFFERENT branch
+    # tokens naming the SAME order are likely duplicate work even though
+    # the branch-keyed duplicate scan is silent by construction.
+    order_holders: dict[str, dict[str, list[str]]] = {}
+    for dir_rel, is_legacy in claim_scan_dirs(target, claims_dir):
         dir_path = target / dir_rel
         claim_files = sorted(
             p for p in dir_path.glob("*.md") if p.name != "README.md"
@@ -248,8 +262,22 @@ def _work_claim_findings(
             except (OSError, UnicodeDecodeError):
                 continue  # fail open — an unreadable file is not a verdict
             bullet = WORK_CLAIM_BULLET_RE.search(text)
-            date_match = WORK_CLAIM_DATE_RE.search(text)
-            if bullet is None or date_match is None:
+            # The claim's OWN date is the LAST date on the bullet line — the
+            # taught grammar ends the bullet with `· YYYY-MM-DD`
+            # (work_claim_bullet_example), while scope text legitimately
+            # mentions dated filenames (…-2026-07-09.md). Grepping the FIRST
+            # date anywhere in the file let such a mention shadow a fresh
+            # claim date and fire a false claims-stale (found live on the
+            # 2026-07-14 model-line-lint session; guard recipe in that card).
+            claim_dates: list[str] = []
+            bullet_line = ""
+            if bullet is not None:
+                line_end = text.find("\n", bullet.start())
+                if line_end == -1:
+                    line_end = len(text)
+                bullet_line = text[bullet.start() : line_end]
+                claim_dates = WORK_CLAIM_DATE_RE.findall(bullet_line)
+            if bullet is None or not claim_dates:
                 findings.append(
                     Finding(
                         rel,
@@ -262,8 +290,14 @@ def _work_claim_findings(
                     ),
                 )
                 continue
-            holders.setdefault(bullet.group(1).strip(), []).append(rel)
-            claimed = _parse_iso(date_match.group(1))
+            token = bullet.group(1).strip()
+            holders.setdefault(token, []).append(rel)
+            for oid in work_claim_order_ids(bullet_line):
+                order_holders.setdefault(oid, {}).setdefault(
+                    token, []
+                ).append(rel)
+            claim_date = claim_dates[-1]
+            claimed = _parse_iso(claim_date)
             if claimed is None:
                 continue
             age_hours = (now - claimed).total_seconds() / 3600
@@ -272,7 +306,7 @@ def _work_claim_findings(
                     Finding(
                         rel,
                         "claims-stale",
-                        f"work claim dated {date_match.group(1)} is "
+                        f"work claim dated {claim_date} is "
                         f"{age_hours / 24:.0f} day(s) old (> "
                         f"{WORK_CLAIM_STALE_HOURS}h work-claim horizon) — "
                         "claim files are deleted at session close, so this "
@@ -296,6 +330,34 @@ def _work_claim_findings(
                     "loser deletes its file and stands down.",
                 ),
             )
+    # CROSS-BRANCH ORDER COLLISION — live claims on 2+ DISTINCT branch
+    # tokens naming the same order id (the realized #362/#363 twin-build:
+    # branch-keyed dedupe is silent when two branches serve one ORDER).
+    # Advisory like every claims finding — a deliberate one-order-two-branch
+    # split is legitimate, so this is a nudge, never a lock.
+    for oid in sorted(order_holders):
+        by_token = order_holders[oid]
+        if len(by_token) < 2:
+            continue
+        who = ", ".join(
+            f"`{token}` ({', '.join(sorted(by_token[token]))})"
+            for token in sorted(by_token)
+        )
+        for token in sorted(by_token):
+            for rel in sorted(by_token[token]):
+                findings.append(
+                    Finding(
+                        rel,
+                        "claims-order-collision",
+                        f"order {oid} is claimed by {len(by_token)} "
+                        f"different branches ({who}) — likely duplicate "
+                        "work (the #362/#363 twin-build). Confirm one "
+                        "owner before building: the tiebreak is first "
+                        "claim merged to main; the loser deletes its "
+                        "claim and stands down (or keep both ONLY for a "
+                        "deliberate split of one order across branches).",
+                    ),
+                )
     return findings
 
 
@@ -314,8 +376,8 @@ def check_claims(
     claim names an order already in some lane's ``done=`` or is older than
     ``CLAIM_STALE_HOURS``. Work half (EAP §6.4): scans the claims
     directory(-ies) — ``claims-format`` / ``claims-stale`` /
-    ``claims-duplicate`` per file plus the ``claims-legacy-location``
-    migration nudge (see the module docstring). ``claims_dir`` defaults to
+    ``claims-duplicate`` / ``claims-order-collision`` per file plus the
+    ``claims-legacy-location`` migration nudge (see the module docstring). ``claims_dir`` defaults to
     :data:`engine.lib.config.DEFAULT_CLAIMS_DIR`. Advisory by contract —
     callers must never count any of these toward an exit code. Empty when
     neither the ``control/`` protocol nor a claims dir is present, and

@@ -32,6 +32,7 @@ from typing import Any
 from engine.agents.agents import AGENTS, agent_document, agent_relpath
 from engine.contextpack import pack_index_skeleton
 from engine.derive import derive_slots, record_derived_slots
+from engine.enabler_preflight import enabler_install_preflight
 from engine.hooks.settings import full_settings_template, hooks_fill_table
 from engine.lib.atomicio import atomic_write_text
 from engine.lib.config import KIT_VERSION, Config, save_config
@@ -1898,6 +1899,13 @@ def adopt(
         # repo settings exist — say so in the adopt output itself, every
         # pass (the checklist is idempotent guidance, not a nag).
         report.extend(_repo_settings_checklist(enabler_context))
+        # Install-time preflight (the online half of enabler-install-
+        # preflight-2026-07-13; the check-time branch half is #321): verify
+        # the two settings the checklist can only describe — "Allow
+        # auto-merge" + required contexts — against the live GitHub API.
+        # Advisory + fail-open by contract: offline / tokenless / non-GitHub
+        # remotes collapse to one UNVERIFIED line, never a failed adopt.
+        report.extend(enabler_install_preflight(root, enabler_context))
     # required_context sanity (queued kit fix 3, the websites class): after
     # the gate/enabler regens above so a just-installed live gate counts as
     # a matching context. Advisory line only — see the helper's docstring.

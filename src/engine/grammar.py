@@ -367,12 +367,121 @@ def walls_digest_begin_marker(venues: tuple[str, ...]) -> str:
 WORK_CLAIM_BULLET_RE = re.compile(r"^-\s.*`([^`\n]+)`", re.MULTILINE)
 WORK_CLAIM_DATE_RE = re.compile(r"\b(20\d{2}-\d{2}-\d{2})\b")
 
+# The optional ORDER reference on a work-claim bullet (the #362/#363
+# cross-branch collision fix, idea order-claim-cross-branch-collision-
+# 2026-07-14): a claim serving an inbox ORDER carries an ` · order NNN`
+# segment (written by `bootstrap claim --order NNN`), and the SAME regex
+# also recognizes a free-text `ORDER 020` mention in the scope — so
+# hand-written claims that name their order in prose still key the
+# cross-branch overlap scan. One parsing home (EAP §6.8): the writer's
+# round-trip verify, the claim verb's refusal scan, and check_claims'
+# collision advisory all consume :func:`work_claim_order_ids`.
+WORK_CLAIM_ORDER_RE = re.compile(r"\border\s+(\d{1,4})\b", re.IGNORECASE)
+
+
+def work_claim_order_ids(bullet_line: str) -> set[str]:
+    """Return the 3-digit-normalized order ids named on a claim bullet line.
+
+    ``order 20`` / ``ORDER 020`` → ``{"020"}``. Only the bullet LINE is the
+    contract's surface (mirroring the post-#353 date rule — segments beyond
+    the bullet are commentary, not claim grammar).
+    """
+    return {f"{int(m):03d}" for m in WORK_CLAIM_ORDER_RE.findall(bullet_line)}
+
 
 def work_claim_bullet_example(date: str = "2026-07-10") -> str:
     """Canonical work-claim bullet dated ``date``."""
     return (
         f"- `example-branch` · **scope** — one-line detail · "
         f"expected files/area · {date}\n"
+    )
+
+
+# ── .sessions/<card>.md — the 📊 Model run-report line (PL-004 / KL-3) ──────
+#
+# Taught in the planted ``.sessions/README.md`` (``adopt._adopt_sessions_readme``
+# renders the needle byte-form + the ORDER 012 family-level attribution
+# doctrine) and harvested by session-close into ``telemetry/model-usage.jsonl``:
+#   - **📊 Model:** <model> · <effort> · <task-class>
+# The `·` is U+00B7 (the protocol's separator; an optional 4th integer segment
+# fills ``tokens_out``, KF-9). Consumed by ``loop.telemetry`` (the harvest +
+# the write-at-commit reconcile) and ``checks.check_model_line`` (the advisory
+# payload lint) — ONE home for needle/taxonomy/parser so the writer half, the
+# harvest, and the lint cannot drift apart (EAP §6.8; idea
+# model-line-payload-lint-advisory-2026-07-11: 4 of the 5 newest complete
+# cards carried off-taxonomy segment-2/3 payloads and the harvest recorded
+# the drift as ground truth).
+
+MODEL_LINE_NEEDLE = "\N{BAR CHART} Model:"  # 📊 Model:
+# The taught byte-form, verbatim — lint messages quote it so a finding always
+# names the exact expected shape (the run-1 ON-arm false-red lesson: a red
+# that contradicts what the agent can see on the card is the check's bug).
+MODEL_LINE_TAUGHT_FORMAT = (
+    "- **\N{BAR CHART} Model:** <model> \N{MIDDLE DOT} <effort> "
+    "\N{MIDDLE DOT} <task-class>"
+)
+# The 9 PL-004 task classes, verbatim (docs/program/rulings.md): the 8
+# founding Q-0248 classes + `feature build` (the PL-010 amendment).
+MODEL_TASK_CLASSES = (
+    "docs-only",
+    "mechanical refactor",
+    "test writing",
+    "runtime bugfix",
+    "kernel/architecture design",
+    "review/verify",
+    "research",
+    "idea/planning",
+    "feature build",
+)
+# The effort tiers the segment-2 payload files. Declared from the measured
+# dataset (telemetry/model-usage.jsonl: low/medium/high are the only values
+# that recur; everything else is drift — "high effort", lane names) and the
+# harness's own effort levels. Off-list values are an ADVISORY nudge only —
+# the lint never rejects, and the harvest records verbatim either way.
+MODEL_EFFORT_VALUES = ("low", "medium", "high")
+# Exact model-ID token detector for the 📊 model segment (fleet reporting
+# bar, ORDER 012 widened 2026-07-12): repo artifacts carry FAMILY-LEVEL model
+# names only (`fable-5`, `opus-4.8`), never an exact model-ID token — and
+# exact IDs are not always dated, so a dated-suffix test alone is too narrow
+# (the websites #178 cleanup class: cards recording `claude-`-prefixed exact
+# ID tokens passed the old "no full dated model ID" wording). Flags the two
+# exact-ID shapes seen in the wild: a provider-prefixed ID token
+# (`claude-…`, incl. `us.anthropic.…` forms) and a dated `-YYYYMMDD` suffix.
+EXACT_MODEL_ID_RE = re.compile(r"^(?:us\.)?(?:anthropic\.)?claude-|-\d{8}$")
+
+
+def parse_model_payload(payload: str) -> dict | None:
+    """Parse one needle line's payload; None when it under-fills (<3 segments).
+
+    Byte-identical move of ``loop.telemetry._parse_model_payload`` (the
+    harvest keeps consuming it from here — one parser, shared by writer-side
+    docs, the harvest, and the payload lint). Bold markers and the list dash
+    are cosmetic and stripped; an optional 4th integer segment fills
+    ``tokens_out`` (KF-9 — null until a meter exists).
+    """
+    parts = [p.strip(" *`") for p in payload.split("\N{MIDDLE DOT}")]
+    parts = [p for p in parts if p]
+    if len(parts) < 3:
+        return None
+    tokens_out: int | None = None
+    if len(parts) >= 4:
+        try:
+            tokens_out = int(parts[3].replace(",", "").replace("_", ""))
+        except ValueError:
+            tokens_out = None
+    return {
+        "model": parts[0],
+        "effort": parts[1],
+        "task_class": parts[2],
+        "tokens_out": tokens_out,
+    }
+
+
+def model_line_example() -> str:
+    """Canonical 📊 Model run-report line — what a correct card carries."""
+    return (
+        "- **\N{BAR CHART} Model:** fable-5 \N{MIDDLE DOT} high "
+        "\N{MIDDLE DOT} feature build\n"
     )
 
 
