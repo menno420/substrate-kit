@@ -1,6 +1,6 @@
 # 2026-07-14 — `bootstrap claim` verb (mechanical grammar-valid claim writer)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 About to (opening declaration): build the #358 card's 💡 ender — a
 `bootstrap claim` verb that writes/deletes one-file-per-claim work claims
