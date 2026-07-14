@@ -248,6 +248,47 @@ def test_old_work_claim_flags_stale(tmp_path):
     assert WORK_CLAIM_STALE_HOURS == 72
 
 
+def test_dated_filename_in_scope_text_is_not_stale(tmp_path):
+    # Regression (found live, 2026-07-14 model-line-lint session): the
+    # checker dated a claim by the FIRST date-string anywhere in the file,
+    # so a dated idea-filename in the scope text shadowed the fresh claim
+    # date and fired a false claims-stale. The claim's own date is the LAST
+    # date on the bullet line (the taught grammar ends `· YYYY-MM-DD`).
+    _write(
+        tmp_path,
+        f"{DEFAULT_CLAIMS_DIR}/fresh-with-dated-ref.md",
+        "- `claude/lane-a` · **scope** — build the checker per "
+        "docs/ideas/foo-2026-07-05.md · src/engine/checks · 2026-07-10\n",
+    )
+    assert check_claims(tmp_path, now=NOW) == []
+
+
+def test_old_claim_date_fires_despite_fresh_filename_mention(tmp_path):
+    # The inverse guard: a genuinely old claim date (last on the bullet)
+    # still fires even when the scope text mentions a fresher dated file.
+    _write(
+        tmp_path,
+        f"{DEFAULT_CLAIMS_DIR}/old-with-fresh-ref.md",
+        "- `claude/lane-b` · **scope** — port docs/ideas/bar-2026-07-10.md "
+        "· src/x · 2026-07-05\n",
+    )
+    findings = check_claims(tmp_path, now=NOW)
+    assert [f.kind for f in findings] == ["claims-stale"]
+    assert "dated 2026-07-05" in findings[0].message
+
+
+def test_date_outside_bullet_line_flags_format(tmp_path):
+    # A date somewhere else in the file is not the claim's date field —
+    # a bullet without its own date is unparseable (claims-format), not
+    # dated by unrelated prose.
+    _write(
+        tmp_path,
+        f"{DEFAULT_CLAIMS_DIR}/date-elsewhere.md",
+        "- `claude/lane-c` · scope only\n\nopened 2026-07-01 by a session\n",
+    )
+    assert [f.kind for f in check_claims(tmp_path, now=NOW)] == ["claims-format"]
+
+
 def test_two_files_same_token_flag_duplicate(tmp_path):
     _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/a.md", _claim_bullet("claude/same"))
     _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/b.md", _claim_bullet("claude/same"))
