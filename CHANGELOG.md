@@ -50,6 +50,24 @@ probe failed both arms; T5 ignored). **KF-8 trend at 9 scored rows: 1 PASS
 
 ### Added
 
+- **Kit-side `scripts/preflight.py` — CI-convergence dogfood (idea
+  2026-07-14, PR #354).** The kit repo now plants the preflight wrapper its
+  own config default has named since PR #332
+  (`_default_preflight_scripts()` → `["scripts/preflight.py"]`), retiring
+  the standing "preflight script not found" NOTE on every full `check` and
+  closing the local-green→CI-red gap (idea-engine ASK 002 / #274/#299) in
+  the kit itself. Stdlib-only, idea-engine pattern: a `CHECKS` table of the
+  seven ci.yml kit-quality legs (pytest · dist byte-pin · ruff, skipped
+  with a NOTE when not importable locally · idea index · changelog
+  structure · program law without `--label-gate` — labels are CI-only ·
+  bench integrity) + a worst-exit runner where a red leg never stops the
+  rest. Honors the `SUBSTRATE_KIT_PREFLIGHT` nested-run marker
+  (`_run_preflight_scripts` stamps it on its children) by self-skipping
+  exit-0, so the pytest leg's check-invoking tests can never recurse;
+  `--list` / `--only <name>` support testing without ever spawning the real
+  suite. The CI cold-adoption smoke leg is deliberately excluded
+  (shell-heavy/slow; CI keeps it). Kit-repo tooling only: no engine change,
+  no dist regen, no adopter surface.
 - **📊 Model-line payload lint (idea 2026-07-11, PR #352).** `check` (full
   lane) now lints the newest completed session cards' `📊 Model:` payload —
   advisory-only, never exit-affecting: a needle-bearing line with no valid
