@@ -148,6 +148,79 @@ def test_skills_digest_names_every_skill_within_budget():
     assert block == skills_digest_block()  # deterministic
 
 
+def _synthetic_skills(count: int, description_len: int = 200) -> list[dict]:
+    """A registry of ``count`` skills with ``description_len``-char blurbs."""
+    words = ("word " * (description_len // 5 + 1))[:description_len].strip()
+    return [
+        {"name": f"skill-{i:02d}", "description": f"blurb {i:02d} {words}"}
+        for i in range(count)
+    ]
+
+
+def test_skills_digest_clip_adapts_to_registry_growth():
+    # The exact regression that forced two same-day manual ratchets
+    # (clip 120 → 85 on the 12th skill, 85 → 72 on the 13th): a GROWN
+    # registry must still name every skill within the budget with NO
+    # constant to hand-lower. 20 long-description skills is well past the
+    # size that broke the fixed clip.
+    skills = _synthetic_skills(20)
+    block = skills_digest_block(skills=skills)
+    for skill in skills:
+        assert f"`{skill['name']}`" in block
+    assert len(block) <= grammar.SEAT_DIGEST_BLOCK_BUDGET
+    assert block == skills_digest_block(skills=skills)  # still deterministic
+
+
+def test_skills_digest_fixed_clip_would_overflow_where_adaptive_fits():
+    # Mutation-style proof the computation is load-bearing: on the same
+    # grown registry, rows at the retired hand-ratcheted clip (72) assemble
+    # to MORE than the budget — a fixed constant fails exactly where the
+    # adaptive clip just fit above.
+    skills = _synthetic_skills(20)
+    from engine.seatdigest import _skill_rows  # white-box on purpose
+
+    fixed_rows = _skill_rows(skills, 72)
+    assert len("\n".join(fixed_rows)) > grammar.SEAT_DIGEST_BLOCK_BUDGET
+
+
+def test_skills_digest_drops_to_name_only_below_the_readability_floor():
+    # When even floor-width descriptions cannot fit, rows degrade to
+    # name-only BEFORE any name is dropped: every name survives, no row
+    # carries a description separator.
+    skills = _synthetic_skills(28)
+    block = skills_digest_block(skills=skills)
+    for skill in skills:
+        assert f"`{skill['name']}`" in block
+    assert len(block) <= grammar.SEAT_DIGEST_BLOCK_BUDGET
+    for line in block.splitlines():
+        if line.startswith("- `skill-"):
+            assert "` — " not in line  # name-only, description dropped
+
+
+def test_skills_digest_widens_the_clip_when_headroom_exists():
+    # The ratchet's other cost was permanence: a constant lowered for the
+    # 13th skill kept over-truncating even if the registry shrank. With two
+    # skills there is ample headroom, so descriptions render far wider than
+    # the retired 72-char clip.
+    skills = _synthetic_skills(2)
+    block = skills_digest_block(skills=skills)
+    row = next(
+        line for line in block.splitlines() if line.startswith("- `skill-00`")
+    )
+    description = row.split("` — ", 1)[1]
+    assert len(description) > 100  # 72-clip output would be ≤ 72 chars
+
+
+def test_skills_digest_overflow_pointer_is_the_last_resort():
+    # A registry so large the budget cannot even NAME every skill still
+    # never silently overflows: the _fit_rows "+N more" pointer line is the
+    # documented final safety net.
+    skills = _synthetic_skills(200)
+    block = skills_digest_block(skills=skills)
+    assert len(block) <= grammar.SEAT_DIGEST_BLOCK_BUDGET
+    assert "more — read `docs/SKILLS.md`." in block
+
+
 # ── the walls digest block ───────────────────────────────────────────────────
 
 
