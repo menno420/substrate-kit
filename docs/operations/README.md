@@ -54,6 +54,13 @@
   landings, three failsafe-bridged wake drops, born-red gate + one
   flip-race bug, control fast lane, ORDER fan-out), and the honest null on
   shipped-vs-stalled discrimination.
+- [../audits/eap-project-audit-2026-07-14.md](../audits/eap-project-audit-2026-07-14.md)
+  — EAP project audit, definitive close-out (dated audit, owner-directed):
+  measured program totals (191 sessions · 361 PRs · 350 merged · 2.9-min
+  median landing · 19 releases), tooling verdicts, all 20 verified walls
+  with verbatim denials and FLEET-FIX/ANTHROPIC/ACCEPTED dispositions,
+  scheduling/environment/ceremony findings, the fixed-ourselves ledger,
+  ranked remaining pains + paste-ready Anthropic asks, and honest gaps.
 - [../reports/2026-07-13-fleet-cleanup-audit.md](../reports/2026-07-13-fleet-cleanup-audit.md)
   — EAP final-night fleet-cleanup audit (dated audit, external read-only
   pass, complementary to owner fm ORDER 045): live-vs-heartbeat activity
