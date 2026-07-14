@@ -1,1 +1,0 @@
-- `claude/release-v1.16.0-aftermath` · **v1.16.0 release aftermath: verify + adopters regen + heartbeat release record** · docs/adopters.md, control/status.md, .sessions/ · order 022 · 2026-07-14
