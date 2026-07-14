@@ -1,1 +1,0 @@
-- `claude/git-truth-helper` · **extract shared git-truth helper + CAPABILITIES append** — one shared shallow/graft ancestry module, two call sites refit · scripts/ + docs/ + tests/ · 2026-07-14
