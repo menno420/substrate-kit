@@ -1,0 +1,1 @@
+- claude/git-truth-helper · extract shared git-truth helper + CAPABILITIES append · scripts/ + docs/ + tests/ · 2026-07-14
