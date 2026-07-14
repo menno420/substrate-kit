@@ -166,7 +166,14 @@ class TestGoldenDryRun:
         assert before == after
 
     def test_live_repo_dry_run_is_green(self, capsys):
-        """The real tree accepts a MINOR dry-run (and is never written)."""
+        """The real tree accepts a MINOR dry-run (and is never written).
+
+        Post-cut state is equally golden: immediately after a release cut the
+        live ``[Unreleased]`` section is deliberately empty, and the script's
+        correct answer is the "nothing to release" refusal (exit 1) — the
+        v1.16.0 bump was the first real tree in that state and turned this
+        test red until it learned both legs.
+        """
         cfg = (REPO_ROOT / cr.CONFIG_RELPATH).read_text(encoding="utf-8")
         current = cr._KIT_VERSION_RE.search(cfg).group(1)
         major, minor, _ = cr.parse_semver(current)
@@ -179,9 +186,15 @@ class TestGoldenDryRun:
                 "2026-07-14",
             ]
         )
-        out = capsys.readouterr().out
-        assert rc == 0
-        assert "DRY-RUN — no files changed" in out
+        out = capsys.readouterr().out + capsys.readouterr().err
+        if rc == 0:
+            assert "DRY-RUN — no files changed" in out
+        else:
+            # Freshly-cut tree: empty [Unreleased] must be the ONLY reason.
+            assert rc == 1
+            assert (
+                "[Unreleased] has no typed `###` sections" in out
+            ), f"unexpected cut_release failure:\n{out}"
 
 
 class TestWrite:
