@@ -1,41 +1,35 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-14T00:07:44Z · coordinator session live (v3.6) · phase: EAP FINAL NIGHT — ORDER 019 COMPLETE
+updated: 2026-07-14T00:19:52Z · worker session (coordinator-dispatched) · phase: post-EAP backlog build
 
 ## Routines
 - Failsafe: "Self Improvement failsafe wake" trig_01LsHxvnYnpQ59n7iQTPNNF3 · 0 */2 * * * · bound live coordinator. Pacemaker chain live (~15 min).
 - Business cron: kit-lab daily trig_01Jm57GAjNCFrYJn1oLMiYGE — KEEP · next 2026-07-14T06:08Z.
 
-## ORDER 019 — done (all 7 items + fm ORDER 025)
-done=019 · worklist executed top-down 2026-07-13T22:27Z–23:35Z:
-1. Session-gate false-green + flip-race: #342 merged (4809567→main) — local card selection now merge-base-diff, fail-closed; V051 red fixture; CI half verified closed since v1.10.0.
-2. Enabler allowlist ASK 001: STALE claim — already shipped #300; verification PR #339 merged.
-3. ASK 002 convergence: already satisfied by #332; both classes re-proved live; verification PR #343 merged. Residual = distribution (v1.15.0 lacks #332 — rides next release wave).
-4. Enabler install-time preflight: #344 merged — advisory INERT/UNVERIFIED surfacing at adopt/upgrade via /rules/branches/.
-5. fm ORDER 025 port: #340 merged — both sonnet5 writeups at docs/reports/ (provenance @ 66c3dfc), ack in ORDER 019 thread, manager outbox pointer. Owner's B#41 archive click unblocked.
-6. Staged-artifact regen-lag checker: shipped; PR #345 PARKED green-pending (owner 23:12Z disarm respected; do-not-automerge until review; landing: owner-click or non-author review-merge). TRUE finding: kit's own staged tree lags 3 artifacts — release-wave remedy.
-7. bootstrap heartbeat verb: #346 merged — preserve-and-restamp default, --full opt-in, dogfooded live.
-Bonus: idea-engine upgraded v1.10.0→v1.15.0 (its #367 merged; duplicate-dispatch with resident lane flagged to manager). Suite 1284 → 1339 tests. One rail breach (worker self-arm on #342) remediated in 2 min + team memory.
+## This session
+- Built the CHANGELOG `[Unreleased]` structure checker (next-ranked backlog idea, `docs/ideas/changelog-unreleased-structure-checker-2026-07-09.md`): `scripts/check_changelog_structure.py` + 22 tests + ci.yml kit-quality step — kit-repo-only scoping, no adopter surface. PR #351 OPEN (born-red card flipped complete at close); suite 1344 → 1366; dist untouched, byte-stable. Landing: review-merge by a different session (server enabler may arm on green as with #349).
 
-## Parked
-- PR #317 — owner ratification park (do-not-automerge), freshened vs main 20:13Z (df7b324), green, payload byte-identical. Landing: owner-click. Gates the release wave.
-- PR #345 — item 6, green-pending, do-not-automerge until review. Landing: owner-click / non-author review-merge.
+## Open PRs
+- PR #351 — this session (changelog structure checker). Landing: non-author review-merge / enabler-on-green.
+- PR #317 — owner ratification park (do-not-automerge), green, payload byte-identical. Landing: owner-click. Gates the release wave.
+- PR #345 — regen-lag checker, green-pending, do-not-automerge until review. Landing: owner-click / non-author review-merge.
+- PR #347 — external fleet-cleanup audit (read-only docs). Landing: review-merge.
 
-## Merged since last heartbeat
-- PR #349 — idea build (seat-digest-adaptive-clip): skills-digest clip now COMPUTED per render (widest budget fit, 40-char floor, name-only fallback) — the 120→85→72 manual ratchet retired; +5 tests (suite 1339→1344), dist byte-stable, idea frontmatter reconciled (#344/#346 drift fixed on sight). MERGED 2026-07-14T00:04Z (ee3b962) by the server-side auto-merge-enabler on green — kit-quality + suite + cold-adoption all ✅. The earlier "parks green, no auto-merge armed" line here was pre-merge drift: the enabler arms every non-draft claude/* PR at open, so it landed on green. Pointers: PR #349 · merge commit ee3b962.
+## Recently merged
+- PR #349 — seat-digest adaptive clip, merged 2026-07-14T00:04Z (ee3b962) by the enabler on green. ORDER 019 fully done before it (see git history of this file @ 8cf4597 for the full night tally).
 
 ## Registry state
-- Adopters tree-current at v1.15.0 incl. idea-engine (tonight). adopters.md regen still waits on resident `kit:` lines (outbox ask).
+- Adopters tree-current at v1.15.0. adopters.md regen still waits on resident `kit:` lines (outbox ask).
 kit: v1.15.0
 
 ## Next-2 baton
-1. Owner clicks #317 → cut release wave (main ~55 commits past v1.15.0; wave also distributes #332 convergence + fixes kit's own 3 lagging staged artifacts) + adopter upgrade PRs.
-2. Owner/reviewer lands #345 · resident lanes' kit: lines → adopters.md regen · grounded-skills window ~07-19.
+1. Owner clicks #317 → cut release wave (main now ~60 commits past v1.15.0) + adopter upgrade PRs.
+2. Review-merge #351 + #345 · resident lanes' kit: lines → adopters.md regen · grounded-skills window ~07-19.
 
-⚑ FOR OWNER (paste-ready, carried from the standing set — full field blocks verbatim in git history of this file @ 86d2a57, ⚑ OWNER-ACTION 2/6 + ⚑ FOR MANAGER):
-- **P10 required-check swap (⚑ 2):** Settings → Rules → `main` ruleset → required status checks: remove "Kit test suite" + "Cold-adoption smoke (adopt + check --strict)"; add `kit-quality`; set "Require branches to be up to date" OFF. Reversible; ends the ~35-min queue-stall class. (No agent path to rulesets — verified 403/no-endpoint.)
-- **fm #122 v3.4 restamp:** the owner reviews and merges fleet-manager PR #122 PERSONALLY — do NOT agent-merge.
-- **UNIVERSAL wake fetch-list vN bump + re-paste:** add `docs/seat-digest.md` (+ `docs/SKILLS.md`) to the manager-authored wake fetch list, bump vN, owner re-pastes via fm's edit-registry-first flow.
-- **⚑ 6 public-flip-or-PAT (pick one):** make this repo public (⚠️ effectively irreversible) OR mint a fine-grained read-only PAT into the fleet environments (reversible) — unblocks the B2–B4 cross-repo sweeps.
-- **Grounded-skills measurement window:** proposal to run the before/after measurement pass ~2026-07-19..26 per docs/reports/2026-07-12-grounded-skills-wrap.md §3d — say nothing to accept the window; a successor fires it when it matures.
+⚑ FOR OWNER (unchanged standing set — full paste-ready field blocks verbatim in git history of this file @ 86d2a57):
+- P10 required-check swap (ruleset: require `kit-quality`, drop the two legacy contexts).
+- fm #122 v3.4 restamp — owner reviews/merges PERSONALLY.
+- UNIVERSAL wake fetch-list vN bump (+ docs/seat-digest.md, docs/SKILLS.md).
+- ⚑ 6 public-flip-or-PAT (unblocks B2–B4 cross-repo sweeps).
+- Grounded-skills measurement window ~2026-07-19..26 — silence accepts.
 
 orders: acked=001–019 · done=001–019
