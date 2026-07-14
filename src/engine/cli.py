@@ -78,6 +78,13 @@ from engine.checks.check_session_log import (
     status_in_progress,
 )
 from engine.checks.check_automerge_preflight import check_automerge_preflight
+from engine.claim import (
+    ClaimError,
+    branch_for,
+    claim_filename,
+    owner_token,
+    render_claim,
+)
 from engine.checks.check_seat_digest import check_seat_digest
 from engine.checks.check_setup_script import check_setup_script
 from engine.checks.check_skill_grounds import check_skill_grounds
@@ -2784,6 +2791,103 @@ def cmd_heartbeat(
     return 0
 
 
+def cmd_claim(
+    target: Path,
+    slug: str,
+    *,
+    scope: str | None = None,
+    area: str | None = None,
+    delete: bool = False,
+    dry_run: bool = False,
+) -> int:
+    """Write/delete a grammar-valid work claim mechanically (#358 💡 ender).
+
+    The ``bootstrap claim`` verb — the one-file-per-claim convention's
+    mechanical writer (``control/claims/README.md``, EAP §6.4). Default
+    lane: render + write ``<claims_dir>/claude-<slug>.md`` with ONE bullet
+    the ``check_claims`` enforcer is guaranteed to parse
+    (:func:`engine.claim.render_claim` — same grammar constants, round-trip
+    verified, current UTC date last on the line). ``--delete`` removes YOUR
+    OWN claim at session close. Both lanes refuse a FOREIGN claim at the
+    target path — an existing file whose bullet token is not this slug's
+    ``claude/<slug>`` branch (or that the grammar cannot parse, so ownership
+    is unprovable) — leaving the file intact. ``--dry-run`` prints the
+    would-be content (or the would-be deletion) and touches nothing.
+    Refuses outside a control-carrying host, like the heartbeat verb.
+    """
+    config = load_config(target)
+    relpaths = heartbeat_relpaths(config.heartbeat_files)
+    bus_files = [INBOX_RELPATH, CONTROL_README_RELPATH, *relpaths]
+    has_bus = any((target / rel).is_file() for rel in bus_files)
+    if not has_bus and not (target / config.claims_dir).is_dir():
+        _emit(
+            "claim: refused — no control/ bus here (no inbox, README, "
+            "heartbeat file, or claims dir); this verb writes the control "
+            "protocol's work claims only."
+        )
+        return 2
+    try:
+        branch = branch_for(slug)
+        rel = f"{config.claims_dir}/{claim_filename(slug)}"
+    except ClaimError as exc:
+        _emit(f"claim: refused — {exc}")
+        return 2
+    path = target / rel
+    old_text: str | None = None
+    if path.is_file():
+        try:
+            old_text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            _emit(f"claim: cannot read {rel} ({exc}) — fix the file first.")
+            return 2
+    if old_text is not None:
+        token = owner_token(old_text)
+        if token != branch:
+            whose = f"`{token}`" if token else "an unparseable bullet (ownership unprovable)"
+            _emit(
+                f"claim: refused — {rel} exists and belongs to {whose}, not "
+                f"`{branch}`; a session only "
+                f"{'deletes' if delete else 'overwrites'} its OWN claim "
+                "(control/claims/README.md — the loser of a collision "
+                "stands down; reconcile by hand). File left intact."
+            )
+            return 2
+    if delete:
+        if old_text is None:
+            _emit(f"claim: {rel} not found — nothing to delete.")
+            return 2
+        if dry_run:
+            _emit(f"claim: DRY RUN — would delete {rel} (own claim, `{branch}`).")
+            return 0
+        path.unlink()
+        _emit(f"claim: deleted {rel} (own claim, `{branch}` — session close).")
+        return 0
+    if scope is None:
+        _emit(
+            "claim: --scope is required to write a claim (one line: what "
+            "this session is building) — or use --delete at session close."
+        )
+        return 2
+    try:
+        new_text = render_claim(slug, scope, area=area)
+    except ClaimError as exc:
+        _emit(f"claim: refused — {exc}")
+        return 2
+    if dry_run:
+        _emit(new_text.rstrip("\n"))
+        _emit(f"claim: DRY RUN — {rel} not written.")
+        return 0
+    path.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_text(path, new_text)
+    refreshed = " (refreshed own claim)" if old_text is not None else ""
+    _emit(
+        f"claim: wrote {rel}{refreshed} — bullet parseable by check_claims "
+        "(round-trip verified). Delete it at session close: "
+        f"bootstrap claim {slug} --delete."
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Construct the bootstrap argument parser."""
     parser = argparse.ArgumentParser(prog="bootstrap", description="substrate-kit")
@@ -3104,6 +3208,51 @@ def build_parser() -> argparse.ArgumentParser:
         help="kit: line engaged: field (--full lane only)",
     )
 
+    claim_p = sub.add_parser(
+        "claim",
+        help=(
+            "write a grammar-valid work claim file (control/claims/"
+            "claude-<slug>.md, one bullet check_claims is guaranteed to "
+            "parse — branch token · scope · UTC date); --delete removes "
+            "your OWN claim at session close, refusing foreign claims"
+        ),
+    )
+    claim_p.add_argument(
+        "slug",
+        help=(
+            "branch slug — the claim's branch is claude/<slug>, its file "
+            "claude-<slug>.md under the configured claims_dir"
+        ),
+    )
+    claim_p.add_argument("--target", type=Path, default=Path.cwd())
+    claim_p.add_argument(
+        "--scope",
+        default=None,
+        help=(
+            "one-line scope (rendered bold) — required to write; dated "
+            "filenames in it are safe (the claim's own date is appended "
+            "LAST on the bullet, the post-#353 rule)"
+        ),
+    )
+    claim_p.add_argument(
+        "--area",
+        default=None,
+        help='optional expected files/area segment (e.g. "src/ + tests/")',
+    )
+    claim_p.add_argument(
+        "--delete",
+        action="store_true",
+        help=(
+            "delete your OWN claim file (session close); a foreign claim — "
+            "different branch token, or unparseable — is refused intact"
+        ),
+    )
+    claim_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the would-be claim content (or deletion) without touching disk",
+    )
+
     check = sub.add_parser("check", help="run the doc + session-log hygiene checks")
     check.add_argument("--target", type=Path, default=Path.cwd())
     check.add_argument("--strict", action="store_true", help="exit 1 if any violation")
@@ -3231,6 +3380,15 @@ def main(argv: list[str] | None = None) -> int:
                 kit_version=args.kit_version,
                 kit_check=args.kit_check,
                 kit_engaged=args.kit_engaged,
+            )
+        if args.command == "claim":
+            return cmd_claim(
+                args.target,
+                args.slug,
+                scope=args.scope,
+                area=args.area,
+                delete=args.delete,
+                dry_run=args.dry_run,
             )
         if args.command == "check":
             return cmd_check(

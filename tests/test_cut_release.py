@@ -364,3 +364,55 @@ class TestHelpers:
             assert "already" in str(exc)
         else:  # pragma: no cover
             raise AssertionError("second transform should refuse")
+
+
+class TestFollowupChecklistRunbookPin:
+    """Drift pin: FOLLOWUP_CHECKLIST embeds runbook prose with no other
+    protection — a runbook edit could silently orphan the checklist. Loose
+    presence pin (decided-and-flagged): each checklist step's key noun/verb
+    phrase must appear in docs/operations/release-runbook.md (and in the
+    checklist itself, so the keyword map can't drift either) — NOT byte
+    equality, so wording tweaks stay free while concept removals/renames
+    fail loudly and force reconciling both homes.
+    """
+
+    # step number in FOLLOWUP_CHECKLIST -> the phrases that pin it to the
+    # runbook section covering the same step (case-insensitive substrings).
+    STEP_KEYWORDS = {
+        1: ["machine comment"],
+        2: ["src/build_bootstrap.py", "byte count", "wc -c dist/bootstrap.py"],
+        3: ["control/claims/release-v", "born-red session card", "auto-merge"],
+        4: [
+            "pytest tests/ -q",
+            "ruff check src/engine/",
+            "build_release_json.py",
+            "check_idea_index.py",
+            "check_program_law.py",
+            "check --strict",
+        ],
+        5: ["flip the card", "auto-merge"],
+        6: ["release.yml", "workflow_dispatch", "annotated tag", "release.json"],
+        7: ["three-way", "sha256", "never skip"],
+        8: ["adopters", "currency", "release record", "upgrade"],
+    }
+
+    def test_followup_checklist_keywords_pinned_to_runbook(self):
+        runbook = (
+            REPO_ROOT / "docs" / "operations" / "release-runbook.md"
+        ).read_text(encoding="utf-8").lower()
+        checklist = cr.FOLLOWUP_CHECKLIST.format(version="9.9.9").lower()
+        # The checklist must name its canonical source.
+        assert "docs/operations/release-runbook.md" in checklist
+        missing = []
+        for step, keywords in self.STEP_KEYWORDS.items():
+            for kw in keywords:
+                if kw.lower() not in checklist:
+                    missing.append(f"step {step}: {kw!r} gone from FOLLOWUP_CHECKLIST")
+                if kw.lower() not in runbook:
+                    missing.append(f"step {step}: {kw!r} gone from release-runbook.md")
+        assert not missing, (
+            "checklist/runbook drift — reconcile scripts/cut_release.py "
+            "FOLLOWUP_CHECKLIST with docs/operations/release-runbook.md "
+            "(or update STEP_KEYWORDS if the concept genuinely moved): "
+            + "; ".join(missing)
+        )
