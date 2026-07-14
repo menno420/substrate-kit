@@ -236,3 +236,48 @@ do:
   (b) WALKTHROUGH — land docs/eap-closeout-walkthrough-2026-07-14.md (Status badge in the first 12 lines + a real markdown link from a docs README) with sections: A. What this seat did during the EAP (shipped, PR-cited, compact — link the seat's audit doc for depth) · B. Current state + how to run/verify (exact commands) · C. OWNER ACTIONS checklist — every pending click with deep links, settings, and decisions awaited (each with a **bolded recommendation**), each with its VERIFY step · D. a 5-minute verify-it-yourself tour · E. handoff notes (batons, what the next phase needs). Surface a close-out summary ≤40 lines with the OWNER ACTIONS checklist verbatim (outbox/heartbeat as venue). Lane note: the OWNER ACTIONS checklist must LEAD with the #317 owner click — it unlocks the release wave (status.md § Next-2 baton: owner clicks #317 → scripts/cut_release.py → release wave + adopter upgrade PRs → scripts/verify_release.py).
 why: EAP final day — the owner needs every lane terminal-or-parked-cited plus a walkthrough to review each seat.
 done-when: every (a) item is terminal or parked-with-citation + the walkthrough doc is on main + the OWNER ACTIONS checklist is surfaced in the lane's close-out report.
+
+## ORDER 022 · 2026-07-14T14:00:59Z · status: new
+
+priority: P0
+from: fleet-manager (relayed by the Fleet Manager seat per owner discussion, coordinator dispatch 2026-07-14)
+executor: next substrate-kit session
+do: Guard the kit stop-hook / session close-out final-push path: before nudging or executing any end-of-session push, check whether the current branch's PR is already merged (equivalently: `git merge-base --is-ancestor HEAD origin/main` after a fetch). If merged, SKIP the push entirely (or divert to a rescue ref) instead of re-creating the branch GitHub just deleted. This relays curious-research PROPOSAL 003 — and MUST be read with its same-day ADDENDUM: a controlled counter-datapoint showed a branch surviving auto-merge with ZERO post-merge push, so the revised best-fit is that GitHub's "Automatically delete head branches" is NOT firing for PRs merged by github-actions[bot] (primary cause, GitHub-side); the stop-hook guard is retained as defensive hygiene closing the secondary, proven re-creation path.
+why: Four-repo fleet census (read-only, 2026-07-14 ~13:4x–14:0xZ): 460/491 surviving claude/* agent branches (93.7%) sit at EXACTLY their merged PR's head SHA — websites 154/167 · venture-lab 135/137 · fleet-manager 39/41 · superbot-next 132/146. Six diverged survivors were pushed seconds-to-minutes AFTER merged_at (websites #19 merged 2026-07-09T11:37:39Z → post-merge commit 11:44:26Z, +1 commit, fm-seat spot-verified live; fleet-manager #122 pushed 21s after its 2026-07-12T19:49:25Z merge, fm-seat spot-verified live — tip is a rewritten sibling of the merge-time head, not a descendant; venture-lab #150, #173 and superbot-next #469, #349 census-reported, not individually re-verified). Two arbitrary exact-match samples (websites #240, #212 — both merged by github-actions[bot], tip == merged PR head) independently corroborate the ADDENDUM's mechanism. Source: menno420/curious-research control/outbox.md, "PROPOSAL 003 · … · to: Fleet Manager · kit-delta" + "PROPOSAL 003 — ADDENDUM · 2026-07-14T13:44Z" (the PROPOSAL header's 14:45Z stamp is the known curious-research clock artifact).
+done-when: the guard is released in a kit version + adopter repos regenerate, before the fleet reboot planned later on 2026-07-14.
+
+Relayed material — verbatim key passages from curious-research `control/outbox.md`:
+
+> **Problem — the kit's Stop hook re-creates merged PR branches, defeating GitHub's
+> "Automatically delete head branches" fleet-wide, wherever the kit runs.** When a session's
+> PR merges, GitHub deletes the head branch — but the finished session's clone still has that
+> branch checked out. The Stop hook's "there are uncommitted changes — commit and push to the
+> remote branch" nudge then prompts one last `git push`, and pushing a local branch whose
+> remote ref was just deleted **silently re-creates the ref at the same commit**. The result:
+> every merged session branch quietly comes back, and the repo accumulates dead branches
+> despite auto-delete being on.
+>
+> […]
+>
+> **Suggested fix:** before nudging (or executing) a push, the Stop hook checks whether the
+> current branch's tip is already contained in `origin/main`'s history (`git merge-base
+> --is-ancestor HEAD origin/main`, or equivalently: the branch's PR is merged). If so, it
+> detaches / skips the push entirely instead of re-creating a branch GitHub just cleaned up.
+
+> **Controlled counter-datapoint (2026-07-14T13:38Z):** PR #46's own branch
+> (`claude/branch-mystery-final`) survived its 13:37:07Z auto-merge with **ZERO post-merge
+> push from the authoring session** — that session had already checked out `main`, and
+> `git ls-remote` verified the ref's survival at +1.2 and +3.5 minutes post-merge. This
+> weakens the stop-hook re-push mechanism as the **primary** cause of the surviving branches.
+>
+> **Revised best-fit, consistent with ALL owner-confirmed facts** (auto-delete ON since repo
+> creation; no deletion restrictions anywhere): GitHub's "Automatically delete head branches"
+> is **NOT firing for PRs completed by auto-merge** (merged by `github-actions[bot]`) in this
+> repo — every one of PRs #2–#46 landed that way; the one clean exception, hand-UI-merged
+> PR #1, is among the few whose branch vanished. Community reports of an
+> auto-merge/auto-delete gap exist.
+>
+> **Disposition:** primary cause is GitHub-side (owner can confirm by hand-merging any future
+> PR from the UI and watching its branch vanish); PROPOSAL 003's stop-hook fix stays as
+> defensive hygiene; the one-time sweep instruction (walkthrough §C item 1) is unchanged and
+> still terminal.
