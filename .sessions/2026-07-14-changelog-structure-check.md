@@ -1,6 +1,6 @@
 # 2026-07-14 — CHANGELOG `[Unreleased]` structure checker
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 About to (opening declaration): build
 `docs/ideas/changelog-unreleased-structure-checker-2026-07-09.md` — a
