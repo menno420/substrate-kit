@@ -1,0 +1,1 @@
+- `claude/verify-release` · **release runbook §5 post-release verifier** — scripts/verify_release.py + tests/test_verify_release.py + runbook §5 "Mechanized:" pointer (the #356 card's 💡 ender; completes the cut_release.py pair) · 2026-07-14
