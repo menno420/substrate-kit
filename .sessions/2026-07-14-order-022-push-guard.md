@@ -1,6 +1,6 @@
 # 2026-07-14 — ORDER 022: stop-hook merged-head final-push guard
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 About to (opening declaration): execute inbox ORDER 022 — guard the kit
 stop-hook session-close final-push path so a session whose branch head is
