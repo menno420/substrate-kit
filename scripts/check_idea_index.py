@@ -100,6 +100,12 @@ import sys
 from pathlib import Path
 from typing import NamedTuple
 
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
+
+import _git_truth  # noqa: E402
+
 IDEAS_RELDIR = "docs/ideas"
 README_NAME = "README.md"
 
@@ -335,6 +341,16 @@ def _git(root: Path, *args: str) -> tuple[int, str]:
     return proc.returncode, proc.stdout
 
 
+def _truth_runner(root: Path) -> "_git_truth.GitCommand":
+    """Adapt this module's ``_git`` to the shared git-truth runner seam."""
+
+    def run(args):
+        rc, out = _git(root, *args)
+        return rc, out, ""
+
+    return run
+
+
 def load_git_reality(root: Path) -> tuple[GitReality | None, str]:
     """Return ``(reality, "")`` or ``(None, why-skipped)``.
 
@@ -345,10 +361,10 @@ def load_git_reality(root: Path) -> tuple[GitReality | None, str]:
     rc, out = _git(root, "rev-parse", "--is-inside-work-tree")
     if rc != 0 or out.strip() != "true":
         return None, "not a git work tree (or git unavailable)"
-    rc, out = _git(root, "rev-parse", "--is-shallow-repository")
-    if rc != 0:
+    shallow = _git_truth.is_shallow(_truth_runner(root))
+    if shallow is None:
         return None, "git rev-parse failed"
-    if out.strip() == "true":
+    if shallow:
         return None, "shallow clone — history truncated, ship claims unverifiable"
     ref = None
     for candidate in ("origin/main", "main", "HEAD"):
@@ -485,8 +501,18 @@ def check_merged_reality(
         in_grace = grace_ref is None or (today - grace_ref).days <= GRACE_WINDOW_DAYS
 
         if not _is_null(sha_raw):
-            rc, _ = _git(reality.root, "merge-base", "--is-ancestor", sha_raw, reality.ref)
-            if rc in (1, 128) and not in_grace:
+            # missing_as_no: reality.ref is verified to exist upstream
+            # (load_git_reality), and the clone is provably NOT shallow by
+            # the time we get here — so rc 128 (commit absent from a full
+            # history) is a genuine negative. On a shallow clone the shared
+            # rule degrades the answer to unprovable → no advisory.
+            answer = _git_truth.provable_ancestry(
+                _truth_runner(reality.root),
+                sha_raw,
+                reality.ref,
+                missing_as_no=True,
+            )
+            if answer.verdict == _git_truth.NO and not in_grace:
                 advisories.append(
                     Finding(
                         rel,
