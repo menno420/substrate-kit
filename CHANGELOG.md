@@ -50,6 +50,22 @@ probe failed both arms; T5 ignored). **KF-8 trend at 9 scored rows: 1 PASS
 
 ### Added
 
+- **📊 Model-line payload lint (idea 2026-07-11, PR #352).** `check` (full
+  lane) now lints the newest completed session cards' `📊 Model:` payload —
+  advisory-only, never exit-affecting: a needle-bearing line with no valid
+  three-field `·` payload (`model-line-shape` — the harvest silently records
+  NOTHING from such a card), an exact model-ID token in the model segment
+  (`model-line-exact-id`, the ORDER 012 family-level bar), an off-taxonomy
+  effort segment (`model-line-effort`), or a task-class segment that does
+  not prefix-match one of the 9 PL-004 classes (`model-line-class`). Every
+  finding quotes the taught byte-form verbatim as the fix path. The
+  model-line grammar (needle, taught form, effort values, task classes,
+  exact-ID detector, payload parser) moved to `engine.grammar` (EAP §6.8
+  one-home pattern); `loop.telemetry` consumes the same objects, pinned by
+  identity tests. Measured at build time: 124 of the kit's own 178 completed
+  cards drifted (174 findings), so the check-time scan is bounded to the
+  newest-10 window (`window=0` = the unbounded measurement lane); 10 of the
+  newest 10 failed, so the nudge is live from this PR's first run.
 - **CHANGELOG `[Unreleased]` structure checker (idea 2026-07-09, PR #351).**
   `scripts/check_changelog_structure.py` (kit-repo tooling, ci.yml
   kit-quality lane — NOT wired into `bootstrap check` or any adopter
