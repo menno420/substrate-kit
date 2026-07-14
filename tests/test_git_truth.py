@@ -186,3 +186,34 @@ class TestDegradedSeams:
         rc, _out, err = run(["rev-parse", "--is-shallow-repository"])
         assert rc != 0
         assert gt.is_shallow(run) is None
+
+
+# ---------------------------------------------- engine port parity (ORDER 022)
+
+
+class TestEngineParity:
+    """Pin the engine-shipped port against this scripts/ original.
+
+    ``engine/lib/git_truth.py`` exists because the ORDER 022 stop-hook push
+    guard must ride dist/bootstrap.py into adopters, while scripts/ never
+    ships. Two copies of one rule invite drift — this test makes any
+    behavioral edit to either copy fail until both move together.
+    """
+
+    def test_shared_primitives_are_source_identical(self):
+        import inspect
+
+        from engine.lib import git_truth as engine_gt
+
+        for name in ("make_runner", "is_shallow", "provable_ancestry"):
+            assert inspect.getsource(getattr(gt, name)) == inspect.getsource(
+                getattr(engine_gt, name)
+            ), f"{name} drifted between scripts/_git_truth.py and engine/lib/git_truth.py"
+        assert inspect.getsource(gt.AncestryAnswer) == inspect.getsource(
+            engine_gt.AncestryAnswer
+        )
+        assert (gt.YES, gt.NO, gt.UNPROVABLE) == (
+            engine_gt.YES,
+            engine_gt.NO,
+            engine_gt.UNPROVABLE,
+        )

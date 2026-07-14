@@ -52,4 +52,4 @@ select = [
 ]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
-"subprocess".msg = "subprocess is banned in engine code (§3.2): the engine is pure stdlib logic; shelling out is host-CI sugar. The ONE carve-out is cli.py's local-ritual parity legs (ORDER 018: _derive_inbox_base + _derive_diff_session_cards + _run_preflight_scripts) — noqa'd inline with the rationale at the import site; checkers themselves never shell out."
+"subprocess".msg = "subprocess is banned in engine code (§3.2): the engine is pure stdlib logic; shelling out is host-CI sugar. TWO carve-outs, each noqa'd inline with the rationale at the import site: cli.py's local-ritual parity legs (ORDER 018: _derive_inbox_base + _derive_diff_session_cards + _run_preflight_scripts) and lib/git_truth.py's make_runner (ORDER 022: the stop-hook push guard's only evidence source is local git; consumers take the GitCommand seam). Checkers themselves never shell out."

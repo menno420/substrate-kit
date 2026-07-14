@@ -34,6 +34,10 @@ MODULE_ORDER = (
     "lib/state.py",
     "lib/guardrail.py",
     "lib/modes.py",
+    # Before hooks/stop_check.py (the ORDER 022 merged-head push guard's
+    # ancestry primitive). Engine-shipped port of scripts/_git_truth.py —
+    # pure stdlib, no engine references; parity-pinned by tests.
+    "lib/git_truth.py",
     # Before every control-band checker + currency.py: the kit-owned
     # control-plane grammar constants they all consume (EAP §6.8). Pure
     # stdlib-re, no engine references.
