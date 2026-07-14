@@ -1,0 +1,1 @@
+- claude/adopters-regen-post-141 · registry refresh after superbot-games #141 merged · 2026-07-14
