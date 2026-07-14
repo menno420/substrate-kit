@@ -1,5 +1,5 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-14T19:0xZ · phase: post-EAP — v1.17.0 bump PR OPEN (#377, born-red by design until its card flips); ORDER 023 release half in flight; next = #377 lands on green → release.yml dispatch + verify + adopter regen wave
+updated: 2026-07-14T18:53Z · phase: post-EAP — v1.17.0 bump PR OPEN (#377, born-red by design until its card flips); ORDER 023 release half in flight; next = #377 lands on green → release.yml dispatch + verify + adopter regen wave
 
 ## Routines
 - Failsafe: "Self Improvement failsafe wake" trig_01LsHxvnYnpQ59n7iQTPNNF3 · 0 */2 * * * · bound live coordinator. Pacemaker idles to failsafe post-consolidation (backlog dry).
