@@ -194,6 +194,12 @@ story, the frontmatter keeps the score.
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [`check_idea_index` merged-reality leg — grace-windowed git-truth verification](idea-index-merged-reality-2026-07-14.md)
+  — **shipped** kit PR #355 (2026-07-14): shipped-idea frontmatter verified
+  against local git history (PR merge marker on main, real-merge-date
+  reconciliation, optional `merged_sha` ancestry) — advisory-first with a
+  7-day grace window so in-flight/parked shipping PRs never false-red;
+  only malformed SHA syntax fails hard. Window closes 2026-08-13.
 - [Kit-side `scripts/preflight.py` — CI-convergence dogfood](kit-preflight-dogfood-2026-07-14.md)
   — **shipped** kit PR #354 (2026-07-14): the kit plants the preflight
   wrapper its own config default has named since #332, retiring the
