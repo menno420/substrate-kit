@@ -194,6 +194,12 @@ story, the frontmatter keeps the score.
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [Kit-side `scripts/preflight.py` — CI-convergence dogfood](kit-preflight-dogfood-2026-07-14.md)
+  — **shipped** kit PR #354 (2026-07-14): the kit plants the preflight
+  wrapper its own config default has named since #332, retiring the
+  standing not-found NOTE and giving local sessions a one-command mirror of
+  the CI kit-quality job (seven legs, worst-exit; nested-run self-skip on
+  `SUBSTRATE_KIT_PREFLIGHT`). Window closes 2026-08-13.
 - [`--apply-docs` is a single-shot window — post-hoc apply from the banked archive](upgrade-apply-docs-single-shot-window-2026-07-09.md)
   — **shipped** kit PR #106 (2026-07-10, full mechanism): the interim hint
   correction shipped in #92; this PR builds the real post-hoc path. A
