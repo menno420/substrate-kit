@@ -1,1 +1,0 @@
-- `claude/claims-order-collision` · **cross-branch ORDER-collision guard: claim --order segment + check_claims overlap advisory + claim-verb refusal** · src/engine + tests + dist regen · 2026-07-14
