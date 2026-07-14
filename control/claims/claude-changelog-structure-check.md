@@ -1,0 +1,1 @@
+- claude/changelog-structure-check · CHANGELOG `[Unreleased]` structure checker (scripts/ + ci.yml kit-quality + tests; idea 2026-07-09) · 2026-07-14
