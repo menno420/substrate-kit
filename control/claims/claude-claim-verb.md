@@ -1,0 +1,1 @@
+- `claude/claim-verb` · **bootstrap claim CLI verb + status restamp + release-checklist drift pin** — mechanical grammar-valid claim writer/deleter (the #358 card's 💡 ender) · src/engine/ + tests/ + dist/ + control/ · 2026-07-14
