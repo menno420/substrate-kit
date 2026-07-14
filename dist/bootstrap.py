@@ -15,6 +15,7 @@ from collections.abc import Mapping, Sequence
 from collections.abc import Sequence
 from contextlib import AbstractContextManager, contextmanager
 from dataclasses import asdict, dataclass, field, fields
+from dataclasses import dataclass
 from dataclasses import dataclass, field
 from datetime import date
 from datetime import date as _led_date
@@ -27,6 +28,7 @@ from typing import Any
 from typing import Any, NamedTuple
 from typing import Callable
 from typing import Callable, Mapping
+from typing import Callable, Sequence
 from typing import NamedTuple
 import argparse
 import ast
@@ -665,6 +667,144 @@ def active_practices(
     sessions = int(state.get("session_count", 0))
     unlocked = 1 + sessions // interval
     return list(GUIDED_ROLLOUT[:unlocked])
+
+# --- engine/lib/git_truth.py ---
+"""Safe git-ancestry answers for engine code (ORDER 022 push guard).
+
+Engine-shipped port of the repo-tooling helper ``scripts/_git_truth.py``
+(PR #358): that module is deliberately repo-level ("lives in scripts/, never
+ships in dist/bootstrap.py, adopter repos never receive it"), but the ORDER
+022 stop-hook merged-head push guard must ride the dist into every adopter —
+so the primitive lives here too, byte-identical in behavior, with a parity
+test (``tests/test_git_truth.py``) pinning the two copies against drift.
+
+THE FACT THIS MODULE OWNS: **a shallow (grafted) clone severs real ancestry
+paths, so a NEGATIVE git ancestry answer on one proves nothing.** Container
+clones are routinely shallow, and on such a clone ``git merge-base
+--is-ancestor A B`` returns a FALSE negative for commits that ARE ancestors
+on origin (live-hit in kit PRs #355 and #357). The rule: **a positive
+ancestry answer is still a proof; a negative one on a shallow clone degrades
+to "unprovable" — callers SKIP honestly, never false-FAIL.**
+
+Seam: every function takes a ``GitCommand`` runner —
+``run(args) -> (returncode, stdout_text, stderr_text)`` — so callers keep
+their own subprocess wrappers / injected test fakes (``make_runner`` is the
+default subprocess-backed one). Verdicts:
+
+- ``YES``        — provable: git answered "is an ancestor" (rc 0).
+- ``NO``         — provable negative: git said no (rc 1) on a NOT-shallow
+                   clone; with ``missing_as_no=True`` an rc-128
+                   unknown-commit answer on a NOT-shallow clone also counts
+                   (full history + absent commit = genuinely not reachable).
+- ``UNPROVABLE`` — a negative on a confirmed-shallow clone, or any git
+                   error/other rc: not evidence of anything; degrade (SKIP),
+                   never FAIL on it.
+"""
+
+
+# §3.2 carve-out #2 (ORDER 022, mirroring cli.py's ORDER 018 carve-out):
+# subprocess is banned in engine code — but the stop-hook merged-head push
+# guard's ONLY evidence source is the local clone's git (is this branch's
+# head already in origin/main?), and hooks run locally at session stop where
+# no CI bash wrapper exists to do the git work. ``make_runner`` is the one
+# subprocess touchpoint; every consumer takes the ``GitCommand`` seam so
+# tests inject fakes and never shell out. Fail-open: rc 127 on any failure.
+
+# run(args) -> (returncode, stdout text, stderr text). rc 127 = git itself
+# could not run (the convention check_idea_index._git established).
+GitCommand = Callable[[Sequence[str]], tuple[int, str, str]]
+
+YES = "yes"
+NO = "no"
+UNPROVABLE = "unprovable"
+
+
+@dataclass(frozen=True)
+class AncestryAnswer:
+    """One safe ancestry answer: the verdict plus the raw evidence behind it.
+
+    ``verdict``    — YES / NO / UNPROVABLE (module constants).
+    ``returncode`` — the raw ``merge-base --is-ancestor`` exit code.
+    ``shallow``    — True/False when shallowness was checked and determinable,
+                     None when not checked (rc 0) or undeterminable.
+    ``detail``     — stderr of the failed git call for UNPROVABLE-on-error,
+                     or a one-line reason for the shallow degradation.
+    """
+
+    verdict: str
+    returncode: int
+    shallow: bool | None = None
+    detail: str = ""
+
+
+def make_runner(root: Path, timeout: int = 30) -> GitCommand:
+    """Default subprocess-backed runner rooted at ``root`` (rc 127 = no git)."""
+
+    def run(args: Sequence[str]) -> tuple[int, str, str]:
+        try:
+            proc = subprocess.run(
+                ["git", "-C", str(root), *args],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            return 127, "", str(exc)
+        return proc.returncode, proc.stdout, proc.stderr
+
+    return run
+
+
+def is_shallow(run: GitCommand) -> bool | None:
+    """True/False per ``rev-parse --is-shallow-repository``; None = unknown.
+
+    None (git errored / unavailable) is deliberately distinct from False:
+    "couldn't even ask" must never be read as "provably a full clone".
+    """
+    rc, out, _err = run(["rev-parse", "--is-shallow-repository"])
+    if rc != 0:
+        return None
+    return out.strip() == "true"
+
+
+def provable_ancestry(
+    run: GitCommand,
+    ancestor: str,
+    descendant: str,
+    *,
+    missing_as_no: bool = False,
+) -> AncestryAnswer:
+    """Answer "is ``ancestor`` an ancestor of ``descendant``?" — safely.
+
+    The one rule this module exists for: a negative answer is only evidence
+    on a NOT-shallow clone. On a confirmed-shallow clone it degrades to
+    UNPROVABLE (the caller SKIPs, never FAILs). ``missing_as_no`` opts in to
+    treating rc 128 (unknown/invalid commit) as a real negative — sound only
+    where the caller has already pinned the ref side to exist (the
+    ``check_idea_index`` merged-reality policy); the default keeps rc 128
+    UNPROVABLE (``verify_release``'s "could not test" policy).
+    """
+    rc, _out, err = run(["merge-base", "--is-ancestor", ancestor, descendant])
+    if rc == 0:
+        return AncestryAnswer(YES, rc)
+    shallow = is_shallow(run)
+    if shallow is True and rc in (1, 128):
+        # Both negative shapes are the graft class on a shallow clone: rc 1
+        # (paths severed — the #357 live hit) and rc 128 (the commit itself
+        # outside the truncated history — the #355 class).
+        return AncestryAnswer(
+            UNPROVABLE,
+            rc,
+            shallow=True,
+            detail=(
+                "negative ancestry answer on a SHALLOW (grafted) clone — "
+                "unreliable; re-check on a full clone"
+            ),
+        )
+    if rc == 1 or (rc == 128 and missing_as_no):
+        return AncestryAnswer(NO, rc, shallow=shallow)
+    return AncestryAnswer(UNPROVABLE, rc, shallow=shallow, detail=err.strip())
 
 # --- engine/grammar.py ---
 """Control-plane grammar — THE single source of truth (EAP §6.8).
@@ -10994,7 +11134,13 @@ what the session ritual still owes —
   fail-open, when the protocol or the anchor is absent; in a multi-lane
   repo (ORDER 004) ANY lane's fresh heartbeat clears the advisory (a
   session cannot know which lane it belongs to, so it never nags a lane
-  that isn't its own).
+  that isn't its own);
+- the current branch's head is already merged to ``origin/main``
+  (``_stop_push_guard``, ORDER 022) — the session's final push would only
+  re-create the branch GitHub just deleted, so the advisory says SKIP it,
+  loudly and honestly. Fail-open by design: unprovable ancestry (shallow
+  clone / failed fetch) lets the push proceed with a NOTE — a wrongly
+  skipped push loses work, a wrongly executed one only re-creates a branch.
 
 Returns ``[]`` when all clean. Advisory only, and it **fails open**: every
 check runs inside its own guard, so a bad state document or an unreadable log
@@ -11101,12 +11247,81 @@ def _stop_status(root: Path, state: dict[str, Any], config: Config) -> list[str]
     ]
 
 
+# Branches whose final push is normal flow, never the deleted-branch
+# re-creation class the ORDER 022 guard exists for: the default branch
+# (pushing main is ordinary work) and a detached HEAD (no branch ref for a
+# bare `git push` to re-create).
+_PUSH_GUARD_EXEMPT_BRANCHES = frozenset({"", "HEAD", "main", "master"})
+
+
+def _stop_push_guard(root: Path, run: GitCommand | None = None) -> list[str]:
+    """Advise SKIPPING the final push when the branch head is already merged.
+
+    ORDER 022 (curious-research PROPOSAL 003 + same-day ADDENDUM): when a
+    session's PR merges, GitHub deletes the head branch — but the finished
+    session's clone still has it checked out, and one last nudged ``git
+    push`` silently re-creates the ref at the same commit (fleet census
+    2026-07-14: 460/491 surviving ``claude/*`` branches sit at exactly their
+    merged PR's head SHA). The ADDENDUM's revised best-fit makes the primary
+    cause GitHub-side (auto-delete not firing for bot-merged PRs); this
+    guard is retained as defensive hygiene closing the proven secondary
+    re-creation path.
+
+    Decision, after ``git fetch origin main`` (ancestry via the shared
+    ``provable_ancestry`` primitive — shallow-clone semantics included):
+
+    - head provably merged (ancestor of ``origin/main``) → one loud, honest
+      SKIP advisory (defensive hygiene, NOT an error);
+    - provably unmerged on a fresh fetch → silent, push proceeds unchanged;
+    - unprovable (shallow clone / failed fetch / git error) → push proceeds
+      with a NOTE — fail-open, because a wrongly-skipped push loses work
+      while a wrongly-executed one only re-creates a branch.
+
+    Not a git repo / no git / detached HEAD / on the default branch →
+    silent (nothing this guard protects).
+    """
+    if run is None:
+        run = make_runner(root)
+    rc, out, _err = run(["rev-parse", "--abbrev-ref", "HEAD"])
+    if rc != 0:
+        return []  # not a git repo, or no git — nothing to guard (fail open)
+    branch = out.strip()
+    if branch in _PUSH_GUARD_EXEMPT_BRANCHES:
+        return []
+    fetch_rc, _out, fetch_err = run(["fetch", "origin", "main", "--quiet"])
+    answer = provable_ancestry(run, "HEAD", "origin/main")
+    if answer.verdict == YES:
+        # A positive ancestry answer is a proof even against a stale
+        # origin/main (a stale ref only ever lags — containment can only
+        # grow), so the fetch outcome does not gate the SKIP.
+        return [
+            f"branch '{branch}' head already merged to origin/main "
+            "(PR merged); SKIP the final push — do not re-create the "
+            "branch GitHub just deleted (defensive hygiene, not an error; "
+            "divert genuinely new work to a rescue ref instead)",
+        ]
+    if answer.verdict == NO and fetch_rc == 0:
+        return []  # provably unmerged against a fresh origin/main — normal flow
+    if fetch_rc != 0:
+        reason = "fetch of origin/main failed: " + (
+            fetch_err.strip().splitlines()[0] if fetch_err.strip() else f"rc {fetch_rc}"
+        )
+    else:
+        reason = answer.detail or f"git merge-base rc {answer.returncode}"
+    return [
+        f"NOTE: merged-head push guard could not prove ancestry ({reason}) "
+        "— final push proceeds (fail-open: a wrongly-skipped push loses "
+        "work; a wrong push only re-creates a branch)",
+    ]
+
+
 def evaluate_stop(root: Path, config: Config, backend: Any) -> list[str]:
     """Return the session-close advisory lines ([] when all clean).
 
-    Five checks in fixed order: session log, open blocking questions,
+    Six checks in fixed order: session log, open blocking questions,
     compaction cadence, reflection mining, the control-status heartbeat
-    (KL-8). Each runs inside its own guard so
+    (KL-8), the merged-head final-push guard (ORDER 022). Each runs inside
+    its own guard so
     one failing check never suppresses the others — the stop hook is advisory
     and fails open by contract.
     """
@@ -11117,6 +11332,7 @@ def evaluate_stop(root: Path, config: Config, backend: Any) -> list[str]:
         lambda: _stop_compaction(state, config),
         lambda: _stop_reflections(state),
         lambda: _stop_status(root, state, config),
+        lambda: _stop_push_guard(root),
     )
     advisories: list[str] = []
     for check in checks:

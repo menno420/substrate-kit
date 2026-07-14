@@ -17,7 +17,13 @@ what the session ritual still owes —
   fail-open, when the protocol or the anchor is absent; in a multi-lane
   repo (ORDER 004) ANY lane's fresh heartbeat clears the advisory (a
   session cannot know which lane it belongs to, so it never nags a lane
-  that isn't its own).
+  that isn't its own);
+- the current branch's head is already merged to ``origin/main``
+  (``_stop_push_guard``, ORDER 022) — the session's final push would only
+  re-create the branch GitHub just deleted, so the advisory says SKIP it,
+  loudly and honestly. Fail-open by design: unprovable ancestry (shallow
+  clone / failed fetch) lets the push proceed with a NOTE — a wrongly
+  skipped push loses work, a wrongly executed one only re-creates a branch.
 
 Returns ``[]`` when all clean. Advisory only, and it **fails open**: every
 check runs inside its own guard, so a bad state document or an unreadable log
@@ -33,6 +39,7 @@ from typing import Any
 from engine.checks.check_session_log import check_log, latest_session_log
 from engine.checks.check_status_current import heartbeat_relpaths
 from engine.lib.config import Config
+from engine.lib.git_truth import NO, YES, GitCommand, make_runner, provable_ancestry
 from engine.loop.handoff import SESSION_ANCHOR_KEY
 from engine.loop.maintenance import compaction_due
 
@@ -133,12 +140,81 @@ def _stop_status(root: Path, state: dict[str, Any], config: Config) -> list[str]
     ]
 
 
+# Branches whose final push is normal flow, never the deleted-branch
+# re-creation class the ORDER 022 guard exists for: the default branch
+# (pushing main is ordinary work) and a detached HEAD (no branch ref for a
+# bare `git push` to re-create).
+_PUSH_GUARD_EXEMPT_BRANCHES = frozenset({"", "HEAD", "main", "master"})
+
+
+def _stop_push_guard(root: Path, run: GitCommand | None = None) -> list[str]:
+    """Advise SKIPPING the final push when the branch head is already merged.
+
+    ORDER 022 (curious-research PROPOSAL 003 + same-day ADDENDUM): when a
+    session's PR merges, GitHub deletes the head branch — but the finished
+    session's clone still has it checked out, and one last nudged ``git
+    push`` silently re-creates the ref at the same commit (fleet census
+    2026-07-14: 460/491 surviving ``claude/*`` branches sit at exactly their
+    merged PR's head SHA). The ADDENDUM's revised best-fit makes the primary
+    cause GitHub-side (auto-delete not firing for bot-merged PRs); this
+    guard is retained as defensive hygiene closing the proven secondary
+    re-creation path.
+
+    Decision, after ``git fetch origin main`` (ancestry via the shared
+    ``provable_ancestry`` primitive — shallow-clone semantics included):
+
+    - head provably merged (ancestor of ``origin/main``) → one loud, honest
+      SKIP advisory (defensive hygiene, NOT an error);
+    - provably unmerged on a fresh fetch → silent, push proceeds unchanged;
+    - unprovable (shallow clone / failed fetch / git error) → push proceeds
+      with a NOTE — fail-open, because a wrongly-skipped push loses work
+      while a wrongly-executed one only re-creates a branch.
+
+    Not a git repo / no git / detached HEAD / on the default branch →
+    silent (nothing this guard protects).
+    """
+    if run is None:
+        run = make_runner(root)
+    rc, out, _err = run(["rev-parse", "--abbrev-ref", "HEAD"])
+    if rc != 0:
+        return []  # not a git repo, or no git — nothing to guard (fail open)
+    branch = out.strip()
+    if branch in _PUSH_GUARD_EXEMPT_BRANCHES:
+        return []
+    fetch_rc, _out, fetch_err = run(["fetch", "origin", "main", "--quiet"])
+    answer = provable_ancestry(run, "HEAD", "origin/main")
+    if answer.verdict == YES:
+        # A positive ancestry answer is a proof even against a stale
+        # origin/main (a stale ref only ever lags — containment can only
+        # grow), so the fetch outcome does not gate the SKIP.
+        return [
+            f"branch '{branch}' head already merged to origin/main "
+            "(PR merged); SKIP the final push — do not re-create the "
+            "branch GitHub just deleted (defensive hygiene, not an error; "
+            "divert genuinely new work to a rescue ref instead)",
+        ]
+    if answer.verdict == NO and fetch_rc == 0:
+        return []  # provably unmerged against a fresh origin/main — normal flow
+    if fetch_rc != 0:
+        reason = "fetch of origin/main failed: " + (
+            fetch_err.strip().splitlines()[0] if fetch_err.strip() else f"rc {fetch_rc}"
+        )
+    else:
+        reason = answer.detail or f"git merge-base rc {answer.returncode}"
+    return [
+        f"NOTE: merged-head push guard could not prove ancestry ({reason}) "
+        "— final push proceeds (fail-open: a wrongly-skipped push loses "
+        "work; a wrong push only re-creates a branch)",
+    ]
+
+
 def evaluate_stop(root: Path, config: Config, backend: Any) -> list[str]:
     """Return the session-close advisory lines ([] when all clean).
 
-    Five checks in fixed order: session log, open blocking questions,
+    Six checks in fixed order: session log, open blocking questions,
     compaction cadence, reflection mining, the control-status heartbeat
-    (KL-8). Each runs inside its own guard so
+    (KL-8), the merged-head final-push guard (ORDER 022). Each runs inside
+    its own guard so
     one failing check never suppresses the others — the stop hook is advisory
     and fails open by contract.
     """
@@ -149,6 +225,7 @@ def evaluate_stop(root: Path, config: Config, backend: Any) -> list[str]:
         lambda: _stop_compaction(state, config),
         lambda: _stop_reflections(state),
         lambda: _stop_status(root, state, config),
+        lambda: _stop_push_guard(root),
     )
     advisories: list[str] = []
     for check in checks:

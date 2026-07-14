@@ -50,6 +50,25 @@ probe failed both arms; T5 ignored). **KF-8 trend at 9 scored rows: 1 PASS
 
 ### Added
 
+- **Stop-hook merged-head final-push guard (ORDER 022 / curious-research
+  PROPOSAL 003 + ADDENDUM, PR #371).** `evaluate_stop` gains a sixth
+  advisory, `_stop_push_guard`: after `git fetch origin main`, a session
+  branch whose head is already a provable ancestor of `origin/main` gets
+  one loud SKIP-the-final-push line instead of silently re-creating the
+  branch GitHub just deleted (fleet census 2026-07-14: 460/491 surviving
+  `claude/*` branches sit at exactly their merged PR's head SHA; the
+  ADDENDUM makes the primary cause GitHub-side — auto-delete not firing
+  for bot-merged PRs — so this closes the proven secondary re-creation
+  path as defensive hygiene). Fail-open by design: a provable unmerged
+  negative on a fresh fetch stays silent (push proceeds), and unprovable
+  ancestry (shallow clone / failed fetch / git error) lets the push
+  proceed with a NOTE — a wrongly-skipped push loses work, a wrong push
+  only re-creates a branch. Ancestry rides the new
+  `engine/lib/git_truth.py`, a dist-shipped port of the
+  `scripts/_git_truth.py` primitive (PR #358) parity-pinned
+  source-identical by test; it carries the second documented §3.2
+  subprocess carve-out (the guard's only evidence source is local git;
+  consumers take the `GitCommand` seam).
 - **Cross-branch ORDER-collision guard — `claim --order NNN` +
   `claims-order-collision` advisory (idea
   `order-claim-cross-branch-collision-2026-07-14`, the #362/#363 twin-build

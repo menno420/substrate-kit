@@ -2,7 +2,8 @@
 
 from datetime import date
 
-from engine.hooks.stop_check import evaluate_stop
+import engine.hooks.stop_check as stop_check
+from engine.hooks.stop_check import _stop_push_guard, evaluate_stop
 from engine.lib.config import Config, save_config
 from engine.lib.state import JsonStateBackend, default_state
 
@@ -210,6 +211,123 @@ def test_status_multi_lane_any_fresh_lane_clears_the_advisory(tmp_path):
         f.write_text("# lane · status\nupdated: 2026-07-09T12:00Z\n", encoding="utf-8")
         os.utime(f, (mtime, mtime))
     assert evaluate_stop(tmp_path, config, backend) == []
+
+
+# ---------------------------------------------------------------------------
+# The merged-head final-push guard (ORDER 022)
+# ---------------------------------------------------------------------------
+
+
+def _fake_git(
+    branch="claude/order-022-test",
+    branch_rc=0,
+    fetch=(0, "", ""),
+    merge_base=(0, "", ""),
+    shallow="false",
+):
+    """Return a GitCommand fake covering the guard's four git calls."""
+
+    def run(args):
+        args = list(args)
+        if args[:2] == ["rev-parse", "--abbrev-ref"]:
+            return (branch_rc, branch + "\n", "" if branch_rc == 0 else "fatal: x")
+        if args[0] == "fetch":
+            return fetch
+        if args[:2] == ["merge-base", "--is-ancestor"]:
+            return merge_base
+        if args == ["rev-parse", "--is-shallow-repository"]:
+            return (0, shallow + "\n", "")
+        return (1, "", f"unexpected git call: {args}")
+
+    return run
+
+
+def test_push_guard_merged_head_advises_skip(tmp_path):
+    # Head is a provable ancestor of origin/main -> the ONE loud SKIP line.
+    lines = _stop_push_guard(tmp_path, _fake_git(merge_base=(0, "", "")))
+    assert len(lines) == 1
+    assert "already merged to origin/main" in lines[0]
+    assert "SKIP the final push" in lines[0]
+    assert "claude/order-022-test" in lines[0]
+    assert "not an error" in lines[0]
+
+
+def test_push_guard_merged_proof_holds_even_when_fetch_failed(tmp_path):
+    # A positive ancestry answer against a stale origin/main is still a
+    # proof (a stale ref only lags) -> SKIP, not NOTE.
+    lines = _stop_push_guard(
+        tmp_path,
+        _fake_git(fetch=(128, "", "fatal: unable to access"), merge_base=(0, "", "")),
+    )
+    assert len(lines) == 1
+    assert "SKIP the final push" in lines[0]
+
+
+def test_push_guard_unmerged_head_is_silent(tmp_path):
+    # Provable negative on a fresh fetch + full clone -> push proceeds, no line.
+    lines = _stop_push_guard(
+        tmp_path,
+        _fake_git(merge_base=(1, "", ""), shallow="false"),
+    )
+    assert lines == []
+
+
+def test_push_guard_shallow_clone_notes_and_proceeds(tmp_path):
+    # Negative on a confirmed-shallow clone is UNPROVABLE -> fail-open NOTE.
+    lines = _stop_push_guard(
+        tmp_path,
+        _fake_git(merge_base=(1, "", ""), shallow="true"),
+    )
+    assert len(lines) == 1
+    assert lines[0].startswith("NOTE: merged-head push guard")
+    assert "final push proceeds" in lines[0]
+    assert "SHALLOW" in lines[0]
+
+
+def test_push_guard_failed_fetch_notes_and_proceeds(tmp_path):
+    # A negative against a fetch that FAILED is stale -> fail-open NOTE
+    # naming the fetch failure, never a silent (falsely confident) pass.
+    lines = _stop_push_guard(
+        tmp_path,
+        _fake_git(
+            fetch=(128, "", "fatal: unable to access 'origin'"),
+            merge_base=(1, "", ""),
+            shallow="false",
+        ),
+    )
+    assert len(lines) == 1
+    assert lines[0].startswith("NOTE: merged-head push guard")
+    assert "fetch of origin/main failed" in lines[0]
+    assert "final push proceeds" in lines[0]
+
+
+def test_push_guard_exempt_branches_are_silent(tmp_path):
+    # Default branch and detached HEAD are never the re-creation class,
+    # even with a merged head.
+    for branch in ("main", "master", "HEAD"):
+        lines = _stop_push_guard(tmp_path, _fake_git(branch=branch))
+        assert lines == [], branch
+
+
+def test_push_guard_outside_git_repo_is_silent(tmp_path):
+    # rev-parse fails (not a repo / no git) -> nothing to guard (fail open).
+    lines = _stop_push_guard(tmp_path, _fake_git(branch="", branch_rc=128))
+    assert lines == []
+
+
+def test_push_guard_is_wired_into_evaluate_stop(tmp_path, monkeypatch):
+    # The guard runs as part of the stop advisories: with everything else
+    # clean, a merged head still surfaces the SKIP line via evaluate_stop.
+    config, backend = _init(tmp_path, reflection_buffer=_mined_today())
+    _write_log(tmp_path, config)
+    monkeypatch.setattr(
+        stop_check,
+        "make_runner",
+        lambda root: _fake_git(merge_base=(0, "", "")),
+    )
+    lines = evaluate_stop(tmp_path, config, backend)
+    assert len(lines) == 1
+    assert "SKIP the final push" in lines[0]
 
 
 def test_status_multi_lane_all_stale_advises_naming_every_lane(tmp_path):
