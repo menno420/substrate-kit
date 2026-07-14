@@ -90,6 +90,7 @@ from engine.claim import (
 from engine.checks.check_seat_digest import check_seat_digest
 from engine.checks.check_setup_script import check_setup_script
 from engine.checks.check_skill_grounds import check_skill_grounds
+from engine.checks.check_staged_regen import check_staged_regen
 from engine.contextpack import generate_packs, load_pack_index
 from engine.currency import (
     ADOPTERS_RELPATH,
@@ -1159,6 +1160,15 @@ def cmd_check(
     # (UNVERIFIED per its provenance header; graduation is a later,
     # deliberate step). Full lane only: skills are not control-lane traffic.
     grounds_advisories = check_skill_grounds(target, state_dir=config.state_dir)
+    # Staged-artifact regen-lag scan (ORDER 019 item 6, idea
+    # staged-artifact-regen-lag-checker-2026-07-12): advisory-only by
+    # contract, like every nudge above — a staged artifact still carrying a
+    # ``${slot}`` whose answer is ALREADY filled in state is a one-command
+    # regen nudge (`upgrade` / pack `--build`), never a required-check red
+    # (UNVERIFIED per its PL-008 provenance header; a strict red would bomb
+    # every green adopter whose staged tree predates its answers). Full lane
+    # only: the staged tree is not control-lane traffic.
+    staged_regen_advisories = check_staged_regen(target, config)
     # Seat-digest drift guard (grounded-skills slice 6, §8 Q2=B):
     # advisory-only by contract, like every nudge above — a planted
     # docs/seat-digest.md whose bytes differ from a fresh render of its
@@ -1546,6 +1556,26 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=grounds_advisories,
+        )
+    if staged_regen_advisories and not status_only:
+        # Same warn-only contract as the advisories above (ORDER 019 item 6,
+        # advisory-first per the idea file's adopt-freely posture): a staged
+        # artifact lagging its own filled answers is surfaced + telemetry-
+        # recorded, never counted toward the exit code — the fix is one
+        # regen command, not a locked door.
+        _emit(
+            f"check: {len(staged_regen_advisories)} staged regen-lag advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in staged_regen_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=staged_regen_advisories,
         )
     if digest_advisories and not status_only:
         # Same warn-only contract as the advisories above (grounded-skills

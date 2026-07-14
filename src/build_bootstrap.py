@@ -123,6 +123,10 @@ MODULE_ORDER = (
     # after skills/skills.py (scans the SKILLS bodies + grounds): the
     # grounded-skills slice-2 command-grounding advisory.
     "checks/check_skill_grounds.py",
+    # After render.py (reuses find_placeholders_outside_code) and
+    # check_docs.py (Finding): the staged-artifact regen-lag advisory
+    # (ORDER 019 item 6).
+    "checks/check_staged_regen.py",
     # After seatdigest.py (byte-compares the planted doc against its fresh
     # render): the grounded-skills slice-6 drift guard.
     "checks/check_seat_digest.py",

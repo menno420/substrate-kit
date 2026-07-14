@@ -11,8 +11,10 @@ outcome: open
 
 > **Status:** `ideas`
 >
-> **State:** captured → route: quick-win engine checker leg, **frozen until
-> the 2026-07-11 feature freeze lifts** (new checker surface).
+> **State:** captured → route: quick-win engine checker leg → **built:
+> kit PR #345** (2026-07-13, ORDER 019 item 6 — `check_staged_regen`,
+> advisory-first; parked green for review-merge. Frontmatter ship fields
+> flip when the PR merges, per the idea-index outcome rules).
 > **Origin:** consumer:menno420/websites — friction issue
 > [#39](https://github.com/menno420/substrate-kit/issues/39), filed by the
 > 2026-07-09 fleet adoption review; triaged and closed by the 2026-07-12
