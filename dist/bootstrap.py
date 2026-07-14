@@ -1,4 +1,4 @@
-"""substrate-kit bootstrap v1.15.0 — GENERATED, DO NOT EDIT.
+"""substrate-kit bootstrap v1.16.0 — GENERATED, DO NOT EDIT.
 
 Single-file, stdlib-only. Regenerate from source with:
     python3 substrate-kit/src/build_bootstrap.py
@@ -93,7 +93,7 @@ DEFAULT_STATE_DIR = ".substrate"
 # (`kit_version`) + state by `adopt`/`upgrade`. Bump together with
 # `pyproject.toml` `[project] version` (a test pins them equal) and a new
 # CHANGELOG.md section (the release workflow refuses to publish without one).
-KIT_VERSION = "1.15.0"
+KIT_VERSION = "1.16.0"
 
 
 def _new_project_id() -> str:

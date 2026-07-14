@@ -1,5 +1,5 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-14T10:18Z · phase: EAP CLOSED — ORDER 021 walkthrough landed; every lane terminal or parked-with-citation
+updated: 2026-07-14T14:13Z · phase: EAP CLOSED — #317/#345 owner-ratified and merged; v1.16.0 bump PR prepared, HELD born-red for ORDER 022
 
 ## Routines
 - Failsafe: "Self Improvement failsafe wake" trig_01LsHxvnYnpQ59n7iQTPNNF3 · 0 */2 * * * · bound live coordinator. Pacemaker idles to failsafe post-consolidation (backlog dry).
@@ -11,19 +11,22 @@ Backlog phase (rungs c–d, all merged on green by the enabler): #349 seat-diges
 Suite: 1284 → 1495 tests. One rail breach (#342 worker self-arm) remediated <2 min, team memory written.
 
 ## Backlog state (honest)
-Buildable backlog DRY as of 04:0xZ — 11/11 buildable ideas consumed or shipped; remaining work is gated: owner #317 click (→ release wave: distributes #332 convergence + all tonight's checker/verb work + fixes kit's own 3 lagging staged artifacts) · #345 owner-click/review-merge · resident-lane kit: lines (→ adopters.md regen) · grounded-skills window ~07-19. No filler beyond this line (Q-0089).
+Buildable backlog DRY as of 04:0xZ — 11/11 buildable ideas consumed or shipped. Former gates cleared 2026-07-14T14:0xZ: #317 and #345 both owner-ratified and merged (see Ratified/merged below); release wave now gated only on ORDER 022's guard landing on main (v1.16.0 bump PR held born-red for it). Remaining: resident-lane kit: lines (→ adopters.md regen) · grounded-skills window ~07-19. No filler beyond this line (Q-0089).
 
 ## Parked
-- PR #317 — owner ratification park (do-not-automerge), head df7b324, checks green AT HEAD, but live-verified 2026-07-14T10:1xZ mergeable_state=dirty (conflicts vs main 86d8ac7: dist/bootstrap.py + docs/ideas/README.md — main moved ~50 commits overnight). Landing: freshen (merge main + dist regen) → owner-click. Gates the release wave.
-- PR #345 — regen-lag checker, do-not-automerge until review. NOT green: final head a5d86a3 has ZERO check runs (combined status pending, total_count 0) — it was already merge-conflicted at its 23:27Z push (the #340 conflicted-PR-gets-no-CI class), so CI never ran on it; the only branch CI run is the born-red failure on first commit 554d732. Conflicts vs main 86d8ac7: .substrate/guard-fires.jsonl + CHANGELOG.md + control/status.md. Landing: freshen → non-author review-merge.
+- (none — both former parks ratified 2026-07-14T14:0xZ, records below)
+
+## Ratified/merged (2026-07-14 reconcile)
+- PR #317 — RATIFIED + MERGED to main as 4f6e50c (2026-07-14T14:06:15Z, "Graduate the autonomy rider (Q-0271) + multi-repo reading path (Q-0272) into templates"). Payload verified on disk at HEAD: docs/program/rulings.md [PL-012] · src/engine/templates/reading-path.md.tmpl · tests/test_rider_graduation.py. Release wave UNGATED.
+- PR #345 — RATIFIED + MERGED to main as c603cc9 (2026-07-14T14:06:12Z, "Add staged-artifact regen-lag checker (ORDER 019 item 6)"). Payload verified on disk at HEAD: src/engine/checks/check_staged_regen.py · tests/test_check_staged_regen.py.
 
 ## Registry state
 - All adopters tree-current at v1.15.0 (incl. idea-engine tonight). adopters.md regen waits on resident kit: lines.
 kit: v1.15.0
 
 ## Next-2 baton
-1. Owner clicks #317 → run scripts/cut_release.py (new) → release wave + adopter upgrade PRs → scripts/verify_release.py (new).
-2. #345 review-merge · resident kit: lines → adopters regen · grounded-skills window ~07-19.
+1. v1.16.0 bump PR is OPEN and HELD born-red pending ORDER 022 (stop-hook merged-PR push guard must land on main first, per coordinator sequencing). On go: merge main into claude/release-v1.16.0, re-run scripts/cut_release.py so the CHANGELOG captures the guard, flip the card → merge on green → dispatch release.yml → scripts/verify_release.py → adopter upgrade wave.
+2. Resident kit: lines → adopters regen · grounded-skills window ~07-19.
 
 ⚑ FOR OWNER (unchanged standing set — full paste-ready field blocks verbatim in git history of this file @ 86d2a57):
 - P10 required-check swap (ruleset: require `kit-quality`, drop the two legacy contexts).

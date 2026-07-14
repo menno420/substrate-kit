@@ -68,7 +68,7 @@ jobs mirror it (see the P10 swap, section C).
 
 Everything below is owner-gated; agents are parked around each item. In order:
 
-1. **PR #317 — the release-wave unlock.** https://github.com/menno420/substrate-kit/pull/317
+1. **PR #317 — the release-wave unlock.** ✅ DONE 2026-07-14T14:06Z — owner-ratified and merged to main as `4f6e50c`; payload (PL-012 register entry + reading-path template + rider-graduation tests) verified on disk at HEAD. https://github.com/menno420/substrate-kit/pull/317
    Owner-ratification park (`do-not-automerge`), head `df7b324`, all checks
    green at head. **Live wrinkle (verified this session): it is now
    merge-conflicted with main** (`mergeable_state: dirty`; conflicts in
@@ -83,7 +83,7 @@ Everything below is owner-gated; agents are parked around each item. In order:
    VERIFY: the PR page shows "This branch has no conflicts" + `kit-quality`
    green on the new head, then after the wave `verify_release.py 1.16.0`
    prints all legs OK.
-2. **PR #345 — regen-lag checker.** https://github.com/menno420/substrate-kit/pull/345
+2. **PR #345 — regen-lag checker.** ✅ DONE 2026-07-14T14:06Z — merged to main as `c603cc9`; checker + tests verified on disk at HEAD. https://github.com/menno420/substrate-kit/pull/345
    Parked `do-not-automerge` for non-author review. **It cannot go green as
    it stands**: final head `a5d86a3` has ZERO check runs — it was already
    merge-conflicted at push time (23:27Z), so GitHub never built the merge
