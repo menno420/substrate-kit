@@ -1,1 +1,0 @@
-- `claude/order-021-closeout` · **ORDER 021 — EAP closeout walkthrough + #317/#345 park verifications** · docs/ + docs/operations/README.md + control/status.md + .sessions/ · order 021 · 2026-07-14
