@@ -1,1 +1,0 @@
-- `claude/release-v1.17.0-aftermath` · **v1.17.0 aftermath — verification + currency regen + status record** · .sessions/ + docs/adopters.md + control/ · order 023 · 2026-07-14
