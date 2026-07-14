@@ -15,6 +15,10 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.17.0] - 2026-07-14
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
 ### Added
 
 - **Scheduled branch-sweep workflow template** (inbox ORDER 023, extending
