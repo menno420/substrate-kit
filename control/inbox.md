@@ -281,3 +281,12 @@ Relayed material — verbatim key passages from curious-research `control/outbox
 > PR from the UI and watching its branch vanish); PROPOSAL 003's stop-hook fix stays as
 > defensive hygiene; the one-time sweep instruction (walkthrough §C item 1) is unchanged and
 > still terminal.
+
+## ORDER 023 · 2026-07-14T16:10Z · status: new
+
+priority: P1
+from: fleet-manager (relayed by the Fleet Manager seat per owner discussion, coordinator dispatch 2026-07-14)
+executor: next substrate-kit session
+do: Extends ORDER 022 (addendum as a new block — inbox appends are CI-enforced pure-append). The branch-litter remedy is now settled: ship a kit-templated SCHEDULED sweep workflow (e.g. `branch-sweep.yml`, daily or 6-hourly cron) that enumerates merged+closed PRs, DELETEs their head refs (`claude/*`, `codex/*`, `bot/*` patterns), skips any ref that is the head of an OPEN PR, and logs each deletion. Do NOT build it on `pull_request: closed` — that is a known trap: the fleet's merges are performed with GITHUB_TOKEN / app tokens, and events performed with GITHUB_TOKEN do not trigger workflows (docs.github.com "Automatic token authentication" recursion guard), so a closed-event cleanup would never fire for exactly the merges that need it.
+why: Web research settled ORDER 022's open mechanism question — GitHub's delete-branch-on-merge silently skips merges performed by app/bot actors, which covers every fleet auto-merge (armed via GITHUB_TOKEN / MCP app token): github.com/orgs/community/discussions/63409 (2023-08-10, app-token merges skip auto-delete) · cli/cli#9073 · the docs name only rules/rulesets as exclusions. Fleet evidence: fm census 2026-07-14 (460/491 surviving claude/* branches fingerprint-matched to their merged PR's head across four repos; coordinator additionally measured 551/562 spent refs in superbot) — fleet-manager `docs/findings/branch-recreation-census-2026-07-14.md`. The v1.16.0 stop-hook guard (ORDER 022, shipped) stays as defensive hygiene; the scheduled sweep is the reliable post-reboot self-cleaning remedy.
+done-when: sweep workflow template in a kit release + adopters regenerate. Priority P1 — the P0 stop-hook fix (already released in v1.16.0) stays first.
