@@ -537,6 +537,48 @@ def test_upgrade_enabler_regen_surfaces_carveouts_in_the_report(tmp_path):
         encoding="utf-8",
     )
     assert "Gate carve-outs" in report_text
+
+
+def test_upgrade_sweep_regen_surfaces_carveouts_in_the_report(tmp_path):
+    # ORDER 023: the scheduled branch sweep is kit-owned via the SAME
+    # mechanism as the gate and the enabler — an upgrade regenerates a
+    # hand-forked sweep in place, reports host additions as carve-outs in
+    # upgrade-report.md, and banks the full pre-regen copy.
+    from engine.adopt import BRANCH_SWEEP_RELPATH, branch_sweep_workflow
+
+    root, config, backend = _adopted(tmp_path)
+    sweep = root / BRANCH_SWEEP_RELPATH
+    sweep.parent.mkdir(parents=True)
+    hand_edited = branch_sweep_workflow() + (
+        "  notify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - name: host notifier\n"
+        "        run: echo swept\n"
+    )
+    sweep.write_text(hand_edited, encoding="utf-8")
+    _fake_old_dist(root)
+    running = _fake_new_dist(tmp_path)
+    lines = run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    assert sweep.read_text(encoding="utf-8") == branch_sweep_workflow()
+    assert any("host-added job 'notify'" in line for line in lines)
+    banked = list(
+        (root / config.state_dir / BACKUP_DIRNAME).glob(
+            "branch-sweep.pre-regen-*.yml",
+        )
+    )
+    assert len(banked) == 1
+    assert banked[0].read_text(encoding="utf-8") == hand_edited
+    report_text = (root / config.state_dir / "upgrade-report.md").read_text(
+        encoding="utf-8",
+    )
+    assert "Gate carve-outs" in report_text
     assert "host-added job 'notify'" in report_text
 
 

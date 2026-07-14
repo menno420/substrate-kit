@@ -15,6 +15,31 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Scheduled branch-sweep workflow template** (inbox ORDER 023, extending
+  ORDER 022's stop-hook guard): `branch_sweep_workflow()` generates a
+  kit-owned `.github/workflows/branch-sweep.yml` — daily cron (default
+  `17 3 * * *`) + `workflow_dispatch` with a `dry_run` input — that
+  enumerates merged+closed PRs and deletes their spent same-repo head refs
+  matching the agent-branch patterns (default `claude/*` · `codex/*` ·
+  `bot/*`), skipping (with a logged reason) any ref that is the head of an
+  OPEN PR, the default branch, fork heads, refs with no closed PR, and
+  refs whose tip moved on after their PR closed; every deletion is logged.
+  Least-privilege `permissions:` block (`contents: write`,
+  `pull-requests: read`). Deliberately scheduled, never
+  `pull_request: closed` — GITHUB_TOKEN-driven merge events don't trigger
+  workflows, so a closed-event cleanup would never fire for exactly the
+  app-token auto-merges whose branches GitHub's delete-branch-on-merge
+  silently skips (the fleet's branch-litter root cause; agent-side
+  deletion stays 403-walled per OA-10 — this workflow is the sanctioned
+  path). Lifecycle mirrors the auto-merge enabler exactly: staged always
+  at `<state_dir>/ci/branch-sweep.yml`, installed live by
+  `adopt --wire-enforcement`, kit-owned regen (carve-out bank + three-way
+  compare) once it exists. New `branch_sweep` config knob
+  (`branch_patterns`, `cron`) with fallback-on-empty at the consumer — a
+  stray `[]`/bare `*` can never widen the sweep to every branch.
+
 ## [1.16.0] - 2026-07-14
 
 **Benchmark outcome (KF-5 — travels into the next release's notes):** B1

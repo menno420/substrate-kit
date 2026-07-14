@@ -56,13 +56,16 @@ from engine.adopt import (
     ADOPT_PLAN,
     AUTOMERGE_ENABLER_RELPATH,
     BACKUP_DIRNAME,
+    BRANCH_SWEEP_RELPATH,
     LIVE_CI_RELPATH,
     _adopt_dest,
     _automerge_params,
+    _branch_sweep_params,
     _merge_model_doctrine,
     adopt,
     archive_dist,
     automerge_enabler_workflow,
+    branch_sweep_workflow,
     dist_version,
     doc_is_untouched,
     gate_carveouts,
@@ -710,9 +713,12 @@ def scan_gate_carveouts(root: Path, config: Config) -> list[str]:
     )
     enabler_patterns, enabler_context = _automerge_params(config)
     enabler_expected = automerge_enabler_workflow(enabler_patterns, enabler_context)
+    sweep_patterns, sweep_cron = _branch_sweep_params(config)
+    sweep_expected = branch_sweep_workflow(sweep_patterns, cron=sweep_cron)
     for relpath, expected in (
         (LIVE_CI_RELPATH, gate_expected),
         (AUTOMERGE_ENABLER_RELPATH, enabler_expected),
+        (BRANCH_SWEEP_RELPATH, sweep_expected),
     ):
         path = root / relpath
         if not path.is_file():

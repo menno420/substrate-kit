@@ -154,6 +154,33 @@ def _default_automerge() -> dict:
     }
 
 
+def _default_branch_sweep() -> dict:
+    """Return the scheduled branch-sweep knobs (inbox ORDER 023).
+
+    Parameterizes the kit-owned planted ``.github/workflows/
+    branch-sweep.yml`` (see ``adopt.branch_sweep_workflow``):
+
+    - ``branch_patterns`` — head-branch patterns the sweep may delete. A
+      trailing ``*`` is a prefix match (``claude/*`` → every ``claude/…``
+      head); anything else matches exactly. An empty list falls back to
+      the default at the consumer (the ``heartbeat_files`` doctrine: a
+      misconfiguration must not silently widen the sweep — a bare ``*``
+      would put EVERY branch in scope). Default covers the fleet's agent
+      actors: ``claude/*`` (session branches), ``codex/*`` and ``bot/*``
+      (sibling agent conventions). Deliberately NOT the automerge list:
+      ``claim/*`` fast-lane refs are excluded until the convention earns
+      its own evidence, and the sweep's blast radius is deletion, not
+      arming.
+    - ``cron`` — the 5-field schedule (default daily at 03:17 UTC —
+      off the top of the hour, where GitHub sheds scheduled load).
+      Blank falls back to the default at the consumer.
+    """
+    return {
+        "branch_patterns": ["claude/*", "codex/*", "bot/*"],
+        "cron": "17 3 * * *",
+    }
+
+
 def _default_preflight_scripts() -> list[str]:
     """Return the repo-local preflight scripts ``check`` runs on the full lane.
 
@@ -249,6 +276,9 @@ class Config:
     claims_dir: str = DEFAULT_CLAIMS_DIR
     # Auto-merge-enabler knobs (EAP §6.10 — see _default_automerge above).
     automerge: dict = field(default_factory=_default_automerge)
+    # Scheduled branch-sweep knobs (ORDER 023 — see _default_branch_sweep
+    # above).
+    branch_sweep: dict = field(default_factory=_default_branch_sweep)
     # Local preflight scripts (ORDER 018 — see _default_preflight_scripts
     # above): the ONE check list both the local ritual and the CI gate run.
     preflight_scripts: list[str] = field(
