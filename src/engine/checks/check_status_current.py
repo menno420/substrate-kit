@@ -147,7 +147,9 @@ def _check_one_status(
                     "status-no-heartbeat",
                     "no parseable `updated:` ISO-8601 heartbeat — still the "
                     "adopt seed? Overwrite the whole file with your real "
-                    "status as the session's LAST step (control/README.md).",
+                    "status as the session's LAST step (control/README.md); "
+                    "mechanical writer: `python3 bootstrap.py heartbeat "
+                    '--full --phase "…"`.',
                 ),
             ],
             [],
@@ -163,7 +165,8 @@ def _check_one_status(
                     "status-stale",
                     f"heartbeat is ~{hours}h old (> {max_age_hours}h) — the "
                     "manager treats a stale status as a DARK Project; "
-                    f"overwrite {rel} this session.",
+                    f"overwrite {rel} this session (mechanical restamp: "
+                    "`python3 bootstrap.py heartbeat`).",
                 ),
             ],
         )

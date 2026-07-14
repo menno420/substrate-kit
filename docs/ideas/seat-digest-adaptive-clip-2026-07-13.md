@@ -1,18 +1,20 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 349
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-14
+outcome: shipped
 ---
 
 # Seat digest: adaptive description clip instead of a manual ratchet (2026-07-13)
 
 > **Status:** `ideas`
 >
-> **State:** captured → route: quick-win engine change (seatdigest),
-> engine change → dist byte-pin.
+> **State:** captured → shipped (PR #349, 2026-07-14 — adaptive clip
+> computed per render: widest fit within the block budget, 40-char
+> readability floor, name-only fallback; the constant and its two ratchet
+> comments retired).
 > **Origin:** lab — surfaced twice in two consecutive sessions: PR #315
 > clipped skill descriptions 120 → 85 when the 12th skill overflowed the
 > 1500-char digest budget, and the very next skill addition (the 13th,

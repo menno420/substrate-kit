@@ -248,6 +248,47 @@ def test_old_work_claim_flags_stale(tmp_path):
     assert WORK_CLAIM_STALE_HOURS == 72
 
 
+def test_dated_filename_in_scope_text_is_not_stale(tmp_path):
+    # Regression (found live, 2026-07-14 model-line-lint session): the
+    # checker dated a claim by the FIRST date-string anywhere in the file,
+    # so a dated idea-filename in the scope text shadowed the fresh claim
+    # date and fired a false claims-stale. The claim's own date is the LAST
+    # date on the bullet line (the taught grammar ends `· YYYY-MM-DD`).
+    _write(
+        tmp_path,
+        f"{DEFAULT_CLAIMS_DIR}/fresh-with-dated-ref.md",
+        "- `claude/lane-a` · **scope** — build the checker per "
+        "docs/ideas/foo-2026-07-05.md · src/engine/checks · 2026-07-10\n",
+    )
+    assert check_claims(tmp_path, now=NOW) == []
+
+
+def test_old_claim_date_fires_despite_fresh_filename_mention(tmp_path):
+    # The inverse guard: a genuinely old claim date (last on the bullet)
+    # still fires even when the scope text mentions a fresher dated file.
+    _write(
+        tmp_path,
+        f"{DEFAULT_CLAIMS_DIR}/old-with-fresh-ref.md",
+        "- `claude/lane-b` · **scope** — port docs/ideas/bar-2026-07-10.md "
+        "· src/x · 2026-07-05\n",
+    )
+    findings = check_claims(tmp_path, now=NOW)
+    assert [f.kind for f in findings] == ["claims-stale"]
+    assert "dated 2026-07-05" in findings[0].message
+
+
+def test_date_outside_bullet_line_flags_format(tmp_path):
+    # A date somewhere else in the file is not the claim's date field —
+    # a bullet without its own date is unparseable (claims-format), not
+    # dated by unrelated prose.
+    _write(
+        tmp_path,
+        f"{DEFAULT_CLAIMS_DIR}/date-elsewhere.md",
+        "- `claude/lane-c` · scope only\n\nopened 2026-07-01 by a session\n",
+    )
+    assert [f.kind for f in check_claims(tmp_path, now=NOW)] == ["claims-format"]
+
+
 def test_two_files_same_token_flag_duplicate(tmp_path):
     _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/a.md", _claim_bullet("claude/same"))
     _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/b.md", _claim_bullet("claude/same"))
@@ -265,6 +306,158 @@ def test_distinct_tokens_are_clean(tmp_path):
     _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/a.md", _claim_bullet("claude/one"))
     _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/b.md", _claim_bullet("claude/two"))
     assert check_claims(tmp_path, now=NOW) == []
+
+
+# ---------------------------------------------------------------------------
+# Cross-branch ORDER collision (the #362/#363 twin-build fix)
+# ---------------------------------------------------------------------------
+
+
+def _order_bullet(token: str, order: str, day: str = "2026-07-10") -> str:
+    return f"- `{token}` · **scope** — a slice under way · order {order} · {day}\n"
+
+
+def test_cross_branch_same_order_flags_collision(tmp_path):
+    # The realized #362/#363 shape: two live claims, DIFFERENT branches,
+    # both serving ORDER 020 — branch-keyed dedupe is silent; the order
+    # scan must not be.
+    _write(
+        tmp_path,
+        f"{DEFAULT_CLAIMS_DIR}/a.md",
+        _order_bullet("claude/lane-a", "020"),
+    )
+    _write(
+        tmp_path,
+        f"{DEFAULT_CLAIMS_DIR}/b.md",
+        _order_bullet("claude/lane-b", "020"),
+    )
+    findings = check_claims(tmp_path, now=NOW)
+    assert [f.kind for f in findings] == [
+        "claims-order-collision",
+        "claims-order-collision",
+    ]
+    assert {f.path for f in findings} == {
+        f"{DEFAULT_CLAIMS_DIR}/a.md",
+        f"{DEFAULT_CLAIMS_DIR}/b.md",
+    }
+    for f in findings:
+        assert "order 020" in f.message
+        assert "claude/lane-a" in f.message
+        assert "claude/lane-b" in f.message
+
+
+def test_free_text_order_mention_also_keys_the_scan(tmp_path):
+    # A hand-written claim naming its order in prose (`ORDER 20`) collides
+    # with a verb-written structured `order 020` segment — same normalized
+    # id, one grammar home.
+    _write(
+        tmp_path,
+        f"{DEFAULT_CLAIMS_DIR}/a.md",
+        _order_bullet("claude/lane-a", "020"),
+    )
+    _write(
+        tmp_path,
+        f"{DEFAULT_CLAIMS_DIR}/b.md",
+        "- `claude/lane-b` · **ORDER 20 sub-items (d)+(e)** · src/x · 2026-07-10\n",
+    )
+    findings = check_claims(tmp_path, now=NOW)
+    assert [f.kind for f in findings] == [
+        "claims-order-collision",
+        "claims-order-collision",
+    ]
+
+
+def test_distinct_orders_across_branches_are_clean(tmp_path):
+    _write(
+        tmp_path,
+        f"{DEFAULT_CLAIMS_DIR}/a.md",
+        _order_bullet("claude/lane-a", "019"),
+    )
+    _write(
+        tmp_path,
+        f"{DEFAULT_CLAIMS_DIR}/b.md",
+        _order_bullet("claude/lane-b", "020"),
+    )
+    assert check_claims(tmp_path, now=NOW) == []
+
+
+def test_order_less_claims_never_collide(tmp_path):
+    # Order-less claims stay valid and invisible to the order scan — no
+    # false positive against an order-carrying sibling.
+    _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/a.md", _claim_bullet("claude/lane-a"))
+    _write(
+        tmp_path,
+        f"{DEFAULT_CLAIMS_DIR}/b.md",
+        _order_bullet("claude/lane-b", "020"),
+    )
+    assert check_claims(tmp_path, now=NOW) == []
+
+
+def test_same_branch_same_order_is_duplicate_not_collision(tmp_path):
+    # One branch, two files, one order: that is the existing same-token
+    # claims-duplicate — the collision kind needs DISTINCT branches.
+    _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/a.md", _order_bullet("claude/same", "020"))
+    _write(tmp_path, f"{DEFAULT_CLAIMS_DIR}/b.md", _order_bullet("claude/same", "020"))
+    kinds = [f.kind for f in check_claims(tmp_path, now=NOW)]
+    assert kinds == ["claims-duplicate", "claims-duplicate"]
+
+
+def test_order_word_inside_prose_is_not_an_order_id(tmp_path):
+    # `reorder 020` / `orders 001` must not parse as order references —
+    # the regex requires the standalone word `order` before the digits.
+    _write(
+        tmp_path,
+        f"{DEFAULT_CLAIMS_DIR}/a.md",
+        "- `claude/lane-a` · **reorder 020 rows in the panel** · 2026-07-10\n",
+    )
+    _write(
+        tmp_path,
+        f"{DEFAULT_CLAIMS_DIR}/b.md",
+        _order_bullet("claude/lane-b", "020"),
+    )
+    assert check_claims(tmp_path, now=NOW) == []
+
+
+def test_cross_location_order_collision_is_caught(tmp_path):
+    # A canonical-dir claim and a legacy-dir claim serving one order still
+    # collide (plus the legacy-location nudge, which is its own finding).
+    _write(
+        tmp_path,
+        f"{DEFAULT_CLAIMS_DIR}/a.md",
+        _order_bullet("claude/lane-a", "020"),
+    )
+    _write(
+        tmp_path,
+        "docs/owner/claims/b.md",
+        _order_bullet("claude/lane-b", "020"),
+    )
+    kinds = sorted(f.kind for f in check_claims(tmp_path, now=NOW))
+    assert kinds == [
+        "claims-legacy-location",
+        "claims-order-collision",
+        "claims-order-collision",
+    ]
+
+
+def test_cmd_check_strict_stays_green_on_order_collision(tmp_path, capsys):
+    # Advisory posture preserved end-to-end: the collision warns, the exit
+    # code never moves.
+    day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    _write(tmp_path, STATUS_RELPATH, _status("acked=020 done=020"))
+    _write(
+        tmp_path,
+        f"{DEFAULT_CLAIMS_DIR}/a.md",
+        _order_bullet("claude/lane-a", "020", day=day),
+    )
+    _write(
+        tmp_path,
+        f"{DEFAULT_CLAIMS_DIR}/b.md",
+        _order_bullet("claude/lane-b", "020", day=day),
+    )
+    assert cmd_check(tmp_path, strict=True) == 0
+    out = capsys.readouterr().out
+    assert "claims-order-collision" in out
+    assert "never exit-affecting" in out
 
 
 def test_legacy_superbot_location_nudges_and_still_scans(tmp_path):

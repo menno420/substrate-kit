@@ -49,6 +49,14 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- [Work claims miss cross-branch ORDER collisions](order-claim-cross-branch-collision-2026-07-14.md)
+  — state: captured; origin: lab (two routine fires the same night both
+  consumed the same unacked ORDER 020 and built duplicate PRs — #362 landed,
+  #363 closed as superseded; the `check_claims` duplicate scan keys on branch
+  token, not work/ORDER overlap, so cross-branch same-work is invisible);
+  next: structured fix — an optional `· order NNN` claim-grammar segment +
+  `bootstrap claim --order` + a cross-branch overlap advisory, engine change →
+  dist byte-pin.
 - [Session gate: fix the born-red fail-open on PR-added cards (flip-race)](session-gate-flip-race-fail-open-2026-07-13.md)
   — state: captured; origin: consumer (superbot-mineverse — stranded
   close-out flips swept by its PR #50, root-caused in #52; finding at
@@ -194,6 +202,18 @@ story, the frontmatter keeps the score.
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [`check_idea_index` merged-reality leg — grace-windowed git-truth verification](idea-index-merged-reality-2026-07-14.md)
+  — **shipped** kit PR #355 (2026-07-14): shipped-idea frontmatter verified
+  against local git history (PR merge marker on main, real-merge-date
+  reconciliation, optional `merged_sha` ancestry) — advisory-first with a
+  7-day grace window so in-flight/parked shipping PRs never false-red;
+  only malformed SHA syntax fails hard. Window closes 2026-08-13.
+- [Kit-side `scripts/preflight.py` — CI-convergence dogfood](kit-preflight-dogfood-2026-07-14.md)
+  — **shipped** kit PR #354 (2026-07-14): the kit plants the preflight
+  wrapper its own config default has named since #332, retiring the
+  standing not-found NOTE and giving local sessions a one-command mirror of
+  the CI kit-quality job (seven legs, worst-exit; nested-run self-skip on
+  `SUBSTRATE_KIT_PREFLIGHT`). Window closes 2026-08-13.
 - [`--apply-docs` is a single-shot window — post-hoc apply from the banked archive](upgrade-apply-docs-single-shot-window-2026-07-09.md)
   — **shipped** kit PR #106 (2026-07-10, full mechanism): the interim hint
   correction shipped in #92; this PR builds the real post-hoc path. A
