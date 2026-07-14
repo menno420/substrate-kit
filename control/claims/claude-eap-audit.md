@@ -1,1 +1,0 @@
-- `claude/eap-audit` · **EAP project audit doc (docs/audits/eap-project-audit-2026-07-14.md)** · docs/audits/ · 2026-07-14
