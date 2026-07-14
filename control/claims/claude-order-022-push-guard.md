@@ -1,0 +1,1 @@
+- `claude/order-022-push-guard` · **ORDER 022 stop-hook merged-head final-push guard (engine git_truth port + _stop_push_guard + tests + dist regen)** · src/engine/lib/git_truth.py + src/engine/hooks/stop_check.py + tests/ + dist/ · order 022 · 2026-07-14
