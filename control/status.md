@@ -1,5 +1,5 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-14T00:02:53Z · coordinator session live (v3.6) · phase: EAP FINAL NIGHT — ORDER 019 COMPLETE
+updated: 2026-07-14T00:07:44Z · coordinator session live (v3.6) · phase: EAP FINAL NIGHT — ORDER 019 COMPLETE
 
 ## Routines
 - Failsafe: "Self Improvement failsafe wake" trig_01LsHxvnYnpQ59n7iQTPNNF3 · 0 */2 * * * · bound live coordinator. Pacemaker chain live (~15 min).
@@ -19,7 +19,9 @@ Bonus: idea-engine upgraded v1.10.0→v1.15.0 (its #367 merged; duplicate-dispat
 ## Parked
 - PR #317 — owner ratification park (do-not-automerge), freshened vs main 20:13Z (df7b324), green, payload byte-identical. Landing: owner-click. Gates the release wave.
 - PR #345 — item 6, green-pending, do-not-automerge until review. Landing: owner-click / non-author review-merge.
-- PR #349 — idea build 2026-07-14 (seat-digest-adaptive-clip): skills-digest clip now COMPUTED per render (widest budget fit, 40-char floor, name-only fallback) — the 120→85→72 manual ratchet retired; +5 tests (suite 1339→1344), dist byte-stable, idea frontmatter reconciled (#344/#346 drift fixed on sight). Parks green, NO auto-merge armed by design. Landing: review-merge by a non-author session/owner.
+
+## Merged since last heartbeat
+- PR #349 — idea build (seat-digest-adaptive-clip): skills-digest clip now COMPUTED per render (widest budget fit, 40-char floor, name-only fallback) — the 120→85→72 manual ratchet retired; +5 tests (suite 1339→1344), dist byte-stable, idea frontmatter reconciled (#344/#346 drift fixed on sight). MERGED 2026-07-14T00:04Z (ee3b962) by the server-side auto-merge-enabler on green — kit-quality + suite + cold-adoption all ✅. The earlier "parks green, no auto-merge armed" line here was pre-merge drift: the enabler arms every non-draft claude/* PR at open, so it landed on green. Pointers: PR #349 · merge commit ee3b962.
 
 ## Registry state
 - Adopters tree-current at v1.15.0 incl. idea-engine (tonight). adopters.md regen still waits on resident `kit:` lines (outbox ask).
