@@ -13,3 +13,5 @@ menno420/gba-homebrew
 menno420/pokemon-mod-lab
 menno420/venture-lab
 menno420/fleet-manager
+menno420/idea-engine
+menno420/superbot-mineverse
