@@ -15,6 +15,8 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-07-14
+
 **Benchmark outcome (KF-5 — travels into the next release's notes):** B1
 cold-start TENTH firing (`2026-07-12-run10`, seed 712001 irisdonation, kit =
 vendored dist at main@e1d97c9 — v1.15.0 payload + the #300 enabler regen,
@@ -47,6 +49,8 @@ the open axis is now the enforcement *pull*, not the delivery — the kit
 induced no write-back or guard-response behavior change (T2 write-back
 probe failed both arms; T5 ignored). **KF-8 trend at 9 scored rows: 1 PASS
 / 8 FAIL.**
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
 
 ### Added
 
