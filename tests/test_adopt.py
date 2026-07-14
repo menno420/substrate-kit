@@ -21,13 +21,17 @@ from engine.adopt import (
     ADOPT_PLAN,
     AUTOMERGE_CARVEOUT_LABEL,
     AUTOMERGE_ENABLER_RELPATH,
+    BRANCH_SWEEP_RELPATH,
     DEFAULT_AUTOMERGE_BRANCH_PATTERNS,
+    DEFAULT_SWEEP_BRANCH_PATTERNS,
+    DEFAULT_SWEEP_CRON,
     DOC_HASHES_STATE_KEY,
     LIVE_CI_RELPATH,
     UNRENDERED_BANNER_FIRST_LINE,
     adopt,
     archive_dist,
     automerge_enabler_workflow,
+    branch_sweep_workflow,
     ci_snippet,
     dist_version,
     doc_is_untouched,
@@ -1346,6 +1350,201 @@ def test_adopt_enabler_regen_banks_and_reports_carveouts(tmp_path):
     )
     assert len(banked) == 1
     assert banked[0].read_text(encoding="utf-8") == hand_edited
+
+
+# ---------------------------------------------------------------------------
+# Scheduled branch sweep planted by the kit (inbox ORDER 023)
+# ---------------------------------------------------------------------------
+
+
+def test_branch_sweep_workflow_shape():
+    text = branch_sweep_workflow()
+    # A real live scheduled workflow, not a commented example.
+    assert "\nname: branch-sweep\n" in text
+    assert "on:\n" in text and "jobs:\n" in text
+    # SCHEDULED + manual, never `pull_request: closed` — GITHUB_TOKEN-driven
+    # merge events don't trigger workflows (the ORDER 023 trap), so a
+    # closed-event cleanup would never fire for exactly the merges that
+    # need it.
+    assert f"- cron: '{DEFAULT_SWEEP_CRON}'" in text
+    assert "workflow_dispatch:" in text
+    assert "\n  pull_request:" not in text
+    # The dry_run input: log what WOULD be deleted, delete nothing.
+    assert "dry_run:" in text
+    assert "DRY-RUN: would delete $ref" in text
+    assert 'if [ "$DRY_RUN" = "true" ]' in text
+    # Explicit least-privilege permissions block.
+    assert (
+        "permissions:\n  contents: write\n  pull-requests: read\n" in text
+    )
+    # Default sweep patterns render as case terms AND API query prefixes.
+    assert "claude/*|codex/*|bot/*" in text
+    for prefix in ("'claude/'", "'codex/'", "'bot/'"):
+        assert prefix in text
+    # The hard skip rules, each with a logged reason: open-PR heads, the
+    # default branch, fork heads (same-repo filter), diverged tips, and
+    # heads with no closed PR at all.
+    assert "head of an OPEN pull request" in text
+    assert "the default branch is never touched" in text
+    assert "'$1 == repo { print $2" in text  # same-repo (anti-fork) filter
+    assert "moved on since its PR closed" in text
+    assert "no merged/closed PR has this head" in text
+    # state=closed enumerates merged AND closed PRs; deletion goes through
+    # the git refs API; every deletion is logged.
+    assert "pulls?state=closed" in text
+    assert '-X DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/$ref"' in text
+    assert 'echo "deleted: $ref"' in text
+    # Kit ownership is declared in the file itself, routing host edits away.
+    assert "KIT-OWNED" in text
+    assert "SEPARATE workflow" in text
+    # The OA-10 provenance note: agent-side branch deletion is 403-walled;
+    # this workflow is the sanctioned path around that wall.
+    assert "OA-10" in text
+    assert "sanctioned path" in text
+
+
+def test_branch_sweep_workflow_parameterization():
+    # Custom patterns render into the case expression and the query list;
+    # a custom cron threads into the schedule.
+    text = branch_sweep_workflow(["agent/*", "release-please"], cron="0 */6 * * *")
+    assert "agent/*|release-please" in text
+    assert "'agent/'" in text and "'release-please'" in text
+    assert "claude/*|codex/*|bot/*" not in text
+    assert "- cron: '0 */6 * * *'" in text
+    # Fallback-on-empty (the heartbeat_files doctrine): [] / blank / a bare
+    # "*" must not silently put EVERY branch in deletion scope, and a
+    # malformed cron must not ship an unparseable schedule.
+    for degenerate in ([], [""], ["*"], ["  "], ["*/*"]):
+        text = branch_sweep_workflow(degenerate)
+        assert "claude/*|codex/*|bot/*" in text, degenerate
+    for bad_cron in ("", "banana", "* *", "0 3 * * * *"):
+        text = branch_sweep_workflow(cron=bad_cron)
+        assert f"- cron: '{DEFAULT_SWEEP_CRON}'" in text, bad_cron
+    # Pattern sanitization clamps to a path-safe charset — shell syntax
+    # can never ride a config value into the generated script.
+    text = branch_sweep_workflow(["claude/*'; rm -rf /; '"])
+    assert "rm -rf" not in text
+    # The pattern collapses to its path-safe residue — quotes, semicolons,
+    # and spaces cannot survive into the case expression or the query list.
+    assert "claude/*rm-rf/)" in text
+    assert "'claude/*rm-rf/'" in text
+
+
+def test_branch_sweep_default_patterns_exclude_claim_branches():
+    # The sweep's blast radius is deletion — its default list is the ORDER
+    # 023 set (claude/codex/bot), NOT the automerge list: claim/* fast-lane
+    # refs stay out of deletion scope until the convention earns evidence.
+    assert DEFAULT_SWEEP_BRANCH_PATTERNS == ("claude/*", "codex/*", "bot/*")
+    text = branch_sweep_workflow()
+    assert "claim/" not in text
+
+
+def test_adopt_stages_the_sweep_and_never_installs_it_by_default(tmp_path):
+    root, config, lines = _adopt_into(tmp_path)
+    # Staged always, right next to the gate and the enabler.
+    staged = root / config.state_dir / "ci" / "branch-sweep.yml"
+    assert staged.is_file()
+    assert staged.read_text(encoding="utf-8") == branch_sweep_workflow()
+    # Safety doctrine unchanged: a default adopt never creates live CI.
+    assert not (root / BRANCH_SWEEP_RELPATH).exists()
+
+
+def test_wire_enforcement_plants_live_sweep(tmp_path):
+    root = tmp_path / "repo"
+    config = Config()
+    backend = _make_backend(root, config)
+    lines = adopt(
+        root, config, backend, kit_root=tmp_path / "kit", wire_enforcement=True
+    )
+    workflow = root / BRANCH_SWEEP_RELPATH
+    assert workflow.is_file()
+    assert workflow.read_text(encoding="utf-8") == branch_sweep_workflow()
+    assert f"planted: {BRANCH_SWEEP_RELPATH}" in lines
+
+
+def test_default_adopt_regenerates_an_existing_live_sweep(tmp_path):
+    # Existence is the opt-in signal (the gate/enabler's exact lifecycle):
+    # a hand-forked sweep at the kit path falls under kit ownership on the
+    # next adopt/upgrade pass — parameterized from the host's own config.
+    root = tmp_path / "repo"
+    config = Config()
+    config.branch_sweep = {
+        "branch_patterns": ["agent/*"],
+        "cron": "0 */6 * * *",
+    }
+    backend = _make_backend(root, config)
+    workflow = root / BRANCH_SWEEP_RELPATH
+    workflow.parent.mkdir(parents=True)
+    workflow.write_text(
+        "# hand-forked sweep\nname: branch-sweep\n", encoding="utf-8"
+    )
+    lines = adopt(root, config, backend, kit_root=tmp_path / "kit")
+    expected = branch_sweep_workflow(["agent/*"], cron="0 */6 * * *")
+    assert workflow.read_text(encoding="utf-8") == expected
+    assert any(
+        line.startswith(f"regenerated: {BRANCH_SWEEP_RELPATH}")
+        for line in lines
+    )
+    # Idempotent second pass: already current -> kept, byte-identical.
+    lines2 = adopt(root, config, backend, kit_root=tmp_path / "kit")
+    assert workflow.read_text(encoding="utf-8") == expected
+    assert (
+        f"kept: {BRANCH_SWEEP_RELPATH} (kit-owned, already current)"
+        in lines2
+    )
+
+
+def test_adopt_sweep_regen_banks_and_reports_carveouts(tmp_path):
+    # The #137 carve-out protection applies to the sweep identically: a
+    # host-added job inside the kit-owned file is banked + reported, never
+    # silently dropped — and the regen still restores kit form.
+    root = tmp_path / "repo"
+    config = Config()
+    backend = _make_backend(root, config)
+    workflow = root / BRANCH_SWEEP_RELPATH
+    workflow.parent.mkdir(parents=True)
+    hand_edited = branch_sweep_workflow() + (
+        "  notify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - name: host notifier\n"
+        "        run: echo swept\n"
+    )
+    workflow.write_text(hand_edited, encoding="utf-8")
+    lines = adopt(root, config, backend, kit_root=tmp_path / "kit")
+    assert workflow.read_text(encoding="utf-8") == branch_sweep_workflow()
+    assert any(
+        line.startswith(
+            f"carve-out: {BRANCH_SWEEP_RELPATH} — host-added job 'notify'"
+        )
+        for line in lines
+    )
+    banked = list(
+        (root / config.state_dir / "backup").glob(
+            "branch-sweep.pre-regen-*.yml"
+        )
+    )
+    assert len(banked) == 1
+    assert banked[0].read_text(encoding="utf-8") == hand_edited
+
+
+def test_branch_sweep_workflow_is_valid_yaml_with_least_privilege():
+    # Structural YAML validation without a YAML dependency: pyyaml when
+    # available (parses the whole document, proving GitHub can), otherwise
+    # the structural asserts above stand alone.
+    yaml = pytest.importorskip("yaml")
+    doc = yaml.safe_load(branch_sweep_workflow())
+    triggers = doc.get(True) or doc.get("on")  # YAML 1.1 parses `on` as True
+    assert set(triggers) == {"schedule", "workflow_dispatch"}
+    assert triggers["schedule"] == [{"cron": DEFAULT_SWEEP_CRON}]
+    dry_run = triggers["workflow_dispatch"]["inputs"]["dry_run"]
+    assert dry_run["type"] == "boolean"
+    assert dry_run["default"] is False
+    assert doc["permissions"] == {
+        "contents": "write",
+        "pull-requests": "read",
+    }
+    assert list(doc["jobs"]) == ["branch-sweep"]
 
 
 # ---------------------------------------------------------------------------
