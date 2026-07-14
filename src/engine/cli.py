@@ -56,6 +56,7 @@ from engine.checks.check_engagement import (
     scan_relpaths,
 )
 from engine.checks.check_inbox_append import INBOX_RELPATH, check_inbox_append
+from engine.checks.check_model_line import check_model_line
 from engine.checks.check_namespace import check_namespace
 from engine.checks.check_owner_actions import check_owner_actions
 from engine.checks.check_status_current import (
@@ -1184,6 +1185,21 @@ def cmd_check(
     # only: workflows are not control-lane traffic; self-silences when the
     # live branch expr matches config.
     automerge_advisories = check_automerge_preflight(target, config)
+    # 📊 Model-line payload lint (idea model-line-payload-lint-advisory-
+    # 2026-07-11, Night-8 triage #3): advisory-only by contract, like every
+    # nudge above — a completed card whose Model line breaks the three-field
+    # `·` shape, carries an exact model-ID token instead of a family-level
+    # name, or files off-taxonomy effort/task-class segments is a copy-edit
+    # nudge quoting the taught form verbatim, never a required-check red
+    # (UNVERIFIED per its PL-008 provenance header; adopters carry drifted
+    # historical cards today, so a gate would pre-redden them all on
+    # upgrade). Scans the newest completed cards only (the checker's bounded
+    # window — historical drift is measured, not nagged). Full lane only:
+    # session cards are not control-lane traffic.
+    model_line_advisories = check_model_line(
+        target,
+        sessions_dir=config.sessions_dir,
+    )
     # The inbox append-only gate (issue #36 report 2): a control/inbox.md
     # change must be pure-append vs the merge-base + ORDER-grammar shaped.
     # Rides the finding loop like every checker. CI hands in the base blob
@@ -1556,6 +1572,27 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=automerge_advisories,
+        )
+    if model_line_advisories and not status_only:
+        # Same warn-only contract as the advisories above (the model-line
+        # payload lint, idea 2026-07-11): a drifted 📊 Model payload on a
+        # completed card is a one-line copy-edit nudge — surfaced +
+        # telemetry-recorded, never counted toward the exit code; the PL-004
+        # dataset records drift verbatim either way, the lint just makes it
+        # visible at check time instead of a later hand sweep.
+        _emit(
+            f"check: {len(model_line_advisories)} model-line payload advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in model_line_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=model_line_advisories,
         )
     if adopters_advisories and not status_only:
         # Same warn-only contract as the advisories above (EAP §6.3): a

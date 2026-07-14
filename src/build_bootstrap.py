@@ -44,6 +44,10 @@ MODULE_ORDER = (
     "checks/check_docs.py",
     "checks/allowlist.py",
     "checks/check_session_log.py",
+    # After grammar.py (the model-line constants + payload parser) and
+    # check_session_log.py (the completeness gate it reuses): the 📊 Model
+    # payload lint (idea model-line-payload-lint-advisory-2026-07-11).
+    "checks/check_model_line.py",
     "checks/check_namespace.py",
     "checks/check_seam_authority.py",
     "checks/check_orientation_budget.py",
