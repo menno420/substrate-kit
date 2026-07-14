@@ -50,6 +50,19 @@ probe failed both arms; T5 ignored). **KF-8 trend at 9 scored rows: 1 PASS
 
 ### Added
 
+- **`check_idea_index` merged-reality leg — grace-windowed git-truth
+  verification of shipped claims (idea from the PR #349 session card, PR
+  #355).** The idea-index checker now verifies `outcome: shipped`
+  frontmatter against actual local git history (no GitHub API): a
+  `shipped_pr` needs a merge marker on main (`(#N)` squash tail /
+  `Merge pull request #N`), the real merge date reconciles the in-PR
+  flip's anticipated `merged_date` (drift > 1 day flagged with the real
+  date), and an optional well-formed `merged_sha` must be an ancestor of
+  main. Advisory-first with a 7-day grace window so in-flight/parked
+  shipping PRs never false-red; only malformed `merged_sha` syntax fails
+  hard. Degrades gracefully (self-skip with a note) on gitless trees,
+  shallow clones, and claims about other repos. Kit-repo tooling only —
+  no adopter surface, no dist change.
 - **Kit-side `scripts/preflight.py` — CI-convergence dogfood (idea
   2026-07-14, PR #354).** The kit repo now plants the preflight wrapper its
   own config default has named since PR #332
