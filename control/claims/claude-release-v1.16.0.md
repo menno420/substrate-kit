@@ -1,1 +1,0 @@
-- `claude/release-v1.16.0` · **release v1.16.0 bump (held for ORDER 022)** · config.py + pyproject.toml + CHANGELOG.md + dist/ + control/status.md · 2026-07-14
