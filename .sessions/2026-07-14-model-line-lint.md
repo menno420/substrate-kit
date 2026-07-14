@@ -1,6 +1,6 @@
 # 2026-07-14 · model-line payload lint (advisory)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 About to happen (opening declaration): build the `📊 Model:` payload lint from
 `docs/ideas/model-line-payload-lint-advisory-2026-07-11.md` (Night-8 triage #3,
@@ -115,9 +115,10 @@ Run type: worker session (coordinator-dispatched build).
 💡 **Session idea:** put the taxonomy INSIDE the auto-draft stand-in — the
 measured 10-of-10 newest-card drift says the taught form never reaches
 writers at write time (they free-text the payload from memory). The KL-5
-auto-draft currently writes `[[fill: model]] · …`; make it write the choices
-inline instead — `[[fill: model family, e.g. fable-5]] · [[fill: effort:
-low|medium|high]] · [[fill: task-class: docs-only|…|feature build]]` —
+auto-draft currently writes `[[fill: model]]` stand-ins; make it write the
+choices inline instead — `[[fill: model family, e.g. fable-5]]` ·
+`[[fill: effort: low|medium|high]]` ·
+`[[fill: task-class: docs-only|…|feature build]]` —
 rendered from the same `engine.grammar` constants as the lint, so the
 writer picks from the taxonomy instead of inventing values and the
 writer/enforcer loop closes at the moment of authorship, not at check time.
