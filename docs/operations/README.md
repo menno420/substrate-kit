@@ -54,6 +54,11 @@
   landings, three failsafe-bridged wake drops, born-red gate + one
   flip-race bug, control fast lane, ORDER fan-out), and the honest null on
   shipped-vs-stalled discrimination.
+- [../eap-closeout-walkthrough-2026-07-14.md](../eap-closeout-walkthrough-2026-07-14.md)
+  — EAP closeout walkthrough (owner-facing, ORDER 021): what the seat
+  shipped (audit-cited), exact verify commands, the OWNER ACTIONS
+  checklist (leads with the #317 click → release wave), a 5-minute
+  verify-it-yourself tour, and handoff notes for the next phase.
 - [../audits/eap-project-audit-2026-07-14.md](../audits/eap-project-audit-2026-07-14.md)
   — EAP project audit, definitive close-out (dated audit, owner-directed):
   measured program totals (191 sessions · 361 PRs · 350 merged · 2.9-min
