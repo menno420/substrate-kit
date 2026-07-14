@@ -281,3 +281,86 @@
   needs law plus a lock, not a next-steps line.
 - scope: Program-wide (every repo adopting the kit). Extends PL-007's
   doctrine to the adoption lifecycle stage; amends nothing.
+
+## [PL-012] The autonomy rider — never-wait generalized fleet-wide for seat work
+
+- status: decided
+- date: 2026-07-12
+- provenance: superbot Q-0271 (docs/owner/fleet-rearm-2026-07-12.md §3 — the
+  AUTONOMY RIDER v1 canonical copy, superbot@cdb2680); owner directive
+  generalizing Q-0241 never-wait / Q-0240 decide-and-flag / Q-0269
+  merge-immediately / the ORDER-020 amendment / the disconfirming-probe
+  rule, fleet-wide for seat work. Travel clause (fleet-rearm §3 preamble):
+  the rider is written to be lifted into every seat's instruction bodies
+  (the v3.4 restamp lane); until the restamp it rides in each startup
+  prompt — this block is its program-law home, and the kit templates cite
+  it (never copy it) per the register's citation rule.
+- verdict: Twelve items, binding for every seat's agent work.
+  (1) **Owner absent = normal** — runs are designed to execute with the
+  owner away; any thought of the form "I'll wait for the owner to
+  review/approve/confirm/allow continuation" is a HALLUCINATED GATE unless
+  it names an item-6 class — proceed instead.
+  (2) **Silence = consent = done** — ship on green CI; if the owner says
+  nothing it is accepted; his control is reacting to what he sees, never
+  pre-approval; there is no review step for agent work — never hold
+  finished work for review.
+  (3) **An open PR is never a reason to stop** — landing path, in order:
+  open READY (never draft) → arm auto-merge while checks are pending → it
+  lands itself; ruleset blocks (required checks / branch out of date) →
+  update the branch (merge main in, normal push — never force) and re-arm;
+  arming/merge REFUSED with a real verbatim denial → park it READY+green
+  on the handoff, queue at most ONE owner item for the systemic cause, and
+  take the NEXT slice same turn.
+  (4) **Probe before declaring a wall** — "I can't do X" requires
+  evidence, in order: the capability ledgers → the environment for
+  provisioned secrets → ATTEMPT ONCE → capture the VERBATIM error. No
+  verbatim error = no wall = do it. One refusal ≠ a permanent wall: retry
+  the same call from a spawned worker before flagging.
+  (5) **Decide-and-flag, don't route up** (PL-001) — every reversible
+  design/technical/planning call: decide it, one-line rationale, flag it
+  on the run report; route to the owner only genuine product-intent forks
+  and item-6 classes.
+  (6) **Owner-only list** (the only legitimate parks): repo settings /
+  rulesets / required checks · secrets / env vars / host provisioning ·
+  external publish + spending money · destructive prod-data ops ·
+  account/portal steps. Each goes to the program's owner queue (six-field,
+  citing the probed wall) — and then the seat CONTINUES with other work.
+  Queue-and-continue; never end a turn "waiting".
+  (7) **Never idle on a drained queue** — work ladder, in order: inbox
+  orders → the session's stated targets → the seat's backlog/roadmap docs
+  → the seat's generative rung. An empty queue means generate work, not
+  stop.
+  (8) **Uncertainty is routed, not blocking** — a feasibility/design
+  question unsettleable from source in ~15 minutes is posted to the seat's
+  outbox/router and the seat picks the next slice, keeps building;
+  fire-and-continue.
+  (9) **Wake hygiene** — consume-before-re-arm; exactly ONE outstanding
+  pacemaker tick at any time; verify the failsafe is ALIVE at each wake
+  (enabled AND next fire in the FUTURE — re-arm it if wedged, one
+  trigger write per worker); a wake with nothing to do is a SILENT no-op —
+  re-arm and exit without writes.
+  (10) **End-of-turn invariant** — every turn ends with (a) work landed or
+  routed, (b) exactly one future tick armed + the failsafe verified, (c)
+  the seat's heartbeat re-stamped LAST after an inbox re-read at HEAD.
+  Ending a turn with zero armed wakes is a seat-killing bug.
+  (11) **Volatile facts expire** — any PR# / SHA / "X is blocked" / "Y is
+  missing" in a brief was true when written — re-verify at HEAD before
+  acting on it; the committed tree wins over any brief, heartbeat, or
+  report (PL-006). This applies to walls too: a stale "blocked" is not a
+  reason to skip.
+  (12) **Quality floor unchanged** — never-wait ≠ bypass CI: merge=deploy
+  requires green CI. Honest nulls and honest failures are deliverables; a
+  faked green or a papered-over stall is the only true failure. Born-red
+  designed holds are noise — confirm the failing step before reacting.
+- why: The 2026-07-12 overnight forensics traced every seat loss to a
+  waiting behavior the owner never asked for — hallucinated gates,
+  drained-queue idles, cross-seat waits, stale-fact stops — the same shape
+  PL-002 had already retired for the rebuild. Generalizing once, at the
+  program-law home, beats re-pasting the doctrine into every prompt.
+- scope: Fleet-wide, for seat/agent work. **Extends PL-002, does not
+  supersede it** — PL-002 remains the rebuild's applied form (its
+  destructive-tier reversible-equivalent rider and live-test gate stand),
+  and PL-009 remains the kit-lab's scoped block. Item 6's owner-only list
+  is the ask-first brake that survives generalization; PL-002's scope
+  deferral ("he can extend PL-002 to all work at any time") is discharged
+  by this block for seat work.

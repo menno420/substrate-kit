@@ -57,6 +57,12 @@ story, the frontmatter keeps the score.
   next: structured fix — an optional `· order NNN` claim-grammar segment +
   `bootstrap claim --order` + a cross-branch overlap advisory, engine change →
   dist byte-pin.
+- [Engage slot lists: derive from the bank instead of triple-pinning](engage-slot-list-derived-2026-07-13.md)
+  — state: captured; origin: lab (three surfaces enumerate "every interview
+  slot" — the bank, bench `ENGAGE_SLOTS`, the ci.yml cold-adopt loop — and
+  nothing asserts the pinned two still cover the bank; paid in the
+  rider-graduation session when Q-014..016 missed both); next: quick-win —
+  a coverage test over the pins (order stays pinned for reproducibility).
 - [Session gate: fix the born-red fail-open on PR-added cards (flip-race)](session-gate-flip-race-fail-open-2026-07-13.md)
   — state: captured; origin: consumer (superbot-mineverse — stranded
   close-out flips swept by its PR #50, root-caused in #52; finding at

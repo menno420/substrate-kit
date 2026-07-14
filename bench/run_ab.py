@@ -90,7 +90,7 @@ def _run(cmd: list[str], cwd: Path) -> None:
         raise SystemExit(f"command failed in {cwd}: {' '.join(cmd)}")
 
 
-# The interview slots the ON-arm engagement arc answers — the same 13 the CI
+# The interview slots the ON-arm engagement arc answers — the same set the CI
 # cold-adopt smoke walks (.github/workflows/ci.yml). Deliberately pinned, not
 # discovered: the arc must be byte-reproducible across runs (each runner
 # hand-engaging with ad-hoc answers was a cross-run comparability variable the
@@ -112,6 +112,9 @@ ENGAGE_SLOTS = (
     "drift_resolution",
     "staleness_review",
     "new_area_ownership",
+    "fleet_status_command",
+    "fleet_siblings",
+    "fleet_dark_repos",
 )
 
 

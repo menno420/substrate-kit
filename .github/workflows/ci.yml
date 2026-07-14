@@ -186,7 +186,8 @@ jobs:
             for slot in integration_mode project_name primary_language \
                 architecture_layers verify_command ownership_model doc_roots \
                 owner_profile mutation_seam review_ritual drift_resolution \
-                staleness_review new_area_ownership; do
+                staleness_review new_area_ownership fleet_status_command \
+                fleet_siblings fleet_dark_repos; do
               python3 bootstrap.py answer "$slot" \
                 "engaged smoke value for $slot long enough for every substance floor" >/dev/null
             done

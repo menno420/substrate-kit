@@ -97,6 +97,20 @@ ADOPT_PLAN: list[tuple[str, str]] = [
     # siblings so the plant never orphans an adopter's check --strict
     # (the orphan-doc reachability rule).
     ("routines.md.tmpl", "docs/ROUTINES.md"),
+    # The multi-repo reading path (ORDER 016 seat-item 4 — provenance
+    # superbot Q-0272, docs/fleet-reading-path.md's own kit-graduation
+    # clause): the standing read-authorization, the one-command fleet
+    # orient, the sibling/truth-file map, the tiered depth ladder, and the
+    # truth rules — so no session burns turns re-discovering that its
+    # fleet is readable (the 2026-07-12 incident: ~3 turns lost to
+    # re-derivation). Slot-driven (fleet_dark_repos / fleet_status_command
+    # / fleet_siblings — none critical, so the graduation gate is
+    # unaffected); routed from the AGENT_ORIENTATION template like its
+    # CAPABILITIES/SKILLS/ROUTINES siblings so the plant never orphans an
+    # adopter's check --strict (the orphan-doc reachability rule), and
+    # deliberately NOT in the K0 boot set — Q-0272 doctrine keeps the path
+    # routed, not front-loaded.
+    ("reading-path.md.tmpl", "docs/reading-path.md"),
     ("ideas-README.md.tmpl", "docs/ideas/README.md"),
     ("session-journal.md.tmpl", ".session-journal.md"),
     # The fleet coordination protocol (band KL-8, spec: superbot
