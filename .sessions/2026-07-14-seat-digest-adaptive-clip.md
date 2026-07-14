@@ -1,6 +1,6 @@
 # 2026-07-14 — Seat digest: adaptive description clip (retire the manual ratchet)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 About to (opening declaration): build
 `docs/ideas/seat-digest-adaptive-clip-2026-07-13.md` — compute the
