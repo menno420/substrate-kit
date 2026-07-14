@@ -68,6 +68,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
+
+import _git_truth  # noqa: E402
+
 REPO_SLUG = "menno420/substrate-kit"
 DOWNLOAD_URL = "https://github.com/{slug}/releases/download/v{version}/{name}"
 RUNS_API_URL = (
@@ -193,6 +199,20 @@ def make_fetcher(timeout: float) -> Fetcher:
     return fetch
 
 
+def _truth_runner(git: GitRunner) -> "_git_truth.GitCommand":
+    """Adapt this module's injectable ``GitRunner`` to the shared seam."""
+
+    def run(args):
+        result = git(list(args))
+        return (
+            result.returncode,
+            result.text,
+            result.stderr.decode("utf-8", errors="replace").strip(),
+        )
+
+    return run
+
+
 def offline_fetcher(url: str) -> bytes:
     raise FetchError(f"{url} -> not attempted (--offline)")
 
@@ -298,35 +318,34 @@ def leg_tag(version: str, git: GitRunner) -> tuple[Leg, str | None]:
         )
         return leg, commit
 
-    ancestor = git(["merge-base", "--is-ancestor", commit, "origin/main"])
-    if ancestor.returncode == 0:
+    # Shallow/graft degradation is the shared rule (scripts/_git_truth.py):
+    # a negative answer on a grafted clone proves nothing (live-hit:
+    # v1.15.0's bump commit reachable but disconnected from origin/main in
+    # this container's shallow clone); a positive answer is still a proof.
+    answer = _git_truth.provable_ancestry(
+        _truth_runner(git), commit, "origin/main"
+    )
+    if answer.verdict == _git_truth.YES:
         leg.add("ancestry", PASS, f"{_short(commit)} is an ancestor of origin/main")
-    elif ancestor.returncode == 1:
-        shallow = git(["rev-parse", "--is-shallow-repository"])
-        if shallow.returncode == 0 and shallow.text == "true":
-            # A grafted clone severs real ancestry paths: a negative answer
-            # here proves nothing (live-hit: v1.15.0's bump commit reachable
-            # but disconnected from origin/main in this container's shallow
-            # clone). A positive answer is still a proof.
-            leg.add(
-                "ancestry",
-                SKIPPED,
-                f"{_short(commit)} not provably an ancestor of origin/main — "
-                "the local clone is SHALLOW (grafted history), so a negative "
-                "answer is unreliable; re-check on a full clone",
-            )
-        else:
-            leg.add(
-                "ancestry",
-                FAIL,
-                f"{_short(commit)} is NOT an ancestor of origin/main",
-            )
+    elif answer.verdict == _git_truth.NO:
+        leg.add(
+            "ancestry",
+            FAIL,
+            f"{_short(commit)} is NOT an ancestor of origin/main",
+        )
+    elif answer.shallow:
+        leg.add(
+            "ancestry",
+            SKIPPED,
+            f"{_short(commit)} not provably an ancestor of origin/main — "
+            "the local clone is SHALLOW (grafted history), so a negative "
+            "answer is unreliable; re-check on a full clone",
+        )
     else:
         leg.add(
             "ancestry",
             SKIPPED,
-            "could not test ancestry: "
-            + ancestor.stderr.decode("utf-8", errors="replace").strip(),
+            "could not test ancestry: " + answer.detail,
         )
 
     config_blob = git(["show", f"{commit}:{CONFIG_RELPATH}"])
