@@ -1,0 +1,1 @@
+- `claude/check-claims-date-fix` · **scope** — fix check_claims false stale nag when scope text mentions a dated filename · src/engine/checks + tests + dist · 2026-07-14
