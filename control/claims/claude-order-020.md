@@ -1,0 +1,1 @@
+- `claude/order-020` · **ORDER 020 items d+e: A10 friction-outbox advisory in cmd_check + INC-29 docs/CAPABILITIES.md pointer casing fix** · src/engine/cli.py + src/engine/seatdigest.py + src/engine/templates/ + tests/ · 2026-07-14
