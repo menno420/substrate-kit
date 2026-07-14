@@ -1,19 +1,20 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 346
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-13
+outcome: shipped
 ---
 
 # `bootstrap heartbeat` — a mechanical status.md writer (2026-07-09)
 
 > **Status:** `ideas`
 >
-> **State:** captured (band KL-8 session, 2026-07-09). **Origin:** lab — the
-> control protocol just gained an enforced heartbeat; hand-formatting it is
-> now the weakest link.
+> **State:** captured (band KL-8 session, 2026-07-09) → shipped (PR #346,
+> 2026-07-13, ORDER 019 item 7 — restamp default lane + `--full` contract
+> lane). **Origin:** lab — the control protocol just gained an enforced
+> heartbeat; hand-formatting it is now the weakest link.
 
 **One line:** a `bootstrap.py heartbeat --phase "…" --health green --orders
 "acked=001,002 done=001" [--blockers …] [--needs-owner …] [--notes …]` verb
