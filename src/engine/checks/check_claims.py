@@ -248,8 +248,22 @@ def _work_claim_findings(
             except (OSError, UnicodeDecodeError):
                 continue  # fail open — an unreadable file is not a verdict
             bullet = WORK_CLAIM_BULLET_RE.search(text)
-            date_match = WORK_CLAIM_DATE_RE.search(text)
-            if bullet is None or date_match is None:
+            # The claim's OWN date is the LAST date on the bullet line — the
+            # taught grammar ends the bullet with `· YYYY-MM-DD`
+            # (work_claim_bullet_example), while scope text legitimately
+            # mentions dated filenames (…-2026-07-09.md). Grepping the FIRST
+            # date anywhere in the file let such a mention shadow a fresh
+            # claim date and fire a false claims-stale (found live on the
+            # 2026-07-14 model-line-lint session; guard recipe in that card).
+            claim_dates: list[str] = []
+            if bullet is not None:
+                line_end = text.find("\n", bullet.start())
+                if line_end == -1:
+                    line_end = len(text)
+                claim_dates = WORK_CLAIM_DATE_RE.findall(
+                    text[bullet.start() : line_end]
+                )
+            if bullet is None or not claim_dates:
                 findings.append(
                     Finding(
                         rel,
@@ -263,7 +277,8 @@ def _work_claim_findings(
                 )
                 continue
             holders.setdefault(bullet.group(1).strip(), []).append(rel)
-            claimed = _parse_iso(date_match.group(1))
+            claim_date = claim_dates[-1]
+            claimed = _parse_iso(claim_date)
             if claimed is None:
                 continue
             age_hours = (now - claimed).total_seconds() / 3600
@@ -272,7 +287,7 @@ def _work_claim_findings(
                     Finding(
                         rel,
                         "claims-stale",
-                        f"work claim dated {date_match.group(1)} is "
+                        f"work claim dated {claim_date} is "
                         f"{age_hours / 24:.0f} day(s) old (> "
                         f"{WORK_CLAIM_STALE_HOURS}h work-claim horizon) — "
                         "claim files are deleted at session close, so this "
