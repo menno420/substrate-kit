@@ -1,5 +1,5 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-14T04:02Z · coordinator session live (v3.6) · phase: EAP FINAL NIGHT COMPLETE — morning consolidation
+updated: 2026-07-14T10:18Z · phase: EAP CLOSED — ORDER 021 walkthrough landed; every lane terminal or parked-with-citation
 
 ## Routines
 - Failsafe: "Self Improvement failsafe wake" trig_01LsHxvnYnpQ59n7iQTPNNF3 · 0 */2 * * * · bound live coordinator. Pacemaker idles to failsafe post-consolidation (backlog dry).
@@ -14,8 +14,8 @@ Suite: 1284 → 1495 tests. One rail breach (#342 worker self-arm) remediated <2
 Buildable backlog DRY as of 04:0xZ — 11/11 buildable ideas consumed or shipped; remaining work is gated: owner #317 click (→ release wave: distributes #332 convergence + all tonight's checker/verb work + fixes kit's own 3 lagging staged artifacts) · #345 owner-click/review-merge · resident-lane kit: lines (→ adopters.md regen) · grounded-skills window ~07-19. No filler beyond this line (Q-0089).
 
 ## Parked
-- PR #317 — owner ratification park (do-not-automerge), freshened df7b324, green. Landing: owner-click. Gates the release wave.
-- PR #345 — regen-lag checker, green, do-not-automerge until review. Landing: owner-click / non-author review-merge.
+- PR #317 — owner ratification park (do-not-automerge), head df7b324, checks green AT HEAD, but live-verified 2026-07-14T10:1xZ mergeable_state=dirty (conflicts vs main 86d8ac7: dist/bootstrap.py + docs/ideas/README.md — main moved ~50 commits overnight). Landing: freshen (merge main + dist regen) → owner-click. Gates the release wave.
+- PR #345 — regen-lag checker, do-not-automerge until review. NOT green: final head a5d86a3 has ZERO check runs (combined status pending, total_count 0) — it was already merge-conflicted at its 23:27Z push (the #340 conflicted-PR-gets-no-CI class), so CI never ran on it; the only branch CI run is the born-red failure on first commit 554d732. Conflicts vs main 86d8ac7: .substrate/guard-fires.jsonl + CHANGELOG.md + control/status.md. Landing: freshen → non-author review-merge.
 
 ## Registry state
 - All adopters tree-current at v1.15.0 (incl. idea-engine tonight). adopters.md regen waits on resident kit: lines.
@@ -35,4 +35,5 @@ kit: v1.15.0
 2026-07-14T08:26Z self-initiated slice (no ORDER served): PR #365 MERGED 08:29:18Z by github-actions[bot] (the enabler armed it server-side — prose park without the `do-not-automerge` label is a no-op; line corrected 08:58Z by the EAP-audit session) — cross-branch ORDER-collision guard built from the #364 groomed idea (`docs/ideas/order-claim-cross-branch-collision-2026-07-14.md`, the #362/#363 twin-build root cause): `bootstrap claim --order NNN` structured segment + refuse-unless-`--force` + `check_claims` `claims-order-collision` advisory (advisory posture preserved, never exit-affecting). Suite 1499→1523 passed (+1 skipped unchanged); preflight 7/7 green; dist regen byte-stable ×3.
 done=020 facts: PR #362 — ORDER 020 items d+e shipped: (d) cmd_check friction-outbox pending-count advisory (advisory-only, never exit-affecting, full lane) · (e) INC-29 lowercase docs/capabilities.md → docs/CAPABILITIES.md pointer fix in CAPABILITIES.md.tmpl + seatdigest.py, with casing regression tests; (a)–(c) SATISFIED per the thread's premise-check at a4d858e.
 2026-07-14T08:58Z owner-directed EAP close-out audit: definitive audit doc landed via PR #366 (`docs/audits/eap-project-audit-2026-07-14.md` — measured totals, 20 walls verbatim, dispositions, paste-ready asks).
-orders: acked=001–020 · done=001–020
+done=021 facts: PR #368 — EAP closeout walkthrough landed at docs/eap-closeout-walkthrough-2026-07-14.md (sections A–E; OWNER ACTIONS leads with the #317 click; linked from docs/operations/README.md). (a) verifications, live at 2026-07-14T10:1xZ: #345 heartbeat "green" was never true on GitHub for final head a5d86a3 — zero check runs / combined status pending total_count 0; Actions run list shows the branch's only CI run is on first commit 554d732 (conclusion failure, the designed born-red hold, 23:11Z); git merge-tree proves a5d86a3 was already conflicted with main-at-push-time 4e09862 (.substrate/guard-fires.jsonl + control/status.md), so GitHub never built the merge ref and never dispatched CI (the #340 class); "green" traced to the session's local verification. #317 confirmed: open, do-not-automerge, head df7b324, all checks green at head, enable-auto-merge run skipped (auto_merge field not readable agent-side, B-6); divergence: mergeable_state=dirty vs main 86d8ac7 (dist/bootstrap.py + docs/ideas/README.md). Neither PR touched. Park lines above corrected accordingly.
+orders: acked=001–021 · done=001–021
