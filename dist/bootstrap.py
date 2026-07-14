@@ -4826,6 +4826,170 @@ def full_status(
     )
     return _verify_roundtrip(text, stamp)
 
+# --- engine/claim.py ---
+"""Mechanical work-claim writer — the ``bootstrap claim`` verb's logic.
+
+Why + provenance: the one-file-per-claim work-claim convention (EAP §6.4,
+``control/claims/README.md``) only protects parallel sessions when the claim
+bullet PARSES — an unparseable claim is invisible to ``check_claims``'
+duplicate scan, which silently defeats the claim system during the exact
+window it exists for. That failure is realized, not theoretical: the
+2026-07-14 git-truth session (#358 card, 💡 ender) hand-wrote a bullet
+without the backticked token and fired ``claims-format`` mid-session. This
+module closes the gap the same way ``engine.heartbeat`` closed the
+hand-stamped ``updated:`` line: a mechanical writer that renders from — and
+round-trips through — the SAME ``engine.grammar`` constants the enforcer
+consumes (``WORK_CLAIM_BULLET_RE`` / ``WORK_CLAIM_DATE_RE``, EAP §6.8), so
+the verb can never emit a claim ``check_claims`` cannot parse.
+
+Two lanes, both refuse-and-name (never a silent clobber):
+
+- **Write lane** (:func:`render_claim` + the CLI's default) — renders the
+  one-bullet claim file for branch ``claude/<slug>``: backticked branch
+  token first (the duplicate scan's key), bold scope, optional files/area
+  segment, and the current UTC date as the LAST ``YYYY-MM-DD`` on the line
+  (the post-#353 rule: the claim's own date is the last date on the bullet,
+  so a dated filename mentioned in the scope can never shadow it).
+  Overwriting an existing file is allowed only when :func:`owner_token`
+  proves it is this branch's own claim (a refresh).
+- **Delete lane** (``--delete``) — removes YOUR OWN claim at session close;
+  a foreign claim (different branch token, or a file the grammar cannot
+  parse — ownership unprovable) is refused with the file left intact.
+
+Ownership check shape (decided-and-flagged): the existing file's bullet
+token must equal the branch this invocation derives from the slug — the
+same token the duplicate scan keys on, so "who owns this file" and "who
+holds this claim" can never disagree. Stdlib only; sits below ``cli.py``
+(which owns file I/O via ``atomic_write_text``) and imports only grammar.
+"""
+
+
+
+
+# Work branches are claude/<slug> by fleet convention (the auto-merge-enabler
+# allowlist + every session card in .sessions/); the claim FILE flattens the
+# slash so the filename stays a single path segment: claude-<slug>.md.
+BRANCH_PREFIX = "claude/"
+FILENAME_PREFIX = "claude-"
+
+# Filename-safe slug: starts alphanumeric, then alphanumerics, dot, dash,
+# underscore. Everything else (slashes, spaces, backticks) is refused — the
+# slug names both a git branch and a file.
+_SLUG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+
+class ClaimError(ValueError):
+    """A claim write/delete that cannot proceed safely.
+
+    Raised instead of guessing: a malformed slug, scope text that would
+    break the bullet grammar, or a foreign claim at the target path each
+    name their fix in the message — never a silent clobber.
+    """
+
+
+def branch_for(slug: str) -> str:
+    """Return the claim's branch (``claude/<slug>``); refuse a bad slug."""
+    if not _SLUG_RE.match(slug):
+        msg = (
+            f"slug {slug!r} is not filename-safe — use alphanumerics, dots, "
+            "dashes, underscores (the slug names both the claude/<slug> "
+            "branch and the claude-<slug>.md claim file)."
+        )
+        raise ClaimError(msg)
+    return f"{BRANCH_PREFIX}{slug}"
+
+
+def claim_filename(slug: str) -> str:
+    """Return the claim file's name (``claude-<slug>.md``); refuse a bad slug."""
+    branch_for(slug)  # same validation, one home
+    return f"{FILENAME_PREFIX}{slug}.md"
+
+
+def utc_date(now: datetime | None = None) -> str:
+    """Render the claim date (UTC ``YYYY-MM-DD``) — computed at call time.
+
+    Always the CURRENT UTC date, never a cached module-load value: a claim
+    stamped with a stale date starts life closer to the ~72h staleness
+    horizon than it should.
+    """
+    moment = now or datetime.now(timezone.utc)
+    return moment.astimezone(timezone.utc).strftime("%Y-%m-%d")
+
+
+def _refuse_grammar_breakers(label: str, value: str) -> str:
+    """Refuse text that would break the one-line bullet grammar."""
+    if "\n" in value or "\r" in value:
+        msg = f"{label} must be one line — the claim grammar is a single bullet."
+        raise ClaimError(msg)
+    if "`" in value:
+        msg = (
+            f"{label} must not contain backticks — the enforcer's bullet "
+            "regex keys the duplicate scan on the LAST backticked token, so "
+            f"a backtick in the {label} would shadow the branch token."
+        )
+        raise ClaimError(msg)
+    stripped = value.strip()
+    if not stripped:
+        msg = f"{label} must be non-empty."
+        raise ClaimError(msg)
+    return stripped
+
+
+def owner_token(text: str) -> str | None:
+    """Return the claim file's bullet token (its owning branch), or None.
+
+    None means the grammar cannot parse the file — ownership is unprovable,
+    which the write/delete lanes treat as foreign (refuse, leave intact).
+    """
+    match = WORK_CLAIM_BULLET_RE.search(text)
+    return match.group(1).strip() if match else None
+
+
+def _verify_claim_roundtrip(text: str, branch: str, date: str) -> str:
+    """Assert ``text`` parses back to ``(branch, date)``; return ``text``.
+
+    The write → parse → equal recipe (same shape as
+    ``engine.heartbeat._verify_roundtrip``), run on every render: the token
+    the duplicate scan will key on must be exactly ``branch``, and the LAST
+    ``YYYY-MM-DD`` on the bullet line — the claim's own date under the
+    post-#353 rule — must be exactly ``date``.
+    """
+    parsed = owner_token(text)
+    line = text.splitlines()[0] if text else ""
+    dates = WORK_CLAIM_DATE_RE.findall(line)
+    if parsed != branch or not dates or dates[-1] != date:
+        msg = (
+            "internal round-trip failure: the rendered claim did not parse "
+            f"back to token {branch!r} + date {date} — refusing to emit a "
+            "claim the enforcer cannot read."
+        )
+        raise ClaimError(msg)
+    return text
+
+
+def render_claim(
+    slug: str,
+    scope: str,
+    *,
+    area: str | None = None,
+    now: datetime | None = None,
+) -> str:
+    """Render the one-bullet claim file for ``claude/<slug>``.
+
+    Shape (``grammar.work_claim_bullet_example`` / control/claims/README.md):
+    backticked branch token · bold scope [· files/area] · UTC date last.
+    Raises :class:`ClaimError` on a slug/scope/area that would break the
+    grammar; every render is round-trip verified before it leaves.
+    """
+    branch = branch_for(slug)
+    scope = _refuse_grammar_breakers("scope", scope)
+    date = utc_date(now)
+    parts = [f"- `{branch}`", f"**{scope}**"]
+    if area is not None:
+        parts.append(_refuse_grammar_breakers("area", area))
+    parts.append(date)
+    return _verify_claim_roundtrip(" · ".join(parts) + "\n", branch, date)
+
 # --- engine/ledger.py ---
 """Decision ledger — the ``[D-NNNN]`` provenance-separated rulebook (Lane B6).
 
@@ -19423,6 +19587,103 @@ def cmd_heartbeat(
     return 0
 
 
+def cmd_claim(
+    target: Path,
+    slug: str,
+    *,
+    scope: str | None = None,
+    area: str | None = None,
+    delete: bool = False,
+    dry_run: bool = False,
+) -> int:
+    """Write/delete a grammar-valid work claim mechanically (#358 💡 ender).
+
+    The ``bootstrap claim`` verb — the one-file-per-claim convention's
+    mechanical writer (``control/claims/README.md``, EAP §6.4). Default
+    lane: render + write ``<claims_dir>/claude-<slug>.md`` with ONE bullet
+    the ``check_claims`` enforcer is guaranteed to parse
+    (:func:`engine.claim.render_claim` — same grammar constants, round-trip
+    verified, current UTC date last on the line). ``--delete`` removes YOUR
+    OWN claim at session close. Both lanes refuse a FOREIGN claim at the
+    target path — an existing file whose bullet token is not this slug's
+    ``claude/<slug>`` branch (or that the grammar cannot parse, so ownership
+    is unprovable) — leaving the file intact. ``--dry-run`` prints the
+    would-be content (or the would-be deletion) and touches nothing.
+    Refuses outside a control-carrying host, like the heartbeat verb.
+    """
+    config = load_config(target)
+    relpaths = heartbeat_relpaths(config.heartbeat_files)
+    bus_files = [INBOX_RELPATH, CONTROL_README_RELPATH, *relpaths]
+    has_bus = any((target / rel).is_file() for rel in bus_files)
+    if not has_bus and not (target / config.claims_dir).is_dir():
+        _emit(
+            "claim: refused — no control/ bus here (no inbox, README, "
+            "heartbeat file, or claims dir); this verb writes the control "
+            "protocol's work claims only."
+        )
+        return 2
+    try:
+        branch = branch_for(slug)
+        rel = f"{config.claims_dir}/{claim_filename(slug)}"
+    except ClaimError as exc:
+        _emit(f"claim: refused — {exc}")
+        return 2
+    path = target / rel
+    old_text: str | None = None
+    if path.is_file():
+        try:
+            old_text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            _emit(f"claim: cannot read {rel} ({exc}) — fix the file first.")
+            return 2
+    if old_text is not None:
+        token = owner_token(old_text)
+        if token != branch:
+            whose = f"`{token}`" if token else "an unparseable bullet (ownership unprovable)"
+            _emit(
+                f"claim: refused — {rel} exists and belongs to {whose}, not "
+                f"`{branch}`; a session only "
+                f"{'deletes' if delete else 'overwrites'} its OWN claim "
+                "(control/claims/README.md — the loser of a collision "
+                "stands down; reconcile by hand). File left intact."
+            )
+            return 2
+    if delete:
+        if old_text is None:
+            _emit(f"claim: {rel} not found — nothing to delete.")
+            return 2
+        if dry_run:
+            _emit(f"claim: DRY RUN — would delete {rel} (own claim, `{branch}`).")
+            return 0
+        path.unlink()
+        _emit(f"claim: deleted {rel} (own claim, `{branch}` — session close).")
+        return 0
+    if scope is None:
+        _emit(
+            "claim: --scope is required to write a claim (one line: what "
+            "this session is building) — or use --delete at session close."
+        )
+        return 2
+    try:
+        new_text = render_claim(slug, scope, area=area)
+    except ClaimError as exc:
+        _emit(f"claim: refused — {exc}")
+        return 2
+    if dry_run:
+        _emit(new_text.rstrip("\n"))
+        _emit(f"claim: DRY RUN — {rel} not written.")
+        return 0
+    path.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_text(path, new_text)
+    refreshed = " (refreshed own claim)" if old_text is not None else ""
+    _emit(
+        f"claim: wrote {rel}{refreshed} — bullet parseable by check_claims "
+        "(round-trip verified). Delete it at session close: "
+        f"bootstrap claim {slug} --delete."
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Construct the bootstrap argument parser."""
     parser = argparse.ArgumentParser(prog="bootstrap", description="substrate-kit")
@@ -19743,6 +20004,51 @@ def build_parser() -> argparse.ArgumentParser:
         help="kit: line engaged: field (--full lane only)",
     )
 
+    claim_p = sub.add_parser(
+        "claim",
+        help=(
+            "write a grammar-valid work claim file (control/claims/"
+            "claude-<slug>.md, one bullet check_claims is guaranteed to "
+            "parse — branch token · scope · UTC date); --delete removes "
+            "your OWN claim at session close, refusing foreign claims"
+        ),
+    )
+    claim_p.add_argument(
+        "slug",
+        help=(
+            "branch slug — the claim's branch is claude/<slug>, its file "
+            "claude-<slug>.md under the configured claims_dir"
+        ),
+    )
+    claim_p.add_argument("--target", type=Path, default=Path.cwd())
+    claim_p.add_argument(
+        "--scope",
+        default=None,
+        help=(
+            "one-line scope (rendered bold) — required to write; dated "
+            "filenames in it are safe (the claim's own date is appended "
+            "LAST on the bullet, the post-#353 rule)"
+        ),
+    )
+    claim_p.add_argument(
+        "--area",
+        default=None,
+        help='optional expected files/area segment (e.g. "src/ + tests/")',
+    )
+    claim_p.add_argument(
+        "--delete",
+        action="store_true",
+        help=(
+            "delete your OWN claim file (session close); a foreign claim — "
+            "different branch token, or unparseable — is refused intact"
+        ),
+    )
+    claim_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the would-be claim content (or deletion) without touching disk",
+    )
+
     check = sub.add_parser("check", help="run the doc + session-log hygiene checks")
     check.add_argument("--target", type=Path, default=Path.cwd())
     check.add_argument("--strict", action="store_true", help="exit 1 if any violation")
@@ -19871,6 +20177,15 @@ def main(argv: list[str] | None = None) -> int:
                 kit_check=args.kit_check,
                 kit_engaged=args.kit_engaged,
             )
+        if args.command == "claim":
+            return cmd_claim(
+                args.target,
+                args.slug,
+                scope=args.scope,
+                area=args.area,
+                delete=args.delete,
+                dry_run=args.dry_run,
+            )
         if args.command == "check":
             return cmd_check(
                 args.target,
@@ -19974,7 +20289,7 @@ _TEMPLATES = {
     'architecture.md.tmpl': '# ${project_name} — architecture\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. Layering, invariants, and decomposition rules.\n> **NOT SOURCE OF TRUTH** for code — source files always win.\n\n## Layers & import rules\n\n${architecture_layers}\n\n| Layer | May import | Must NOT import |\n|---|---|---|\n| (one row per layer, expanded from the summary above) | | |\n\n## Invariants\n\n(The rules that must survive every refactor — write each one as a testable\nstatement, and name the check that enforces it where one exists.)\n\n## Namespace protection — two mechanisms, both required\n\nTwo separate mechanisms guard the namespace, and they catch different\nfailure classes:\n\n1. **A registry for runtime string identities** — event names, command\n   names, settings keys, and any other string that selects behavior at\n   runtime. Collisions here are invisible to static analysis.\n2. **A static AST pass for Python symbol shadowing** — a later top-level\n   `def` / `class` with the same name silently shadows the earlier one, and\n   no import fails.\n\nNeither mechanism subsumes the other. The registry cannot see symbol\nshadowing; the AST pass cannot see string-keyed dispatch. Do not delete one\nbelieving the other covers it.\n\n## Verifying a change\n\n```\n${verify_command}\n```\n',
     'collaboration-model.md.tmpl': '# ${project_name} — collaboration model\n\n> **Status:** `binding`\n>\n> Generated by substrate-kit. How the owner and agents work together. **NOT\n> SOURCE OF TRUTH** for code — source files always win.\n\n## The model\n\n- **Goal first.** The owner designs and directs; agents build. Each session\n  achieves its goal end-to-end — not the smallest safe slice.\n- **Session prompts are guidance, not orders.** Weigh every prompt (and every\n  cross-agent report) against source and the binding docs before acting; a\n  prompt is one input, never a command list.\n- **Approved plan = execute.** Once a plan is approved, finish it in the same\n  session, with the planning context still loaded — code, verify, ship —\n  without re-confirming.\n\n## Act vs. ask\n\n- **Act** on contained, reversible, verifiable changes — including a\n  root-cause fix discovered mid-task (that is expected, not scope creep).\n- **Ask** when the change is irreversible (data loss / external publish),\n  large and cross-cutting (architectural), or the goal itself is genuinely\n  ambiguous.\n\n## Routing work to the owner\n\nThe owner is the scarcest resource in the program. An ask reaches the owner\nonly when the agent has **attempted the action itself** or can name the\n**exact wall** (error text, permission denial) proving only the owner can do\nit — assumption-based asks are banned. Every ask uses the OWNER-ACTION\nformat — WHAT / WHERE / HOW / WHY-IT-MATTERS / UNBLOCKS / VERIFIED-NEEDED\n(canonical: `control/README.md`) — phrased so a non-technical owner can act\ndirectly: one plain sentence, an exact click path, paste-ready text.\nWithdraw asks that have gone stale; fewer, clearer asks beat complete lists.\n\nEvery owner-facing OUTPUT — not just asks — follows the owner-assist output\nstandard (canonical: `control/README.md` § "Owner-assist output standard"):\nvalues arrive finished and paste-ready, with the exact link to where each\none goes (a full file in one copyable block — never a recipe the owner must\nderive); every manual step carries a risk class (✅ safe / ↩️ reversible /\n⚠️ irreversible); a decision put to the owner is a structured choice —\noptions A/B(/C) with a **bolded recommendation** and a one-line rationale,\nanswerable with one letter — never an ask that requires the owner to\nparse, derive, or transform anything; a large output ships as a control-plane\nrendered link plus a 3-line digest in chat, with full text in one copyable\nblock in chat as the fallback where the plane cannot render the repo yet.\n\n## Friction → guard\n\nAnything that interrupts a session\'s workflow — a stale file, a checker that\nlied, a footgun — is converted into the **cheapest enforcing prevention**\nbefore the session ends: checker / CI / test first, then hook, then written\nrule. Enforce, don\'t exhort. The same reflex runs on opportunities, not only\ninterruptions — the rationalization checkpoint (`rationalize` skill, Q-0273).\n\n## Guiding questions\n\nDuring exploratory / brainstorming work, surface the single most useful\nquestion about the owner\'s idea that the agent genuinely cannot derive\nitself — rare and selective, never during routine execution, and only when\nthe answer would actually matter and be actionable. A big or vague idea\nearns a dedicated research pass or its own session before being answered\nfrom memory alone.\n\n## Program law\n\nThis model\'s program-wide form, and the rulings that bind every repo in the\nprogram, live canonically in the substrate-kit repo at\n`docs/program/rulings.md` (the [PL-NNN] register — e.g. PL-001\ndecide-and-flag, PL-002 never-wait, PL-007 enforce-don\'t-exhort) and\n`docs/program/collaboration-model.md`\n(https://github.com/menno420/substrate-kit/tree/main/docs/program).\n**Cite PL-IDs — never copy ruling bodies into this repo.**\n\n## Drift & staleness\n\n- When a doc and a source file disagree: ${drift_resolution}\n- Staleness review cadence: ${staleness_review}\n',
     'control-README.md.tmpl': '# Fleet coordination protocol — `control/`\n\n> **Status:** `binding`\n>\n> Local copy for ${project_name}. Canonical spec: `menno420/superbot` →\n> `docs/planning/fleet-coordination-protocol-2026-07-09.md` (§1). Projects cannot talk to each\n> other directly — committed git files are the only shared medium; this directory is the bus.\n\n## The two files\n\n- `control/inbox.md` — ORDERS to this Project. **One writer: the manager** (appends via the\n  GitHub Contents API). Never edit this file.\n- `control/status.md` — STATE from this Project. **One writer: this Project** (overwrite it each\n  session).\n\n## The one rule that keeps it conflict-free\n\n**One writer per file.** The manager is the sole writer of `inbox.md`; this Project is the sole\nwriter of its own `status.md`. Two writers never touch the same file, so there are no merge\nconflicts. Everything is append-only / overwrite-own — forward-only git.\n\n## Multi-Project repos — per-lane heartbeats (optional extension)\n\nA SHARED repo can host several Projects ("lanes" — e.g. a mining lane and an exploration lane\ncohabiting one game repo). The one-writer rule scales by **splitting the heartbeat, never by\nsharing it**:\n\n- **One status file per lane** — `control/status-<lane>.md` (e.g. `control/status-mining.md` +\n  `control/status-exploration.md`). Each lane is the sole writer of its own file and overwrites\n  it as its session\'s deliberate LAST step; no lane ever edits another lane\'s heartbeat.\n- **`control/inbox.md` stays single** — the manager remains its one writer; a lane-specific\n  order names its lane in `do:`.\n- **Declare every lane heartbeat to the kit** — `substrate.config.json` →\n  `"heartbeat_files": ["control/status-mining.md", "control/status-exploration.md"]` (default\n  when unset: `["control/status.md"]`). The status checker then gates each listed file\n  independently (missing / heartbeat-less lane = strict RED; per-lane staleness warns), and the\n  Stop hook\'s overwrite reminder clears when any lane\'s heartbeat is fresh (it cannot know which\n  lane a session belongs to). An empty list falls back to the default — misconfiguration never\n  silently disables the gate.\n- **One command, not hand-edits** — a Project joining a SHARED repo runs\n  `bootstrap adopt --lane <name>`: it plants `control/status-<name>.md` (skip-if-exists),\n  declares it in `heartbeat_files`, and leaves `inbox.md`/`README.md` single — a second lane\n  never re-plants the first Project\'s files (the double-adoption fix).\n\n## Per-session ritual (every session, and every routine wake)\n\n- **FIRST:** git pull (a stale clone reads stale orders); read `control/inbox.md`; execute any\n  order whose status is `new`, in priority order (P0 before P1) — **claim it first** (see\n  "Claiming an order" below). An order\'s `do:` is a pointer to\n  a committed doc — read it. If an order is ambiguous or you disagree, do NOT guess: write it in\n  your status under `⚑ needs-owner` and proceed with the rest.\n- **LAST (deliberate final step):** overwrite `control/status.md` — updated timestamp, current\n  phase, health (green / red-by-design+why / broken+what), last-shipped PR, blockers, orders\n  acked/done, `⚑ needs-owner`. You report order progress ONLY here; never edit `inbox.md`\n  (the manager owns it — one writer per file).\n\nThe kit enforces this loop: `check` flags a missing or heartbeat-less `status.md`\n(strict = red), warns when the heartbeat goes stale, and the Stop hook reminds you when\n`status.md` was not overwritten this session.\n\n## Claiming an order — one executor per order (claim FIRST, build second)\n\nAn order\'s `status: new` is visible to every session that wakes, so two readers can both\nbelieve they are its executor — a realized failure, not a theoretical one (substrate-kit\nPRs #50/#51: two lanes independently executed the same ORDER 005 the same day, and a whole\nsession\'s work had to be reconciled as twins). The manager only flips `new→done` after\nseeing the status report; the claim covers the gap in between.\n\nBefore executing any `new` order:\n\n1. **Re-read the bus at origin/main HEAD** — `control/inbox.md` AND every sibling status\n   file (`control/status*.md`). If another lane\'s status already claims the order\n   (`claimed-by:` naming its id) or reports it in `done=`, stand down and pick other work.\n2. **Claim FIRST, on your own status file\'s orders line** — append\n   `claimed-by: <order-ids> <lane-or-session> <ISO8601>` — and land it on **main** BEFORE\n   any build work (a control-only fast-lane PR, or a direct commit where your rules allow\n   one). A claim that exists only on a branch is invisible; only main counts.\n3. **Re-read once more after the claim merges** — two claims can race in flight; the\n   tiebreak is the earliest claim merged to main. The loser withdraws its claim line in\n   its next status overwrite and stands down.\n4. **Claims expire** — a claim with no visible build activity (no open PR, no fresh\n   heartbeat referencing the order) after ~24h may be treated as abandoned and re-claimed;\n   note the takeover in your status `notes:`. A dead lane must never deadlock an order.\n\nWith an active claim the `orders:` line reads e.g.:\n`orders: acked=001-008 done=001-006 claimed-by: 007+008 coordinator-lane 2026-07-09T18:38Z`\n— the executor drops the `claimed-by:` annotation in the overwrite that moves those ids\ninto `done=`. One writer per file is preserved: you only ever claim on your OWN status.\n(Shipped by inbox ORDER 007 — the root-cause fix for the twin-execution failure; the\nritual was live-proven manually on this repo\'s own orders before graduating here.)\n\n## Claiming work (not an ORDER) — one file per claim under `control/claims/`\n\nOrder claims cover the inbox; **work claims** cover everything else two\nparallel sessions could both pick up — a coordinator-assigned slice, a\nself-initiated build, a shared-surface change. Before starting such work,\ncreate **one file per claim** — `control/claims/<branch-or-scope>.md`, a\nsingle bullet `` - `branch-or-scope` · **scope** — detail · YYYY-MM-DD `` —\nland it on main FAST (claims are `control/**` traffic and ride the CI fast\nlane), re-read the directory at HEAD, build, then **delete the file at\nsession close**. Per-file is the measured winner over any shared list (~98%\nmerge-conflict rate for shared-append vs 0% per-file — superbot\n`tools/sim/claim_layout_sim.py`); first claim merged to main wins a\ncollision; ~72h with no activity = abandoned, prune on sight. Full\nconvention + checker contract: `control/claims/README.md`. (`check` nags —\nadvisory-only — on unparseable, stale, duplicate, or legacy-located claims;\nlegacy homes `docs/owner/claims/` and root `claims/` are auto-detected\nduring the migration window, and a deliberate different home is pinned via\n`substrate.config.json` → `claims_dir`.)\n\n## `status.md` format (what you write every session — your heartbeat)\n\n```markdown\n# <project> · status\nupdated: <ISO8601>            # heartbeat — stale = the manager treats the Project as dark\nphase: <what I\'m doing right now, one line>\nhealth: green | red-by-design (<why>) | broken (<what>)\nkit: v<X.Y.Z> · check: green|red · engaged: yes|no   # kit self-report — see below\nlast-shipped: #<PR> — <one line>\nblockers: <what\'s stopping me, or `none`>\norders: acked=<ids> done=<ids> [claimed-by: <ids> <lane-or-session> <ISO8601>]\n⚑ needs-owner: <a decision/action only the owner can give, or `none`>\nnotes: <anything the manager should know>\n```\n\nGrammar source of truth: the tokens, field lists, and regexes of this format are kit-owned constants in the kit\'s `src/engine/grammar.py` (EAP §6.8) — the SAME module the `check` enforcers consume, so writer and enforcer cannot drift; agreement is pinned by the kit\'s `tests/test_grammar.py`.\n\nThe `kit:` line is the **substrate-coordinator visibility** channel (kit-lab reads it via the\nmanager relay — zero write access to this repo): `v<X.Y.Z>` = the vendored kit version this\nrepo actually runs (update it in the same session as every `bootstrap upgrade`); `check:` =\nthe latest `check --strict` verdict on this tree; `engaged:` = the post-adopt engagement gate\n(`yes` once no UNRENDERED banner/slot remains, live CI runs the gate, and the session loop\nhas engaged).\n\n**Exact grammar or invisible — keep the `kit:` token PLAIN.** The parser accepts a bold label\n*before* a plain token (`- **kit heartbeat:** kit: v1.2.3 · check: green · engaged: yes` is a\nlive valid shape), but bolding the token itself does NOT parse — the fleet registry then reads\nthe row as "no `kit:` line" and the lane\'s engaged signal silently vanishes (a live adopter\nincident, not a hypothetical). The taught negative example:\n\n```markdown\n- **kit:** v1.2.3 · check: green · engaged: yes\n```\n\n← does NOT parse (`KIT_LINE_RE`, kit `src/engine/grammar.py` — the optional bold group cannot\ncontain the `kit:` token). If your heartbeat wants a bold label, put it *before* a plain\n`kit:` token.\n\n**Version truth defers to the generated registry, never to this line.** Heartbeat `kit:`\nlines are self-reports and chronically lag 1–3 releases behind the tree (the fleet\'s\nrecurring self-report DRIFT class); the kit repo\'s generated `docs/adopters.md` —\nregenerated from each adopter\'s committed tree — is the fleet\'s version truth, and your own\ncommitted tree (the vendored dist) is yours. Never hand-assert a fleet version spread from\nheartbeat lines; keep this line in sync as a courtesy signal, not as proof.\n\n## ⚑ needs-owner — the OWNER-ACTION item format (quality contract)\n\nThe owner is the scarcest resource in the program: every ask routed to the owner costs\nattention, and an unclear or unnecessary ask stalls your own lane on top of burning his.\n**Before routing ANYTHING to the owner, try it yourself or cite the exact wall** — an\nassumption-based ask ("agents probably can\'t do X") is banned; the bar is the capability\nledger (`docs/CAPABILITIES.md`) plus one real attempt with the captured error.\n\nEvery ⚑ needs-owner item carries ALL of these REQUIRED fields — inline on the item, or as a\nstructured block the item links to:\n\n```markdown\n⚑ OWNER-ACTION\nWHAT: <one plain sentence, zero jargon — the thing the owner does>\nWHERE: <exact click path or URL>\nHOW: <paste-ready text/values where applicable, or "click only">\nRISK: <one class per manual step — ✅ safe / read-only · ↩️ reversible (say how to undo) · ⚠️ irreversible / destructive>\nWHY-IT-MATTERS: <one sentence, in product terms>\nUNBLOCKS: <what starts moving the moment it\'s done>\nVERIFIED-NEEDED: <the attempt you made + the exact error/wall proving only the owner can do\nthis — never an assumption>\n```\n\nHygiene: **expire or withdraw stale asks every session** (an answered or obsolete ask left in\nthe list is drift), and **fewer, clearer asks beat complete lists**. `check` warns — advisory,\nnever exit-affecting — when a non-`none` ⚑ needs-owner list lacks these fields.\n\nGrammar source of truth: the tokens, field lists, and regexes of this format are kit-owned constants in the kit\'s `src/engine/grammar.py` (EAP §6.8) — the SAME module the `check` enforcers consume, so writer and enforcer cannot drift; agreement is pinned by the kit\'s `tests/test_grammar.py`.\n\n## Owner-assist output standard — every owner-facing output, not just asks\n\nThe OWNER-ACTION block above covers the *needs-owner ask*; this standard\ncovers ALL output routed to the owner — reports, questions, values to paste,\nlinks. The contract in one line: **the owner never derives anything** — an\noutput that requires the owner to parse, derive, or transform anything is a\ndrafting defect, not an owner task.\n\n1. **Paste-ready, finished values.** Every value the owner must enter is\n   computed and printed final — `NAME=value`, the full command, the full\n   file body — never a recipe for deriving it. When the owner must paste\n   something, give the exact link to where it goes; a full file goes in ONE\n   copyable fenced block, directly in chat.\n2. **Exact destination, always.** Every action names its exact destination:\n   a deep URL, a console path to the exact field (surface → section →\n   field, e.g. `Railway → project → service → Variables`), or a repo path +\n   line. Never a bare "go to settings" — `check` nags that class (advisory).\n3. **Risk class on every manual step:** ✅ safe / read-only · ↩️ reversible\n   (say how to undo) · ⚠️ irreversible / destructive. One class per step,\n   stated on the step (the `RISK:` line in an OWNER-ACTION block).\n4. **Structured choices, recommendation first.** A decision put to the\n   owner is options A/B(/C) with a **bolded recommendation** and a one-line\n   rationale, answerable with one letter — never an ask that requires the\n   owner to parse, derive, or transform anything.\n5. **Large outputs: digest + rendered link, never a wall of text.** Default\n   delivery is a control-plane rendered link plus a 3-line digest in chat;\n   the fallback — full text in one copyable block directly in chat — applies\n   where the control plane cannot render the repo yet. Link rules: deep-link\n   the exact file, never the repo root; the rendered view for things the\n   owner should *read*, the GitHub blob URL for things the owner should\n   *edit*; post-merge, link `ref=main`; the control-plane render cache is\n   180 s — append `&refresh=1` when the owner must see a just-pushed change.\n\nWorked example — digest + rendered deep link + a six-field ask carrying its\nrisk class (every rule above in one output):\n\n```\n📄 Adopter-outcomes report — shipped (PR #247, merged b862e9a)\n\nDigest: before/after adoption is unmeasurable (9/10 adopters born <20h\nbefore their kit-install PR); false-claim audit near-clean (1 confirmed,\nself-corrected in 6 min); post-adoption time-to-ship baselines recorded.\n\nFull report (rendered, phone-readable):\nhttps://control-plane-production-abb0.up.railway.app/journal/substrate-kit/file?path=docs/reports/2026-07-11-adopter-outcomes-measurement.md\n\n⚑ OWNER-ACTION — set GITHUB_TOKEN on the control-plane service\nWHAT: paste one variable into Railway so private-repo pages stop degrading.\nWHERE: railway.app → project `websites` → service `control-plane` →\n       Variables → New Variable.\nHOW (paste-ready): name `GITHUB_TOKEN`, value = the fine-grained PAT you\n       created for the fleet\'s repos (contents: read). One paste, Save.\nRISK: ↩️ reversible — delete the variable to undo.\nWHY-IT-MATTERS: private-repo renders show "not-configured" banners until\n       this is set.\nUNBLOCKS: rendered file links + queue items for private repos.\nVERIFIED-NEEDED: attempted 2026-07-11 — raw fetch of a private path\n       returns 404 without a token (token-on-raw also verified NOT to\n       work, so the API fallback is the only private path).\n```\n\nGrammar source of truth: the risk-class tokens, the structured-choice phrases, and the vague-destination scan of this standard are kit-owned constants in the kit\'s `src/engine/grammar.py` — the SAME module the `check` enforcers AND the `/intake` skill pins consume, so writer, skill, and enforcer cannot drift; agreement is pinned by the kit\'s `tests/test_owner_assist.py`.\n\n## `inbox.md` order format (manager-written, append-only)\n\n```markdown\n## ORDER <nnn> · <ISO8601> · status: new     # manager flips new→done after seeing status done=\npriority: P0 | P1 | P2\ndo: <pointer to a committed doc/section + the ask, kept short>\nwhy: <one line>\ndone-when: <acceptance test>\n```\n\nGrammar source of truth: the tokens, field lists, and regexes of this format are kit-owned constants in the kit\'s `src/engine/grammar.py` (EAP §6.8) — the SAME module the `check` enforcers consume, so writer and enforcer cannot drift; agreement is pinned by the kit\'s `tests/test_grammar.py`.\n\n## CI + auto-merge notes (learned live, 2026-07-09)\n\n- **Heartbeat commits ride a fast lane, not a `paths-ignore`.** A control-only diff (only\n  `control/**` files changed) must still *report* every required status check, or GitHub treats\n  the missing contexts as pending and auto-merge jams forever. The kit\'s planted\n  `substrate-gate.yml` therefore short-circuits GREEN inside the job on control-only diffs\n  instead of skipping the workflow — copy that pattern (an in-job early exit) into any other\n  heavy suite rather than adding `paths-ignore: [control/**]` to a workflow whose check is\n  required.\n- **API-authored PRs may not trigger CI.** A PR created purely through an app/integration token\n  (e.g. the GitHub Contents API + a REST PR create) can sit with **zero check runs** — required\n  checks then never report and the PR cannot auto-merge. The manager\'s canonical write path is\n  therefore a **direct Contents-API commit to the default branch of `inbox.md`** (it is the sole\n  writer, so no PR is needed). When this Project ships control changes by PR, push the branch\n  over git (a real `git push` triggers `pull_request`/`push` events) before or after creating\n  the PR, and verify the PR shows check runs before relying on auto-merge.\n',
-    'control-claims-README.md.tmpl': '# `control/claims/` — claim before build, one file per claim\n\n> **Status:** `binding`\n>\n> Local copy for ${project_name}. The kit-owned work-claim convention\n> (EAP program review 2026-07-10 §6.4 — the fleet\'s forked claim mechanisms\n> unified on the measured winner). Order claims are different and stay on\n> your heartbeat — see `control/README.md` § "Claiming an order".\n\n## What this is\n\nA lightweight **claim ledger** so parallel agent sessions don\'t duplicate each\nother\'s work. Several sessions can run at once; two of them picking up the\nsame task is pure waste. This directory makes "is someone already on this?"\nanswerable **before a PR exists** — the claim is the early in-flight signal,\nthe PR is the late one.\n\n## Why one file per claim (measured, not vibes)\n\nA shared "active work" list that every session appends to and prunes is a\nmerge-conflict machine: a real-`git merge` simulation\n(menno420/superbot `tools/sim/claim_layout_sim.py`) measured the shared-append\npattern at a **~98% conflict rate** under concurrent sessions; splitting by\nsector only halved it. **One file per claim is structurally conflict-free —\n0% at every concurrency level** — because two sessions never touch the same\nfile. The rule that preserves that 0%: **no hand-edited shared index**.\nDiscover claims with `ls control/claims/` — this README never lists them.\n\n## How to use it\n\n1. **Before starting work**, scan this directory AND the open PRs. If your\n   task is already claimed or in flight, coordinate or pick something else.\n2. **Create one claim file** — `control/claims/<branch-or-scope>.md` — with a\n   single bullet:\n   `` - `branch-or-scope` · **scope** — one-line detail · expected files/area · YYYY-MM-DD ``\n   (Keep the backticks around the branch/scope token and the ISO date — the\n   `check_claims` checker parses both; an unparseable claim is invisible to\n   its duplicate scan.)\n   Grammar source of truth: the bullet\'s regexes (backticked token + ISO date) are kit-owned constants in the kit\'s `src/engine/grammar.py` (EAP §6.8) — the SAME module `check_claims` consumes; agreement is pinned by the kit\'s `tests/test_grammar.py`.\n3. **Land the claim on main FAST** (claims are `control/**` traffic — they\n   ride the CI control fast lane), then re-read this directory at HEAD before\n   you build: if both lanes do this, the second claimer always sees the first.\n4. **Delete your own claim file at session close.** The durable record is the\n   PR and the living ledger — a claim is a whiteboard note, not an audit\n   trail.\n\n## Arbitration + expiry\n\n- **First claim merged to main wins** a collision — a deterministic tiebreak\n  beats re-litigating every race; the loser deletes its file and stands down.\n- **Claims expire**: a claim file older than ~72h with no visible build\n  activity may be treated as abandoned — prune it on sight (the checker nags\n  with `claims-stale`).\n\n## What the checker enforces (all advisory, never exit-affecting)\n\n`check` warns on: `claims-format` (no parseable bullet), `claims-stale`\n(older than the ~72h horizon), `claims-duplicate` (two files, one\nbranch/scope token), and `claims-legacy-location` (claims living in a\npre-unification home — `docs/owner/claims/` or root `claims/`; move them\nhere, or pin your deliberate location via `substrate.config.json` →\n`claims_dir`).\n\n## Not for inbox ORDERS\n\nAn inbox ORDER is claimed on your OWN heartbeat\'s `orders:` line\n(`claimed-by: <ids> <lane> <ISO8601>` — `control/README.md` § "Claiming an\norder"), never here: the heartbeat annotation preserves one-writer-per-file\nfor the order lifecycle the manager reconciles. This directory is for\n**work** — coordinator-assigned slices, self-initiated builds, anything that\nisn\'t an ORDER id.\n',
+    'control-claims-README.md.tmpl': '# `control/claims/` — claim before build, one file per claim\n\n> **Status:** `binding`\n>\n> Local copy for ${project_name}. The kit-owned work-claim convention\n> (EAP program review 2026-07-10 §6.4 — the fleet\'s forked claim mechanisms\n> unified on the measured winner). Order claims are different and stay on\n> your heartbeat — see `control/README.md` § "Claiming an order".\n\n## What this is\n\nA lightweight **claim ledger** so parallel agent sessions don\'t duplicate each\nother\'s work. Several sessions can run at once; two of them picking up the\nsame task is pure waste. This directory makes "is someone already on this?"\nanswerable **before a PR exists** — the claim is the early in-flight signal,\nthe PR is the late one.\n\n## Why one file per claim (measured, not vibes)\n\nA shared "active work" list that every session appends to and prunes is a\nmerge-conflict machine: a real-`git merge` simulation\n(menno420/superbot `tools/sim/claim_layout_sim.py`) measured the shared-append\npattern at a **~98% conflict rate** under concurrent sessions; splitting by\nsector only halved it. **One file per claim is structurally conflict-free —\n0% at every concurrency level** — because two sessions never touch the same\nfile. The rule that preserves that 0%: **no hand-edited shared index**.\nDiscover claims with `ls control/claims/` — this README never lists them.\n\n## How to use it\n\n1. **Before starting work**, scan this directory AND the open PRs. If your\n   task is already claimed or in flight, coordinate or pick something else.\n2. **Create one claim file** — `control/claims/<branch-or-scope>.md` — with a\n   single bullet:\n   `` - `branch-or-scope` · **scope** — one-line detail · expected files/area · YYYY-MM-DD ``\n   (Keep the backticks around the branch/scope token and the ISO date — the\n   `check_claims` checker parses both; an unparseable claim is invisible to\n   its duplicate scan.)\n   Grammar source of truth: the bullet\'s regexes (backticked token + ISO date) are kit-owned constants in the kit\'s `src/engine/grammar.py` (EAP §6.8) — the SAME module `check_claims` consumes; agreement is pinned by the kit\'s `tests/test_grammar.py`.\n   **Don\'t hand-write it** — `bootstrap claim <slug> --scope "<scope>"\n   [--area "<files/area>"]` renders the bullet from those same constants\n   (round-trip verified, current UTC date last; `--dry-run` previews), so\n   the claim can never be invisible to the duplicate scan.\n3. **Land the claim on main FAST** (claims are `control/**` traffic — they\n   ride the CI control fast lane), then re-read this directory at HEAD before\n   you build: if both lanes do this, the second claimer always sees the first.\n4. **Delete your own claim file at session close** — `bootstrap claim\n   <slug> --delete` (it refuses to touch a foreign claim). The durable\n   record is the PR and the living ledger — a claim is a whiteboard note,\n   not an audit trail.\n\n## Arbitration + expiry\n\n- **First claim merged to main wins** a collision — a deterministic tiebreak\n  beats re-litigating every race; the loser deletes its file and stands down.\n- **Claims expire**: a claim file older than ~72h with no visible build\n  activity may be treated as abandoned — prune it on sight (the checker nags\n  with `claims-stale`).\n\n## What the checker enforces (all advisory, never exit-affecting)\n\n`check` warns on: `claims-format` (no parseable bullet), `claims-stale`\n(older than the ~72h horizon), `claims-duplicate` (two files, one\nbranch/scope token), and `claims-legacy-location` (claims living in a\npre-unification home — `docs/owner/claims/` or root `claims/`; move them\nhere, or pin your deliberate location via `substrate.config.json` →\n`claims_dir`).\n\n## Not for inbox ORDERS\n\nAn inbox ORDER is claimed on your OWN heartbeat\'s `orders:` line\n(`claimed-by: <ids> <lane> <ISO8601>` — `control/README.md` § "Claiming an\norder"), never here: the heartbeat annotation preserves one-writer-per-file\nfor the order lifecycle the manager reconciles. This directory is for\n**work** — coordinator-assigned slices, self-initiated builds, anything that\nisn\'t an ORDER id.\n',
     'control-inbox.md.tmpl': '# ${project_name} · inbox\n\n> ORDERS to this Project. **ONE writer: the manager** — never edit this file. Report order\n> progress in `control/status.md` (`orders: acked=… done=…`). Protocol: `control/README.md`.\n\n*(no orders yet — the manager appends `## ORDER 001 · <ISO8601> · status: new` blocks here)*\n',
     'control-status.md.tmpl': '# ${project_name} · status\nupdated: (seeded at adopt — no real heartbeat yet: overwrite this whole file at your first session close)\nphase: adopted — first session not yet run\nhealth: green\nkit: v${kit_version} · check: red · engaged: no\nlast-shipped: none\nblockers: none\norders: acked= done=\n⚑ needs-owner: none\nnotes: seeded skeleton planted by substrate-kit adopt. This Project is the SOLE writer of this\nfile — overwrite it (never append) as the deliberate LAST step of every session, per\n`control/README.md`. `check` holds strict RED until the first real heartbeat replaces this seed.\nThe `kit:` line is your kit self-report (substrate-coordinator visibility): keep the version in\nsync with your vendored kit on every upgrade, `check:` = your last `check --strict` verdict,\n`engaged:` = the post-adopt engagement gate (yes once `check` reports ENGAGED/green live CI).\nKeep the `kit:` token PLAIN — the bold-label form `- **kit:** v1.2.3 · check: green · engaged: yes`\ndoes NOT parse and the fleet registry reads it as no `kit:` line at all (grammar + the valid\nbold-label-before-plain-token shape: `control/README.md` § "status.md format"). And this line is\na self-report, not version truth — self-reports chronically lag; the kit repo\'s generated\n`docs/adopters.md` and your committed tree are the version truth to defer to.\n',
     'current-state.md.tmpl': '# ${project_name} — Current State\n\n> **Status:** `living-ledger`\n>\n> Generated by substrate-kit. **Living status ledger.** Source code and merged\n> work always win over this file. Read it second (right after the working\n> agreement) and keep it current as the project moves.\n\n## Stability baseline\n\n(Describe the accepted-stable baseline once established — what is known-good and\nshould not be re-audited without a reported regression.)\n\n## In flight\n\n(Verify against live source control — this section is a dated snapshot.)\n\n## Recently shipped (newest first)\n\n(Merged work only, newest first.)\n\n## Review rhythm\n\n${review_ritual}\n',

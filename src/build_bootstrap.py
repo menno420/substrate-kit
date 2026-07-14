@@ -73,6 +73,12 @@ MODULE_ORDER = (
     # heartbeat writer (ORDER 019 item 7) reuses UPDATED_LINE_RE/KIT_LINE_RE
     # and round-trips every write through parse_heartbeat.
     "heartbeat.py",
+    # After grammar.py: the mechanical work-claim writer (#358 card's 💡
+    # ender) renders from and round-trips through the same
+    # WORK_CLAIM_BULLET_RE / WORK_CLAIM_DATE_RE constants check_claims
+    # consumes. Grammar-only imports, so anywhere after grammar.py works;
+    # kept beside its sibling writer heartbeat.py.
+    "claim.py",
     "ledger.py",
     "loop/kpis.py",
     "loop/reflections.py",
