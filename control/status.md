@@ -32,4 +32,5 @@ kit: v1.15.0
 - ⚑ 6 public-flip-or-PAT (unblocks B2–B4 cross-repo sweeps).
 - Grounded-skills measurement window ~2026-07-19..26 — silence accepts.
 
-orders: acked=001–019 · done=001–019
+done=020 facts: PR #362 — ORDER 020 items d+e shipped: (d) cmd_check friction-outbox pending-count advisory (advisory-only, never exit-affecting, full lane) · (e) INC-29 lowercase docs/capabilities.md → docs/CAPABILITIES.md pointer fix in CAPABILITIES.md.tmpl + seatdigest.py, with casing regression tests; (a)–(c) SATISFIED per the thread's premise-check at a4d858e.
+orders: acked=001–020 · done=001–020
