@@ -1,1 +1,0 @@
-- `claude/engagement-native-gate` · **engagement native-consumer state** — declared `native_gate` evidence class in the engagement gate (`enforcement-native`, idea engagement-native-consumer-state-2026-07-12) · src/engine/checks/check_engagement.py + src/engine/lib/config.py + src/engine/cli.py + tests + dist regen · 2026-07-15
