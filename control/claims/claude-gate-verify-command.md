@@ -1,0 +1,1 @@
+- `claude/gate-verify-command` · **gate test step honors the interview verify_command slot (baton item 1, follow-on to #403)** · src/engine/adopt.py + src/engine/upgrade.py + tests/ + docs/ideas/ + dist regen · 2026-07-15
