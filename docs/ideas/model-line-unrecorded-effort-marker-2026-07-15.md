@@ -1,17 +1,21 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 394
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-15
+outcome: shipped
 ---
 
 # 📊 Model-line `unrecorded` effort marker — sanctioned terminal value for retro-sweeps (2026-07-15)
 
 > **Status:** `ideas`
 >
-> **State:** captured (from the 2026-07-15 model-line payload sweep, PR #390).
+> **State:** shipped — kit PR #394 (2026-07-15, anticipated in-PR date):
+> `MODEL_EFFORT_UNRECORDED` carve-out in `check_model_line` (advisory-silent,
+> harvest verbatim, live off-taxonomy still nags) + the `.sessions/README.md`
+> teaching line + tests + dist byte-pin regen.
+> (Captured 2026-07-15 from the model-line payload sweep, PR #390.)
 
 ## The idea
 

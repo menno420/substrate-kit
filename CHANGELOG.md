@@ -45,6 +45,19 @@ workflow refuses to publish a version that has no section in this file.
   (the Q-014..016 rider-graduation miss). Pinned ORDER stays pinned for
   byte-reproducibility.
 
+### Changed
+
+- **Model-line lint: `unrecorded` is a sanctioned terminal effort value**
+  (idea `model-line-unrecorded-effort-marker-2026-07-15`):
+  `check_model_line` no longer fires `model-line-effort` on an effort
+  segment of exactly `unrecorded` (`MODEL_EFFORT_UNRECORDED`) — the honest
+  backfill for retroactive repair of a card whose author never self-reported
+  a tier (the PR #390 sweep class), where a standing nag invites a later
+  wake to invent one. `MODEL_EFFORT_VALUES` stays `(low, medium, high)`
+  (live sessions still report a real tier; any other off-taxonomy value
+  still nags), and the telemetry harvest records `unrecorded` verbatim.
+  Reservation documented in `.sessions/README.md`.
+
 ## [1.17.0] - 2026-07-14
 
 <!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->

@@ -49,14 +49,6 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
-- [Model-line `unrecorded` effort marker — sanctioned terminal value for retro-sweeps](model-line-unrecorded-effort-marker-2026-07-15.md)
-  — state: captured; origin: lab (the 2026-07-15 payload sweep, PR #390,
-  retro-fixed 3 cards whose authors never self-reported effort; the honest
-  `unrecorded` backfill trades shape advisories for `model-line-effort` nags
-  that invite a later wake to invent a tier); next: build — recognize
-  `unrecorded` as advisory-silent in `check_model_line` (harvest verbatim,
-  live off-taxonomy still nags), one line in `.sessions/README.md`, tests +
-  dist regen in one scoped PR.
 - [Work claims miss cross-branch ORDER collisions](order-claim-cross-branch-collision-2026-07-14.md)
   — state: captured; origin: lab (two routine fires the same night both
   consumed the same unacked ORDER 020 and built duplicate PRs — #362 landed,
@@ -156,6 +148,15 @@ story, the frontmatter keeps the score.
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [Model-line `unrecorded` effort marker — sanctioned terminal value for retro-sweeps](model-line-unrecorded-effort-marker-2026-07-15.md)
+  — **shipped** kit PR #394 (2026-07-15, anticipated in-PR date):
+  `MODEL_EFFORT_UNRECORDED` carve-out in `check_model_line` — the honest
+  retro-backfill value (PR #390 sweep: authors never self-reported effort)
+  goes advisory-silent instead of standing as `model-line-effort` nags that
+  invite a later wake to invent a tier; harvest records it verbatim, live
+  off-taxonomy values still nag, `MODEL_EFFORT_VALUES` unchanged; plus the
+  `.sessions/README.md` reservation line + tests + dist byte-pin regen.
+  Window closes 2026-08-14.
 - [`currency --check` — a cheap registry-delta preflight verb](currency-check-registry-delta-preflight-2026-07-15.md)
   — **shipped** kit PR #392 (2026-07-15, anticipated in-PR date):
   `registry_delta()` in `engine.currency` + a `--check` lane on the currency

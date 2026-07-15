@@ -131,6 +131,41 @@ def test_off_taxonomy_effort_fires():
     assert "low | medium | high" in findings[0][1]
 
 
+def test_unrecorded_effort_is_advisory_silent():
+    # The sanctioned TERMINAL value for retro-backfills (idea
+    # model-line-unrecorded-effort-marker-2026-07-15): an honest repair of a
+    # card whose author never self-reported effort must not nag — the nag
+    # invites a later wake to invent a tier, the exact corruption the PR #390
+    # sweep avoided.
+    from engine.checks.check_model_line import MODEL_EFFORT_UNRECORDED
+
+    assert MODEL_EFFORT_UNRECORDED == "unrecorded"
+    # ... and it stays OUT of the live taxonomy — not an escape hatch.
+    assert MODEL_EFFORT_UNRECORDED not in grammar.MODEL_EFFORT_VALUES
+    assert (
+        _kinds("- **\N{BAR CHART} Model:** fable-5 · unrecorded · docs-only\n") == []
+    )
+
+
+def test_unrecorded_silences_only_the_effort_advisory():
+    # Other defects on the same line still fire — `unrecorded` sanctions the
+    # effort segment only, never the whole payload.
+    kinds = _kinds("- **\N{BAR CHART} Model:** claude-fable-5 · unrecorded · release\n")
+    assert kinds == ["model-line-exact-id", "model-line-class"]
+
+
+def test_harvest_records_unrecorded_verbatim():
+    # The harvest half is UNCHANGED by the sanction: `unrecorded` lands in
+    # the PL-004 row verbatim, like any effort value.
+    parsed = telemetry.parse_model_line(
+        "- **\N{BAR CHART} Model:** fable-5 · unrecorded · docs-only\n",
+    )
+    assert parsed is not None and parsed["effort"] == "unrecorded"
+    record = telemetry._build_model_usage_record("2026-07-15-retro-fix", parsed)
+    assert record["effort"] == "unrecorded"
+    assert record["model"] == "fable-5"
+
+
 def test_off_taxonomy_class_fires():
     findings = model_line_findings(
         _card("- **\N{BAR CHART} Model:** fable-5 · high · release\n"),
