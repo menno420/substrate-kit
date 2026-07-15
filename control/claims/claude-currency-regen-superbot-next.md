@@ -1,0 +1,1 @@
+- `claude/currency-regen-superbot-next` · **currency slice: regenerate docs/adopters.md (superbot-next v1.16.0→v1.17.0 drift row)** · docs/adopters.md, .sessions/ · 2026-07-15
