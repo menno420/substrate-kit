@@ -1,1 +1,0 @@
-- claude/adopters-currency-2026-07-15 · ORDER 024 rebooted-wake ack + docs/adopters.md currency regen (live-HEAD discovery, generated file only) · 2026-07-15
