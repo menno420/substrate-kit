@@ -1,1 +1,0 @@
-- `claude/answer-gate-safety-advisory` · **answer/confirm-time gate-safety advisory for verify_command (the #405 card 💡)** · src/engine/adopt.py, src/engine/cli.py, tests/test_adopt.py, docs/ideas/ · 2026-07-15
