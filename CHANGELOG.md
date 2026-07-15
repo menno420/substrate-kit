@@ -17,6 +17,24 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Answer-time gate-safety advisory for `verify_command`** (idea
+  `answer-time-gate-safety-advisory-2026-07-15` — the #405 card's 💡: a
+  prose-y verify answer records silently and its gate-unsafety surfaces
+  only as the *absence* of the honored gate lane at the next
+  adopt/upgrade): new `engine.adopt.gate_test_command_advisory` runs the
+  same shape legs `gate_test_command` gates on (newline, unfilled
+  `${...}`, the gate-safe character allowlist) over a just-**filled**
+  `verify_command` and returns a NOTE naming the offending shape plus a
+  runnable rewrite when stripping parenthetical annotations recovers a
+  gate-safe command (an annotated *default* pytest value gets the honest
+  "fallback already runs the equivalent" wording instead; multi-line
+  values never get a rewrite — the whitespace collapse would suggest a
+  broken joined command). Emitted by `bootstrap answer` and `bootstrap
+  confirm` — both filled-making moments — via
+  `cli._emit_gate_safety_advisory`; advisory prose only, recorded state
+  and every exit code unchanged; gate-safe and default-pytest values stay
+  silent.
+
 - **Taxonomy-surface sync checker** (idea
   `taxonomy-surface-sync-checker-2026-07-09` — PL-010 friction: the
   task-class taxonomy lives on three surfaces updated by hand with nothing

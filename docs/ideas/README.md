@@ -101,6 +101,16 @@ red preflight round rediscovering it via checker error.)
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [Answer-time gate-safety advisory for `verify_command`](answer-time-gate-safety-advisory-2026-07-15.md)
+  — **shipped** kit PR #407 (2026-07-15, anticipated in-PR date; the #405
+  card's 💡, captured with the increment): `bootstrap answer`/`confirm`
+  run `gate_test_command`'s gate-safety legs over a just-filled
+  `verify_command` and emit a NOTE naming the offending shape plus a
+  runnable rewrite when stripping parenthetical annotations recovers a
+  gate-safe command — the silent won't-drive-CI seam surfaces at the
+  moment the value is typed instead of at the next adopt/upgrade.
+  Advisory-only; gate-safe and default-pytest values stay silent. Window
+  closes 2026-08-14.
 - [Gate test step honors the interview's `verify_command` slot](gate-verify-command-slot-2026-07-15.md)
   — **shipped** kit PR #405 (2026-07-15, anticipated in-PR date; captured
   with the increment — the 💡 lived on the #403 card, built the next wake):

@@ -41,6 +41,7 @@ from typing import Any
 
 from engine.adopt import (
     adopt,
+    gate_test_command_advisory,
     record_doc_hash,
     strip_unrendered_banner,
 )
@@ -2048,7 +2049,30 @@ def cmd_answer(target: Path, slot: str, answer: str) -> int:
     if status == "partial":
         floor = int(question.get("min_len", 1))
         _emit(f"answer: too thin to count (needs >= {floor} chars of substance).")
+    if status == "filled":
+        _emit_gate_safety_advisory(backend, slot)
     return 0
+
+
+def _emit_gate_safety_advisory(backend: JsonStateBackend, slot: str) -> None:
+    """Surface verify_command gate-unsafety at the moment the slot fills.
+
+    The answer-time half of the #405 honored-lane contract (the #405
+    card's 💡): only a filled + gate-safe + non-default ``verify_command``
+    drives the generated substrate-gate's test step, and a prose-y value
+    otherwise fails that bar SILENTLY — the divergence surfaces only at
+    the next adopt/upgrade. Advisory prose only; never changes state or
+    exit codes. No-op for every other slot.
+    """
+    if slot != "verify_command":
+        return
+    entry = backend.get("slot_values", {}).get(slot)
+    value = entry.get("value") if isinstance(entry, dict) else None
+    if not isinstance(value, str):
+        return
+    advisory = gate_test_command_advisory(value)
+    if advisory:
+        _emit(advisory)
 
 
 def cmd_confirm(target: Path, slot: str) -> int:
@@ -2059,6 +2083,7 @@ def cmd_confirm(target: Path, slot: str) -> int:
     _, backend = loaded
     if confirm_slot(backend, slot, source="user"):
         _emit(f"confirm: {slot} confirmed (provisional -> filled).")
+        _emit_gate_safety_advisory(backend, slot)
         return 0
     _emit(f"confirm: {slot} is not provisional (nothing to confirm).")
     return 1

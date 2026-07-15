@@ -758,6 +758,96 @@ def gate_test_command(
     return command
 
 
+def _strip_parenthetical(command: str) -> str:
+    """Drop ``(...)`` annotation segments and collapse the whitespace.
+
+    The observed gate-unsafe shape is a runnable command decorated with
+    prose in parentheses (websites' real verify line carries ``(all four
+    service suites)`` / ``(kit gate)`` annotations). Stripping them is the
+    one mechanical rewrite that reliably recovers the runnable command;
+    anything cleverer risks suggesting a command the owner never wrote.
+    """
+    stripped = command
+    while True:
+        reduced = re.sub(r"\s*\([^()]*\)", "", stripped)
+        if reduced == stripped:
+            break
+        stripped = reduced
+    return " ".join(stripped.split())
+
+
+def gate_test_command_advisory(value: str, interpreter: str = "python3") -> str | None:
+    """Return a gate-safety NOTE for a just-filled verify_command, or None.
+
+    The answer-time half of the #405 honored-lane contract: a prose-y
+    verify answer records silently, and its gate-unsafety otherwise
+    surfaces only as the *absence* of the honored test step at the next
+    adopt/upgrade — the owner never learns their verify line cannot drive
+    CI. This runs :func:`gate_test_command`'s gate-safety legs (newline,
+    unfilled ``${...}``, the :data:`_GATE_TEST_COMMAND_SAFE_RE` allowlist)
+    at the moment the value is typed, when fixing it costs one retype
+    instead of an adopt-cycle round-trip.
+
+    None means nothing to say: the value is gate-safe — it either drives
+    the gate's test step verbatim or is a default pytest invocation whose
+    hardened fallback step is strictly more robust (nothing is lost either
+    way). A returned NOTE names the offending shape and, when stripping
+    parenthetical annotations recovers a gate-safe command, the runnable
+    rewrite. Advisory prose only — the recorded answer and every exit code
+    stay untouched (the slot is still a fine CLAUDE.md verify line).
+    """
+    command = value.strip()
+    if not command:
+        return None
+    if "\n" in command:
+        reason = "it spans multiple lines (the gate embeds a single command line)"
+    elif "${" in command:
+        reason = "it carries an unfilled `${...}` placeholder"
+    elif not _GATE_TEST_COMMAND_SAFE_RE.match(command):
+        offending = sorted(
+            {ch for ch in command if not _GATE_TEST_COMMAND_SAFE_RE.match(ch)}
+        )
+        reason = (
+            "it carries characters outside the gate-safe set: "
+            + " ".join(offending)
+        )
+    else:
+        return None
+    note = (
+        "NOTE gate-safety: this verify_command will NOT drive the "
+        f"substrate-gate's test step — {reason}; the gate keeps the "
+        "hardened pytest fallback."
+    )
+    # A rewrite is offered only for single-line values: the whitespace
+    # collapse would join multi-line commands into one broken line, and a
+    # wrong suggestion is worse than none.
+    rewrite = "" if "\n" in command else _strip_parenthetical(command)
+    if (
+        rewrite
+        and rewrite != command
+        and "${" not in rewrite
+        and _GATE_TEST_COMMAND_SAFE_RE.match(rewrite)
+    ):
+        if _is_default_pytest_command(rewrite, interpreter):
+            note += (
+                " Stripped of the annotations it is the default pytest "
+                "invocation — the fallback already runs the equivalent, "
+                "so nothing is lost (annotations belong in docs)."
+            )
+        else:
+            note += (
+                " Runnable rewrite that would drive it: "
+                f'`answer verify_command "{rewrite}"` '
+                "(annotations belong in docs, not the command)."
+            )
+    else:
+        note += (
+            " Re-record a plain runnable command to drive the gate "
+            "(prose annotations are documentation, not shell)."
+        )
+    return note
+
+
 def live_ci_workflow(
     interpreter: str = "python3",
     sessions_dir: str = ".sessions",
