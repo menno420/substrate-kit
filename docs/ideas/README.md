@@ -16,12 +16,12 @@
 (5) OUTCOME  implemented | on a roadmap | in discussion | rejected
 ```
 
-## Frontmatter — the B4 outcome record (founding plan §5.4)
+## Frontmatter — the idea-outcome record
 
 Every idea file in this directory (README excepted) opens with a flat
 YAML-subset frontmatter block — the machine-readable half of B4
-("ideas that ship and survive"), validated by `scripts/check_idea_index.py`
-in the kit-quality gate:
+("ideas that ship and survive", founding plan §5.4), validated by
+`scripts/check_idea_index.py` in the kit-quality gate:
 
 ```
 ---

@@ -18,6 +18,23 @@ env tokens exist) and stall on imagined walls — burning owner attention as
 hand reminders. This ledger makes capability knowledge durable across
 sessions: one session's discovery is every later session's starting fact.
 
+## Posture decision rule — establish your venue first
+
+- **Owner-live session:** assume NO special limitations apply — act and merge
+  directly (superbot Q-0269).
+- **Autonomous / routine-fired seat:** pre-route around every known stall
+  class recorded below; park only on a REAL denial, never preemptively
+  (superbot Q-0270 boot triad: model · venue · ability envelope).
+
+Venue tokens (every entry names where it was verified): `owner-live` ·
+`autonomous-project` · `routine-fired` · `subagent` · `any`. Capabilities are
+**venue-scoped, not global** — the same operation can work owner-live, be
+org-refused on a cross-session binding, and prompt-stall in a plain-started
+seat while never prompting in a Routine-spawned one (fleet night review,
+2026-07-12). A flat CAN/CANNOT ledger is wrong somewhere by construction.
+(Local ledger note: entries below predating this section carry no venue
+token — read them as venue `any` per the append-log format note.)
+
 ## THE DISCOVERY RULE
 
 Before declaring anything impossible, and before assuming a tool or
