@@ -2,7 +2,7 @@
 
 > **Status:** `complete`
 
-- **📊 Model:** Fable-class
+- **📊 Model:** Fable-class · unrecorded · docs-only (registry currency regen + ORDER 024 ack; payload retro-fixed by the 2026-07-15 sweep — authoring session wrote bare `Fable-class`, effort never self-reported, marked unrecorded rather than invented)
 - Scope: ORDER 024 first-rebooted-wake ack + docs/adopters.md currency regen (PR #382, branch claude/adopters-currency-2026-07-15).
 
 ## Record

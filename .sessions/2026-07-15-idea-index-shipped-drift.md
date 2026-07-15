@@ -2,7 +2,7 @@
 
 > **Status:** `complete`
 
-- **📊 Model:** Fable-class
+- **📊 Model:** Fable-class · unrecorded · docs-only (idea-index shipped-drift reconcile; payload retro-fixed by the 2026-07-15 sweep — authoring session wrote bare `Fable-class`, effort never self-reported, marked unrecorded rather than invented)
 - Scope: reconcile docs/ideas/README.md index drift — 7 shipped ideas (#187 ×2, #342, #344, #346, #349, #351) still listed as buildable `state: captured` Backlog entries, plus flip the regen-lag idea frontmatter for merged PR #345 (c603cc9).
 
 ## Record

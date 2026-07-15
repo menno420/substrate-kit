@@ -1,10 +1,11 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-15T12:14Z · phase: EAP EXTENSION ACTIVE (EAP through 2026-07-21; inbox consumed 001–024; routines coordinator-managed)
+updated: 2026-07-15T12:52Z · phase: EAP EXTENSION ACTIVE (EAP through 2026-07-21; inbox consumed 001–024; routines coordinator-managed)
 
-## This wake (2026-07-15 · work slice · claude/adopter-currency-websites-v1170 · PR #389)
-- Coordinator-routed adopter-currency slice (baton item 2 of the previous heartbeat; no inbox ORDER above 024; control/claims/ held README only; zero open PRs at the 12:0xZ scan): re-ran `python3 dist/bootstrap.py currency` (12:09:23Z, 12 repos scanned read-only, exit 0 first try) after websites bumped its self-report to `kit: v1.17.0`. Registry regenerated: websites row now `current`; its DRIFT row retired. DRIFT 5 repos → 4 — remaining rows preserved per the benign-red doctrine: chronic lane-owed self-report lag (superbot-next v1.16.0, superbot-games status.md v1.15.0 + mining/exploration lanes v1.7.1, superbot-mineverse v1.16.0) + kit's known tree-internal config-pin v1.0.0 row. Docs-only slice — no engine change, dist byte-pin untouched.
-- Claim hygiene: first claim bullet was hand-written and unparseable (`claims-format` advisory at check --strict); re-rendered via `bootstrap claim` (round-trip verified) same session.
-- Verify: preflight 8/8 legs green (pytest 1594 passed, 1 skipped; ruff; dist-byte-pin; idea-index; retro-index; changelog-structure; program-law; bench-integrity); `dist/bootstrap.py check --strict` clean except the designed born-red session-gate HOLD + known advisories (staged-regen-lag ×3; model-line payload ×4 older cards — now baton item 2).
+## This wake (2026-07-15 · work slice · claude/model-line-payload-sweep · PR #390)
+- Coordinator-routed baton item 2 (no inbox ORDER above 024; control/claims/ held README only at open; zero open PRs at the 12:3xZ scan): model-line payload sweep — retro-fixed the 4 session cards `check --strict` named verbatim (2026-07-14-seat-digest-adaptive-clip, 2026-07-14-v1.16.0-wave, 2026-07-15-adopters-currency-refresh, 2026-07-15-idea-index-shipped-drift). All 4 now carry shape-valid three-field payloads, so the PL-004 harvest records them; the off-taxonomy `distribution/ceremony` class was mapped to `docs-only` with the original wording kept as decoration.
+- Retro-fix honesty rule (decide-and-flag): original self-reported model tokens preserved verbatim; effort backfilled ONLY where the authoring session recorded it. Three cards never self-reported effort — their effort segment reads `unrecorded` rather than an invented tier, which trades the 4 shape/class advisories for 3 `model-line-effort` nags (advisory-only, never exit-affecting; they age out of the 10-card lint window as new cards land). TERMINAL disposition: do NOT "re-fix" these by inventing low/medium/high — the truthful value is unrecorded; the sanctioned-marker idea is captured in docs/ideas/ (see PR #390 card 💡).
+- Adopter-bump precheck (before picking the slice): live raw-content scan of all registry rows at 12:3xZ matched docs/adopters.md @ 30a2a53 byte-for-byte (websites/venture-lab/idea-engine v1.17.0 current; superbot-next + superbot-mineverse v1.16.0, superbot-games v1.15.0 + lanes v1.7.1 — known DRIFT, already recorded) — no currency re-run warranted.
+- Verify: preflight 8/8 legs green (pytest 1594 passed, 1 skipped; ruff; dist-byte-pin; idea-index; retro-index; changelog-structure; program-law; bench-integrity); `check --strict` clean except the designed born-red session-gate HOLD + known staged-regen-lag ×3 + the 3 honest `unrecorded` effort nags above.
 
 ## Routine state (observed facts — trigger inventory carried from the 2026-07-15 ~04:4xZ read-only list_triggers pass; this wake armed no triggers)
 - This session armed no triggers and ran no new trigger inventory. Routines are coordinator-managed this wake.
@@ -13,13 +14,13 @@ updated: 2026-07-15T12:14Z · phase: EAP EXTENSION ACTIVE (EAP through 2026-07-2
 
 ## State
 - kit: v1.17.0
-- v1.17.0 distributed 9/9 engaged adopters; registry regenerated this wake (12:09:23Z scan): websites now current at v1.17.0; DRIFT 4 repos (superbot-next, superbot-games, superbot-mineverse self-report lag + kit's tree-internal pin row).
+- v1.17.0 distributed 9/9 engaged adopters; registry (docs/adopters.md, generated 12:09:23Z) verified still-current by this wake's live rescan: websites current at v1.17.0; DRIFT 4 repos (superbot-next, superbot-games, superbot-mineverse self-report lag + kit's tree-internal pin row).
 - Grounded-skills measurement: harness MERGED (#386, main @ c5380dc) — turnkey: `python3 scripts/measure_grounded_skills.py --clone --workdir <dir> --json <f> --out <f>`; protocol pre-registered at docs/operations/grounded-skills-measurement.md.
 - Revival boot reading: CONSTITUTION.md → control/inbox.md → this file → docs/eap-closeout-walkthrough-2026-07-14.md §E → docs/audits/eap-project-audit-2026-07-14.md.
 
 ## Next-2 baton
 1. Grounded-skills measurement window ~2026-07-19..26 — run per docs/operations/grounded-skills-measurement.md (turnkey since #386 merged; PR #247 methodology; owner silence accepts); publish the findings report under docs/reports/ and link it from the operations index.
-2. Model-line payload sweep — fix the 4 older cards whose `📊 Model:` lines are off-taxonomy or malformed (named verbatim by `dist/bootstrap.py check --strict` advisories: 2026-07-14-seat-digest-adaptive-clip, 2026-07-14-v1.16.0-wave, 2026-07-15-adopters-currency-refresh, 2026-07-15-idea-index-shipped-drift) so the PL-004 harvest records them; the next currency re-run stays conditional on the remaining adopter lanes bumping their `kit:` lines (4 DRIFT repos at the 12:09Z scan).
+2. Currency re-run — conditional on the lagging adopter lanes bumping their `kit:` self-report lines (4 DRIFT repos verified still lagging at this wake's 12:3xZ live scan: superbot-next v1.16.0, superbot-games v1.15.0 + lanes v1.7.1, superbot-mineverse v1.16.0, plus kit's tree-internal v1.0.0 pin row); when any bump lands, `python3 dist/bootstrap.py currency` + regenerate docs/adopters.md. Else: pick the next buildable idea from docs/ideas/README.md § Backlog (candidate noted earlier: a `currency --check` registry-delta preflight verb).
 
 ## ⚑ FOR OWNER (standing set carried forward — NO new asks this wake)
 
