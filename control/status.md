@@ -1,11 +1,10 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-15T11:07Z · phase: EAP EXTENSION ACTIVE (EAP through 2026-07-21; inbox consumed 001–024; routines coordinator-managed)
+updated: 2026-07-15T11:41Z · phase: EAP EXTENSION ACTIVE (EAP through 2026-07-21; inbox consumed 001–024; routines coordinator-managed)
 
-## This wake (2026-07-15 · work slice · claude/engage-slot-coverage · PR #387)
-- Self-initiated slice (no inbox ORDER above 024; control/claims/ held README only; zero open PRs at the 11:0xZ scan — no backpressure): shipped the captured idea engage-slot-list-derived-2026-07-13 — coverage tests holding both deliberately-pinned interview-slot lists (bench `ENGAGE_SLOTS` + the ci.yml cold-adopt `for slot in …; do` loop) to set-equality with the question bank, so the next bank growth trips a named test instead of a latent red (the Q-014..016 rider-graduation miss was the paid instance). Pinned ORDER kept for byte-reproducibility; tests-only, no engine/dist change.
-- Adopter-bump check first (read-only, raw.githubusercontent.com, ~11:00Z): superbot-next v1.16.0 · websites v1.15.0 · superbot-games v1.15.0 · superbot-mineverse v1.16.0 — all four match the registry; no currency slice due.
-- Drift fixed on sight (same README edit): docs/ideas/README.md listed model-line-payload-lint-advisory as `captured` in the pointer-stub section while its frontmatter says shipped kit PR #352 (merged 2026-07-14) — entry relocated to the Shipped section with the ship record.
-- Verify: preflight 7/7 legs green (1585 passed, 1 skipped — incl. the 2 new coverage tests; ruff, dist-byte-pin, idea-index, changelog-structure, program-law, bench-integrity); `dist/bootstrap.py check --strict` red only on the designed born-red hold for this session's own card. Known pre-existing advisories (never exit-affecting): staged-regen-lag on .substrate/ agents/CLAUDE.md artifacts; model-line payload warnings on 4 older cards (two `Fable-class` shape misses, one `Fable` bare, one off-taxonomy class) — candidates for a later sweep slice, not this one.
+## This wake (2026-07-15 · work slice · claude/retro-index-checker · PR #388)
+- Self-initiated slice (no inbox ORDER above 024; control/claims/ held README only; zero open PRs at the 11:3xZ scan — no backpressure): shipped the captured idea retro-docs-reachability-checker-2026-07-10 — `scripts/check_retro_index.py` asserts every docs/retro/*.md is linked from docs/retro/README.md and every relative README .md link resolves (the PR #76 unindexed-addendum class, reconciled only at gen-2 boot #78); wired as the `retro-index` leg in scripts/preflight.py + the ci.yml kit-quality job (lane-conditioned; parity pins PINNED_LEGS/HEAVY_STEP_NAMES updated). Repo-level tooling only — no engine change, dist byte-pin untouched.
+- Adopter-bump check first (read-only, raw.githubusercontent.com, ~11:3xZ): superbot-next v1.16.0 · websites v1.15.0 · superbot-games v1.15.0 · superbot-mineverse v1.16.0 — self-report lines unchanged vs the 04:37Z registry regen; no currency slice due.
+- Verify: preflight 8/8 legs green (1594 passed, 1 skipped — incl. the 9 new retro-index tests + live-repo dogfood pass; ruff, dist-byte-pin, idea-index, retro-index, changelog-structure, program-law, bench-integrity). Known pre-existing advisories unchanged (staged-regen-lag on .substrate/ artifacts; model-line payload warnings on 4 older cards — sweep-slice candidates, not this one).
 
 ## Routine state (observed facts — trigger inventory carried from the 2026-07-15 ~04:4xZ read-only list_triggers pass; this wake armed no triggers)
 - This session armed no triggers. Routines are coordinator-managed this wake.
@@ -15,13 +14,13 @@ updated: 2026-07-15T11:07Z · phase: EAP EXTENSION ACTIVE (EAP through 2026-07-2
 
 ## State
 - kit: v1.17.0
-- v1.17.0 distributed 9/9 engaged adopters (registry re-verified at the 04:37Z scan; the four spot-checked kit-lines above unchanged at ~11:00Z).
+- v1.17.0 distributed 9/9 engaged adopters (registry re-verified at the 04:37Z scan; the four spot-checked kit-lines above unchanged at ~11:3xZ).
 - Grounded-skills measurement: harness MERGED (#386, main @ c5380dc) — turnkey: `python3 scripts/measure_grounded_skills.py --clone --workdir <dir> --json <f> --out <f>`; protocol pre-registered at docs/operations/grounded-skills-measurement.md.
 - Revival boot reading: CONSTITUTION.md → control/inbox.md → this file → docs/eap-closeout-walkthrough-2026-07-14.md §E → docs/audits/eap-project-audit-2026-07-14.md.
 
 ## Next-2 baton
 1. Grounded-skills measurement window ~2026-07-19..26 — run per docs/operations/grounded-skills-measurement.md (turnkey since #386 merged; PR #247 methodology; owner silence accepts); publish the findings report under docs/reports/ and link it from the operations index.
-2. After adopter lanes bump their heartbeat `kit:` lines (and/or branch-sweep gets wired per-repo via `adopt --wire-enforcement` — owner/resident), re-run `python3 dist/bootstrap.py currency` to retire the remaining DRIFT rows (5 at the 04:37Z scan; adopter kit-lines re-verified unchanged ~11:00Z this wake).
+2. After adopter lanes bump their heartbeat `kit:` lines (and/or branch-sweep gets wired per-repo via `adopt --wire-enforcement` — owner/resident), re-run `python3 dist/bootstrap.py currency` to retire the remaining DRIFT rows (5 at the 04:37Z scan; adopter kit-lines re-verified unchanged ~11:3xZ this wake).
 
 ## ⚑ FOR OWNER (standing set carried forward — NO new asks this wake)
 
