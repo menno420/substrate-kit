@@ -175,6 +175,69 @@ never exit-affecting — when a non-`none` ⚑ needs-owner list lacks these fiel
 
 Grammar source of truth: the tokens, field lists, and regexes of this format are kit-owned constants in the kit's `src/engine/grammar.py` (EAP §6.8) — the SAME module the `check` enforcers consume, so writer and enforcer cannot drift; agreement is pinned by the kit's `tests/test_grammar.py`.
 
+## Owner-assist output standard — every owner-facing output, not just asks
+
+The OWNER-ACTION block above covers the *needs-owner ask*; this standard
+covers ALL output routed to the owner — reports, questions, values to paste,
+links. The contract in one line: **the owner never derives anything** — an
+output that requires the owner to parse, derive, or transform anything is a
+drafting defect, not an owner task.
+
+1. **Paste-ready, finished values.** Every value the owner must enter is
+   computed and printed final — `NAME=value`, the full command, the full
+   file body — never a recipe for deriving it. When the owner must paste
+   something, give the exact link to where it goes; a full file goes in ONE
+   copyable fenced block, directly in chat.
+2. **Exact destination, always.** Every action names its exact destination:
+   a deep URL, a console path to the exact field (surface → section →
+   field, e.g. `Railway → project → service → Variables`), or a repo path +
+   line. Never a bare "go to settings" — `check` nags that class (advisory).
+3. **Risk class on every manual step:** ✅ safe / read-only · ↩️ reversible
+   (say how to undo) · ⚠️ irreversible / destructive. One class per step,
+   stated on the step (the `RISK:` line in an OWNER-ACTION block).
+4. **Structured choices, recommendation first.** A decision put to the
+   owner is options A/B(/C) with a **bolded recommendation** and a one-line
+   rationale, answerable with one letter — never an ask that requires the
+   owner to parse, derive, or transform anything.
+5. **Large outputs: digest + rendered link, never a wall of text.** Default
+   delivery is a control-plane rendered link plus a 3-line digest in chat;
+   the fallback — full text in one copyable block directly in chat — applies
+   where the control plane cannot render the repo yet. Link rules: deep-link
+   the exact file, never the repo root; the rendered view for things the
+   owner should *read*, the GitHub blob URL for things the owner should
+   *edit*; post-merge, link `ref=main`; the control-plane render cache is
+   180 s — append `&refresh=1` when the owner must see a just-pushed change.
+
+Worked example — digest + rendered deep link + a six-field ask carrying its
+risk class (every rule above in one output):
+
+```
+📄 Adopter-outcomes report — shipped (PR #247, merged b862e9a)
+
+Digest: before/after adoption is unmeasurable (9/10 adopters born <20h
+before their kit-install PR); false-claim audit near-clean (1 confirmed,
+self-corrected in 6 min); post-adoption time-to-ship baselines recorded.
+
+Full report (rendered, phone-readable):
+https://control-plane-production-abb0.up.railway.app/journal/substrate-kit/file?path=docs/reports/2026-07-11-adopter-outcomes-measurement.md
+
+⚑ OWNER-ACTION — set GITHUB_TOKEN on the control-plane service
+WHAT: paste one variable into Railway so private-repo pages stop degrading.
+WHERE: railway.app → project `websites` → service `control-plane` →
+       Variables → New Variable.
+HOW (paste-ready): name `GITHUB_TOKEN`, value = the fine-grained PAT you
+       created for the fleet's repos (contents: read). One paste, Save.
+RISK: ↩️ reversible — delete the variable to undo.
+WHY-IT-MATTERS: private-repo renders show "not-configured" banners until
+       this is set.
+UNBLOCKS: rendered file links + queue items for private repos.
+VERIFIED-NEEDED: attempted 2026-07-11 — raw fetch of a private path
+       returns 404 without a token (token-on-raw also verified NOT to
+       work, so the API fallback is the only private path).
+```
+
+Grammar source of truth: the risk-class tokens, the structured-choice phrases, and the vague-destination scan of this standard are kit-owned constants in the kit's `src/engine/grammar.py` — the SAME module the `check` enforcers AND the `/intake` skill pins consume, so writer, skill, and enforcer cannot drift; agreement is pinned by the kit's `tests/test_owner_assist.py`.
+
 ## `inbox.md` order format (manager-written, append-only)
 ```markdown
 ## ORDER <nnn> · <ISO8601> · status: new     # manager flips new→done after seeing status done=
@@ -185,3 +248,20 @@ done-when: <acceptance test>
 ```
 
 Grammar source of truth: the tokens, field lists, and regexes of this format are kit-owned constants in the kit's `src/engine/grammar.py` (EAP §6.8) — the SAME module the `check` enforcers consume, so writer and enforcer cannot drift; agreement is pinned by the kit's `tests/test_grammar.py`.
+
+## CI + auto-merge notes (learned live, 2026-07-09)
+
+- **Heartbeat commits ride a fast lane, not a `paths-ignore`.** A control-only diff (only
+  `control/**` files changed) must still *report* every required status check, or GitHub treats
+  the missing contexts as pending and auto-merge jams forever. The kit's planted
+  `substrate-gate.yml` therefore short-circuits GREEN inside the job on control-only diffs
+  instead of skipping the workflow — copy that pattern (an in-job early exit) into any other
+  heavy suite rather than adding `paths-ignore: [control/**]` to a workflow whose check is
+  required.
+- **API-authored PRs may not trigger CI.** A PR created purely through an app/integration token
+  (e.g. the GitHub Contents API + a REST PR create) can sit with **zero check runs** — required
+  checks then never report and the PR cannot auto-merge. The manager's canonical write path is
+  therefore a **direct Contents-API commit to the default branch of `inbox.md`** (it is the sole
+  writer, so no PR is needed). When this Project ships control changes by PR, push the branch
+  over git (a real `git push` triggers `pull_request`/`push` events) before or after creating
+  the PR, and verify the PR shows check runs before relying on auto-merge.

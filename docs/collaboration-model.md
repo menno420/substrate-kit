@@ -24,12 +24,36 @@
   large and cross-cutting (architectural), or the goal itself is genuinely
   ambiguous.
 
+## Routing work to the owner
+
+The owner is the scarcest resource in the program. An ask reaches the owner
+only when the agent has **attempted the action itself** or can name the
+**exact wall** (error text, permission denial) proving only the owner can do
+it — assumption-based asks are banned. Every ask uses the OWNER-ACTION
+format — WHAT / WHERE / HOW / WHY-IT-MATTERS / UNBLOCKS / VERIFIED-NEEDED
+(canonical: `control/README.md`) — phrased so a non-technical owner can act
+directly: one plain sentence, an exact click path, paste-ready text.
+Withdraw asks that have gone stale; fewer, clearer asks beat complete lists.
+
+Every owner-facing OUTPUT — not just asks — follows the owner-assist output
+standard (canonical: `control/README.md` § "Owner-assist output standard"):
+values arrive finished and paste-ready, with the exact link to where each
+one goes (a full file in one copyable block — never a recipe the owner must
+derive); every manual step carries a risk class (✅ safe / ↩️ reversible /
+⚠️ irreversible); a decision put to the owner is a structured choice —
+options A/B(/C) with a **bolded recommendation** and a one-line rationale,
+answerable with one letter — never an ask that requires the owner to
+parse, derive, or transform anything; a large output ships as a control-plane
+rendered link plus a 3-line digest in chat, with full text in one copyable
+block in chat as the fallback where the plane cannot render the repo yet.
+
 ## Friction → guard
 
 Anything that interrupts a session's workflow — a stale file, a checker that
 lied, a footgun — is converted into the **cheapest enforcing prevention**
 before the session ends: checker / CI / test first, then hook, then written
-rule. Enforce, don't exhort.
+rule. Enforce, don't exhort. The same reflex runs on opportunities, not only
+interruptions — the rationalization checkpoint (`rationalize` skill, Q-0273).
 
 ## Guiding questions
 

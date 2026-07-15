@@ -43,3 +43,13 @@ frontmatter keeps the score.
 ## Backlog
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
+
+## Shipped (survive window open)
+
+(Promoted ideas whose PR merged; the revert-scan flips them `survived`
+after the 30-day window, `reverted` otherwise.)
+
+## Historical / pointer stubs
+
+(Link-resolution stubs for travelled docs — canonical copies live in the
+origin repo; frontmatter still tracks their outcome.)
