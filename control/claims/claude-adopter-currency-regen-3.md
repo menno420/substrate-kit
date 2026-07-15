@@ -1,1 +1,0 @@
-- `claude/adopter-currency-regen-3` · **adopter currency regen: gba-homebrew kit: line v1.17.0** · docs/adopters.md · 2026-07-15
