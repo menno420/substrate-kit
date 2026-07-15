@@ -42,6 +42,31 @@ never by sharing it**:
 (This repo is single-lane; the extension is documented here because this file is the local copy
 of the planted contract. Shipped v1.4.0, inbox ORDER 004.)
 
+## Delegated tally — coordinator-written heartbeats (multi-repo seats)
+
+A coordinator seat that spans several repos may legitimately write the authoritative tally in
+ITS status file, leaving the member repos' own heartbeats stale **by design** (live precedent:
+the 2026-07-12→13 night run — the mineverse coordinator wrote the whole SuperBot World tally
+while the member seats' heartbeats sat hours stale, and a staleness-only sweep would have
+misclassified shipping seats as stalled; `docs/reports/2026-07-13-night-run-adopter-outcomes.md`
+§f). Two conventions keep the delegation legible instead of looking like a dead lane:
+
+1. **The delegated write is MARKED.** A coordinator overwriting a member repo's status (or
+   carrying its tally) states so on the heartbeat it writes, first line after `updated:`:
+   `COORDINATOR-DELEGATED heartbeat write — the coordinator seat authorized this status
+   overwrite; authoritative tally for this repo lives here.` One-writer-per-file is preserved
+   as *one writer at a time*: the delegation line names the current writer, so a sweep never
+   sees two silent writers.
+2. **The member repo POINTS to its live tally.** A seat whose tally is delegated keeps its own
+   `status.md` from going silently stale by carrying a standing pointer in `notes:` (or directly
+   under `updated:`): `notes: tally DELEGATED to the coordinator seat — live status lives in
+   <coordinator-repo> control/status.md; this heartbeat updates only on this seat's own sessions.`
+
+**Sweep rule (for managers and roll-up readers):** classify a seat by its **PR record + the
+coordinator's status file**, never by seat-heartbeat staleness alone. A stale member heartbeat
+carrying the delegation pointer is a healthy delegated lane; a stale heartbeat with no pointer
+and no PR activity is the actual dark-lane signal.
+
 ## Per-session ritual (every session, and every routine wake)
 - **FIRST:** git pull (a stale clone reads stale orders); read `control/inbox.md`; execute any
   order whose status is `new`, in priority order (P0 before P1) — **claim it first** (see
