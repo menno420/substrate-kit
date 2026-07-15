@@ -1,0 +1,1 @@
+- `claude/order-claim-collision-completion` · **complete the cross-branch ORDER-collision baton item: idea lifecycle flip to #365, local claims-README order-segment sync, lab-loop STEP 2 claim-the-ORDER-first line** · docs/ideas/ + control/claims/README.md + docs/operations/lab-loop.md · 2026-07-15
