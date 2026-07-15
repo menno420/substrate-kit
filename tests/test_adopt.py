@@ -1066,6 +1066,121 @@ def test_gate_test_command_verdicts():
     assert gate_test_command(state("filled", chained)) == chained
 
 
+def test_gate_test_command_advisory_verdicts():
+    # The answer-time half (#405 card 💡): the gate-safety legs run at the
+    # moment the value is typed instead of surfacing silently at the next
+    # adopt/upgrade.
+    from engine.adopt import gate_test_command_advisory
+
+    # Gate-safe values are silent — honored verbatim, or a default pytest
+    # whose hardened fallback is strictly more robust (nothing lost).
+    for quiet in (
+        "python3 -m pytest tests/ botsite/tests -q",
+        "python3 -m pytest tests/ -q",
+        "pytest",
+        "python3 -m pytest -q; python3 bootstrap.py check --strict",
+        "",
+        "   ",
+    ):
+        assert gate_test_command_advisory(quiet) is None
+    # The websites shape: prose annotations in parentheses — offending
+    # characters named, runnable rewrite recovered by stripping them.
+    note = gate_test_command_advisory(
+        "python3 -m pytest tests/ botsite/tests -q (all four service suites); "
+        "python3 bootstrap.py check --strict (kit gate)"
+    )
+    assert note is not None
+    assert note.startswith("NOTE gate-safety:")
+    assert "will NOT drive" in note
+    assert "( )" in note  # the offending characters, listed
+    assert (
+        'answer verify_command "python3 -m pytest tests/ botsite/tests -q; '
+        'python3 bootstrap.py check --strict"' in note
+    )
+    # Annotated DEFAULT pytest: honest wording — the fallback already runs
+    # the equivalent, so no "would drive it" over-promise.
+    note = gate_test_command_advisory(
+        "python3 -m pytest tests/ -q (all suites)"
+    )
+    assert note is not None
+    assert "fallback already runs the equivalent" in note
+    assert "Runnable rewrite" not in note
+    # Unfilled placeholder: named, and no rewrite invented.
+    note = gate_test_command_advisory("run ${verify_command}")
+    assert note is not None
+    assert "${...}" in note
+    assert "Runnable rewrite" not in note
+    # Multi-line: named, and NO rewrite — the whitespace collapse would
+    # otherwise suggest a broken joined command.
+    note = gate_test_command_advisory("make test\nmake lint (fast)")
+    assert note is not None
+    assert "multiple lines" in note
+    assert "Runnable rewrite" not in note
+    # Shell metacharacters outside the allowlist are listed verbatim.
+    note = gate_test_command_advisory("pytest $EXTRA")
+    assert note is not None
+    assert "$" in note
+    assert "Runnable rewrite" not in note
+
+
+def test_cmd_answer_and_confirm_emit_the_gate_safety_advisory(tmp_path, capsys):
+    from engine.cli import cmd_answer, cmd_confirm, cmd_init
+    from engine.interview.interview import record_answer as record
+    from engine.interview.question_bank import QUESTIONS
+
+    target = tmp_path / "repo"
+    assert cmd_init(target) == 0
+    capsys.readouterr()
+    # A gate-safe custom command records with no NOTE.
+    assert (
+        cmd_answer(
+            target, "verify_command", "python3 -m pytest tests/ botsite/tests -q"
+        )
+        == 0
+    )
+    out = capsys.readouterr().out
+    assert "answer: verify_command -> filled." in out
+    assert "NOTE gate-safety:" not in out
+    # The prose-annotated shape records fine (exit 0, slot filled) but
+    # warns at answer time, naming the runnable rewrite.
+    assert (
+        cmd_answer(
+            target,
+            "verify_command",
+            "python3 -m pytest tests/ botsite/tests -q (all four suites); "
+            "python3 bootstrap.py check --strict (kit gate)",
+        )
+        == 0
+    )
+    out = capsys.readouterr().out
+    assert "answer: verify_command -> filled." in out
+    assert "NOTE gate-safety:" in out
+    assert (
+        'answer verify_command "python3 -m pytest tests/ botsite/tests -q; '
+        'python3 bootstrap.py check --strict"' in out
+    )
+    # Other slots never trigger the advisory, parens or not.
+    assert cmd_answer(target, "project_name", "a project (with parens) here") == 0
+    out = capsys.readouterr().out
+    assert "NOTE gate-safety:" not in out
+    # confirm is the other filled-making moment: a provisional prose-y
+    # verify_command warns when the confirmation makes it gate-eligible.
+    config = load_config(target)
+    backend = JsonStateBackend(target / config.state_dir / "state.json")
+    question = next(q for q in QUESTIONS if q["slot"] == "verify_command")
+    record(
+        backend,
+        question,
+        "python3 -m pytest tests/ integration/ -q (slow: ~4 min)",
+        source="self",
+    )
+    assert cmd_confirm(target, "verify_command") == 0
+    out = capsys.readouterr().out
+    assert "confirm: verify_command confirmed" in out
+    assert "NOTE gate-safety:" in out
+    assert 'answer verify_command "python3 -m pytest tests/ integration/ -q"' in out
+
+
 def test_adopt_plants_the_verify_command_gate_when_confirmed(tmp_path):
     # End to end: a filled, non-default verify_command reaches both the
     # staged and the installed gate, and adopt reports the honored command.
