@@ -1,0 +1,1 @@
+- `claude/currency-check-verb` · **build the currency --check registry-delta preflight verb (baton item 2; docs/ideas/currency-check-registry-delta-preflight-2026-07-15.md)** · src/engine/currency.py + src/engine/cli.py + tests/test_currency.py + dist regen · 2026-07-15
