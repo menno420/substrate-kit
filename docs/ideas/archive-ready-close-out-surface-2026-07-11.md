@@ -1,5 +1,5 @@
 ---
-state: captured
+state: routed
 origin: lab
 shipped_pr: null
 shipped_repo: null
@@ -11,7 +11,10 @@ merged_date: null
 
 > **Status:** `ideas`
 >
-> **State:** captured — the archive-prep close-out session's 💡 (the session
+> **State:** routed — structured plan shipped 2026-07-15:
+> `docs/planning/2026-07-15-archive-ready-close-out-plan.md` (slices S1–S5,
+> each a follow-up PR; outcome stays `open` until a build slice merges).
+> Captured as the archive-prep close-out session's 💡 (the session
 > that wrote `docs/retro/archive-ready-2026-07-11.md` by hand when the
 > coordinator chat was archived).
 
