@@ -17,6 +17,18 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Delegated-tally heartbeat doctrine** (idea
+  `heartbeat-delegated-tally-guidance-2026-07-13`): new "Delegated tally —
+  coordinator-written heartbeats" section in `control-README.md.tmpl` (and
+  the kit's own `control/README.md`) naming the two conventions that keep a
+  coordinator-delegated tally legible — the `COORDINATOR-DELEGATED heartbeat
+  write` marker line on the written heartbeat, and the member repo's standing
+  `notes:` pointer to where its live tally lives — plus the sweep rule:
+  classify a seat by PR record + coordinator status, never by seat-heartbeat
+  staleness alone (the 2026-07-12→13 night run misclassification precedent).
+  `control-status.md.tmpl` seed notes gain a one-line pointer. Docs/template
+  only; no gate or grammar changes.
+
 - **`currency --check` — registry-delta preflight** (idea
   `currency-check-registry-delta-preflight-2026-07-15`): the currency verb
   grows a no-write `--check` lane — same read-only fleet scan, rendered in

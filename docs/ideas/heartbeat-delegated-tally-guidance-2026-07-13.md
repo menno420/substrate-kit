@@ -1,18 +1,20 @@
 ---
-state: captured
+state: promoted
 origin: consumer:menno420/superbot-mineverse
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 395
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-15
+outcome: shipped
 ---
 
 # Heartbeat currency: document the coordinator delegated-tally pattern (2026-07-13)
 
 > **Status:** `ideas`
 >
-> **State:** captured → route: quick-win (doctrine lines in the control
-> README / status template + sweep guidance).
+> **State:** shipped — kit PR #395 (2026-07-15, anticipated in-PR date):
+> "Delegated tally" doctrine section in `control-README.md.tmpl` + the kit's
+> own `control/README.md` (marker line + member-repo pointer convention +
+> sweep rule), pointer sentence in `control-status.md.tmpl` seed notes.
 > **Origin:** consumer — on the 2026-07-12→13 night run, several SHIPPED
 > seats carried stale own-heartbeats (games 10:16Z, idle 10:17Z, trading
 > 21:02Z vs 04:29Z activity, idea-engine ~5h lag) because coordinator seats

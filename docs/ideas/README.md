@@ -57,12 +57,6 @@ story, the frontmatter keeps the score.
   next: structured fix — an optional `· order NNN` claim-grammar segment +
   `bootstrap claim --order` + a cross-branch overlap advisory, engine change →
   dist byte-pin.
-- [Heartbeat currency: document the coordinator delegated-tally pattern](heartbeat-delegated-tally-guidance-2026-07-13.md)
-  — state: captured; origin: consumer (superbot-mineverse
-  "COORDINATOR-DELEGATED heartbeat write" carried games/idle/next tallies
-  while those seats' own heartbeats sat stale; night-run report §f); next:
-  quick-win — delegated-write convention + sweep guidance (classify by PR
-  record + coordinator status, never seat-heartbeat staleness alone).
 - [Engagement gate: a "native-substrate consumer" state for pin-only repos](engagement-native-consumer-state-2026-07-12.md)
   — state: captured; origin: consumer (superbot, friction #37 — the pin-only
   repo with the fleet's strongest native enforcement would red
@@ -148,6 +142,15 @@ story, the frontmatter keeps the score.
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [Heartbeat currency: document the coordinator delegated-tally pattern](heartbeat-delegated-tally-guidance-2026-07-13.md)
+  — **shipped** kit PR #395 (2026-07-15, anticipated in-PR date): "Delegated
+  tally" doctrine section in `control-README.md.tmpl` + the kit's own
+  `control/README.md` — the `COORDINATOR-DELEGATED heartbeat write` marker
+  line, the member-repo pointer-line convention, and the sweep rule
+  (classify by PR record + coordinator status, never seat-heartbeat
+  staleness alone; the mineverse night-run precedent, report §f) — plus a
+  pointer sentence in the `control-status.md.tmpl` seed notes. Docs/template
+  only; no gate changes. Window closes 2026-08-14.
 - [Model-line `unrecorded` effort marker — sanctioned terminal value for retro-sweeps](model-line-unrecorded-effort-marker-2026-07-15.md)
   — **shipped** kit PR #394 (2026-07-15, anticipated in-PR date):
   `MODEL_EFFORT_UNRECORDED` carve-out in `check_model_line` — the honest
