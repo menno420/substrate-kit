@@ -61,12 +61,6 @@ red preflight round rediscovering it via checker error.)
   ports the diff-derived `--session-log` block (the kit's `ci.yml`
   session-gate step is the copyable reference); kit-side advisory only if
   the class recurs.
-- [`adopt --wire-enforcement` plants a pytest step when tests/ exists](adopt-plants-pytest-gate-step-2026-07-10.md)
-  — state: captured; origin: consumer (superbot-games ran gen-1 with a
-  tests-blind gate — 73 tests never in CI, fixed consumer-side in games#16;
-  the kit generalizes the fix so every adopter's suite ships with its
-  runner); next: template addition behind the control fast lane; ordinary
-  lane, engine change → dist byte-pin.
 - [Rubric F-5 wording: "none regressing" vs the 7k-budget yardstick](rubric-f5-none-regressing-wording-2026-07-09.md)
   — state: historical; origin: lab (B1 run `2026-07-09-run02` — the first
   clean M1 measurement made two readings of the pinned F-5 text produce
@@ -111,6 +105,15 @@ red preflight round rediscovering it via checker error.)
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [`adopt --wire-enforcement` plants a pytest step when tests/ exists](adopt-plants-pytest-gate-step-2026-07-10.md)
+  — **shipped** kit PR #403 (2026-07-15, anticipated in-PR date): the
+  generated substrate-gate carries a pytest step behind the
+  control-fast-lane short-circuit — always planted, self-skips in-job when
+  `tests/` is absent (self-heals when tests arrive), installs pytest + the
+  host's `requirements.txt` when present, runs `-m pytest tests/ -q` on
+  the gate's interpreter (the superbot-games gen-1 tests-blind-gate class,
+  fixed consumer-side in games#16, now generalized kit-side). Window
+  closes 2026-08-14.
 - [Engagement gate: verify wiring STRENGTH, not just existence](engagement-wiring-strength-verification-2026-07-12.md)
   — **shipped** kit PR #402 (2026-07-15, anticipated in-PR date): both
   advisory layers — `check_enforcement_strength` fires the advisory-only

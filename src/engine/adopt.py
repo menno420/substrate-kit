@@ -792,6 +792,20 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
     it. Before v1.7.1 the generated gate never wired ``--inbox-base``, so
     inbox pure-append enforcement was LATENT on every adopter (the v1.7.0
     distribution-wave finding).
+
+    **Pytest step (the tests-blind-gate class, superbot-games #16):** a host
+    can live its whole life with a green gate while its test suite never runs
+    in CI — superbot-games' 73 pure-domain tests were invisible to gen-1 CI
+    because the gate ran only ``check --strict``, and both lanes ASSUMED CI
+    ran them (fixed consumer-side in games#16; this plants the fix kit-side).
+    A convention ships with its checker; a test suite ships with its CI
+    runner. The step is **always planted** and self-skips in-job when no
+    ``tests/`` directory exists — the idea's simpler variant: no adopt-time
+    conditional to go stale, and the gate self-heals the moment tests arrive.
+    It rides the full lane only (behind the same control-fast-lane
+    short-circuit — heartbeat PRs never pay a test suite), installs pytest
+    plus the host's ``requirements.txt`` when present, and runs the suite on
+    the same interpreter as the gate step.
     """
     return (
         "# substrate-kit enforcement gate (LIVE — installed by "
@@ -1010,6 +1024,26 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         f"{sessions_dir}/__no-card-in-diff__.md\n"
         "          fi\n"
         '          exit "$fail"\n'
+        "      - name: pytest suite (a test suite ships with its CI runner; "
+        "self-skips when tests/ is absent)\n"
+        "        if: steps.lane.outputs.control_only != 'true'\n"
+        "        # A host can live its whole life with a green gate while its\n"
+        "        # tests never run in CI (superbot-games' 73 tests were\n"
+        "        # invisible to gen-1 CI until games#16 hand-added a runner).\n"
+        "        # Always planted, self-skips when tests/ is absent — so the\n"
+        "        # gate self-heals the moment tests arrive. Full lane only:\n"
+        "        # control/** heartbeat PRs never pay the test suite.\n"
+        "        run: |\n"
+        "          if [ ! -d tests ]; then\n"
+        '            echo "no tests/ directory — pytest step skipped'
+        ' (self-heals when tests/ arrives)."\n'
+        "            exit 0\n"
+        "          fi\n"
+        "          if [ -f requirements.txt ]; then\n"
+        f"            {interpreter} -m pip install --quiet -r requirements.txt\n"
+        "          fi\n"
+        f"          {interpreter} -m pip install --quiet pytest\n"
+        f"          {interpreter} -m pytest tests/ -q\n"
     )
 
 

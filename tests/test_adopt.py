@@ -912,8 +912,9 @@ def test_live_ci_workflow_carries_the_control_fast_lane():
     assert "id: lane" in text
     assert "grep -v '^control/'" in text
     assert 'control_only=$control_only" >> "$GITHUB_OUTPUT"' in text
-    # Every heavy step is conditioned on the lane verdict.
-    assert text.count("if: steps.lane.outputs.control_only != 'true'") == 2
+    # Every heavy step is conditioned on the lane verdict (setup-python,
+    # the substrate gate, and the pytest suite).
+    assert text.count("if: steps.lane.outputs.control_only != 'true'") == 3
     # And no live paths-ignore key anywhere — the short-circuit IS the skip
     # (the word appears only in the warning comment).
     assert "paths-ignore:" not in text
@@ -955,6 +956,30 @@ def test_live_ci_workflow_wires_the_inbox_base_gate():
         'python3 bootstrap.py check --strict --status-only '
         '--inbox-base "$basefile"' in body
     )
+
+
+def test_live_ci_workflow_plants_the_pytest_step_behind_the_fast_lane():
+    # The tests-blind-gate class (superbot-games #16): a host's whole test
+    # suite can be invisible to CI while the gate stays green. The planted
+    # gate must (1) carry a pytest step, (2) ride the FULL lane only
+    # (heartbeat PRs never pay a test suite), (3) self-skip in-job when
+    # tests/ is absent — always planted, so it self-heals when tests
+    # arrive — and (4) run pytest on the gate's own interpreter.
+    text = live_ci_workflow()
+    step = text.split("- name: pytest suite", 1)
+    assert len(step) == 2, "planted gate misses the pytest step"
+    body = step[1]
+    assert "if: steps.lane.outputs.control_only != 'true'" in body
+    assert "if [ ! -d tests ]; then" in body  # in-job self-skip
+    assert "pytest step skipped" in body
+    assert "if [ -f requirements.txt ]; then" in body
+    assert "python3 -m pip install --quiet pytest" in body
+    assert "python3 -m pytest tests/ -q" in body
+    # Interpreter threading — the suite runs on the same interpreter as the
+    # gate step, not a hardcoded python3.
+    custom = live_ci_workflow("python3.10")
+    assert "python3.10 -m pytest tests/ -q" in custom
+    assert "python3.10 -m pip install --quiet pytest" in custom
 
 
 def test_gate_carveouts_detects_host_added_job_and_step():

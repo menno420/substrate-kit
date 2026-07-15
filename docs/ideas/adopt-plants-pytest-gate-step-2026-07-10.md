@@ -1,17 +1,22 @@
 ---
-state: captured
+state: promoted
 origin: consumer:menno420/superbot-games
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 403
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-15
+outcome: shipped
 ---
 
 # `adopt --wire-enforcement` plants a pytest step when tests/ exists (2026-07-10)
 
 > **Status:** `ideas`
 >
-> **State:** captured (gen-2 night-prep seed by the grand-review session).
+> **State:** promoted → **shipped** kit PR #403 (2026-07-15, anticipated
+> in-PR date): the generated substrate-gate carries a pytest step behind
+> the control-fast-lane short-circuit — always planted, self-skips in-job
+> when `tests/` is absent (the simpler self-healing variant named below),
+> installs pytest + the host's `requirements.txt` when present, runs
+> `-m pytest tests/ -q` on the gate's configured interpreter.
 > **Origin:** consumer — superbot-games lived its whole gen-1 life with a
 > tests-blind gate: `substrate-gate` ran only `check --strict` while the repo's
 > 73 pure-domain tests never ran in CI (fixed consumer-side in games#16; both
