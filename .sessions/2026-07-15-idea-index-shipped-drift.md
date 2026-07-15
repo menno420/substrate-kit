@@ -1,6 +1,19 @@
 # 2026-07-15 · idea-index-shipped-drift
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** Fable-class
 - Scope: reconcile docs/ideas/README.md index drift — 7 shipped ideas (#187 ×2, #342, #344, #346, #349, #351) still listed as buildable `state: captured` Backlog entries, plus flip the regen-lag idea frontmatter for merged PR #345 (c603cc9).
+
+## Record
+
+- Boot: hard-synced to origin/main e900008; preflight 7/7 legs green (pytest 1568 passed, 1 skipped). Inbox newest ORDER 024, already acked+done (heartbeat `orders:` line); no newer open ORDER. control/claims/ empty; zero open PRs — no backpressure.
+- Defect hunt (Slice B): template dead-pointer sweep came back clean — every `docs/*.md` pointer in src/engine/templates/ resolves to a planted relpath in `engine/adopt.py`'s template map; every `§ "…"` section anchor resolves in its target template; every `bootstrap.py <verb>` reference matches a registered subcommand. The real find was in the idea index: a full frontmatter⇄README cross-check showed 7 promoted/shipped idea files still carried `state: captured` + `next:` build instructions in README § Backlog, and staged-artifact-regen-lag-checker-2026-07-12.md still read `captured/open` though PR #345 merged on main 2026-07-14 (c603cc9) — its body even said "ship fields flip when the PR merges".
+- Why the checker was green: `check_idea_index` leg 4 checks link resolution only, leg 5 fires only when frontmatter asserts a ship the body contradicts, and leg 6 (merged-reality) self-skips on this shallow clone — README *section placement* vs frontmatter state is checked by nothing. This is the same dispatch-misdirection class leg 5's provenance names (PR #311): a wake grooming the backlog would re-build shipped work.
+- Fix (docs-only, PR #383): 8 entries moved Backlog → § Shipped in the section's `— **shipped** kit PR #N (date)` format with survive-window dates from merged_date+30d; entry descriptions verified against each idea file's own Outcome/State text, not paraphrased from memory; regen-lag frontmatter flipped to promoted/shipped/345/2026-07-14 with an arrow-chain State line reaching `shipped` (leg 5's recognized marker). Preflight re-run green on the fix.
+- Heartbeat updated in the same PR (wholesale-overwrite grammar; `kit:` line kept plain; the Routine state block including the ⚑ FOR OWNER REVIEW line preserved verbatim; baton reordered — currency re-run now item 1, measurement window item 2).
+
+## Session enders
+
+- 💡 **Session idea:** `check_idea_index` leg 7 — index-section⇄frontmatter agreement: an idea whose frontmatter is `promoted`/`outcome: shipped` may not sit in README § Backlog (and a `captured` one may not sit in § Shipped); advisory-first like leg 6, upgrade to fail after a burn-in window. Evidence this leg pays: this exact drift accumulated across 8 entries in 4 days while all 6 existing legs stayed green — the checker verifies file truth and link resolution but nothing verifies the *routing surface* wakes actually read when grooming. Dedup: grepped docs/ideas/ — idea-index-merged-reality-2026-07-14.md covers frontmatter-vs-git truth, not README placement; no existing idea covers it.
+- ⟲ **Previous-session review:** the adopters-currency wake (PR #382) was clean and honest — tight scope, a neutral discrepancy record for the owner instead of adjudicating it, and a friction note converted into a genuinely new idea (session-OPEN branch-collision preflight) with a real dedup pass. Gap this session exposed: its close-out (like every recent close-out) runs the checkers but not a frontmatter⇄index sweep, so 4 days of shipped-idea flips accumulated in the Backlog unnoticed — the concrete improvement is the leg-7 idea above, which turns that sweep from a judgment call into a standing check.
