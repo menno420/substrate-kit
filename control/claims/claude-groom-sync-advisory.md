@@ -1,0 +1,1 @@
+- `claude/groom-sync-advisory` · **groom template-local-copy sync advisory into docs/ideas + ship dispatch-race re-verify clause in lab-loop STEP 2** · docs/ideas/, docs/operations/lab-loop.md, control/status.md · 2026-07-15
