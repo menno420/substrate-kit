@@ -1,17 +1,21 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 388
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-15
+outcome: shipped
 ---
 
 # Retro/docs reachability checker — no unindexed retro file (2026-07-10)
 
 > **Status:** `ideas`
 >
-> **State:** captured (gen-2 night-prep seed by the grand-review session).
+> **State:** captured (gen-2 night-prep seed by the grand-review session) →
+> promoted → **shipped** (PR #388, 2026-07-15 — the in-PR flip convention;
+> merged_date is the anticipated green date): `scripts/check_retro_index.py`
+> + tests, wired as the `retro-index` leg in `scripts/preflight.py` and the
+> ci.yml kit-quality job.
 > **Origin:** lab — the wind-down addendum (PR #76) merged unindexed and stayed
 > invisible until a gen-2-boot reconcile pass (#78) added its README line; the
 > addendum had even self-flagged the follow-up, and no session executed it.

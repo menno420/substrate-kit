@@ -27,6 +27,7 @@ HEAVY_STEP_NAMES = (
     "Dist byte-equality pin (§3.2 item 2)",
     "Engine lint bans (§3.2 item 3 — no print/assert/subprocess)",
     "Idea index (§5.4 — B4 frontmatter + backlog consistency)",
+    "Retro index (docs/retro reachability — no unindexed retro file)",
     "CHANGELOG structure ([Unreleased] keep-a-changelog shape)",
     "Program law (§8.3 — PL register grammar + planted pointers + owner-gate label)",
     "Bench integrity (§5.0 — pin-path label gate + append-only results)",

@@ -22,10 +22,11 @@ where possible:
 3. ``python3 -m ruff check src/engine/``          (§3.2 item 3 — skipped with a
    NOTE when ruff is not importable locally; CI always runs it)
 4. ``python3 scripts/check_idea_index.py``        (§5.4)
-5. ``python3 scripts/check_changelog_structure.py``
-6. ``python3 scripts/check_program_law.py``       (§8.3 — WITHOUT
+5. ``python3 scripts/check_retro_index.py``       (docs/retro reachability)
+6. ``python3 scripts/check_changelog_structure.py``
+7. ``python3 scripts/check_program_law.py``       (§8.3 — WITHOUT
    ``--label-gate``: PR labels exist only in CI's event context)
-7. ``python3 scripts/check_bench_integrity.py``   (§5.0)
+8. ``python3 scripts/check_bench_integrity.py``   (§5.0)
 
 Deliberately excluded: the CI cold-adoption smoke (§3.2 item 4) — shell-heavy
 and slow (a scratch adopt + the full RED→ENGAGED→GREEN arc); CI keeps it.
@@ -35,7 +36,7 @@ script with ``SUBSTRATE_KIT_PREFLIGHT=1`` in its environment — the marker it
 stamps on its children so a wrapper that re-enters ``check`` cannot loop.
 When that variable is set this script exits 0 immediately with a one-line
 note: the pytest leg contains tests that invoke ``check``, so a nested run
-must never spawn the suite again. The entry point for the seven legs is a
+must never spawn the suite again. The entry point for the legs is a
 DIRECT run — ``python3 scripts/preflight.py`` — exactly the idea-engine
 convention the config default names.
 
@@ -87,6 +88,7 @@ CHECKS: list[tuple[str, list[list[str]]]] = [
     ),
     ("ruff", [[_PY, "-m", "ruff", "check", "src/engine/"]]),
     ("idea-index", [[_PY, "scripts/check_idea_index.py"]]),
+    ("retro-index", [[_PY, "scripts/check_retro_index.py"]]),
     ("changelog-structure", [[_PY, "scripts/check_changelog_structure.py"]]),
     ("program-law", [[_PY, "scripts/check_program_law.py"]]),
     ("bench-integrity", [[_PY, "scripts/check_bench_integrity.py"]]),

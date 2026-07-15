@@ -31,6 +31,7 @@ PINNED_LEGS = [
     "dist-byte-pin",
     "ruff",
     "idea-index",
+    "retro-index",
     "changelog-structure",
     "program-law",
     "bench-integrity",
