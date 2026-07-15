@@ -1,13 +1,14 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-15T06:15Z · phase: EAP EXTENSION ACTIVE (EAP through 2026-07-21; inbox consumed 001–024; routines coordinator-managed)
+updated: 2026-07-15T10:08Z · phase: EAP EXTENSION ACTIVE (EAP through 2026-07-21; inbox consumed 001–024; routines coordinator-managed)
 
-## This wake (2026-07-15 · 06:05Z coordinator-failsafe fire · claude/heartbeat-0605-failsafe-2026-07-15)
-- The coordinator failsafe fired 2026-07-15T06:05Z; the loop is in honest idle — recon found no new work.
-- Recon verdicts (read-only):
-  - HEAD unchanged @ 5905201 (origin/main at the 06:1xZ fetch).
-  - No inbox ORDER above 024 (control/inbox.md @ 5905201 tops out at ORDER 024).
-  - Zero adopter kit-line bumps since the 04:37Z registry scan — a currency re-run would change 0 rows.
-  - The kit's own tree-internal pin drift (substrate.config.json kit_version 1.0.0 vs dist v1.17.0) re-confirmed benign-by-design — a deliberate owner-gated hold pending the §7 version-truth ruling. In-tree: .sessions/2026-07-10-eap63-currency-checker.md · .sessions/2026-07-11-currency-regen-v180-wave.md · docs/retro/2026-07-11-continuous-run-retro.md W-10(c).
+## This wake-pair (2026-07-15 · 08:05Z + 10:05Z coordinator-failsafe fires · claude/failsafe-1005z-heartbeat)
+- Fire-records now batch per fire-pair to avoid heartbeat spam; this section covers the 08:05Z and 10:05Z fires. The loop remains in honest idle — both recons found no new work.
+- 08:05Z fire — recon no-op (read-only): HEAD @ 22fd280 (= the #384 heartbeat merge); no inbox ORDER above 024; zero adopter kit-line bumps.
+- 10:05Z fire (this wake) — recon verdicts (read-only):
+  - HEAD unchanged @ 22fd280 (origin/main at the 10:07Z fetch; = the #384 merge).
+  - No inbox ORDER above 024 (control/inbox.md @ 22fd280 tops out at ORDER 024; the "ORDER 025" text near line 210 is the acked fm relay nested inside ORDER 019, not a new order).
+  - Zero adopter kit-line bumps vs the docs/adopters.md registry self-reports: superbot-next v1.16.0 · websites v1.15.0 · superbot-games v1.15.0 (status.md lane) · superbot-mineverse v1.16.0 — all four live `kit:` lines match the registry; a currency re-run would change 0 rows.
+  - Collision scan clean: control/claims/ holds README.md only; zero open PRs on the repo at 10:07Z.
 - Control-only fast-lane diff (this file only); no session card, no claim file.
 
 ## Routine state (observed facts — trigger inventory carried from the 2026-07-15 ~04:4xZ read-only list_triggers pass; this wake armed no triggers)
