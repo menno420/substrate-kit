@@ -4,7 +4,7 @@
 
 Intent: resolve the 4 template↔local-copy heading-drift pairs surfaced by the #399 `check_template_sync` advisory's first live run — judge direction per pair (default: local syncs FROM the template; fold genuinely-newer local content INTO the template where present), leaving the advisory clean on the kit tree.
 
-📊 Model: Claude 5 family · effort: medium
+- **📊 Model:** Claude 5 family · medium · docs-only
 
 ## What shipped (PR #400)
 

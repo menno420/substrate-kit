@@ -53,12 +53,6 @@ historical` — the ship fact lives in `outcome: shipped`, never in `state:`;
 see "Frontmatter" above. Recorded here because two sessions in one day paid a
 red preflight round rediscovering it via checker error.)
 
-- [Engagement gate: verify wiring STRENGTH, not just existence](engagement-wiring-strength-verification-2026-07-12.md)
-  — state: captured; origin: consumer (friction #36 r3 + #38 residuals —
-  plain-form `check --strict` reads as fully wired while missing the
-  session-log/diff-aware/inbox legs, and required-check status stays
-  unverifiable/unsaid); next: post-freeze advisory-only strength +
-  required-ness-honesty notes in the engagement checker.
 - [Folded-gate hosts need the PR-diff-aware card selection too](folded-gate-diff-aware-card-2026-07-11.md)
   — state: captured; origin: consumer (superbot-next folded the session
   gate into its own CI as a `gate` job that still grades the
@@ -117,6 +111,16 @@ red preflight round rediscovering it via checker error.)
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [Engagement gate: verify wiring STRENGTH, not just existence](engagement-wiring-strength-verification-2026-07-12.md)
+  — **shipped** kit PR #402 (2026-07-15, anticipated in-PR date): both
+  advisory layers — `check_enforcement_strength` fires the advisory-only
+  `enforcement-weak-form` finding when the wired plain-form door skips
+  staged-gate legs (`--require-session-log`, diff-aware `--session-log`,
+  `--inbox-base`; token-boundary + comment-aware matching, staged file
+  named as the one-copy fix, never strict-red), and
+  `required_unverified_note` emits the `enforcement-required-unverified`
+  honesty NOTE (required-check status is owner-UI state the engine cannot
+  read) on `check`'s full lane. Window closes 2026-08-14.
 - [Engagement gate: a "native-substrate consumer" state for pin-only repos](engagement-native-consumer-state-2026-07-12.md)
   — **shipped** kit PR #401 (2026-07-15, anticipated in-PR date):
   `substrate.config.json` gains the opt-in `native_gate` declaration

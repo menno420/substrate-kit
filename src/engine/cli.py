@@ -53,7 +53,9 @@ from engine.checks.check_docs import Finding, run_doc_checks
 from engine.checks.check_engagement import (
     check_engagement,
     check_engagement_control,
+    check_enforcement_strength,
     native_gate_note,
+    required_unverified_note,
     scan_relpaths,
 )
 from engine.checks.check_inbox_append import INBOX_RELPATH, check_inbox_append
@@ -1219,6 +1221,17 @@ def cmd_check(
     # only: workflows are not control-lane traffic; self-silences when the
     # live branch expr matches config.
     automerge_advisories = check_automerge_preflight(target, config)
+    # Enforcement wiring-STRENGTH scan (idea engagement-wiring-strength-
+    # verification-2026-07-12, sibling of the native_gate class): advisory-
+    # only by contract, like every nudge above — a wired `check --strict`
+    # door running the PLAIN form while the staged substrate-gate carries
+    # the stronger legs (`--require-session-log`, diff-aware `--session-log`
+    # selection, `--inbox-base`) is a copy-the-staged-gate nudge, never a
+    # required-check red (the idea's letter: "a hand-rolled gate is
+    # legitimate" — the kit's own ci.yml folds differently and carries all
+    # three legs, so it self-silences). Full lane only: workflows are not
+    # control-lane traffic.
+    strength_advisories = check_enforcement_strength(target, config)
     # 📊 Model-line payload lint (idea model-line-payload-lint-advisory-
     # 2026-07-11, Night-8 triage #3): advisory-only by contract, like every
     # nudge above — a completed card whose Model line breaks the three-field
@@ -1325,6 +1338,14 @@ def cmd_check(
         native_note = native_gate_note(target, config)
         if native_note:
             _emit(f"check: NOTE — {native_note}")
+        # Required-ness honesty (the wiring-strength idea's layer 2, issue
+        # #36 report 3): whether the CI door is a REQUIRED status check is
+        # owner-UI state the stdlib engine cannot read — say so, once,
+        # whenever a door exists. NOTE-only by contract, like the
+        # acceptance NOTE above: honesty on a green path, never a finding.
+        required_note = required_unverified_note(target, config)
+        if required_note:
+            _emit(f"check: NOTE — {required_note}")
         doc_findings += inbox_findings
         doc_findings += adopters_gate
         # Local preflight scripts (ORDER 018): the config-declared check
@@ -1682,6 +1703,27 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=automerge_advisories,
+        )
+    if strength_advisories and not status_only:
+        # Same warn-only contract as the advisories above (idea engagement-
+        # wiring-strength-verification-2026-07-12, advisory-first per its
+        # guard recipe): a plain-form wired gate is a copy-the-staged-file
+        # nudge — surfaced + telemetry-recorded, never counted toward the
+        # exit code; a hand-rolled gate is a legitimate door, and a strict
+        # red here would bomb every weak-form adopter on upgrade.
+        _emit(
+            f"check: {len(strength_advisories)} enforcement-strength advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in strength_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=strength_advisories,
         )
     if model_line_advisories and not status_only:
         # Same warn-only contract as the advisories above (the model-line
