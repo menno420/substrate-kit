@@ -4,7 +4,7 @@ origin: lab
 shipped_pr: null
 shipped_repo: null
 merged_date: null
-outcome: null
+outcome: open
 ---
 
 # 📊 Model-line `unrecorded` effort marker — sanctioned terminal value for retro-sweeps (2026-07-15)
