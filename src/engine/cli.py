@@ -53,6 +53,7 @@ from engine.checks.check_docs import Finding, run_doc_checks
 from engine.checks.check_engagement import (
     check_engagement,
     check_engagement_control,
+    native_gate_note,
     scan_relpaths,
 )
 from engine.checks.check_inbox_append import INBOX_RELPATH, check_inbox_append
@@ -1316,6 +1317,14 @@ def cmd_check(
             )
         )
         doc_findings += _extra_check_findings(target, config) + status_gate
+        # Native-gate acceptance visibility (idea engagement-native-consumer-
+        # state-2026-07-12): when a declared `native_gate` workflow is the
+        # evidence keeping `enforcement-unwired` quiet, say so — accepted,
+        # never silent. NOTE-only by contract: acceptance is a green path,
+        # and the dead-declaration case reds via the finding itself.
+        native_note = native_gate_note(target, config)
+        if native_note:
+            _emit(f"check: NOTE — {native_note}")
         doc_findings += inbox_findings
         doc_findings += adopters_gate
         # Local preflight scripts (ORDER 018): the config-declared check

@@ -17,6 +17,24 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Engagement gate: declared `native_gate` evidence class
+  (`enforcement-native`)** (idea
+  `engagement-native-consumer-state-2026-07-12` — superbot friction #37,
+  the pin-only repo with the fleet's strongest native enforcement would
+  false-red `enforcement-unwired`): `substrate.config.json` gains an
+  opt-in `native_gate` declaration — `workflow` (repo-relative path of the
+  workflow file that constitutes the host's real-but-not-kit-shaped CI
+  door) plus an informational `required_context`. When no workflow runs
+  `check --strict`, the engagement gate accepts a declaration whose named
+  workflow exists on disk instead of redding `enforcement-unwired`;
+  acceptance is visible, never silent — `check`'s full lane emits an
+  `enforcement-native` NOTE naming the accepted workflow
+  (`engine.checks.check_engagement.native_gate_note`). PL-011's letter
+  holds: a declaration whose workflow does NOT exist keeps the gate red,
+  with the dead path named in the finding; malformed declarations read as
+  undeclared (a misconfiguration never widens the gate — the
+  `heartbeat_files` doctrine).
+
 - **Template↔local-copy heading-set sync advisory** (idea
   `template-local-copy-sync-advisory-2026-07-15` — the twice-in-one-day
   paid hand-sync class, #395 observed / #397 paid):

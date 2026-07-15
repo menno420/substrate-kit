@@ -53,12 +53,6 @@ historical` — the ship fact lives in `outcome: shipped`, never in `state:`;
 see "Frontmatter" above. Recorded here because two sessions in one day paid a
 red preflight round rediscovering it via checker error.)
 
-- [Engagement gate: a "native-substrate consumer" state for pin-only repos](engagement-native-consumer-state-2026-07-12.md)
-  — state: captured; origin: consumer (superbot, friction #37 — the pin-only
-  repo with the fleet's strongest native enforcement would red
-  `enforcement-unwired`; PL-011 merged without a native-consumer state);
-  next: a post-freeze quick-win — declared `native_gate` evidence class in
-  the engagement checker, engine change → dist byte-pin.
 - [Engagement gate: verify wiring STRENGTH, not just existence](engagement-wiring-strength-verification-2026-07-12.md)
   — state: captured; origin: consumer (friction #36 r3 + #38 residuals —
   plain-form `check --strict` reads as fully wired while missing the
@@ -123,6 +117,15 @@ red preflight round rediscovering it via checker error.)
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [Engagement gate: a "native-substrate consumer" state for pin-only repos](engagement-native-consumer-state-2026-07-12.md)
+  — **shipped** kit PR #401 (2026-07-15, anticipated in-PR date):
+  `substrate.config.json` gains the opt-in `native_gate` declaration
+  (`workflow` + informational `required_context`); the engagement gate
+  accepts it as the CI door while the named workflow exists in-tree,
+  surfaced as `check`'s `enforcement-native` NOTE — the pin-only
+  native-enforcement shape (superbot friction #37) stops false-redding
+  `enforcement-unwired`; a dead declaration keeps the gate red. Window
+  closes 2026-08-14.
 - [Template↔local-copy sync advisory — heading-set drift between planted templates and the kit's own rendered copies](template-local-copy-sync-advisory-2026-07-15.md)
   — **shipped** kit PR #399 (2026-07-15, anticipated in-PR date):
   `check_template_sync` runs in `check`'s full lane as the advisory-only

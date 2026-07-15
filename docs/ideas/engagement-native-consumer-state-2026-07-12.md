@@ -1,18 +1,21 @@
 ---
-state: captured
+state: promoted
 origin: consumer:menno420/superbot
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 401
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-15
+outcome: shipped
 ---
 
 # Engagement gate: a "native-substrate consumer" state for pin-only repos (2026-07-12)
 
 > **Status:** `ideas`
 >
-> **State:** captured → route: quick-win-sized engine change, **frozen until
-> the 2026-07-11 feature freeze lifts** (new checker semantics = new surface).
+> **State:** promoted → **shipped** kit PR #401 (2026-07-15, anticipated
+> in-PR date): fix shape 1 — the declared `native_gate` evidence class
+> (`substrate.config.json` → `native_gate.workflow` + informational
+> `required_context`), accepted only while the named workflow exists
+> in-tree, surfaced as `check`'s `enforcement-native` NOTE.
 > **Origin:** consumer:menno420/superbot — friction issue
 > [#37](https://github.com/menno420/substrate-kit/issues/37), filed by the
 > 2026-07-09 fleet adoption review; triaged and closed by the 2026-07-12
