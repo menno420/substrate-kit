@@ -179,6 +179,102 @@ def test_enforcement_ignores_comment_only_mentions(tmp_path):
     assert "enforcement-unwired" not in kinds
 
 
+def test_native_gate_declaration_reads_engaged_native(tmp_path):
+    # The idea's guard recipe (engagement-native-consumer-state-2026-07-12,
+    # superbot friction #37): a pin + a declared native gate whose workflow
+    # exists + no `check --strict` workflow reads ENGAGED-native — no
+    # enforcement-unwired — and the acceptance NOTE is available; the SAME
+    # fixture without the declaration stays enforcement-unwired.
+    from engine.checks.check_engagement import native_gate_note
+
+    root = tmp_path / "repo"
+    config, _ = _adopt_bare(root, tmp_path / "kit")
+    wf = root / ".github" / "workflows" / "code-quality.yml"
+    wf.parent.mkdir(parents=True)
+    wf.write_text(
+        "jobs:\n  quality:\n    steps:\n      - run: python -m pytest\n",
+        encoding="utf-8",
+    )
+    # Without the declaration: a real-but-not-kit-shaped door still reds.
+    assert "enforcement-unwired" in {f.kind for f in check_engagement(root, config)}
+    assert native_gate_note(root, config) is None
+    # With it: accepted — visibly, via the enforcement-native NOTE.
+    config.native_gate = {
+        "workflow": ".github/workflows/code-quality.yml",
+        "required_context": "Code Quality",
+    }
+    assert "enforcement-unwired" not in {
+        f.kind for f in check_engagement(root, config)
+    }
+    note = native_gate_note(root, config)
+    assert note is not None
+    assert "enforcement-native" in note
+    assert ".github/workflows/code-quality.yml" in note
+    assert "Code Quality" in note
+
+
+def test_native_gate_dead_declaration_stays_red(tmp_path):
+    # PL-011's letter: a door must exist and be visible in-tree — a declared
+    # workflow that does NOT exist keeps the gate red, with the dead
+    # declaration named in the finding, and no acceptance NOTE fires.
+    from engine.checks.check_engagement import native_gate_note
+
+    root = tmp_path / "repo"
+    config, _ = _adopt_bare(root, tmp_path / "kit")
+    config.native_gate = {"workflow": ".github/workflows/missing.yml"}
+    findings = [
+        f for f in check_engagement(root, config) if f.kind == "enforcement-unwired"
+    ]
+    assert len(findings) == 1
+    assert ".github/workflows/missing.yml" in findings[0].message
+    assert native_gate_note(root, config) is None
+
+
+def test_native_gate_note_is_moot_when_kit_gate_is_wired(tmp_path):
+    # A kit-shaped door makes the declaration moot: no unwired finding either
+    # way, and the NOTE stays quiet (it fires only when the declaration is
+    # the accepting evidence). Malformed declarations read as undeclared.
+    from engine.checks.check_engagement import native_gate_note
+
+    root = tmp_path / "repo"
+    config, _ = _adopt_bare(root, tmp_path / "kit")
+    wf = root / ".github" / "workflows" / "ci.yml"
+    wf.parent.mkdir(parents=True)
+    wf.write_text("run: python3 bootstrap.py check --strict\n", encoding="utf-8")
+    config.native_gate = {"workflow": ".github/workflows/ci.yml"}
+    assert "enforcement-unwired" not in {
+        f.kind for f in check_engagement(root, config)
+    }
+    assert native_gate_note(root, config) is None
+    # Malformed shapes never widen the gate (heartbeat_files doctrine).
+    wf.unlink()
+    for bad in (["not-a-dict"], {"workflow": 7}, {"workflow": "  "}):
+        config.native_gate = bad
+        assert "enforcement-unwired" in {
+            f.kind for f in check_engagement(root, config)
+        }
+        assert native_gate_note(root, config) is None
+
+
+def test_cmd_check_emits_the_enforcement_native_note(tmp_path, capsys):
+    # Full-lane visibility: acceptance is NOTE'd, never silent — and the
+    # engagement gate itself no longer contributes a red for enforcement.
+    root = tmp_path / "repo"
+    config, _ = _adopt_bare(root, tmp_path / "kit")
+    wf = root / ".github" / "workflows" / "code-quality.yml"
+    wf.parent.mkdir(parents=True)
+    wf.write_text(
+        "jobs:\n  quality:\n    steps:\n      - run: python -m pytest\n",
+        encoding="utf-8",
+    )
+    config.native_gate = {"workflow": ".github/workflows/code-quality.yml"}
+    save_config(root, config)
+    cmd_check(root, strict=True)
+    out = capsys.readouterr().out
+    assert "enforcement-native" in out
+    assert "enforcement-unwired" not in out
+
+
 def test_session_loop_engages_via_count_or_card(tmp_path):
     root = tmp_path / "repo"
     config, backend = _adopt_bare(root, tmp_path / "kit")

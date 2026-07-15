@@ -181,6 +181,31 @@ def _default_branch_sweep() -> dict:
     }
 
 
+def _default_native_gate() -> dict:
+    """Return the native-gate declaration (empty = undeclared, gate unchanged).
+
+    The engagement gate's declared evidence class for **native-substrate
+    consumers** (idea engagement-native-consumer-state-2026-07-12, origin
+    superbot friction #37): a pin-only adopter whose CI door is real but not
+    kit-shaped — a required check that is not ``check --strict`` — declares
+    it here instead of false-redding ``enforcement-unwired`` forever:
+
+    - ``workflow`` — repo-relative path of the workflow file that constitutes
+      the door (e.g. ``.github/workflows/code-quality.yml``). The declaration
+      counts ONLY while this file exists in-tree (PL-011's letter: a door
+      must exist and be visible); a dead path keeps the gate red.
+    - ``required_context`` — the required status-check context that workflow
+      provides (informational: named in the acceptance NOTE, never verified —
+      required-ness lives behind the GitHub API the stdlib engine can't
+      reach).
+
+    Empty by default on purpose: acceptance is opt-in, per-host, and always
+    visible (``check`` NOTEs ``enforcement-native`` whenever the declaration
+    is the evidence keeping ``enforcement-unwired`` quiet).
+    """
+    return {}
+
+
 def _default_preflight_scripts() -> list[str]:
     """Return the repo-local preflight scripts ``check`` runs on the full lane.
 
@@ -284,6 +309,10 @@ class Config:
     preflight_scripts: list[str] = field(
         default_factory=_default_preflight_scripts,
     )
+    # Native-gate declaration (idea engagement-native-consumer-state-2026-07-12
+    # — see _default_native_gate above): the engagement gate's opt-in evidence
+    # class for a real-but-not-kit-shaped CI door.
+    native_gate: dict = field(default_factory=_default_native_gate)
 
     def to_json(self) -> str:
         """Serialise the config to indented, key-sorted JSON."""

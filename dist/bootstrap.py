@@ -248,6 +248,31 @@ def _default_branch_sweep() -> dict:
     }
 
 
+def _default_native_gate() -> dict:
+    """Return the native-gate declaration (empty = undeclared, gate unchanged).
+
+    The engagement gate's declared evidence class for **native-substrate
+    consumers** (idea engagement-native-consumer-state-2026-07-12, origin
+    superbot friction #37): a pin-only adopter whose CI door is real but not
+    kit-shaped — a required check that is not ``check --strict`` — declares
+    it here instead of false-redding ``enforcement-unwired`` forever:
+
+    - ``workflow`` — repo-relative path of the workflow file that constitutes
+      the door (e.g. ``.github/workflows/code-quality.yml``). The declaration
+      counts ONLY while this file exists in-tree (PL-011's letter: a door
+      must exist and be visible); a dead path keeps the gate red.
+    - ``required_context`` — the required status-check context that workflow
+      provides (informational: named in the acceptance NOTE, never verified —
+      required-ness lives behind the GitHub API the stdlib engine can't
+      reach).
+
+    Empty by default on purpose: acceptance is opt-in, per-host, and always
+    visible (``check`` NOTEs ``enforcement-native`` whenever the declaration
+    is the evidence keeping ``enforcement-unwired`` quiet).
+    """
+    return {}
+
+
 def _default_preflight_scripts() -> list[str]:
     """Return the repo-local preflight scripts ``check`` runs on the full lane.
 
@@ -351,6 +376,10 @@ class Config:
     preflight_scripts: list[str] = field(
         default_factory=_default_preflight_scripts,
     )
+    # Native-gate declaration (idea engagement-native-consumer-state-2026-07-12
+    # — see _default_native_gate above): the engagement gate's opt-in evidence
+    # class for a real-but-not-kit-shaped CI door.
+    native_gate: dict = field(default_factory=_default_native_gate)
 
     def to_json(self) -> str:
         """Serialise the config to indented, key-sorted JSON."""
@@ -15078,6 +15107,14 @@ checklist line — ``adopt`` prints these same findings as its next steps):
   repo is host content, not a kit slot).
 - ``enforcement-unwired`` — no workflow under ``.github/workflows/`` runs
   ``check --strict`` (the staged ``substrate-gate.yml`` is the one-copy fix).
+  A host whose CI door is real but not kit-shaped (the superbot shape —
+  friction #37: required code-quality check, born-red merge gate, zero
+  ``check --strict`` workflows) opts out of this false positive by declaring
+  the door: ``substrate.config.json`` → ``native_gate.workflow`` names the
+  workflow file that constitutes it. The declaration counts only while that
+  file exists in-tree (PL-011's letter: a door must exist and be visible);
+  acceptance is surfaced as an ``enforcement-native`` NOTE by ``check``'s
+  full lane (:func:`native_gate_note`) — visible, never silent.
 - ``session-loop-idle`` — no session has ever run: ``session_count`` is 0
   AND no real session card exists under the sessions dir.
 
@@ -15251,6 +15288,51 @@ def _enforcement_wired(target: Path) -> bool:
     return False
 
 
+def _native_gate_declared(target: Path, config: Any) -> tuple[str | None, bool]:
+    """Return ``(declared workflow relpath | None, exists-on-disk)``.
+
+    The native-substrate-consumer evidence class (idea
+    engagement-native-consumer-state-2026-07-12): ``substrate.config.json`` →
+    ``native_gate.workflow`` names the workflow file the host declares as its
+    real-but-not-kit-shaped CI door. Malformed declarations (non-dict field,
+    non-string path) read as undeclared — a misconfiguration must not
+    silently widen the gate (the ``heartbeat_files`` doctrine).
+    """
+    gate = getattr(config, "native_gate", None)
+    if not isinstance(gate, dict):
+        return None, False
+    workflow = gate.get("workflow")
+    if not isinstance(workflow, str) or not workflow.strip():
+        return None, False
+    workflow = workflow.strip()
+    return workflow, (target / workflow).is_file()
+
+
+def native_gate_note(target: Path, config: Any) -> str | None:
+    """One-line ``enforcement-native`` NOTE when the declaration does the work.
+
+    Returns the note exactly when the declared native gate is the evidence
+    keeping ``enforcement-unwired`` quiet — declared, existing on disk, and
+    no workflow runs ``check --strict`` (a kit-shaped door makes the
+    declaration moot). ``None`` otherwise. Public on purpose: ``cmd_check``'s
+    full lane emits it so acceptance is visible, never silent — the idea's
+    contract, and the same "a quiet pass must say why" instinct as the
+    inbox/preflight self-skip NOTEs.
+    """
+    workflow, exists = _native_gate_declared(target, config)
+    if not (workflow and exists):
+        return None
+    if _enforcement_wired(target):
+        return None
+    context = getattr(config, "native_gate", {}).get("required_context")
+    ctx = f" (required check: {context})" if context else ""
+    return (
+        f"enforcement-native — declared native gate `{workflow}`{ctx} "
+        "accepted as the CI door (substrate.config.json `native_gate`); "
+        "no workflow runs `check --strict`."
+    )
+
+
 def _session_loop_engaged(target: Path, config: Any, state: dict) -> bool:
     """True when at least one session has run (count or a real card)."""
     try:
@@ -15272,15 +15354,24 @@ def check_engagement(target: Path, config: Any) -> list[Finding]:
     if not evidence:
         return findings
     if not _enforcement_wired(target):
-        findings.append(
-            Finding(
-                ".github/workflows/",
-                "enforcement-unwired",
-                "no CI workflow runs `check --strict` — install the staged "
-                f"gate: copy {config.state_dir}/ci/substrate-gate.yml to "
-                ".github/workflows/ (or `adopt --wire-enforcement`).",
-            ),
-        )
+        declared, declared_exists = _native_gate_declared(target, config)
+        if not (declared and declared_exists):
+            dead = (
+                f" (declared native_gate workflow `{declared}` does not "
+                "exist — fix the declaration or wire the kit gate)"
+                if declared
+                else ""
+            )
+            findings.append(
+                Finding(
+                    ".github/workflows/",
+                    "enforcement-unwired",
+                    "no CI workflow runs `check --strict` — install the "
+                    f"staged gate: copy {config.state_dir}/ci/"
+                    "substrate-gate.yml to .github/workflows/ (or `adopt "
+                    f"--wire-enforcement`).{dead}",
+                ),
+            )
     if not _session_loop_engaged(target, config, state):
         findings.append(
             Finding(
@@ -19238,6 +19329,14 @@ def cmd_check(
             )
         )
         doc_findings += _extra_check_findings(target, config) + status_gate
+        # Native-gate acceptance visibility (idea engagement-native-consumer-
+        # state-2026-07-12): when a declared `native_gate` workflow is the
+        # evidence keeping `enforcement-unwired` quiet, say so — accepted,
+        # never silent. NOTE-only by contract: acceptance is a green path,
+        # and the dead-declaration case reds via the finding itself.
+        native_note = native_gate_note(target, config)
+        if native_note:
+            _emit(f"check: NOTE — {native_note}")
         doc_findings += inbox_findings
         doc_findings += adopters_gate
         # Local preflight scripts (ORDER 018): the config-declared check
