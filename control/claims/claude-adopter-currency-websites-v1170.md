@@ -1,1 +1,0 @@
-- `claude/adopter-currency-websites-v1170` · **adopter currency refresh: websites v1.17.0 bump; regenerate docs/adopters.md; retire DRIFT rows** · docs/adopters.md, control/status.md, .sessions/ · 2026-07-15
