@@ -12979,6 +12979,34 @@ def lane_status_relpath(lane: str) -> str:
     return f"control/status-{lane}.md"
 
 
+def lane_drift_advisory(heartbeat_files: list[str]) -> str | None:
+    """Return the plain-adopt lane-drift advisory line, or ``None``.
+
+    The ``adopt --lane`` inverse gap (idea 2026-07-10, the #103 rider): a
+    **plain** adopt (no ``--lane``) into a repo whose ``heartbeat_files``
+    already names lane files plants the singular ``control/status.md`` seed
+    *without declaring it* — the file exists on disk but no gate validates
+    it, exactly the half-declared state the ORDER 004 empty-list fail-safe
+    exists to prevent, recreated by the one hand-path left into the bus.
+
+    Lane-shaped means: a non-empty list that differs from the untouched
+    default ``[SINGLE_HEARTBEAT_RELPATH]``. An empty list is NOT lane-shaped
+    — it falls back to the default at every consumer (the
+    ``heartbeat_files`` doctrine), so the singular seed it receives is the
+    declared one. Advisory only, never a refusal: a deliberate singular
+    adopt into a lane-shaped repo may be intended (e.g. a consolidating
+    Project), so the caller prints the nudge and plants anyway.
+    """
+    if not heartbeat_files or heartbeat_files == [SINGLE_HEARTBEAT_RELPATH]:
+        return None
+    return (
+        f"ADVISORY — this repo is lane-shaped (heartbeat_files: "
+        f"{heartbeat_files}) — did you mean `adopt --lane <name>`? "
+        f"Continuing with the singular control/status.md (advisory, "
+        f"not a refusal)."
+    )
+
+
 def validate_lane_name(lane: str) -> str:
     """Return ``lane`` unchanged, or raise ``ValueError`` for an unsafe name.
 
@@ -14722,6 +14750,14 @@ def adopt(
         validate_lane_name(lane)
     templates = load_templates()
     report: list[str] = []
+
+    # (0a) Lane-drift advisory (the #103 inverse gap): a plain adopt into a
+    # lane-shaped repo gets the `--lane` nudge as the FIRST report line —
+    # advisory only, planting continues (see lane_drift_advisory).
+    if lane is None:
+        advisory = lane_drift_advisory(list(config.heartbeat_files))
+        if advisory is not None:
+            report.append(advisory)
 
     # (0b) Adopt renders what it knows: seed derivable slots (provisional,
     # never overwriting an existing answer), then build the render context.

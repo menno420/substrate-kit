@@ -85,13 +85,6 @@ story, the frontmatter keeps the score.
   next: bake the "re-verify at origin/main HEAD first; stand down if already
   taken" clause into whatever template generates dispatch/maintenance briefs.
 
-- [Plain-adopt lane-drift advisory — nudge `--lane` in lane-shaped repos](plain-adopt-lane-drift-advisory-2026-07-10.md)
-  — state: captured; origin: lab (the `adopt --lane` session's card-only 💡,
-  filed by the 2026-07-10 night-cap groom: a plain `adopt` into a repo whose
-  `heartbeat_files` already names lanes plants an undeclared singular
-  heartbeat — the last hand-edit path into the bus); next: a groomed-ideas
-  increment ships the advisory + tests (quick-win, ordinary lane, engine
-  change → dist byte-pin).
 - [`adopt --wire-enforcement` plants a pytest step when tests/ exists](adopt-plants-pytest-gate-step-2026-07-10.md)
   — state: captured; origin: consumer (superbot-games ran gen-1 with a
   tests-blind gate — 73 tests never in CI, fixed consumer-side in games#16;
@@ -142,6 +135,14 @@ story, the frontmatter keeps the score.
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [Plain-adopt lane-drift advisory — nudge `--lane` in lane-shaped repos](plain-adopt-lane-drift-advisory-2026-07-10.md)
+  — **shipped** kit PR #396 (2026-07-15, anticipated in-PR date):
+  `engine.adopt.lane_drift_advisory` + the (0a) advisory branch in
+  `adopt()` — a plain adopt into a lane-shaped repo (non-empty
+  `heartbeat_files` differing from the untouched default) leads its report
+  with the `adopt --lane <name>` nudge; advisory only, planting continues
+  (empty list stays non-lane-shaped per the fall-back doctrine). Tests
+  mirror the #103 lane set; dist byte-pin regen. Window closes 2026-08-14.
 - [Heartbeat currency: document the coordinator delegated-tally pattern](heartbeat-delegated-tally-guidance-2026-07-13.md)
   — **shipped** kit PR #395 (2026-07-15, anticipated in-PR date): "Delegated
   tally" doctrine section in `control-README.md.tmpl` + the kit's own

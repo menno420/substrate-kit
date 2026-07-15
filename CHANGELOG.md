@@ -17,6 +17,17 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Plain-adopt lane-drift advisory** (idea
+  `plain-adopt-lane-drift-advisory-2026-07-10` — the `adopt --lane` inverse
+  gap): a plain `adopt` (no `--lane`) into a repo whose `heartbeat_files`
+  is already lane-shaped (non-empty, differs from the untouched
+  `["control/status.md"]` default) now leads its report with an
+  `ADVISORY — this repo is lane-shaped … did you mean \`adopt --lane
+  <name>\`?` nudge (`engine.adopt.lane_drift_advisory`). Advisory only —
+  planting continues unchanged (a deliberate singular adopt into a
+  lane-shaped repo may be intended); an empty list stays non-lane-shaped
+  per the fall-back-to-default doctrine.
+
 - **Delegated-tally heartbeat doctrine** (idea
   `heartbeat-delegated-tally-guidance-2026-07-13`): new "Delegated tally —
   coordinator-written heartbeats" section in `control-README.md.tmpl` (and
