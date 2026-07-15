@@ -124,6 +124,13 @@ jobs:
         # backlog indexes every file. A convention ships with its checker.
         run: python3 scripts/check_idea_index.py
 
+      - name: Retro index (docs/retro reachability — no unindexed retro file)
+        if: steps.lane.outputs.control_only != 'true'
+        # Idea 2026-07-10 (the PR #76 unindexed wind-down addendum, invisible
+        # until the gen-2-boot reconcile #78): every docs/retro/*.md is linked
+        # from its README, and every relative README link resolves.
+        run: python3 scripts/check_retro_index.py
+
       - name: CHANGELOG structure ([Unreleased] keep-a-changelog shape)
         if: steps.lane.outputs.control_only != 'true'
         # Idea 2026-07-09 (twice-reproduced mid-section `### Fixed` defect +

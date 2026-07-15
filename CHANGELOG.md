@@ -17,6 +17,15 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Retro/docs reachability checker** (idea
+  `retro-docs-reachability-checker-2026-07-10`, kit-internal — no adopter
+  surface changes): `scripts/check_retro_index.py` asserts every
+  `docs/retro/*.md` is linked from `docs/retro/README.md` and every relative
+  `.md` link in that README resolves — the PR #76 unindexed-addendum class
+  (invisible until the gen-2-boot reconcile #78) can no longer merge silently.
+  Wired as a new `retro-index` leg in `scripts/preflight.py` and the ci.yml
+  kit-quality job.
+
 - **Engage-slot coverage tests** (idea `engage-slot-list-derived-2026-07-13`,
   kit-internal — no adopter surface changes): `tests/test_bench.py` now holds
   the two deliberately-pinned interview-slot lists — bench `ENGAGE_SLOTS` and

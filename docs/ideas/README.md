@@ -104,10 +104,6 @@ story, the frontmatter keeps the score.
   the kit generalizes the fix so every adopter's suite ships with its
   runner); next: template addition behind the control fast lane; ordinary
   lane, engine change → dist byte-pin.
-- [Retro/docs reachability checker — no unindexed retro file](retro-docs-reachability-checker-2026-07-10.md)
-  — state: captured; origin: lab (the #76 wind-down addendum merged unindexed
-  despite self-flagging the follow-up; reconciled only at gen-2 boot, #78);
-  next: mirror check_idea_index.py over docs/retro/, wire into kit-quality.
 - [Rubric F-5 wording: "none regressing" vs the 7k-budget yardstick](rubric-f5-none-regressing-wording-2026-07-09.md)
   — state: historical; origin: lab (B1 run `2026-07-09-run02` — the first
   clean M1 measurement made two readings of the pinned F-5 text produce
@@ -152,6 +148,12 @@ story, the frontmatter keeps the score.
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [Retro/docs reachability checker — no unindexed retro file](retro-docs-reachability-checker-2026-07-10.md)
+  — **shipped** kit PR #388 (2026-07-15, anticipated in-PR date):
+  `scripts/check_retro_index.py` asserting every `docs/retro/*.md` is linked
+  from its README and every relative README link resolves (the #76
+  unindexed-addendum class); wired as the `retro-index` leg in preflight +
+  the ci.yml kit-quality job. Window closes 2026-08-14.
 - [Engage slot lists: derive from the bank instead of triple-pinning](engage-slot-list-derived-2026-07-13.md)
   — **shipped** kit PR #387 (2026-07-15, anticipated in-PR date): coverage
   tests holding both pinned slot lists (bench `ENGAGE_SLOTS` + the ci.yml
