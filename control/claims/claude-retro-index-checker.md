@@ -1,0 +1,1 @@
+- `claude/retro-index-checker` · **retro-docs reachability checker (idea 2026-07-10)** · scripts/check_retro_index.py, tests/, scripts/preflight.py, .github/workflows/ci.yml, CHANGELOG.md, docs/ideas/ · 2026-07-15
