@@ -35,6 +35,7 @@ from engine.adopt import (
     ci_snippet,
     dist_version,
     doc_is_untouched,
+    lane_drift_advisory,
     live_ci_workflow,
     strip_unrendered_banner,
     with_unrendered_banner,
@@ -1699,6 +1700,59 @@ def test_planted_readme_documents_the_one_command_lane_shape(tmp_path):
     readme = (root / "control" / "README.md").read_text(encoding="utf-8")
     assert "adopt --lane <name>" in readme
     assert "control/status-<name>.md" in readme
+
+
+# ---------------------------------------------------------------------------
+# Plain-adopt lane-drift advisory (the #103 inverse gap — idea 2026-07-10)
+# ---------------------------------------------------------------------------
+
+
+def test_plain_adopt_into_lane_shaped_repo_prints_the_drift_advisory(tmp_path):
+    # A plain (no --lane) adopt into a repo whose heartbeat_files already
+    # names lane files: the --lane nudge is the FIRST report line, and the
+    # adopt still plants everything — advisory, never a refusal.
+    config = Config()
+    config.heartbeat_files = ["control/status-mining.md"]
+    root, config, lines = _adopt_into(tmp_path, config=config)
+    assert lines[0].startswith("ADVISORY — this repo is lane-shaped")
+    assert "control/status-mining.md" in lines[0]
+    assert "`adopt --lane <name>`" in lines[0]
+    # Planting continued: the singular seed still lands (skip-if-exists
+    # semantics unchanged), the shared bus plants as usual.
+    assert (root / "control" / "status.md").is_file()
+    assert (root / "control" / "inbox.md").is_file()
+    # The advisory never mutates config: the declared lanes are untouched.
+    assert config.heartbeat_files == ["control/status-mining.md"]
+
+
+def test_plain_adopt_into_default_shaped_repo_has_no_advisory(tmp_path):
+    _, _, lines = _adopt_into(tmp_path)
+    assert not any(line.startswith("ADVISORY") for line in lines)
+
+
+def test_lane_adopt_never_prints_the_drift_advisory(tmp_path):
+    # --lane IS the declared path — nudging it at itself would be noise.
+    config = Config()
+    config.heartbeat_files = ["control/status-mining.md"]
+    _, _, _, lines = _adopt_with_lane(
+        tmp_path, "exploration", config=config
+    )
+    assert not any(line.startswith("ADVISORY") for line in lines)
+
+
+def test_lane_drift_advisory_shape():
+    # Unit contract: default and empty are NOT lane-shaped (the empty list
+    # falls back to the default at every consumer — the heartbeat_files
+    # doctrine), any other non-empty list is.
+    assert lane_drift_advisory(["control/status.md"]) is None
+    assert lane_drift_advisory([]) is None
+    text = lane_drift_advisory(["control/status-a.md", "control/status-b.md"])
+    assert text is not None
+    assert "lane-shaped" in text and "adopt --lane" in text
+    # A custom list that still contains the singular file is lane-shaped
+    # too — the mixed superbot-games join shape.
+    mixed = lane_drift_advisory(["control/status.md", "control/status-x.md"])
+    assert mixed is not None
 
 
 # ---------------------------------------------------------------------------

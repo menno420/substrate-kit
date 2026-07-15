@@ -1,20 +1,25 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 396
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-15
+outcome: shipped
 ---
 
 # Plain-adopt lane-drift advisory — nudge `--lane` in lane-shaped repos (2026-07-10)
 
 > **Status:** `ideas`
 >
-> **State:** captured (filed by the 2026-07-10 night-cap groom from the
+> **State:** shipped — kit PR #396 (2026-07-15, anticipated in-PR date):
+> `engine.adopt.lane_drift_advisory` + the (0a) advisory branch in
+> `adopt()` — a plain adopt into a lane-shaped repo (non-default
+> `heartbeat_files`) leads its report with the `adopt --lane <name>` nudge;
+> advisory only, planting continues. Tests mirror the #103 lane set.
+> (Originally: captured by the 2026-07-10 night-cap groom from the
 > `adopt --lane` session's card-only 💡 idea —
 > `.sessions/2026-07-10-adopt-lane.md`; queue item 11 / PR #103 shipped the
-> lane-aware adopt itself, this is its inverse gap).
+> lane-aware adopt itself, this is its inverse gap.)
 
 ## The gap
 
