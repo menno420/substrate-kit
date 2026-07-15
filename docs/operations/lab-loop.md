@@ -60,7 +60,12 @@ blindly on a consumer's claim (PL-006). Disposition = a comment
 (fixed-in-vX.Y.Z / backlogged-at-<link> / not-a-kit-issue, with reasoning)
 + close.
 
-STEP 2 — NUMBERED WORK, in order:
+STEP 2 — NUMBERED WORK, in order. CLAIM BEFORE BUILD: before consuming an
+inbox ORDER (or any slice), scan control/claims/ at HEAD for a live claim
+already naming it, then write your own claim FIRST — `bootstrap claim
+<slug> --scope "<scope>" --order NNN` when serving an ORDER (the verb
+refuses a cross-branch duplicate; the #362/#363 twin-build lesson) — so a
+sibling fire sees your claim before it builds the same work:
   1. Bugs first, durably — root cause over symptom.
   2. The top backlog slice: the founding plan §10 bands until they are done
      (current band: see current-state ▶ Next action), then groomed

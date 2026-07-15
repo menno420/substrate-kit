@@ -1,20 +1,28 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 365
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-14
+outcome: shipped
 ---
 
 # Work claims miss cross-branch ORDER collisions (2026-07-14)
 
 > **Status:** `ideas`
 >
-> **State:** captured (lab-loop run close-out 2026-07-14). **Origin:** lab —
-> two routine lab-loop fires the same night both consumed the same unacked
-> `control/inbox.md` ORDER and built duplicate PRs (#362 landed; #363 closed
-> as superseded), each unaware of the other.
+> **State:** shipped — kit PR #365 (2026-07-14): `engine.grammar`
+> `WORK_CLAIM_ORDER_RE` + `work_claim_order_ids()`, the claim verb's
+> `--order NNN` segment (round-trip verified) with a refusal when another
+> live claim on a different branch already names that order, and the
+> `check_claims` `claims-order-collision` advisory (advisory-only, never
+> exit-affecting). Doc segments (this file's flip, the local claims-README
+> order-segment sync, the lab-loop STEP 2 claim-the-ORDER-first line)
+> completed by kit PR #397 (2026-07-15).
+> (Originally: captured at the lab-loop run close-out 2026-07-14.
+> **Origin:** lab — two routine lab-loop fires the same night both consumed
+> the same unacked `control/inbox.md` ORDER and built duplicate PRs (#362
+> landed; #363 closed as superseded), each unaware of the other.)
 
 **One line:** the `bootstrap claim` / `check_claims` work-claim system keys its
 duplicate scan on the **branch token** (`claude/<slug>`), so two sessions on
@@ -88,9 +96,13 @@ out of scope for a contained kit build, though the coordinator may prefer it.
   the lab-loop prompt line; engine change → dist byte-pin; advisory posture
   means zero risk to green adopters. Evidence tier: a realized same-night
   collision with two PR numbers, not a hypothetical.
-- **Next:** structured fix — grammar segment + writer flag + cross-branch
-  overlap advisory + tests, engine change → dist byte-pin. Pairs with the
-  adjacent [[unacked-order-vs-heartbeat]] visibility gap (an order newer than
-  the status heartbeat should be surfaced mechanically so a fresh fire sees it
-  before treating the tree as idle) — that one is about *noticing* an order,
-  this one about *not colliding* on it.
+- **Shipped:** parts 1–2 (grammar segment + `claim --order` writer flag +
+  verb refusal + `claims-order-collision` advisory + tests, engine change →
+  dist byte-pin) in kit PR #365 (2026-07-14); part 3 (boot-time visibility —
+  the lab-loop STEP 2 claim-the-ORDER-before-building line) plus this file's
+  lifecycle flip and the local claims-README sync in kit PR #397
+  (2026-07-15). The adjacent [[unacked-order-vs-heartbeat]] visibility gap
+  (an order newer than the status heartbeat should be surfaced mechanically
+  so a fresh fire sees it before treating the tree as idle) remains open —
+  that one is about *noticing* an order, this one about *not colliding* on
+  it.
