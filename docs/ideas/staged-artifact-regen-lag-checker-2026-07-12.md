@@ -1,20 +1,21 @@
 ---
-state: captured
+state: promoted
 origin: consumer:menno420/websites
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 345
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-14
+outcome: shipped
 ---
 
 # Regeneration-lag checker for staged `.substrate/` artifacts (2026-07-12)
 
 > **Status:** `ideas`
 >
-> **State:** captured → route: quick-win engine checker leg → **built:
-> kit PR #345** (2026-07-13, ORDER 019 item 6 — `check_staged_regen`,
-> advisory-first; parked green for review-merge. Frontmatter ship fields
-> flip when the PR merges, per the idea-index outcome rules).
+> **State:** captured → route: quick-win engine checker leg → built:
+> kit PR #345 (2026-07-13, ORDER 019 item 6 — `check_staged_regen`,
+> advisory-first; parked green for review-merge) → **shipped** — #345
+> merged on main 2026-07-14 (commit c603cc9); ship fields flipped
+> 2026-07-15 per the idea-index outcome rules.
 > **Origin:** consumer:menno420/websites — friction issue
 > [#39](https://github.com/menno420/substrate-kit/issues/39), filed by the
 > 2026-07-09 fleet adoption review; triaged and closed by the 2026-07-12

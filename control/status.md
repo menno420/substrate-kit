@@ -1,12 +1,11 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-15T04:40Z · phase: EAP EXTENSION ACTIVE (ORDER 024 acked + done on the seat's first rebooted wake; EAP through 2026-07-21; routines coordinator-managed this wake)
+updated: 2026-07-15T05:10Z · phase: EAP EXTENSION ACTIVE (EAP through 2026-07-21; inbox consumed 001–024; routines coordinator-managed)
 
-## This wake (2026-07-15, PR #382 · claude/adopters-currency-2026-07-15)
-- ORDER 024 acknowledged on the first rebooted wake — its done-when. This session armed no triggers itself; routine management is the coordinator's (see Routine state).
-- docs/adopters.md regenerated via `python3 dist/bootstrap.py currency` (04:37:23Z scan, 12 repos, read-only): DRIFT 7 repos → 5 — idea-engine + trading-strategy cleared, venture-lab now self-reports v1.17.0, superbot-next self-report advanced to v1.16.0. Remaining DRIFT = the chronic lane-owed heartbeat `kit:`-lag class (superbot-next, websites, superbot-games ×3 lanes, superbot-mineverse) + kit's own known tree-internal config-pin v1.0.0 row.
-- Boot verify: preflight 7/7 legs green at origin/main 58b3f80 (pytest 1568 passed, 1 skipped).
-- Landing path: PR #382 flips green at the card flip; auto-merge-enabler lands it on kit-quality green. No other open PRs; nothing parked.
-- Friction note (no new ask): first push collided with the SPENT surviving branch `claude/adopters-currency-refresh` (its PR merged 2026-07-13; ref never auto-deleted — the ORDER 022/023 litter class). Resolved by taking a dated branch name; no force-push. branch-sweep.yml remains staged-only fleet-wide (`.substrate/ci/`); per-repo wiring is lane/owner-owed via `adopt --wire-enforcement`.
+## This wake (2026-07-15, PR #383 · claude/idea-index-shipped-drift-2026-07-15)
+- Idea-index shipped-drift fix (docs-only): a full frontmatter⇄README cross-check at main e900008 found 7 shipped ideas (#187 ×2, #342, #344, #346, #349, #351) still listed as buildable `state: captured` Backlog entries with `next:` build instructions — the dispatch-misdirection class from PR #311's provenance; entries moved to § Shipped with merge citations. Plus one un-flipped ship record: staged-artifact-regen-lag-checker frontmatter still `captured/open` while its PR #345 merged on main (c603cc9, 2026-07-14) — flipped per the idea-index outcome rules.
+- Coverage note: README section placement is outside `check_idea_index`'s legs (leg 4 checks link resolution, leg 5 body-state, leg 6 merged-reality — skipped on shallow clones), so this drift sat checker-green; candidate future leg noted in the session card idea.
+- Boot verify: preflight 7/7 legs green at origin/main e900008 (pytest 1568 passed, 1 skipped); re-run green on the fix.
+- Landing path: PR #383 flips green at the card flip; auto-merge-enabler lands it on kit-quality green. No other open PRs; nothing parked.
 
 ## Routine state (observed facts — read-only list_triggers inventory this session, 2026-07-15 ~04:4xZ)
 - This session armed no triggers. Routines are coordinator-managed this wake.
@@ -19,8 +18,8 @@ updated: 2026-07-15T04:40Z · phase: EAP EXTENSION ACTIVE (ORDER 024 acked + don
 - Revival boot reading: CONSTITUTION.md → control/inbox.md → this file → docs/eap-closeout-walkthrough-2026-07-14.md §E → docs/audits/eap-project-audit-2026-07-14.md.
 
 ## Next-2 baton
-1. Grounded-skills measurement window ~2026-07-19..26 — run the measurement per the proposal precedent (PR #247 methodology) when the window opens; owner silence accepts.
-2. After adopter lanes bump their heartbeat `kit:` lines (and/or branch-sweep gets wired per-repo via `adopt --wire-enforcement` — owner/resident), re-run `python3 dist/bootstrap.py currency` to retire the remaining DRIFT rows.
+1. After adopter lanes bump their heartbeat `kit:` lines (and/or branch-sweep gets wired per-repo via `adopt --wire-enforcement` — owner/resident), re-run `python3 dist/bootstrap.py currency` to retire the remaining DRIFT rows (5 at the 04:37Z scan).
+2. Grounded-skills measurement window ~2026-07-19..26 — run the measurement per the proposal precedent (PR #247 methodology) when the window opens; owner silence accepts.
 
 ## ⚑ FOR OWNER (standing set carried forward — NO new asks this wake)
 
