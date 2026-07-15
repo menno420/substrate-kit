@@ -1,0 +1,1 @@
+- `claude/adopt-pytest-gate-step` · **adopt gate plants pytest step (baton item 1)** · src/engine/adopt.py, tests/test_adopt.py, dist, CHANGELOG · 2026-07-15
