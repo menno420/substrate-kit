@@ -1,0 +1,1 @@
+- `claude/currency-fm-kit-line` · **currency regen (fleet-manager kit: line, PR fm#232) + capture the currency --check preflight idea** · docs/adopters.md + docs/ideas/ + control/status.md + .sessions/ · 2026-07-15
