@@ -15,20 +15,6 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
-### Changed
-
-- **`ideas-README.md.tmpl` gains the `Shipped (survive window open)` and
-  `Historical / pointer stubs` index sections** — folded INTO the template
-  from the kit's own idea index, where the three-section shape (Backlog /
-  Shipped / Historical) had evolved as the natural lifecycle layout matching
-  the frontmatter states (the first live run of `check_template_sync` (#399)
-  surfaced the pair; direction judged local→template because the local
-  content was the genuinely newer doctrine). The same slice hand-synced the
-  other three drift pairs template→local (`docs/collaboration-model.md`
-  "Routing work to the owner", `docs/CAPABILITIES.md` "Posture decision
-  rule", `control/README.md` "Owner-assist output standard" + "CI +
-  auto-merge notes"), leaving the advisory clean on the kit tree.
-
 ### Added
 
 - **Template↔local-copy heading-set sync advisory** (idea
@@ -100,6 +86,17 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Changed
 
+- **`ideas-README.md.tmpl` gains the `Shipped (survive window open)` and
+  `Historical / pointer stubs` index sections** — folded INTO the template
+  from the kit's own idea index, where the three-section shape (Backlog /
+  Shipped / Historical) had evolved as the natural lifecycle layout matching
+  the frontmatter states (the first live run of `check_template_sync` (#399)
+  surfaced the pair; direction judged local→template because the local
+  content was the genuinely newer doctrine). The same slice hand-synced the
+  other three drift pairs template→local (`docs/collaboration-model.md`
+  "Routing work to the owner", `docs/CAPABILITIES.md` "Posture decision
+  rule", `control/README.md` "Owner-assist output standard" + "CI +
+  auto-merge notes"), leaving the advisory clean on the kit tree.
 - **Model-line lint: `unrecorded` is a sanctioned terminal effort value**
   (idea `model-line-unrecorded-effort-marker-2026-07-15`):
   `check_model_line` no longer fires `model-line-effort` on an effort
