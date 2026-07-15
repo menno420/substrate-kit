@@ -49,6 +49,14 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- [`currency --check` — a cheap registry-delta preflight verb](currency-check-registry-delta-preflight-2026-07-15.md)
+  — state: captured; origin: lab (the 💡 in the 2026-07-15
+  adopter-currency-websites session card, PR #389 — wakes decide "is a
+  currency slice due?" by hand-fetching self-report lines or running the
+  full regen; a read-only exit-0/1 delta preflight makes the scan turnkey;
+  filed by the currency-fm-kit-line session after the baton pointed at a
+  Backlog entry that didn't exist); next: build — reuse the currency scan,
+  compare rows-only (timestamp-insensitive), engine+tests → dist byte-pin.
 - [Model-line `unrecorded` effort marker — sanctioned terminal value for retro-sweeps](model-line-unrecorded-effort-marker-2026-07-15.md)
   — state: captured; origin: lab (the 2026-07-15 payload sweep, PR #390,
   retro-fixed 3 cards whose authors never self-reported effort; the honest
