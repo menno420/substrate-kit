@@ -1,0 +1,272 @@
+"""Tests for scripts/measure_grounded_skills.py — fixture trees, no network.
+
+The harness is the pre-registered grounded-skills measurement instrument
+(docs/operations/grounded-skills-measurement.md); these tests pin the frozen
+metric definitions so a silent behavior change is a red suite, not a silent
+protocol amendment.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import subprocess
+import sys
+from datetime import date
+from pathlib import Path
+
+import pytest
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_SCRIPT = _REPO_ROOT / "scripts" / "measure_grounded_skills.py"
+
+_spec = importlib.util.spec_from_file_location("measure_grounded_skills", _SCRIPT)
+mgs = importlib.util.module_from_spec(_spec)
+sys.modules.setdefault("measure_grounded_skills", mgs)
+_spec.loader.exec_module(mgs)
+
+WINDOW = dict(start=date(2026, 7, 1), boundary=date(2026, 7, 12), end=date(2026, 7, 20))
+
+
+# ── roster ───────────────────────────────────────────────────────────────────
+
+
+def test_parse_roster_drops_comments_and_lane_tokens():
+    text = (
+        "# comment\n"
+        "\n"
+        "menno420/substrate-kit\n"
+        "menno420/superbot-games control/status-mining.md control/status-exploration.md\n"
+    )
+    assert mgs.parse_roster(text) == [
+        "menno420/substrate-kit",
+        "menno420/superbot-games",
+    ]
+
+
+# ── bucketing ────────────────────────────────────────────────────────────────
+
+
+def test_card_date_parses_and_rejects():
+    assert mgs.card_date("2026-07-13-some-slug.md") == date(2026, 7, 13)
+    assert mgs.card_date("README.md") is None
+    assert mgs.card_date("2026-13-99-bad.md") is None
+
+
+def test_bucket_boundary_day_excluded_from_both():
+    assert mgs.bucket(date(2026, 7, 11), **WINDOW) == "before"
+    assert mgs.bucket(date(2026, 7, 12), **WINDOW) == "boundary-day"
+    assert mgs.bucket(date(2026, 7, 13), **WINDOW) == "after"
+    assert mgs.bucket(date(2026, 6, 30), **WINDOW) is None
+    assert mgs.bucket(date(2026, 7, 21), **WINDOW) is None
+
+
+# ── M1 ───────────────────────────────────────────────────────────────────────
+
+
+def test_skill_names_come_from_engine_skills_list():
+    names = mgs.skill_names()
+    assert "session-close" in names
+    assert "intake" in names
+
+
+def test_card_references_skill_matches_all_three_surfaces():
+    names = ("session-close", "intake")
+    assert mgs.card_references_skill("ran /session-close at the end", names)
+    assert mgs.card_references_skill("see .claude/skills/intake/SKILL.md", names)
+    assert mgs.card_references_skill("checked docs/SKILLS.md first", names)
+    assert not mgs.card_references_skill("improvised the close-out by hand", names)
+
+
+# ── M2 ───────────────────────────────────────────────────────────────────────
+
+_COMPLIANT_BLOCK = (
+    "⚑ OWNER-ACTION\n"
+    "WHAT: flip the setting\n"
+    "WHERE: Settings → Example → toggle\n"
+    "HOW: one checkbox\n"
+    "RISK: ↩️ reversible\n"
+    "WHY-IT-MATTERS: the lane stalls\n"
+    "UNBLOCKS: the next slice\n"
+    "VERIFIED-NEEDED: attempted, 403\n"
+)
+
+_NONCOMPLIANT_BLOCK = "⚑ OWNER-ACTION\nWHAT: do the thing\nWHERE: settings\n"
+
+
+def test_owner_action_blocks_split_on_blank_lines_and_markers():
+    text = _COMPLIANT_BLOCK + "\n" + _NONCOMPLIANT_BLOCK
+    blocks = mgs.owner_action_blocks(text)
+    assert len(blocks) == 2
+    assert mgs.block_compliant(blocks[0]) is True
+    assert mgs.block_compliant(blocks[1]) is False
+
+
+def test_owner_action_blocks_detect_named_asks_and_reject_prose_mentions():
+    # named heartbeat ask (no literal OWNER-ACTION token) — detected
+    named = (
+        "⚑ P10 required-check swap\n"
+        "WHAT: swap the required CI check\n"
+        "WHERE: repo Settings → Rules\n"
+    )
+    assert len(mgs.owner_action_blocks(named)) == 1
+    # mid-line prose mention (the 29:0 noise class) — rejected
+    prose = "after this PR merges, will mark ⚑ OWNER-ACTION 13 RESOLVED.\n"
+    assert mgs.owner_action_blocks(prose) == []
+    # ⚑ line-start but no WHAT: field (e.g. ⚑ Self-initiated flag) — rejected
+    flag = "⚑ Self-initiated: picked from the backlog.\n"
+    assert mgs.owner_action_blocks(flag) == []
+
+
+def test_block_compliant_accepts_field_alternates():
+    alt = _COMPLIANT_BLOCK.replace("WHY-IT-MATTERS:", "WHY:").replace(
+        "VERIFIED-NEEDED:", "VERIFIED-WHEN:"
+    )
+    assert mgs.block_compliant(alt) is True
+
+
+def test_block_compliant_requires_risk_token():
+    no_risk = _COMPLIANT_BLOCK.replace("RISK: ↩️ reversible\n", "RISK: none\n")
+    assert mgs.block_compliant(no_risk) is False
+
+
+# ── M3 ───────────────────────────────────────────────────────────────────────
+
+
+def test_capability_lines_venue_verdicts_and_fail_open():
+    text = (
+        "- 2026-07-14 · wall · routine-fired · finding · evidence · workaround\n"
+        "- 2026-07-14 · capability · not-a-venue · finding · evidence · none\n"
+        "- 2026-07-10 · wall · some old style finding · evidence · none\n"
+        "not a log line\n"
+    )
+    lines = mgs.capability_lines(text)
+    assert [line.venue_ok for line in lines] == [True, False, None]
+    assert lines[2].day == date(2026, 7, 10)
+
+
+# ── measure_repo over a fixture tree ─────────────────────────────────────────
+
+
+@pytest.fixture()
+def fixture_tree(tmp_path: Path) -> Path:
+    root = tmp_path / "adopter"
+    (root / ".sessions").mkdir(parents=True)
+    (root / "docs").mkdir()
+    (root / "control").mkdir()
+    # before-window card: no skill reference, one non-compliant ask
+    (root / ".sessions" / "2026-07-10-old-work.md").write_text(
+        "# card\nimprovised procedure\n\n" + _NONCOMPLIANT_BLOCK, encoding="utf-8"
+    )
+    # boundary-day card: excluded from both buckets
+    (root / ".sessions" / "2026-07-12-boundary.md").write_text(
+        "ran /session-close", encoding="utf-8"
+    )
+    # after-window cards: one grounded + compliant, one improvised
+    (root / ".sessions" / "2026-07-14-grounded.md").write_text(
+        "opened docs/SKILLS.md then ran /session-close\n\n" + _COMPLIANT_BLOCK,
+        encoding="utf-8",
+    )
+    (root / ".sessions" / "2026-07-15-improvised.md").write_text(
+        "did it by hand", encoding="utf-8"
+    )
+    (root / ".sessions" / "README.md").write_text("index", encoding="utf-8")
+    (root / "docs" / "CAPABILITIES.md").write_text(
+        "# ledger\n\n## Append log\n"
+        "- 2026-07-09 · wall · old style no venue finding · evidence · none\n"
+        "- 2026-07-14 · wall · routine-fired · finding · evidence · none\n",
+        encoding="utf-8",
+    )
+    (root / "control" / "status.md").write_text(
+        "# heartbeat\n\n" + _COMPLIANT_BLOCK, encoding="utf-8"
+    )
+    return root
+
+
+def test_measure_repo_buckets_and_counts(fixture_tree: Path):
+    res = mgs.measure_repo(
+        "fixture", fixture_tree, names=("session-close",), **WINDOW
+    )
+    assert res.ok
+    assert res.cards["before"] == {
+        "cards": 1,
+        "skill_cards": 0,
+        "oa_blocks": 1,
+        "oa_compliant": 0,
+    }
+    assert res.cards["boundary-day"]["cards"] == 1
+    assert res.cards["after"] == {
+        "cards": 2,
+        "skill_cards": 1,
+        "oa_blocks": 1,
+        "oa_compliant": 1,
+    }
+    assert res.capability["before"] == {"lines": 1, "venue_judged": 0, "venue_ok": 0}
+    assert res.capability["after"] == {"lines": 1, "venue_judged": 1, "venue_ok": 1}
+    assert res.status_oa_blocks == 1 and res.status_oa_compliant == 1
+    # not a git repo → M4 is an honest null
+    assert res.merged is None
+
+
+def test_merged_counts_from_git_history(tmp_path: Path):
+    repo = tmp_path / "gitrepo"
+    repo.mkdir()
+
+    def git(*args: str, day: str | None = None) -> None:
+        env = None
+        if day:
+            import os
+
+            env = dict(
+                os.environ,
+                GIT_AUTHOR_DATE=f"{day}T12:00:00 +0000",
+                GIT_COMMITTER_DATE=f"{day}T12:00:00 +0000",
+            )
+        subprocess.run(
+            ["git", "-C", str(repo), *args],
+            check=True,
+            capture_output=True,
+            env=env,
+        )
+
+    git("init", "--quiet")
+    git("config", "user.email", "t@example.com")
+    git("config", "user.name", "t")
+    (repo / "f.txt").write_text("1", encoding="utf-8")
+    git("add", "f.txt")
+    git("commit", "-q", "-m", "Ship thing (#1)", day="2026-07-10")
+    (repo / "f.txt").write_text("2", encoding="utf-8")
+    git("commit", "-q", "-am", "no suffix commit", day="2026-07-13")
+    (repo / "f.txt").write_text("3", encoding="utf-8")
+    git("commit", "-q", "-am", "Ship other (#2)", day="2026-07-14")
+
+    counts = mgs.merged_counts(repo, **WINDOW)
+    assert counts == {"before": 1, "boundary-day": 0, "after": 1, "shallow": False}
+
+
+def test_render_marks_shallow_clone_m4_null(fixture_tree: Path):
+    res = mgs.measure_repo("fixture", fixture_tree, names=(), **WINDOW)
+    res.merged = {"before": 0, "boundary-day": 0, "after": 5, "shallow": True}
+    report = mgs.render_report([res], **WINDOW)
+    assert "null (shallow clone" in report
+
+
+# ── rendering ────────────────────────────────────────────────────────────────
+
+
+def test_render_report_carries_n_and_honest_nulls(fixture_tree: Path):
+    res = mgs.measure_repo("fixture", fixture_tree, names=("session-close",), **WINDOW)
+    skipped = mgs.RepoResult(name="menno420/private", ok=False, skip_reason="clone failed: 404")
+    report = mgs.render_report([res, skipped], **WINDOW)
+    assert "menno420/private — clone failed: 404" in report
+    assert "1/2 (50%)" in report  # M1 after
+    assert "null (n=0)" in report  # empty denominators print as nulls
+    assert "null (no git history)" in report  # M4 non-git null
+    assert "docs/operations/grounded-skills-measurement.md" in report
+
+
+def test_results_json_shape(fixture_tree: Path):
+    res = mgs.measure_repo("fixture", fixture_tree, names=(), **WINDOW)
+    payload = mgs.results_json([res], **WINDOW)
+    assert payload["window"]["boundary"] == "2026-07-12"
+    assert payload["repos"][0]["name"] == "fixture"
+    assert payload["repos"][0]["cards"]["after"]["cards"] == 2
