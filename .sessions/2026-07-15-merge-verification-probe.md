@@ -2,7 +2,8 @@
 
 > **Status:** `complete`
 > **Branch:** `claude/merge-verification-2026-07-15` · **PR:** #393
-> **📊 Model:** sonnet-5 · **Run type:** manual (fleet-wide cross-repo audit, dispatched from a `superbot` session)
+> **📊 Model:** sonnet-5 · unrecorded · docs-only
+> **Run type:** manual (fleet-wide cross-repo audit, dispatched from a `superbot` session)
 
 Intent: not a real feature session — a single tiny, inert doc change
 (`docs/_merge_verification_2026-07-15.md`) opened as part of an owner-directed
