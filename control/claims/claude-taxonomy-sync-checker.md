@@ -1,0 +1,1 @@
+- `claude/taxonomy-sync-checker` · **taxonomy-surface sync checker (baton item 1)** · scripts/check_taxonomy_sync.py, tests/test_check_taxonomy_sync.py, .github/workflows/ci.yml, scripts/preflight.py · 2026-07-15
