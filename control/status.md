@@ -1,11 +1,11 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-15T10:52Z · phase: EAP EXTENSION ACTIVE (EAP through 2026-07-21; inbox consumed 001–024; routines coordinator-managed)
+updated: 2026-07-15T11:07Z · phase: EAP EXTENSION ACTIVE (EAP through 2026-07-21; inbox consumed 001–024; routines coordinator-managed)
 
-## This wake (2026-07-15 · work slice · claude/grounded-skills-harness · PR #386)
-- Self-initiated slice (no inbox ORDER above 024; control/claims/ held README only; zero open PRs at the 10:0xZ scan — no backpressure): pre-built the grounded-skills measurement harness so the ~07-19..26 window run is turnkey (baton item; wrap report §3d proposal, PR #247 methodology).
-- Shipped on the PR branch: `scripts/measure_grounded_skills.py` (M1 skill-grounding · M2 owner-ask compliance · M3 capability-ledger activity · M4 merge-throughput proxy; grammar constants from `engine.grammar`, skill names live from the SKILLS list; honest nulls; shallow-clone guard), pre-registered protocol `docs/operations/grounded-skills-measurement.md` (frozen metrics, linked from the operations index), 15 fixture tests.
-- Two instrument defects caught by PL-008 spot-check before first use, both fixed in the same commit (b6dd77e): the naive `⚑ OWNER-ACTION` token scan counted 29 prose mentions / 0 real blocks in the kit's own cards (detection now line-start `⚑` + `WHAT:`); shallow clones silently zeroed M4 (now a flagged null).
-- Verify: preflight 7/7 legs green (pytest incl. the 15 new tests, ruff, dist-byte-pin, idea-index, changelog, program-law, bench-integrity); `dist/bootstrap.py check --strict` red only on the designed born-red hold for this session's own card.
+## This wake (2026-07-15 · work slice · claude/engage-slot-coverage · PR #387)
+- Self-initiated slice (no inbox ORDER above 024; control/claims/ held README only; zero open PRs at the 11:0xZ scan — no backpressure): shipped the captured idea engage-slot-list-derived-2026-07-13 — coverage tests holding both deliberately-pinned interview-slot lists (bench `ENGAGE_SLOTS` + the ci.yml cold-adopt `for slot in …; do` loop) to set-equality with the question bank, so the next bank growth trips a named test instead of a latent red (the Q-014..016 rider-graduation miss was the paid instance). Pinned ORDER kept for byte-reproducibility; tests-only, no engine/dist change.
+- Adopter-bump check first (read-only, raw.githubusercontent.com, ~11:00Z): superbot-next v1.16.0 · websites v1.15.0 · superbot-games v1.15.0 · superbot-mineverse v1.16.0 — all four match the registry; no currency slice due.
+- Drift fixed on sight (same README edit): docs/ideas/README.md listed model-line-payload-lint-advisory as `captured` in the pointer-stub section while its frontmatter says shipped kit PR #352 (merged 2026-07-14) — entry relocated to the Shipped section with the ship record.
+- Verify: preflight 7/7 legs green (1585 passed, 1 skipped — incl. the 2 new coverage tests; ruff, dist-byte-pin, idea-index, changelog-structure, program-law, bench-integrity); `dist/bootstrap.py check --strict` red only on the designed born-red hold for this session's own card. Known pre-existing advisories (never exit-affecting): staged-regen-lag on .substrate/ agents/CLAUDE.md artifacts; model-line payload warnings on 4 older cards (two `Fable-class` shape misses, one `Fable` bare, one off-taxonomy class) — candidates for a later sweep slice, not this one.
 
 ## Routine state (observed facts — trigger inventory carried from the 2026-07-15 ~04:4xZ read-only list_triggers pass; this wake armed no triggers)
 - This session armed no triggers. Routines are coordinator-managed this wake.
@@ -15,13 +15,13 @@ updated: 2026-07-15T10:52Z · phase: EAP EXTENSION ACTIVE (EAP through 2026-07-2
 
 ## State
 - kit: v1.17.0
-- v1.17.0 distributed 9/9 engaged adopters (registry re-verified at the 04:37Z scan; zero kit-line bumps since).
-- Grounded-skills measurement: protocol pre-registered + harness on PR #386 (docs/operations/grounded-skills-measurement.md — one command: `python3 scripts/measure_grounded_skills.py --clone --workdir <dir> --json <f> --out <f>`).
+- v1.17.0 distributed 9/9 engaged adopters (registry re-verified at the 04:37Z scan; the four spot-checked kit-lines above unchanged at ~11:00Z).
+- Grounded-skills measurement: harness MERGED (#386, main @ c5380dc) — turnkey: `python3 scripts/measure_grounded_skills.py --clone --workdir <dir> --json <f> --out <f>`; protocol pre-registered at docs/operations/grounded-skills-measurement.md.
 - Revival boot reading: CONSTITUTION.md → control/inbox.md → this file → docs/eap-closeout-walkthrough-2026-07-14.md §E → docs/audits/eap-project-audit-2026-07-14.md.
 
 ## Next-2 baton
-1. Grounded-skills measurement window ~2026-07-19..26 — run per docs/operations/grounded-skills-measurement.md (turnkey after PR #386; PR #247 methodology; owner silence accepts); publish the findings report under docs/reports/ and link it from the operations index.
-2. After adopter lanes bump their heartbeat `kit:` lines (and/or branch-sweep gets wired per-repo via `adopt --wire-enforcement` — owner/resident), re-run `python3 dist/bootstrap.py currency` to retire the remaining DRIFT rows (5 at the 04:37Z scan).
+1. Grounded-skills measurement window ~2026-07-19..26 — run per docs/operations/grounded-skills-measurement.md (turnkey since #386 merged; PR #247 methodology; owner silence accepts); publish the findings report under docs/reports/ and link it from the operations index.
+2. After adopter lanes bump their heartbeat `kit:` lines (and/or branch-sweep gets wired per-repo via `adopt --wire-enforcement` — owner/resident), re-run `python3 dist/bootstrap.py currency` to retire the remaining DRIFT rows (5 at the 04:37Z scan; adopter kit-lines re-verified unchanged ~11:00Z this wake).
 
 ## ⚑ FOR OWNER (standing set carried forward — NO new asks this wake)
 
