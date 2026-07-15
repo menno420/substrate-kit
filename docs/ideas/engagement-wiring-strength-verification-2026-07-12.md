@@ -1,18 +1,24 @@
 ---
-state: captured
+state: promoted
 origin: consumer:menno420/substrate-kit
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 402
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-15
+outcome: shipped
 ---
 
 # Engagement gate: verify wiring STRENGTH, not just existence (2026-07-12)
 
 > **Status:** `ideas`
 >
-> **State:** captured → route: quick-win advisory leg, **frozen until the
-> 2026-07-11 feature freeze lifts** (new checker surface).
+> **State:** promoted → **shipped** kit PR #402 (2026-07-15, anticipated
+> in-PR date): both advisory layers — the `enforcement-weak-form` finding
+> (`check_enforcement_strength`: plain-form wired door + staged gate
+> carrying `--require-session-log` / diff-aware `--session-log` /
+> `--inbox-base` → one advisory naming the missing legs + the staged file
+> to copy, never strict-red) and the `enforcement-required-unverified`
+> honesty NOTE (`required_unverified_note`, emitted by `check`'s full lane
+> beside the `enforcement-native` NOTE).
 > **Origin:** the residuals of two 2026-07-09 fleet-review friction
 > reports, triaged and closed by the 2026-07-12 lab-loop run:
 > [#36](https://github.com/menno420/substrate-kit/issues/36) report 3

@@ -555,3 +555,151 @@ def test_cmd_check_status_only_gates_control_slot_regressions(tmp_path, capsys):
         encoding="utf-8",
     )
     assert cmd_check(tmp_path, strict=True, status_only=True) == 0
+
+
+# ---------------------------------------------------------------------------
+# Wiring-STRENGTH advisory + required-ness honesty NOTE (idea
+# engagement-wiring-strength-verification-2026-07-12 — the #38 weak-form
+# class + #36 report 3)
+# ---------------------------------------------------------------------------
+
+
+def test_weak_form_advisory_fires_on_plain_wired_gate(tmp_path):
+    # The idea's guard recipe: plain-form workflow + staged strong gate →
+    # ONE advisory naming the missing legs and the staged file to copy.
+    from engine.checks.check_engagement import check_enforcement_strength
+
+    root = tmp_path / "repo"
+    config, _ = _adopt_bare(root, tmp_path / "kit")
+    wf = root / ".github" / "workflows" / "ci.yml"
+    wf.parent.mkdir(parents=True)
+    wf.write_text("run: python3 bootstrap.py check --strict\n", encoding="utf-8")
+    findings = check_enforcement_strength(root, config)
+    assert [f.kind for f in findings] == ["enforcement-weak-form"]
+    msg = findings[0].message
+    assert ".github/workflows/ci.yml" in msg
+    assert "`--require-session-log`" in msg
+    assert "`--session-log`" in msg
+    assert "`--inbox-base`" in msg
+    assert f"{config.state_dir}/ci/substrate-gate.yml" in msg
+    # Advisory-only: the strict gate itself never carries the kind — the
+    # wired plain form still clears enforcement-unwired.
+    strict_kinds = {f.kind for f in check_engagement(root, config)}
+    assert "enforcement-weak-form" not in strict_kinds
+    assert "enforcement-unwired" not in strict_kinds
+
+
+def test_weak_form_silent_on_strong_form_and_gated_inputs(tmp_path):
+    # Strong-form wiring (the installed staged gate) is silent; so are the
+    # gated inputs — unwired tree (the strict finding owns it), no adoption
+    # evidence, and a missing staged reference (nothing to copy).
+    from engine.checks.check_engagement import check_enforcement_strength
+
+    root = tmp_path / "repo"
+    config, _ = _adopt_bare(root, tmp_path / "kit")
+    # Unwired: no workflows at all → silent here (enforcement-unwired reds).
+    assert check_enforcement_strength(root, config) == []
+    # Strong form: the staged gate installed verbatim carries every leg.
+    _install_staged_gate(root, config)
+    assert check_enforcement_strength(root, config) == []
+    # Plain form fires…
+    wf = root / ".github" / "workflows" / "substrate-gate.yml"
+    wf.write_text("run: python3 bootstrap.py check --strict\n", encoding="utf-8")
+    assert len(check_enforcement_strength(root, config)) == 1
+    # …but not without the staged reference (nothing to copy)…
+    staged = root / config.state_dir / "ci" / "substrate-gate.yml"
+    staged_text = staged.read_text(encoding="utf-8")
+    staged.unlink()
+    assert check_enforcement_strength(root, config) == []
+    staged.write_text(staged_text, encoding="utf-8")
+    # …and not on a tree with no adoption evidence (bare host repo).
+    bare = tmp_path / "bare"
+    bare_wf = bare / ".github" / "workflows" / "ci.yml"
+    bare_wf.parent.mkdir(parents=True)
+    bare_wf.write_text("run: python3 x.py check --strict\n", encoding="utf-8")
+    assert check_enforcement_strength(bare, Config()) == []
+
+
+def test_weak_form_legs_are_token_boundary_and_comment_aware(tmp_path):
+    # `--require-session-log` must NOT satisfy the `--session-log` leg (a
+    # substring), and legs mentioned only in comments don't count as wired
+    # strength — same comment discipline as the door needle itself.
+    from engine.checks.check_engagement import check_enforcement_strength
+
+    root = tmp_path / "repo"
+    config, _ = _adopt_bare(root, tmp_path / "kit")
+    wf = root / ".github" / "workflows" / "ci.yml"
+    wf.parent.mkdir(parents=True)
+    wf.write_text(
+        "run: python3 bootstrap.py check --strict --require-session-log "
+        "--inbox-base base.md\n",
+        encoding="utf-8",
+    )
+    findings = check_enforcement_strength(root, config)
+    assert len(findings) == 1
+    msg = findings[0].message
+    assert "`--session-log`" in msg
+    assert "`--require-session-log`" not in msg
+    assert "`--inbox-base`" not in msg
+    # Comment-only legs stay missing: strip comments before matching.
+    wf.write_text(
+        "run: python3 bootstrap.py check --strict"
+        "  # TODO --require-session-log --session-log --inbox-base\n",
+        encoding="utf-8",
+    )
+    findings = check_enforcement_strength(root, config)
+    assert len(findings) == 1
+    msg = findings[0].message
+    assert "`--require-session-log`" in msg
+    assert "`--session-log`" in msg
+    assert "`--inbox-base`" in msg
+
+
+def test_required_unverified_note_names_the_expected_context(tmp_path):
+    # Layer 2 (issue #36 report 3): with a CI door — kit-shaped or declared
+    # native — the gate says honestly that required-check status is owner-UI
+    # state it cannot read; silent when no door exists (unwired owns that).
+    from engine.checks.check_engagement import required_unverified_note
+
+    root = tmp_path / "repo"
+    config, _ = _adopt_bare(root, tmp_path / "kit")
+    # No door at all → no note.
+    assert required_unverified_note(root, config) is None
+    # Kit-shaped door → note names the automerge required context default.
+    wf = root / ".github" / "workflows" / "ci.yml"
+    wf.parent.mkdir(parents=True)
+    wf.write_text("run: python3 bootstrap.py check --strict\n", encoding="utf-8")
+    note = required_unverified_note(root, config)
+    assert note is not None
+    assert "enforcement-required-unverified" in note
+    assert "`substrate-gate`" in note
+    # Native door → note names the declared required_context.
+    wf.write_text("run: python -m pytest\n", encoding="utf-8")
+    config.native_gate = {
+        "workflow": ".github/workflows/ci.yml",
+        "required_context": "Code Quality",
+    }
+    note = required_unverified_note(root, config)
+    assert note is not None
+    assert "`Code Quality`" in note
+    # Dead native declaration → no door → no note.
+    wf.unlink()
+    assert required_unverified_note(root, config) is None
+
+
+def test_cmd_check_emits_strength_advisory_and_required_note(tmp_path, capsys):
+    # Full-lane visibility: the weak-form advisory prints under the
+    # never-exit-affecting banner and the required-ness NOTE rides beside
+    # the engagement NOTEs.
+    root = tmp_path / "repo"
+    config, _ = _adopt_bare(root, tmp_path / "kit")
+    wf = root / ".github" / "workflows" / "ci.yml"
+    wf.parent.mkdir(parents=True)
+    wf.write_text("run: python3 bootstrap.py check --strict\n", encoding="utf-8")
+    save_config(root, config)
+    cmd_check(root, strict=True)
+    out = capsys.readouterr().out
+    assert "enforcement-weak-form" in out
+    assert "enforcement-strength advisory" in out
+    assert "never exit-affecting" in out
+    assert "enforcement-required-unverified" in out

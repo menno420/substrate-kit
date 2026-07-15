@@ -17,6 +17,27 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Engagement gate: wiring-STRENGTH advisory + required-ness honesty NOTE**
+  (idea `engagement-wiring-strength-verification-2026-07-12` — friction #36
+  report 3 + #38 residuals; sibling of the `native_gate` class below):
+  `engine.checks.check_engagement.check_enforcement_strength` runs in
+  `check`'s full lane and fires an advisory-only `enforcement-weak-form`
+  finding when the wired `check --strict` door runs the PLAIN form while
+  the staged `<state_dir>/ci/substrate-gate.yml` carries the stronger legs
+  — `--require-session-log` (the session-log locked door), diff-aware
+  `--session-log` card selection, `--inbox-base` (the inbox append-only
+  gate) — naming the missing legs and the staged file as the one-copy fix.
+  Never strict-red (a hand-rolled gate is legitimate; the kit's own
+  `ci.yml` carries all three legs and self-silences); leg matching is
+  token-boundary guarded (`--require-session-log` never satisfies the
+  `--session-log` leg) and comment-stripped. Layer 2:
+  `required_unverified_note` emits one `enforcement-required-unverified`
+  NOTE whenever a CI door exists (kit-shaped or accepted `native_gate`) —
+  whether the check is a REQUIRED status check is owner-UI state the
+  stdlib engine cannot read, so the gate now says so honestly, naming the
+  expected context (`native_gate.required_context` /
+  `automerge.required_context`).
+
 - **Engagement gate: declared `native_gate` evidence class
   (`enforcement-native`)** (idea
   `engagement-native-consumer-state-2026-07-12` — superbot friction #37,

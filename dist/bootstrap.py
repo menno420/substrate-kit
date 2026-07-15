@@ -15118,6 +15118,14 @@ checklist line — ``adopt`` prints these same findings as its next steps):
 - ``session-loop-idle`` — no session has ever run: ``session_count`` is 0
   AND no real session card exists under the sessions dir.
 
+Beyond the strict gate, two honesty surfaces cover what "wired" alone can't
+see (idea engagement-wiring-strength-verification-2026-07-12 — the #38
+weak-form class + #36 report 3): :func:`check_enforcement_strength` fires an
+**advisory-only** ``enforcement-weak-form`` finding when the wired door runs
+the plain form while the staged gate carries the stronger legs, and
+:func:`required_unverified_note` NOTEs that required-check status is
+owner-UI state the engine cannot read. Neither ever affects the exit code.
+
 Scope: the scan covers exactly the **planted** doc paths (the ``ADOPT_PLAN``
 destinations, ``project.index.json``, and a live ``.claude/CLAUDE.md``) —
 never template sources, so the kit repo's own ``src/engine/templates/``
@@ -15266,6 +15274,32 @@ def _strip_comment(line: str) -> str:
     return line[:idx] if idx != -1 else line
 
 
+def _wired_workflows(target: Path) -> list[tuple[str, str]]:
+    """Return ``(relpath, comment-stripped text)`` per workflow running the gate.
+
+    A workflow counts when some non-comment line contains ``check --strict``
+    (the same needle :func:`_enforcement_wired` has always used). The stripped
+    text rides along so the strength scan (:func:`check_enforcement_strength`)
+    can look for the stronger legs in exactly the content that counted —
+    comment mentions of a leg must not read as wired strength any more than a
+    commented command reads as a door.
+    """
+    workflows = target / ".github" / "workflows"
+    if not workflows.is_dir():
+        return []
+    wired: list[tuple[str, str]] = []
+    for path in sorted(workflows.glob("*.yml")) + sorted(workflows.glob("*.yaml")):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        stripped_lines = [_strip_comment(line) for line in text.splitlines()]
+        if any("check --strict" in line for line in stripped_lines):
+            rel = path.relative_to(target).as_posix()
+            wired.append((rel, "\n".join(stripped_lines)))
+    return wired
+
+
 def _enforcement_wired(target: Path) -> bool:
     """True when some workflow under .github/workflows/ runs ``check --strict``.
 
@@ -15275,17 +15309,151 @@ def _enforcement_wired(target: Path) -> bool:
     Comment content is stripped first, so a workflow that only *mentions* the
     command inside a ``#`` comment is not a real door and stays unwired.
     """
-    workflows = target / ".github" / "workflows"
-    if not workflows.is_dir():
-        return False
-    for path in sorted(workflows.glob("*.yml")) + sorted(workflows.glob("*.yaml")):
-        try:
-            text = path.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
-            continue
-        if any("check --strict" in _strip_comment(line) for line in text.splitlines()):
-            return True
-    return False
+    return bool(_wired_workflows(target))
+
+
+# The staged gate's stronger legs the plain form silently skips (idea
+# engagement-wiring-strength-verification-2026-07-12, layer 1 — the #38
+# weak-form class, re-verified at superbot-next c03df80): flag → what the
+# missing leg costs, quoted verbatim in the advisory so the nudge teaches.
+STRONG_GATE_LEGS: tuple[tuple[str, str], ...] = (
+    (
+        "--require-session-log",
+        "the session-log locked door (a missing card is advisory, not red)",
+    ),
+    (
+        "--session-log",
+        "diff-aware card selection (mtime fallback grades the wrong card "
+        "on multi-card diffs)",
+    ),
+    (
+        "--inbox-base",
+        "the inbox append-only gate (latent without a base blob — the "
+        "v1.7.0-wave finding)",
+    ),
+)
+
+
+def _has_leg(text: str, leg: str) -> bool:
+    """Token-boundary test for a CLI flag in comment-stripped workflow text.
+
+    Boundary-guarded on purpose: ``--session-log`` is a substring of
+    ``--require-session-log``, so a plain ``in`` test would read the locked
+    door's flag as also satisfying the diff-aware-selection leg. A flag
+    counts only when not embedded in a longer flag/word (space- and
+    ``=``-joined argument forms both pass).
+    """
+    return re.search(rf"(?<![\w-]){re.escape(leg)}(?![\w-])", text) is not None
+
+
+def check_enforcement_strength(target: Path, config: Any) -> list[Finding]:
+    """Advisory-only wiring-STRENGTH scan of the wired ``check --strict`` door.
+
+    Why + provenance: idea engagement-wiring-strength-verification-2026-07-12
+    (origin: fleet-review friction residuals, issues #36 report 3 + #38).
+    ``_enforcement_wired`` answers only "does a workflow run the command?" —
+    superbot-next's ``ci.yml`` (re-verified 2026-07-12 at ``c03df80``) runs
+    the PLAIN form and read as fully wired while skipping the session-log
+    locked door, diff-aware card selection, and the inbox append-only gate.
+    Reliability (PL-008): UNVERIFIED — confirm its findings against ground
+    truth a few times across sessions before trusting it; **delete this if it
+    proves unreliable over multiple sessions.**
+
+    Posture is **advisory-only, never exit-affecting** (the idea's contract:
+    "Never strict-red — a hand-rolled gate is legitimate"): fires ONE
+    ``enforcement-weak-form`` finding when the wired door lacks
+    :data:`STRONG_GATE_LEGS` legs that the staged
+    ``<state_dir>/ci/substrate-gate.yml`` demonstrably carries — the staged
+    file is both the evidence the stronger form exists and the one-copy fix
+    the message names. Silent when: no adoption evidence, nothing wired (the
+    strict ``enforcement-unwired``/native path owns that), every leg present
+    across the wired workflows (the kit's own ``ci.yml`` shape), or the
+    staged gate is absent/doesn't carry the missing legs (nothing to copy).
+    Leg presence is token-boundary matched (:func:`_has_leg`) on
+    comment-stripped text only.
+    """
+    state = _load_state(target, config)
+    if not _adoption_evidence(config, state):
+        return []
+    wired = _wired_workflows(target)
+    if not wired:
+        return []
+    combined = "\n".join(text for _, text in wired)
+    missing = [
+        (leg, why) for leg, why in STRONG_GATE_LEGS if not _has_leg(combined, leg)
+    ]
+    if not missing:
+        return []
+    staged_rel = f"{config.state_dir}/ci/substrate-gate.yml"
+    staged = target / staged_rel
+    try:
+        staged_text = "\n".join(
+            _strip_comment(line)
+            for line in staged.read_text(encoding="utf-8").splitlines()
+        )
+    except (OSError, UnicodeDecodeError):
+        return []  # no staged stronger form to point at — nothing to copy
+    staged_missing = [
+        (leg, why) for leg, why in missing if _has_leg(staged_text, leg)
+    ]
+    if not staged_missing:
+        return []
+    doors = ", ".join(rel for rel, _ in wired)
+    legs = "; ".join(f"`{leg}` — {why}" for leg, why in staged_missing)
+    return [
+        Finding(
+            ".github/workflows/",
+            "enforcement-weak-form",
+            f"the wired `check --strict` door ({doors}) runs the plain form "
+            f"and skips the staged gate's stronger leg(s): {legs}. Copy "
+            f"{staged_rel} to .github/workflows/ (or `adopt "
+            "--wire-enforcement`) for the full-strength gate — advisory "
+            "only: a hand-rolled gate is legitimate.",
+        ),
+    ]
+
+
+def required_unverified_note(target: Path, config: Any) -> str | None:
+    """The ``enforcement-required-unverified`` honesty NOTE (idea layer 2).
+
+    Whether the wired check is a REQUIRED status check is owner-UI state —
+    invisible in-tree and 403-walled to agents (issue #36 report 3; proven:
+    superbot-next #51/#68 merged with red non-required legs). The checker
+    cannot confirm it today (no rules-API probe in a stdlib-only engine), so
+    it says so honestly: one NOTE line whenever a CI door exists — either a
+    workflow running ``check --strict`` or an accepted ``native_gate``
+    declaration — naming the context expected to be required
+    (``native_gate.required_context`` on the native path, else
+    ``automerge.required_context``). NOTE-only by the idea's contract, like
+    the ``enforcement-native`` acceptance NOTE it rides beside: honesty
+    output on a green path, never telemetry, never exit-affecting. ``None``
+    when no door exists (the unwired finding owns that conversation).
+    """
+    wired = _enforcement_wired(target)
+    workflow, exists = _native_gate_declared(target, config)
+    native_active = bool(workflow and exists) and not wired
+    if not (wired or native_active):
+        return None
+    if native_active:
+        gate = getattr(config, "native_gate", {})
+        context = gate.get("required_context") if isinstance(gate, dict) else None
+    else:
+        automerge = getattr(config, "automerge", {})
+        context = (
+            automerge.get("required_context")
+            if isinstance(automerge, dict)
+            else None
+        )
+    named = (
+        f"`{context}`" if isinstance(context, str) and context.strip() else "the wired check"
+    )
+    return (
+        f"enforcement-required-unverified — whether {named} is a REQUIRED "
+        "status check on the base branch is owner-UI state this gate cannot "
+        "read (rules API; 403-walled to agents) — owner glance: Settings → "
+        "Rules → required status checks; inference recipes: "
+        "docs/CAPABILITIES.md."
+    )
 
 
 def _native_gate_declared(target: Path, config: Any) -> tuple[str | None, bool]:
@@ -19231,6 +19399,17 @@ def cmd_check(
     # only: workflows are not control-lane traffic; self-silences when the
     # live branch expr matches config.
     automerge_advisories = check_automerge_preflight(target, config)
+    # Enforcement wiring-STRENGTH scan (idea engagement-wiring-strength-
+    # verification-2026-07-12, sibling of the native_gate class): advisory-
+    # only by contract, like every nudge above — a wired `check --strict`
+    # door running the PLAIN form while the staged substrate-gate carries
+    # the stronger legs (`--require-session-log`, diff-aware `--session-log`
+    # selection, `--inbox-base`) is a copy-the-staged-gate nudge, never a
+    # required-check red (the idea's letter: "a hand-rolled gate is
+    # legitimate" — the kit's own ci.yml folds differently and carries all
+    # three legs, so it self-silences). Full lane only: workflows are not
+    # control-lane traffic.
+    strength_advisories = check_enforcement_strength(target, config)
     # 📊 Model-line payload lint (idea model-line-payload-lint-advisory-
     # 2026-07-11, Night-8 triage #3): advisory-only by contract, like every
     # nudge above — a completed card whose Model line breaks the three-field
@@ -19337,6 +19516,14 @@ def cmd_check(
         native_note = native_gate_note(target, config)
         if native_note:
             _emit(f"check: NOTE — {native_note}")
+        # Required-ness honesty (the wiring-strength idea's layer 2, issue
+        # #36 report 3): whether the CI door is a REQUIRED status check is
+        # owner-UI state the stdlib engine cannot read — say so, once,
+        # whenever a door exists. NOTE-only by contract, like the
+        # acceptance NOTE above: honesty on a green path, never a finding.
+        required_note = required_unverified_note(target, config)
+        if required_note:
+            _emit(f"check: NOTE — {required_note}")
         doc_findings += inbox_findings
         doc_findings += adopters_gate
         # Local preflight scripts (ORDER 018): the config-declared check
@@ -19694,6 +19881,27 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=automerge_advisories,
+        )
+    if strength_advisories and not status_only:
+        # Same warn-only contract as the advisories above (idea engagement-
+        # wiring-strength-verification-2026-07-12, advisory-first per its
+        # guard recipe): a plain-form wired gate is a copy-the-staged-file
+        # nudge — surfaced + telemetry-recorded, never counted toward the
+        # exit code; a hand-rolled gate is a legitimate door, and a strict
+        # red here would bomb every weak-form adopter on upgrade.
+        _emit(
+            f"check: {len(strength_advisories)} enforcement-strength advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in strength_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=strength_advisories,
         )
     if model_line_advisories and not status_only:
         # Same warn-only contract as the advisories above (the model-line
