@@ -605,6 +605,73 @@ def render_adopters(
     return "\n".join(lines)
 
 
+def _registry_rows(text: str) -> dict[str, str]:
+    """Parse a registry's DATA rows, keyed by the repo cell.
+
+    Works on any text :func:`render_adopters` produced (the committed file
+    is generated output, format-gated by ``check_adopters_current``): a data
+    row is a ``|``-led table line whose first cell is neither the ``repo``
+    header nor a ``---`` separator. Everything outside the table — the
+    ``Generated:`` stamp, the drift bullets, the protocol prose — is
+    deliberately invisible to this parser: the rows are the evidence; the
+    rest is rendering.
+    """
+    rows: dict[str, str] = {}
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        if not cells or not cells[0]:
+            continue
+        first = cells[0]
+        if first == "repo" or set(first) <= {"-", ":"}:
+            continue  # header / separator, not evidence
+        rows[first] = " | ".join(cells)
+    return rows
+
+
+def registry_delta(
+    committed: str,
+    scans: list[RepoCurrency],
+    kit_version: str,
+) -> list[str]:
+    """Rows-only delta between the committed registry and a fresh scan.
+
+    The ``currency --check`` preflight's core (idea
+    ``docs/ideas/currency-check-registry-delta-preflight-2026-07-15.md``):
+    render the would-be registry in memory, compare **data rows only**
+    against ``committed``, and return the changed rows as ``-``/``+`` lines
+    (empty list = a regen would change nothing but the ``Generated:``
+    stamp). Two deliberate exclusions:
+
+    - **The timestamp never counts** — the stamp line is outside the table,
+      so a stamp-only delta cannot false-positive every run.
+    - **Dark never counts** — a repo whose fresh scan hit transport failure
+      (``unreadable`` set, fully dark or partial) is excluded from the
+      compare in BOTH directions: network darkness is a statement about
+      *this run's transport*, not about the fleet, and must never read as
+      registry drift (the same not-adopted/unreadable asymmetry the fetcher
+      enforces).
+    """
+    fresh = _registry_rows(render_adopters(scans, kit_version))
+    old = _registry_rows(committed)
+    dark = {scan.repo for scan in scans if scan.unreadable}
+    out: list[str] = []
+    for repo, row in fresh.items():
+        if repo in dark:
+            continue
+        if repo not in old:
+            out.append(f"+ {row}")
+        elif old[repo] != row:
+            out.append(f"- {old[repo]}")
+            out.append(f"+ {row}")
+    for repo, row in old.items():
+        if repo not in fresh and repo not in dark:
+            out.append(f"- {row}")
+    return out
+
+
 def drift_report_lines(scans: list[RepoCurrency], kit_version: str) -> list[str]:
     """The run report the subcommand prints: spread + drifts + stale rows."""
     out: list[str] = []

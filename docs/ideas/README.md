@@ -49,14 +49,6 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
-- [`currency --check` — a cheap registry-delta preflight verb](currency-check-registry-delta-preflight-2026-07-15.md)
-  — state: captured; origin: lab (the 💡 in the 2026-07-15
-  adopter-currency-websites session card, PR #389 — wakes decide "is a
-  currency slice due?" by hand-fetching self-report lines or running the
-  full regen; a read-only exit-0/1 delta preflight makes the scan turnkey;
-  filed by the currency-fm-kit-line session after the baton pointed at a
-  Backlog entry that didn't exist); next: build — reuse the currency scan,
-  compare rows-only (timestamp-insensitive), engine+tests → dist byte-pin.
 - [Model-line `unrecorded` effort marker — sanctioned terminal value for retro-sweeps](model-line-unrecorded-effort-marker-2026-07-15.md)
   — state: captured; origin: lab (the 2026-07-15 payload sweep, PR #390,
   retro-fixed 3 cards whose authors never self-reported effort; the honest
@@ -164,6 +156,14 @@ story, the frontmatter keeps the score.
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [`currency --check` — a cheap registry-delta preflight verb](currency-check-registry-delta-preflight-2026-07-15.md)
+  — **shipped** kit PR #392 (2026-07-15, anticipated in-PR date):
+  `registry_delta()` in `engine.currency` + a `--check` lane on the currency
+  verb — same read-only scan, no write; rows-only compare against the
+  committed `docs/adopters.md` (`Generated:` stamp ignored, network-dark
+  repos never delta), exit 0 current / 1 stale with the changed rows
+  printed. Wakes answer "is a currency slice due?" from an exit code.
+  Window closes 2026-08-14.
 - [Retro/docs reachability checker — no unindexed retro file](retro-docs-reachability-checker-2026-07-10.md)
   — **shipped** kit PR #388 (2026-07-15, anticipated in-PR date):
   `scripts/check_retro_index.py` asserting every `docs/retro/*.md` is linked

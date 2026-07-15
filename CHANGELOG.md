@@ -17,6 +17,17 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **`currency --check` — registry-delta preflight** (idea
+  `currency-check-registry-delta-preflight-2026-07-15`): the currency verb
+  grows a no-write `--check` lane — same read-only fleet scan, rendered in
+  memory and compared against the committed `docs/adopters.md` **rows only**
+  (`engine.currency.registry_delta`; the `Generated:` stamp never counts, so
+  a stamp-only delta cannot false-positive, and network-dark repos never
+  count — transport darkness is not fleet drift). Exit 0 = registry current;
+  exit 1 = a regen would change rows (the changed rows are printed). Wakes
+  and wrappers answer "is a currency slice due?" from a plain exit code
+  instead of hand-eyeballing adopter `kit:` lines.
+
 - **Retro/docs reachability checker** (idea
   `retro-docs-reachability-checker-2026-07-10`, kit-internal — no adopter
   surface changes): `scripts/check_retro_index.py` asserts every
