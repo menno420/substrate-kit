@@ -1,10 +1,10 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-15T21:42Z · phase: EAP EXTENSION ACTIVE (EAP through 2026-07-21; inbox consumed 001–024; routines coordinator-managed)
+updated: 2026-07-15T22:16Z · phase: EAP EXTENSION ACTIVE (EAP through 2026-07-21; inbox consumed 001–024; routines coordinator-managed)
 
-## This wake (2026-07-15 · work slice · claude/adopter-currency-regen-2 · PR #408)
-- Slice: adopter currency regen — wake probe `python3 dist/bootstrap.py currency --check` exited 1 at sync HEAD df686a0: one row stale (menno420/trading-strategy heartbeat now carries `kit: v1.17.0`; registry said "no `kit:` line"). Drift slice preempts the baton per the wake procedure. Preconditions: no inbox ORDER above 024 (the "ORDER 025" text ~line 210 is the acked fm relay inside ORDER 019); control/claims/ README-only at scan; zero open PRs (list_pull_requests, 21:38Z).
-- Shipped (commit 25fb7f1): docs/adopters.md regenerated via the discovery tooling (never hand-edited) — single-row delta, trading-strategy self-report `no kit: line` → `v1.17.0`. Regen output also re-observed the 3 known DRIFT rows (substrate-kit tree-internal pin v1.0.0; superbot-games ×3 lane self-reports; superbot-mineverse self-report v1.16.0) — theirs to reconcile at the source, no kit-side action.
-- Verify (at 25fb7f1): `python3 scripts/preflight.py` → 9/9 legs green (pytest 1652 passed 1 skipped; dist-byte-pin; ruff; idea-index; retro-index; changelog-structure; taxonomy-sync; program-law; bench-integrity). `currency --check` → exit 0 post-regen. `dist/bootstrap.py check --strict` → designed born-red HOLD only (this wake's card, pre-flip) + known staged-regen-lag ×3 + the required-unverified NOTE; a claims-format advisory on this wake's claim file was fixed in-session (bullet format per control/claims/README.md); guard-fires telemetry delta committed with the session.
+## This wake (2026-07-15 · work slice · claude/adopter-currency-regen-3 · PR #409)
+- Slice: adopter currency regen — wake probe `python3 dist/bootstrap.py currency --check` exited 1 at sync HEAD 4b4ce7f (#408): one row stale (menno420/gba-homebrew heartbeat now carries `kit: v1.17.0`; registry said "no `kit:` line"). Drift slice preempts the baton per the wake procedure. Preconditions: no inbox ORDER above 024 (the "ORDER 025" text ~line 210 is the acked fm relay inside ORDER 019, ack line 221); control/claims/ README-only at scan; zero open PRs (list_pull_requests, 22:12Z).
+- Shipped (commit 9f0cbe2): docs/adopters.md regenerated via the discovery tooling (never hand-edited) — single-row delta, gba-homebrew self-report `no kit: line` → `v1.17.0`. Regen re-observed the 3 known DRIFT rows (substrate-kit tree-internal pin v1.0.0; superbot-games ×3 lane self-reports; superbot-mineverse self-report v1.16.0) — theirs to reconcile at the source, no kit-side action. One transient during verify: the first post-regen `--check` died mid-fleet-scan on `urllib.error.URLError: Connection reset by peer` (network blip, not a regen signal); immediate retry → exit 0.
+- Verify (at 9f0cbe2): `python3 scripts/preflight.py` → 9/9 legs green (pytest 1652 passed 1 skipped; dist-byte-pin; ruff; idea-index; retro-index; changelog-structure; taxonomy-sync; program-law; bench-integrity). `currency --check` → exit 0 post-regen.
 
 ## Routine state (observed facts)
 - This session armed no triggers and ran no new trigger inventory. Routines are coordinator-managed this wake.
@@ -13,7 +13,7 @@ updated: 2026-07-15T21:42Z · phase: EAP EXTENSION ACTIVE (EAP through 2026-07-2
 
 ## State
 - kit: v1.17.0
-- Registry (docs/adopters.md) current: regenerated this wake (PR #408, commit 25fb7f1 — trading-strategy `kit:` line row); `currency --check` exit 0 post-regen. Run the probe FROM THE REPO ROOT — elsewhere it exits 1 with "no roster", a cwd artifact, not a regen signal.
+- Registry (docs/adopters.md) current: regenerated this wake (PR #409, commit 9f0cbe2 — gba-homebrew `kit:` line row); `currency --check` exit 0 post-regen. Run the probe FROM THE REPO ROOT — elsewhere it exits 1 with "no roster", a cwd artifact, not a regen signal. A mid-scan `Connection reset by peer` traceback is a network blip — retry once before reading it as anything.
 - Wake currency scan is turnkey (#392): `python3 dist/bootstrap.py currency --check` — exit 0 registry current / exit 1 regen slice due (changed rows printed). Use it instead of hand-fetching adopter `kit:` lines.
 - Answer-time gate-safety advisory SHIPPED (#407, main @ df686a0): the silent won't-drive-CI seam of the #405 honored lane surfaces the moment a prose-y `verify_command` is typed, with the runnable rewrite named.
 - Gate verify_command honored (#405): the CI-runner⇄CLAUDE.md verify-line divergence class is closed — a confirmed, gate-safe, non-default `verify_command` interview slot drives the generated substrate-gate's test step; pytest fallback byte-identical otherwise; #407 adds the answer-time advisory half.
