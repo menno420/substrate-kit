@@ -156,6 +156,31 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Changed
 
+- **Substrate-gate test step honors the interview's `verify_command` slot**
+  (idea `gate-verify-command-slot-2026-07-15`, the 💡 captured on the #403
+  card — follow-on to the pytest step above): when the `verify_command`
+  interview slot is **filled** (user-confirmed — provisional/derived
+  answers never drive a workflow every PR executes), **gate-safe** (single
+  line, conservative shell-safe character allowlist, no unfilled `${...}`
+  — the slot is free prose routed into CLAUDE.md, and e.g. websites' real
+  value carries `(...)` annotations that are documentation, not shell),
+  and **non-default** (a plain pytest invocation keeps the hardened
+  fallback, which is strictly more robust), the generated
+  `substrate-gate.yml` test step runs THAT command verbatim instead of the
+  hardcoded `-m pytest tests/ -q` — the CI runner and the verify line the
+  planted CLAUDE.md teaches every session can no longer diverge. New
+  `engine.adopt.gate_test_command` computes the verdict from the same
+  state document at adopt/regen time and in `upgrade`'s read-only
+  carve-out rescan (`scan_gate_carveouts` now loads `state.json`
+  fail-open), so writer and scanner never expect different bytes. The
+  honored lane drops the `tests/`-absent self-skip (a confirmed command
+  is a runnable promise and need not touch `tests/`), keeps the
+  `requirements.txt` install, and installs pytest only when the command
+  mentions it; a `None` verdict keeps the #403 fallback **byte-identical**
+  — adopters whose slot does not qualify see zero gate churn. Adopt
+  reports the honored command (`gate test step: runs the interview's
+  confirmed verify_command (...)`).
+
 - **`ideas-README.md.tmpl` gains the `Shipped (survive window open)` and
   `Historical / pointer stubs` index sections** — folded INTO the template
   from the kit's own idea index, where the three-section shape (Backlog /

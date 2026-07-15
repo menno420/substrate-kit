@@ -982,6 +982,110 @@ def test_live_ci_workflow_plants_the_pytest_step_behind_the_fast_lane():
     assert "python3.10 -m pip install --quiet pytest" in custom
 
 
+def test_live_ci_workflow_honors_a_confirmed_verify_command():
+    # The #403 follow-on: a filled verify_command drives the test step, so
+    # the CI runner stops diverging from the verify line CLAUDE.md teaches.
+    command = "python3 -m pytest tests/ -q && python3 -m ruff check src/"
+    text = live_ci_workflow(test_command=command)
+    step = text.split("- name: verify suite", 1)
+    assert len(step) == 2, "verify_command gate misses the verify step"
+    body = step[1]
+    assert "if: steps.lane.outputs.control_only != 'true'" in body
+    assert f"          {command}\n" in body
+    # An owner-confirmed command is a runnable promise: no tests/-absent
+    # self-skip on this lane (the command need not touch tests/ at all).
+    assert "if [ ! -d tests ]; then" not in body
+    assert "if [ -f requirements.txt ]; then" in body
+    # pytest installs because the command mentions it…
+    assert "python3 -m pip install --quiet pytest" in body
+    # …and the hardcoded fallback line is gone.
+    assert "- name: pytest suite" not in text
+    assert "python3 -m pytest tests/ -q\n" not in body.split("run: |", 1)[1]
+    # A non-pytest command skips the pytest install entirely.
+    npm = live_ci_workflow(test_command="npm test")
+    npm_body = npm.split("- name: verify suite", 1)[1]
+    assert "pip install --quiet pytest" not in npm_body
+    assert "          npm test\n" in npm_body
+    # test_command=None keeps #403's fallback byte-identical (zero churn for
+    # adopters whose slot does not qualify).
+    assert live_ci_workflow(test_command=None) == live_ci_workflow()
+
+
+def test_gate_test_command_verdicts():
+    from engine.adopt import gate_test_command
+
+    def state(status, value):
+        return {
+            "slots": {"verify_command": status},
+            "slot_values": {"verify_command": {"value": value}},
+        }
+
+    custom = "python3 -m pytest tests/ botsite/tests -q"
+    # Filled + gate-safe + non-default → honored.
+    assert gate_test_command(state("filled", custom)) == custom
+    # Provisional (derive's seed / an unconfirmed self-answer) never drives
+    # a workflow every PR executes — the interview contract: provisional
+    # answers don't count until confirmed.
+    assert gate_test_command(state("provisional", custom)) is None
+    assert gate_test_command(state("partial", custom)) is None
+    assert gate_test_command({}) is None
+    # Default pytest shapes keep the hardened fallback step (strictly more
+    # robust: tests/-absent self-skip + dependency installs).
+    for default in (
+        "python3 -m pytest",
+        "python3 -m pytest tests/ -q",
+        "pytest",
+        "pytest tests -q",
+    ):
+        assert gate_test_command(state("filled", default)) is None
+    # The gate's own interpreter counts as a default prefix too.
+    assert (
+        gate_test_command(state("filled", "python3.10 -m pytest"), "python3.10")
+        is None
+    )
+    # …but on a DIFFERENT interpreter than the gate's it is a real
+    # divergence worth honoring.
+    assert (
+        gate_test_command(state("filled", "python3.12 -m pytest"), "python3")
+        == "python3.12 -m pytest"
+    )
+    # Gate-unsafe values fall back — prose annotations (the websites shape),
+    # newlines, unfilled slots, shell metacharacters.
+    for unsafe in (
+        "python3 -m pytest tests/ -q (all four service suites)",
+        "make test\nmake lint",
+        "run ${verify_command}",
+        "pytest `cat cmd`",
+        "pytest $EXTRA",
+        "",
+        "   ",
+    ):
+        assert gate_test_command(state("filled", unsafe)) is None
+    # Chained plain commands stay allowed (&&, ;, |).
+    chained = "python3 -m pytest -q; python3 bootstrap.py check --strict"
+    assert gate_test_command(state("filled", chained)) == chained
+
+
+def test_adopt_plants_the_verify_command_gate_when_confirmed(tmp_path):
+    # End to end: a filled, non-default verify_command reaches both the
+    # staged and the installed gate, and adopt reports the honored command.
+    command = "python3 -m pytest tests/ -q && python3 bootstrap.py check --strict"
+    root = tmp_path / "repo"
+    config = Config()
+    backend = _make_backend(root, config, answers={"verify_command": command})
+    lines = adopt(
+        root, config, backend, kit_root=tmp_path / "kit", wire_enforcement=True
+    )
+    expected = live_ci_workflow(test_command=command)
+    assert (root / LIVE_CI_RELPATH).read_text(encoding="utf-8") == expected
+    staged = root / config.state_dir / "ci" / "substrate-gate.yml"
+    assert staged.read_text(encoding="utf-8") == expected
+    assert any(
+        line.startswith("gate test step: runs the interview's confirmed")
+        for line in lines
+    )
+
+
 def test_gate_carveouts_detects_host_added_job_and_step():
     from engine.adopt import gate_carveouts
 

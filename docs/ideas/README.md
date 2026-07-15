@@ -101,6 +101,17 @@ red preflight round rediscovering it via checker error.)
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [Gate test step honors the interview's `verify_command` slot](gate-verify-command-slot-2026-07-15.md)
+  — **shipped** kit PR #405 (2026-07-15, anticipated in-PR date; captured
+  with the increment — the 💡 lived on the #403 card, built the next wake):
+  a **filled + gate-safe + non-default** `verify_command` interview slot
+  drives the generated substrate-gate's test step verbatim
+  (`engine.adopt.gate_test_command` → `live_ci_workflow(test_command=…)`),
+  pytest fallback byte-identical otherwise; `scan_gate_carveouts` reads the
+  same slot from `state.json` so the post-hoc rescan never misreports
+  kit-owned verify-step bytes as a host carve-out. The CI runner and the
+  verify line CLAUDE.md teaches can no longer diverge. Window closes
+  2026-08-14.
 - [Taxonomy-surface sync checker (TASK_CLASSES ⇄ ladder ⇄ telemetry README)](taxonomy-surface-sync-checker-2026-07-09.md)
   — **shipped** kit PR #404 (2026-07-15, anticipated in-PR date):
   `scripts/check_taxonomy_sync.py` asserts set-equality between the
