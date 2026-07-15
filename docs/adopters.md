@@ -5,7 +5,7 @@
 > **GENERATED — do not hand-edit** — regenerate with `python3 dist/bootstrap.py currency`
 > (agent-side: kit CI cannot auth to sibling repos, so CI validates
 > only this file's format + staleness, never refetches).
-> Generated: 2026-07-15T12:09:23Z · kit release: v1.17.0
+> Generated: 2026-07-15T13:14:20Z · kit release: v1.17.0
 >
 > Who runs which kit version — the substrate-coordinator's
 > visibility surface (inbox ORDER 003; manager research 2026-07-09).
@@ -33,7 +33,7 @@
 | menno420/gba-homebrew | v1.17.0 (bootstrap.py) | v1.17.0 | no `kit:` line | — | current |
 | menno420/pokemon-mod-lab | v1.15.0 (bootstrap.py) | v1.15.0 | no `kit:` line | — | stale (v1.15.0 < v1.17.0) |
 | menno420/venture-lab | v1.17.0 (bootstrap.py) | v1.17.0 | v1.17.0 | — | current |
-| menno420/fleet-manager | v1.17.0 (bootstrap.py) | v1.17.0 | no `kit:` line | — | current |
+| menno420/fleet-manager | v1.17.0 (bootstrap.py) | v1.17.0 | v1.17.0 | — | current |
 | menno420/idea-engine | v1.17.0 (bootstrap.py) | v1.17.0 | v1.17.0 | — | current |
 | menno420/superbot-mineverse | v1.17.0 (bootstrap.py) | v1.17.0 | v1.16.0 | — | ⚠️ DRIFT · current |
 
