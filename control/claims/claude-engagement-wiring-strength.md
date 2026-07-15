@@ -1,1 +1,0 @@
-- `claude/engagement-wiring-strength` · **engagement wiring-STRENGTH advisory + required-ness honesty NOTE (baton item 1, idea engagement-wiring-strength-verification-2026-07-12)** · src/engine/checks/check_engagement.py, src/engine/cli.py, tests/test_check_engagement.py, dist · 2026-07-15
