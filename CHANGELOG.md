@@ -17,6 +17,23 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Substrate-gate template plants a pytest step** (idea
+  `adopt-plants-pytest-gate-step-2026-07-10` — the superbot-games gen-1
+  tests-blind-gate class: 73 pure-domain tests never ran in CI while the
+  gate stayed green, fixed consumer-side in games#16): the generated
+  `.github/workflows/substrate-gate.yml` (staged always, installed by
+  `adopt --wire-enforcement`, kit-owned regen thereafter) now carries a
+  pytest step behind the same control-fast-lane short-circuit — a test
+  suite ships with its CI runner. Always planted, self-skips in-job when
+  no `tests/` directory exists (the idea's simpler variant: no adopt-time
+  conditional to go stale; the gate self-heals the moment tests arrive);
+  installs pytest plus the host's `requirements.txt` when present and runs
+  `-m pytest tests/ -q` on the gate's configured interpreter. Full lane
+  only — `control/**` heartbeat PRs never pay the test suite. Adopters
+  with a wired gate inherit the step on the next upgrade/regen wave; a
+  host whose tests genuinely fail will see an honest red where it
+  previously saw a tests-blind green.
+
 - **Engagement gate: wiring-STRENGTH advisory + required-ness honesty NOTE**
   (idea `engagement-wiring-strength-verification-2026-07-12` — friction #36
   report 3 + #38 residuals; sibling of the `native_gate` class below):
