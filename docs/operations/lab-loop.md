@@ -65,7 +65,12 @@ inbox ORDER (or any slice), scan control/claims/ at HEAD for a live claim
 already naming it, then write your own claim FIRST — `bootstrap claim
 <slug> --scope "<scope>" --order NNN` when serving an ORDER (the verb
 refuses a cross-branch duplicate; the #362/#363 twin-build lesson) — so a
-sibling fire sees your claim before it builds the same work:
+sibling fire sees your claim before it builds the same work. RE-VERIFY THEN
+STAND DOWN: any dispatched or scouted finding can be claimed within a
+minute of being flagged, so re-verify it at origin/main HEAD first; if the
+work is already taken or done, stand down with ZERO writes and take the
+next slice (the #106 6-second dispatch race — the clause is why it cost
+nothing):
   1. Bugs first, durably — root cause over symptom.
   2. The top backlog slice: the founding plan §10 bands until they are done
      (current band: see current-state ▶ Next action), then groomed

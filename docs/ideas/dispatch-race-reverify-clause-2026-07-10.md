@@ -1,21 +1,25 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 398
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-15
+outcome: shipped
 ---
 
 # Dispatch race: every maintenance/dispatch brief needs an explicit re-verify-then-stand-down clause (2026-07-10)
 
 > **Status:** `ideas`
 >
-> **State:** captured (origin: the lab's own coordinator lane — source:
-> coordinator chat 2026-07-10; the event itself was previously documented
-> nowhere in the repo; this file is the record. Frontmatter `origin: lab`
-> because the checker's vocabulary is lab/owner/consumer — the coordinator
-> lane is the lab).
+> **State:** promoted → **shipped** kit PR #398 (2026-07-15): the
+> re-verify-then-stand-down clause is standing doctrine in the lab-loop
+> prompt STEP 2 (`docs/operations/lab-loop.md`) — the repo's one standing
+> brief-generating template — naming both halves: verify at origin/main
+> HEAD, stand down with zero writes if taken. (Origin: the lab's own
+> coordinator lane — source: coordinator chat 2026-07-10; the event itself
+> was previously documented nowhere in the repo; this file is the record.
+> Frontmatter `origin: lab` because the checker's vocabulary is
+> lab/owner/consumer — the coordinator lane is the lab.)
 
 ## The finding
 
@@ -63,10 +67,19 @@ scope instead of producing a colliding heartbeat.
 - The race event itself — the 6-second scout-vs-sibling window and the
   zero-write stand-down — lived only in the coordinator chat until this file.
 
-## Done-when
+## Done-when → Shipped
 
 The re-verify-then-stand-down clause is standing doctrine in whatever template
 generates dispatch/maintenance briefs (the coordinator's dispatch prompts
 and/or `docs/operations/` runbooks), so no future brief can omit it; the
 clause text names both halves: verify at origin/main HEAD, stand down with
 zero writes if taken.
+
+**Shipped** (kit PR #398, 2026-07-15): the clause landed in the lab-loop
+prompt's STEP 2 (`docs/operations/lab-loop.md`), adjacent to its complement
+CLAIM BEFORE BUILD (#397) — claim guards your own work from siblings,
+re-verify guards siblings' work from you. The lab-loop prompt is the repo's
+one standing brief-generating template; coordinator dispatch prompts are
+composed ad-hoc in chat and inherit the doctrine by citing this file. Console
+re-paste of the fenced prompt rides the one already pending from #397 (git is
+the prompt's source of truth).
