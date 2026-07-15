@@ -1,1 +1,0 @@
-- `claude/template-sync-advisory` · **build the template↔local-copy heading-set sync advisory checker (baton item 2; idea template-local-copy-sync-advisory-2026-07-15)** · src/engine/checks/check_template_sync.py, src/engine/cli.py, tests/, dist/bootstrap.py · 2026-07-15
