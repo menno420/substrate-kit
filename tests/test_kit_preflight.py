@@ -33,6 +33,7 @@ PINNED_LEGS = [
     "idea-index",
     "retro-index",
     "changelog-structure",
+    "taxonomy-sync",
     "program-law",
     "bench-integrity",
 ]

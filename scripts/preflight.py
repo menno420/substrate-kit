@@ -24,9 +24,10 @@ where possible:
 4. ``python3 scripts/check_idea_index.py``        (§5.4)
 5. ``python3 scripts/check_retro_index.py``       (docs/retro reachability)
 6. ``python3 scripts/check_changelog_structure.py``
-7. ``python3 scripts/check_program_law.py``       (§8.3 — WITHOUT
+7. ``python3 scripts/check_taxonomy_sync.py``     (PL-004 three-surface sync)
+8. ``python3 scripts/check_program_law.py``       (§8.3 — WITHOUT
    ``--label-gate``: PR labels exist only in CI's event context)
-8. ``python3 scripts/check_bench_integrity.py``   (§5.0)
+9. ``python3 scripts/check_bench_integrity.py``   (§5.0)
 
 Deliberately excluded: the CI cold-adoption smoke (§3.2 item 4) — shell-heavy
 and slow (a scratch adopt + the full RED→ENGAGED→GREEN arc); CI keeps it.
@@ -90,6 +91,7 @@ CHECKS: list[tuple[str, list[list[str]]]] = [
     ("idea-index", [[_PY, "scripts/check_idea_index.py"]]),
     ("retro-index", [[_PY, "scripts/check_retro_index.py"]]),
     ("changelog-structure", [[_PY, "scripts/check_changelog_structure.py"]]),
+    ("taxonomy-sync", [[_PY, "scripts/check_taxonomy_sync.py"]]),
     ("program-law", [[_PY, "scripts/check_program_law.py"]]),
     ("bench-integrity", [[_PY, "scripts/check_bench_integrity.py"]]),
 ]

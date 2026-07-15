@@ -80,10 +80,6 @@ red preflight round rediscovering it via checker error.)
   end-to-end in superbot PR #1884 + websites PR #11 — the first consumer-side
   pass caught a live shape defect); next: a groomed-ideas increment ships the
   doctrine note (template rider / recipe), scaffolding only if instances repeat.
-- [Taxonomy-surface sync checker (TASK_CLASSES ⇄ ladder ⇄ telemetry README)](taxonomy-surface-sync-checker-2026-07-09.md)
-  — state: captured; origin: lab (PL-010 session — three surfaces updated by
-  hand with nothing enforcing agreement; guard recipe in the file); next: a
-  groomed-ideas increment ships checker + test + CI step.
 - [T5 protocol: headless arms never engage the hook layer](t5-headless-guard-surface-2026-07-09.md)
   — state: captured; origin: lab (B1 run 2026-07-09-run01 — the guard probe
   produced zero evidence, judge §5.5 item 2; **run `2026-07-09-run02`
@@ -105,6 +101,15 @@ red preflight round rediscovering it via checker error.)
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [Taxonomy-surface sync checker (TASK_CLASSES ⇄ ladder ⇄ telemetry README)](taxonomy-surface-sync-checker-2026-07-09.md)
+  — **shipped** kit PR #404 (2026-07-15, anticipated in-PR date):
+  `scripts/check_taxonomy_sync.py` asserts set-equality between the
+  canonical `MODEL_TASK_CLASSES` tuple, the allocation-ladder table's
+  first column, and the telemetry README class list (plus the README's
+  class-count honesty); parse failure on any surface is a finding, never
+  a silent pass; wired as a kit-quality CI step + a `preflight.py` leg
+  (the PL-010 hand-sync friction converted to enforcement). Window
+  closes 2026-08-14.
 - [`adopt --wire-enforcement` plants a pytest step when tests/ exists](adopt-plants-pytest-gate-step-2026-07-10.md)
   — **shipped** kit PR #403 (2026-07-15, anticipated in-PR date): the
   generated substrate-gate carries a pytest step behind the
