@@ -2,14 +2,16 @@
 updated: 2026-07-15T04:40Z · phase: EAP EXTENSION ACTIVE (ORDER 024 acked + done on the seat's first rebooted wake; EAP through 2026-07-21; routines coordinator-managed this wake)
 
 ## This wake (2026-07-15, PR #382 · claude/adopters-currency-2026-07-15)
-- ORDER 024 acknowledged on the first rebooted wake — its done-when. No routines re-armed; wake channel stays owner/coordinator until the owner's per-seat v3.6 reboot go.
+- ORDER 024 acknowledged on the first rebooted wake — its done-when. This session armed no triggers itself; routine management is the coordinator's (see Routine state).
 - docs/adopters.md regenerated via `python3 dist/bootstrap.py currency` (04:37:23Z scan, 12 repos, read-only): DRIFT 7 repos → 5 — idea-engine + trading-strategy cleared, venture-lab now self-reports v1.17.0, superbot-next self-report advanced to v1.16.0. Remaining DRIFT = the chronic lane-owed heartbeat `kit:`-lag class (superbot-next, websites, superbot-games ×3 lanes, superbot-mineverse) + kit's own known tree-internal config-pin v1.0.0 row.
 - Boot verify: preflight 7/7 legs green at origin/main 58b3f80 (pytest 1568 passed, 1 skipped).
 - Landing path: PR #382 flips green at the card flip; auto-merge-enabler lands it on kit-quality green. No other open PRs; nothing parked.
 - Friction note (no new ask): first push collided with the SPENT surviving branch `claude/adopters-currency-refresh` (its PR merged 2026-07-13; ref never auto-deleted — the ORDER 022/023 litter class). Resolved by taking a dated branch name; no force-push. branch-sweep.yml remains staged-only fleet-wide (`.substrate/ci/`); per-repo wiring is lane/owner-owed via `adopt --wire-enforcement`.
 
-## Routine state
-- routines coordinator-managed this wake. ALL seat routines remain DOWN per ORDER 024 (verified-down record: git history of this file @ 58b3f80; kit-lab daily loop re-arm recipe: docs/operations/lab-loop.md).
+## Routine state (observed facts — read-only list_triggers inventory this session, 2026-07-15 ~04:4xZ)
+- This session armed no triggers. Routines are coordinator-managed this wake.
+- Observed in the registry: "Self Improvement failsafe wake" trig_01CUfSZo9Uky9DdpoqpZPcfT — cron `0 */2 * * *`, enabled=true, created 2026-07-15T04:38:07Z via meta_mcp, bound to a coordinator session (persistent_session_id session_01SFVAo5bPD41RMx9TzGxnPY), next fire 06:04Z — plus one pending one-shot pacemaker (run_once_at 2026-07-15T04:55:00Z, same session binding). Not created by this session.
+- ⚑ FOR OWNER REVIEW: ORDER 024 (control/inbox.md @ 58b3f80) states "do NOT re-arm routines yet; wait for the owner's per-seat go (the v3.6 reboot prompt IS that go)". The observed failsafe above post-dates that order. This heartbeat records the discrepancy neutrally for the owner's review/veto; it does not adjudicate it. Prior heartbeat (git history @ 58b3f80) had recorded all seat routines verified DOWN; kit-lab daily loop re-arm recipe remains docs/operations/lab-loop.md.
 
 ## State
 - kit: v1.17.0
