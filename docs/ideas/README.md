@@ -47,8 +47,19 @@ story, the frontmatter keeps the score.
 
 ## Backlog
 
-(Captured ideas, each with a state and a next destination — none left at `raw`.)
+(Captured ideas, each with a state and a next destination — none left at `raw`.
+Frontmatter grammar: `state:` is only ever `captured | routed | promoted |
+historical` — the ship fact lives in `outcome: shipped`, never in `state:`;
+see "Frontmatter" above. Recorded here because two sessions in one day paid a
+red preflight round rediscovering it via checker error.)
 
+- [Template↔local-copy sync advisory — heading-set drift between planted templates and the kit's own rendered copies](template-local-copy-sync-advisory-2026-07-15.md)
+  — state: captured; origin: lab (the #395 card's 💡 + PR #397's paid
+  hand-fix the same day — the kit's `control/claims/README.md` lagged its
+  shipped template by a whole feature paragraph); next: quick-win advisory
+  leg in `check`'s full lane comparing `## ` heading sets per `ADOPT_PLAN`
+  pair whose destination exists in the kit's own tree (guard recipe in the
+  file); engine change → dist byte-pin.
 - [Engagement gate: a "native-substrate consumer" state for pin-only repos](engagement-native-consumer-state-2026-07-12.md)
   — state: captured; origin: consumer (superbot, friction #37 — the pin-only
   repo with the fleet's strongest native enforcement would red
@@ -69,14 +80,6 @@ story, the frontmatter keeps the score.
   ports the diff-derived `--session-log` block (the kit's `ci.yml`
   session-gate step is the copyable reference); kit-side advisory only if
   the class recurs.
-- [Dispatch race: briefs need an explicit re-verify-then-stand-down clause](dispatch-race-reverify-clause-2026-07-10.md)
-  — state: captured; origin: coordinator-lane (the #106 unstall dispatch
-  lost a 6-second race to a sibling's branch-update; the dispatched session
-  re-verified at HEAD and stood down with zero writes — the race event lived
-  only in the coordinator chat until the 2026-07-10 close-out filed it);
-  next: bake the "re-verify at origin/main HEAD first; stand down if already
-  taken" clause into whatever template generates dispatch/maintenance briefs.
-
 - [`adopt --wire-enforcement` plants a pytest step when tests/ exists](adopt-plants-pytest-gate-step-2026-07-10.md)
   — state: captured; origin: consumer (superbot-games ran gen-1 with a
   tests-blind gate — 73 tests never in CI, fixed consumer-side in games#16;
@@ -127,6 +130,14 @@ story, the frontmatter keeps the score.
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [Dispatch race: briefs need an explicit re-verify-then-stand-down clause](dispatch-race-reverify-clause-2026-07-10.md)
+  — **shipped** kit PR #398 (2026-07-15, anticipated in-PR date): the
+  re-verify-then-stand-down clause ("re-verify at origin/main HEAD first;
+  stand down with zero writes if already taken") is standing doctrine in
+  the lab-loop prompt STEP 2 (`docs/operations/lab-loop.md`) — the repo's
+  one standing brief-generating template — adjacent to its #397 complement
+  CLAIM BEFORE BUILD; console re-paste rides the one already pending from
+  #397. Window closes 2026-08-14.
 - [Work claims miss cross-branch ORDER collisions](order-claim-cross-branch-collision-2026-07-14.md)
   — **shipped** kit PR #365 (2026-07-14): the `· order NNN` claim-grammar
   segment (`WORK_CLAIM_ORDER_RE` / `work_claim_order_ids()`, one parsing

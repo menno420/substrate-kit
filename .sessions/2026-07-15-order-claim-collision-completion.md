@@ -2,7 +2,7 @@
 
 > **Status:** `complete`
 
-- **📊 Model:** Fable (Claude 5 family) · medium · docs+drift-fix
+- **📊 Model:** Fable (Claude 5 family) · medium · docs-only
 - Scope: baton item 2 — complete the cross-branch ORDER-collision idea
   (docs/ideas/order-claim-cross-branch-collision-2026-07-14.md). One PR
   (#397), docs-only.
