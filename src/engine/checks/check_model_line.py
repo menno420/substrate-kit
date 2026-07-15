@@ -19,7 +19,13 @@ lane) and warns when a card's harvested Model line
 - has the needle but no valid three-field ``·`` payload (``model-line-shape``),
 - carries an exact model-ID token in the model segment instead of a
   family-level name (``model-line-exact-id`` — fleet reporting bar, ORDER 012),
-- files an effort segment outside the taxonomy (``model-line-effort``), or
+- files an effort segment outside the taxonomy (``model-line-effort``) —
+  except the sanctioned terminal value :data:`MODEL_EFFORT_UNRECORDED`
+  (idea ``model-line-unrecorded-effort-marker-2026-07-15``): a retroactive
+  repair of a card whose author never self-reported a tier records
+  ``unrecorded`` honestly instead of inventing telemetry, and nagging it
+  invites exactly that invention — so it is advisory-silent here while the
+  harvest still records it verbatim; or
 - files a task-class segment that does not prefix-match one of the 9 PL-004
   classes (``model-line-class`` — prefix-match on purpose: a decorated class
   like ``docs-only — oracle pin edit`` is a valid report, not drift).
@@ -95,6 +101,17 @@ from engine.grammar import (
 # convention, so name order IS date order.
 MODEL_LINE_LINT_WINDOW = 10
 
+# The sanctioned TERMINAL effort value for retroactive payload repairs
+# (idea model-line-unrecorded-effort-marker-2026-07-15, from the PR #390
+# sweep): when a repairing session is not the card's author and the author
+# never self-reported an effort tier, backfilling ``low|medium|high`` would
+# be invented telemetry — ``unrecorded`` is the honest marker. It is NOT
+# part of :data:`engine.grammar.MODEL_EFFORT_VALUES` (the real taxonomy live
+# sessions must report — a live card filing it off-taxonomy still nags with
+# the taught values); it is only exempt from the ``model-line-effort``
+# advisory, and the telemetry harvest records it verbatim like any value.
+MODEL_EFFORT_UNRECORDED = "unrecorded"
+
 # The loud fix-path tail every finding carries — quotes the taught byte-form
 # verbatim so the fix is a copy-edit, never a re-derivation.
 _FIX_PATH = (
@@ -150,7 +167,7 @@ def model_line_findings(text: str) -> list[tuple[str, str]]:
             ),
         )
     effort = last_valid["effort"]
-    if effort not in MODEL_EFFORT_VALUES:
+    if effort not in MODEL_EFFORT_VALUES and effort != MODEL_EFFORT_UNRECORDED:
         known = " | ".join(MODEL_EFFORT_VALUES)
         findings.append(
             (
