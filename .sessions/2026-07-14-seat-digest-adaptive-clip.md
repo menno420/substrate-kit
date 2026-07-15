@@ -9,7 +9,7 @@ list + block budget instead of hand-ratcheting a constant (ratcheted
 120 → 85 → 72 in two consecutive sessions), floored at a readability minimum
 with a name-only fallback; tests + dist byte-pin regen in the same PR.
 
-- **📊 Model:** Fable
+- **📊 Model:** Fable · unrecorded · feature build (engine adaptive clip + tests; payload retro-fixed by the 2026-07-15 sweep — authoring session wrote bare `Fable`, effort was never self-reported, so it is marked unrecorded rather than invented)
 
 Run type: worker session (BUILD phase, coordinator-dispatched).
 

@@ -49,6 +49,14 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
+- [Model-line `unrecorded` effort marker — sanctioned terminal value for retro-sweeps](model-line-unrecorded-effort-marker-2026-07-15.md)
+  — state: captured; origin: lab (the 2026-07-15 payload sweep, PR #390,
+  retro-fixed 3 cards whose authors never self-reported effort; the honest
+  `unrecorded` backfill trades shape advisories for `model-line-effort` nags
+  that invite a later wake to invent a tier); next: build — recognize
+  `unrecorded` as advisory-silent in `check_model_line` (harvest verbatim,
+  live off-taxonomy still nags), one line in `.sessions/README.md`, tests +
+  dist regen in one scoped PR.
 - [Work claims miss cross-branch ORDER collisions](order-claim-cross-branch-collision-2026-07-14.md)
   — state: captured; origin: lab (two routine fires the same night both
   consumed the same unacked ORDER 020 and built duplicate PRs — #362 landed,
