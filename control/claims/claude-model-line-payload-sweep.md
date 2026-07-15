@@ -1,0 +1,1 @@
+- `claude/model-line-payload-sweep` · **Baton item 2: retro-fix the 4 older session cards with malformed/off-taxonomy 📊 Model: payloads so the PL-004 harvest records them** · .sessions/ + control/status.md · 2026-07-15
