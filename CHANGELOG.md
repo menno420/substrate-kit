@@ -17,6 +17,22 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Template↔local-copy heading-set sync advisory** (idea
+  `template-local-copy-sync-advisory-2026-07-15` — the twice-in-one-day
+  paid hand-sync class, #395 observed / #397 paid):
+  `engine.checks.check_template_sync` runs in `check`'s full lane and
+  fires an advisory-only `template-local-heading-drift` finding when an
+  `ADOPT_PLAN` template and the kit's own rendered local copy disagree on
+  their `## ` section-heading **sets** (a doctrine section existing on only
+  one side — prose divergence under identical headings stays silent).
+  False-positive firewalls: fence-aware scan, `${slot}` template headings
+  match rendered local headings by pattern, `[[fill:]]` headings skip, and
+  live-traffic destinations (inbox/status/current-state/decisions/
+  question-router/session journal) are excluded by design. Self-gates on
+  `src/engine/templates/` presence, so the scan is a no-op in every adopter
+  tree — only the kit's own repo pays it. Never exit-affecting;
+  telemetry-recorded like every advisory.
+
 - **Plain-adopt lane-drift advisory** (idea
   `plain-adopt-lane-drift-advisory-2026-07-10` — the `adopt --lane` inverse
   gap): a plain `adopt` (no `--lane`) into a repo whose `heartbeat_files`

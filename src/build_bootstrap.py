@@ -137,6 +137,10 @@ MODULE_ORDER = (
     # After adopt.py: reuses its enabler branch-expr generator + config
     # params (enabler-install-preflight, the branch-allowlist drift advisory).
     "checks/check_automerge_preflight.py",
+    # After adopt.py (imports ADOPT_PLAN + _adopt_dest) and check_docs.py
+    # (Finding): the template↔local-copy heading-set sync advisory
+    # (idea template-local-copy-sync-advisory-2026-07-15).
+    "checks/check_template_sync.py",
     # After adopt.py: reuses its dist_version header parser (EAP §6.3
     # currency scanner — tree truth vs heartbeat self-report).
     "currency.py",
