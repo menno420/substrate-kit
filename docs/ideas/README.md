@@ -57,12 +57,6 @@ story, the frontmatter keeps the score.
   next: structured fix — an optional `· order NNN` claim-grammar segment +
   `bootstrap claim --order` + a cross-branch overlap advisory, engine change →
   dist byte-pin.
-- [Engage slot lists: derive from the bank instead of triple-pinning](engage-slot-list-derived-2026-07-13.md)
-  — state: captured; origin: lab (three surfaces enumerate "every interview
-  slot" — the bank, bench `ENGAGE_SLOTS`, the ci.yml cold-adopt loop — and
-  nothing asserts the pinned two still cover the bank; paid in the
-  rider-graduation session when Q-014..016 missed both); next: quick-win —
-  a coverage test over the pins (order stays pinned for reproducibility).
 - [Heartbeat currency: document the coordinator delegated-tally pattern](heartbeat-delegated-tally-guidance-2026-07-13.md)
   — state: captured; origin: consumer (superbot-mineverse
   "COORDINATOR-DELEGATED heartbeat write" carried games/idle/next tallies
@@ -158,6 +152,20 @@ story, the frontmatter keeps the score.
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [Engage slot lists: derive from the bank instead of triple-pinning](engage-slot-list-derived-2026-07-13.md)
+  — **shipped** kit PR #387 (2026-07-15, anticipated in-PR date): coverage
+  tests holding both pinned slot lists (bench `ENGAGE_SLOTS` + the ci.yml
+  cold-adopt loop) to set-equality with the question bank; pinned ORDER
+  kept for byte-reproducibility (the rider-graduation Q-014..016 miss was
+  the paid instance). Window closes 2026-08-14.
+- [📊 Model-line payload lint advisory](model-line-payload-lint-advisory-2026-07-11.md)
+  — **shipped** kit PR #352 (merged 2026-07-14): `engine.checks.check_model_line`
+  advisory in `check`'s full lane, model-line grammar moved to
+  `engine.grammar` (writer/enforcer-shared constants), telemetry consuming
+  the same objects; scan bounded to the newest-10 completed cards. (Entry
+  relocated 2026-07-15 from the pointer-stub section, where it still read
+  `captured` — README-vs-frontmatter drift fixed on sight.) Window closes
+  2026-08-13.
 - [Regeneration-lag checker for staged `.substrate/` artifacts](staged-artifact-regen-lag-checker-2026-07-12.md)
   — **shipped** kit PR #345 (merged 2026-07-14, commit c603cc9):
   `check_staged_regen`, advisory-first — staged-tree leg reusing the
@@ -304,13 +312,6 @@ origin repo; frontmatter still tracks their B4 outcome.)
   — pointer stub (canonical: superbot); **shipped** as kit PR #16
   (2026-07-09) — the survive window closes 2026-08-08; the sweep flips it
   `survived` if no revert exists then.
-- [📊 Model-line payload lint advisory](model-line-payload-lint-advisory-2026-07-11.md)
-  — state: captured (groomed off the heartbeat at the archive-prep
-  close-out; carried since the #170 card as W-10a evidence: 4/5 newest
-  cards had off-PL-004 effort/task-class payloads, hand-fixed in #199);
-  next: quick-win — advisory payload lint in the session-log checker with
-  writer/enforcer-shared constants (grammar.py pattern), never
-  exit-affecting.
 - [Archive-ready close-out as a kit surface](archive-ready-close-out-surface-2026-07-11.md)
   — state: captured (the archive-prep session's 💡, 2026-07-11): chat
   archival is now a routine program event (three in three days) and its

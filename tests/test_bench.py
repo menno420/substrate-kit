@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -161,6 +162,35 @@ def test_seed_answers_are_deterministic_and_seed_derived():
     # is 20) and carry the seed for provenance.
     assert all(len(v) >= 6 for v in a.values())
     assert "seed-710301" in a["ownership_model"]
+
+
+def _bank_slots() -> set[str]:
+    """Every slot the question bank (the source of truth) defines."""
+    from engine.interview.question_bank import QUESTIONS
+
+    return {q["slot"] for q in QUESTIONS}
+
+
+def test_engage_slots_cover_the_question_bank():
+    # Idea engage-slot-list-derived-2026-07-13: ENGAGE_SLOTS is deliberately
+    # PINNED (the arc must stay byte-reproducible across runs), but nothing
+    # asserted the pin still covers the bank — each bank growth (Q-014..016
+    # was the paid instance) was a latent red until some other test tripped.
+    # Coverage becomes checked here; the pinned ORDER stays pinned.
+    assert len(run_ab.ENGAGE_SLOTS) == len(set(run_ab.ENGAGE_SLOTS))
+    assert set(run_ab.ENGAGE_SLOTS) == _bank_slots()
+
+
+def test_ci_cold_adopt_slot_loop_covers_the_question_bank():
+    # Third surface of the same triple-pin: the ci.yml cold-adopt smoke walks
+    # its own hand-enumerated slot list. Parse the `for slot in …; do` loop
+    # (backslash-continued shell) and hold it to the bank too.
+    ci_text = (_REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    match = re.search(r"for slot in (.*?); do", ci_text, re.DOTALL)
+    assert match, "ci.yml cold-adopt smoke: `for slot in ...; do` loop not found"
+    slots = match.group(1).replace("\\", " ").split()
+    assert len(slots) == len(set(slots))
+    assert set(slots) == _bank_slots()
 
 
 def test_prepare_walks_the_engagement_arc_to_green(tmp_path):

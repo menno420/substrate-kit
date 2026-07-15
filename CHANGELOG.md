@@ -15,6 +15,16 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Engage-slot coverage tests** (idea `engage-slot-list-derived-2026-07-13`,
+  kit-internal — no adopter surface changes): `tests/test_bench.py` now holds
+  the two deliberately-pinned interview-slot lists — bench `ENGAGE_SLOTS` and
+  the ci.yml cold-adopt `for slot in …; do` loop — to set-equality with the
+  question bank, so a bank growth trips a named test instead of a latent red
+  (the Q-014..016 rider-graduation miss). Pinned ORDER stays pinned for
+  byte-reproducibility.
+
 ## [1.17.0] - 2026-07-14
 
 <!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
