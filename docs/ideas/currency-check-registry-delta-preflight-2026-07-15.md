@@ -1,10 +1,10 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 392
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-15
+outcome: shipped
 ---
 
 # `currency --check` — a cheap registry-delta preflight verb (2026-07-15)
@@ -14,7 +14,11 @@ outcome: open
 > **State:** captured (originated as the 💡 in
 > `.sessions/2026-07-15-adopter-currency-websites-v1170.md`, PR #389; filed
 > here by the 2026-07-15 currency-fm-kit-line session, which found the baton
-> pointing at a Backlog entry that didn't exist).
+> pointing at a Backlog entry that didn't exist) → promoted → **shipped**
+> (PR #392, 2026-07-15 — the in-PR flip convention; anticipated merge date):
+> `registry_delta()` in `engine.currency` + the `--check` lane on
+> `cmd_currency` — rows-only compare, stamp-insensitive, dark-never-delta,
+> exit 0/1, no write.
 
 ## The idea
 
@@ -48,5 +52,5 @@ the delta.
 - Tests: fixture registry vs synthetic scan results — current / row-delta /
   timestamp-only cases.
 
-next: build — small scoped engine+tests slice; dist byte-pin regen in the
-same PR.
+next: built — PR #392 shipped exactly this slice (engine + tests + dist
+byte-pin regen in one PR); the survive-window revert-scan owns the rest.

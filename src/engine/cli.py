@@ -94,10 +94,12 @@ from engine.checks.check_staged_regen import check_staged_regen
 from engine.contextpack import generate_packs, load_pack_index
 from engine.currency import (
     ADOPTERS_RELPATH,
+    REGEN_COMMAND,
     ROSTER_RELPATH,
     default_fetcher,
     drift_report_lines,
     parse_roster,
+    registry_delta,
     render_adopters,
     scan_fleet,
 )
@@ -2669,6 +2671,7 @@ def cmd_currency(
     *,
     roster_file: Path | None = None,
     dry_run: bool = False,
+    check: bool = False,
     fetcher: Any = None,
 ) -> int:
     """Regenerate ``docs/adopters.md`` from live fleet evidence (EAP §6.3).
@@ -2680,6 +2683,15 @@ def cmd_currency(
     never runs this — it cannot auth to sibling repos; CI only validates the
     committed file's format (``check_adopters_current``). ``fetcher`` is the
     injectable seam the tests use; drift is surfaced, never resolved.
+
+    ``check=True`` is the registry-delta preflight (idea
+    ``docs/ideas/currency-check-registry-delta-preflight-2026-07-15.md``):
+    same read-only scan, but instead of writing it compares the would-be
+    registry against the committed one **rows only** (the ``Generated:``
+    stamp never counts; network-dark repos never count) and exits 0 (current)
+    / 1 (a regen would change rows — the changed rows are printed). Any
+    session or wrapper can now answer "is a currency slice due?" from a
+    plain exit code instead of hand-eyeballing adopter ``kit:`` lines.
     """
     roster_path = roster_file or (target / ROSTER_RELPATH)
     if not roster_path.is_file():
@@ -2693,6 +2705,8 @@ def cmd_currency(
     scans = scan_fleet(roster, fetch)
     text = render_adopters(scans, KIT_VERSION)
     out_path = target / ADOPTERS_RELPATH
+    if check:
+        return _currency_check(out_path, scans)
     if dry_run:
         _emit(f"currency: dry run — would write {out_path}.")
     else:
@@ -2718,6 +2732,44 @@ def cmd_currency(
         )
     else:
         _emit("currency: no drift — every self-report matches its tree.")
+    return 0
+
+
+def _currency_check(out_path: Path, scans: list[Any]) -> int:
+    """The ``currency --check`` lane: rows-only delta, exit code, no write."""
+    if not out_path.is_file():
+        _emit(
+            f"currency --check: STALE — no committed registry at {out_path};"
+            f" run `{REGEN_COMMAND}` to generate it.",
+        )
+        return 1
+    dark = [scan.repo for scan in scans if scan.unreadable]
+    if dark:
+        _emit(
+            f"currency --check: {len(dark)} repo(s) dark this run"
+            " (excluded from the compare — transport darkness is never"
+            " delta): " + ", ".join(dark),
+        )
+    delta = registry_delta(
+        out_path.read_text(encoding="utf-8"),
+        scans,
+        KIT_VERSION,
+    )
+    if delta:
+        repos = {line[2:].split(" | ", 1)[0] for line in delta}
+        _emit(
+            f"currency --check: STALE — a regen would change"
+            f" {len(repos)} row(s):",
+        )
+        for line in delta:
+            _emit(f"  {line}")
+        _emit(f"currency --check: run `{REGEN_COMMAND}` to regenerate.")
+        return 1
+    _emit(
+        f"currency --check: current — committed registry matches the fresh"
+        f" scan ({len(scans)} repo(s), rows-only compare;"
+        " Generated: stamp ignored).",
+    )
     return 0
 
 
@@ -3231,6 +3283,16 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="scan + print the drift report without writing docs/adopters.md",
     )
+    currency.add_argument(
+        "--check",
+        action="store_true",
+        help=(
+            "registry-delta preflight: same read-only scan, no write — "
+            "compare against the committed docs/adopters.md rows-only "
+            "(Generated: stamp ignored; dark repos never delta) and exit "
+            "0 (current) / 1 (a regen would change rows)"
+        ),
+    )
 
     seat_digest = sub.add_parser(
         "seat-digest",
@@ -3498,6 +3560,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.target,
                 roster_file=args.roster,
                 dry_run=args.dry_run,
+                check=args.check,
             )
         if args.command == "seat-digest":
             return cmd_seat_digest(args.target, venues=args.venue)

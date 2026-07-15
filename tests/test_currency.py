@@ -572,3 +572,152 @@ def test_partial_evidence_before_unreadable_failure_is_kept():
     verdict = scan.verdict("1.7.0")
     assert "partially unreadable" in verdict
     assert "stale" in verdict
+
+
+# ---------------------------------------------------------------------------
+# registry_delta + `currency --check` — the registry-delta preflight
+# (docs/ideas/currency-check-registry-delta-preflight-2026-07-15.md)
+# ---------------------------------------------------------------------------
+
+from datetime import timedelta
+from pathlib import Path
+
+from engine.cli import KIT_VERSION, cmd_currency
+from engine.currency import registry_delta
+
+
+def _scan(repo: str, version: str) -> RepoCurrency:
+    """A clean adopted scan: tree, pin, and self-report all agree."""
+    return RepoCurrency(
+        repo=repo,
+        tree_version=version,
+        tree_source="bootstrap.py",
+        config_pin=version,
+        reports=[
+            SelfReport("control/status.md", version, "green", "yes", found=True),
+        ],
+    )
+
+
+def test_delta_identical_scan_is_empty_even_across_timestamps():
+    """The rows-only contract: a stamp-only difference is NOT a delta."""
+    scans = [_scan("o/a", "1.6.0"), _scan("o/b", "1.6.0")]
+    committed = render_adopters(scans, "1.7.0", now=NOW)
+    later = NOW + timedelta(hours=6)
+    assert registry_delta(committed, scans, "1.7.0") == []
+    # Re-render at a different time — rows unchanged, still no delta.
+    committed_later = render_adopters(scans, "1.7.0", now=later)
+    assert committed_later != committed  # the stamp DID move
+    assert registry_delta(committed_later, scans, "1.7.0") == []
+
+
+def test_delta_reports_a_bumped_self_report_row():
+    old_scans = [_scan("o/a", "1.6.0"), _scan("o/b", "1.6.0")]
+    committed = render_adopters(old_scans, "1.7.0", now=NOW)
+    fresh = [_scan("o/a", "1.6.0"), _scan("o/b", "1.7.0")]
+    delta = registry_delta(committed, fresh, "1.7.0")
+    assert delta, "a bumped row must be a delta"
+    assert all(line.split(" ", 1)[1].startswith("o/b") for line in delta)
+    assert any(line.startswith("- ") and "v1.6.0" in line for line in delta)
+    assert any(line.startswith("+ ") and "v1.7.0" in line for line in delta)
+
+
+def test_delta_dark_repo_never_counts_in_either_direction():
+    """Transport darkness is about THIS run, not the fleet — never a delta."""
+    old_scans = [_scan("o/a", "1.6.0"), _scan("o/b", "1.6.0")]
+    committed = render_adopters(old_scans, "1.7.0", now=NOW)
+    fresh = [
+        _scan("o/a", "1.6.0"),
+        RepoCurrency(repo="o/b", unreadable="API 403; tarball 403"),
+    ]
+    assert registry_delta(committed, fresh, "1.7.0") == []
+    # Partial darkness (some evidence, then transport failed) is dark too.
+    partial = RepoCurrency(
+        repo="o/b",
+        config_pin="1.7.0",
+        unreadable="tarball HTTP 500",
+    )
+    assert registry_delta(committed, [fresh[0], partial], "1.7.0") == []
+
+
+def test_delta_roster_add_and_remove_are_deltas():
+    scans_ab = [_scan("o/a", "1.6.0"), _scan("o/b", "1.6.0")]
+    committed = render_adopters(scans_ab, "1.7.0", now=NOW)
+    grown = scans_ab + [_scan("o/c", "1.7.0")]
+    delta_add = registry_delta(committed, grown, "1.7.0")
+    assert delta_add and all(line.startswith("+ o/c") for line in delta_add)
+    shrunk = [scans_ab[0]]
+    delta_rm = registry_delta(committed, shrunk, "1.7.0")
+    assert delta_rm and all(line.startswith("- o/b") for line in delta_rm)
+
+
+def _check_target(tmp_path, scans, *, committed_scans=None):
+    """A target dir with a roster + a committed registry rendered from scans."""
+    (tmp_path / "docs").mkdir()
+    roster = "\n".join(scan.repo for scan in scans) + "\n"
+    (tmp_path / "docs" / "fleet-repos.txt").write_text(roster, encoding="utf-8")
+    committed = render_adopters(committed_scans or scans, KIT_VERSION, now=NOW)
+    (tmp_path / "docs" / "adopters.md").write_text(committed, encoding="utf-8")
+    files: dict[tuple[str, str], str] = {}
+    for scan in scans:
+        version = scan.tree_version
+        header = DIST_HEADER.replace("v1.6.0", f"v{version}")
+        files[(scan.repo, "bootstrap.py")] = header
+        files[(scan.repo, "substrate.config.json")] = (
+            '{"kit_version": "%s"}' % version
+        )
+        files[(scan.repo, "control/status.md")] = STATUS_OK.replace(
+            "v1.6.0",
+            f"v{version}",
+        )
+    return _fetcher(files)
+
+
+def test_cmd_currency_check_current_exits_zero_and_writes_nothing(
+    tmp_path,
+    capsys,
+):
+    scans = [_scan("o/a", "1.6.0")]
+    fetch = _check_target(tmp_path, scans)
+    before = (tmp_path / "docs" / "adopters.md").read_bytes()
+    code = cmd_currency(tmp_path, check=True, fetcher=fetch)
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "current" in out
+    assert (tmp_path / "docs" / "adopters.md").read_bytes() == before
+
+
+def test_cmd_currency_check_stale_exits_one_prints_rows_writes_nothing(
+    tmp_path,
+    capsys,
+):
+    fresh = [_scan("o/a", "1.7.0")]
+    committed_scans = [_scan("o/a", "1.6.0")]
+    fetch = _check_target(tmp_path, fresh, committed_scans=committed_scans)
+    before = (tmp_path / "docs" / "adopters.md").read_bytes()
+    code = cmd_currency(tmp_path, check=True, fetcher=fetch)
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "STALE" in out
+    assert "o/a" in out
+    assert (tmp_path / "docs" / "adopters.md").read_bytes() == before
+
+
+def test_cmd_currency_check_missing_registry_is_stale():
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        target = Path(tmp)
+        (target / "docs").mkdir()
+        (target / "docs" / "fleet-repos.txt").write_text(
+            "o/a\n",
+            encoding="utf-8",
+        )
+        fetch = _fetcher(
+            {
+                ("o/a", "bootstrap.py"): DIST_HEADER,
+                ("o/a", "substrate.config.json"): CONFIG_16,
+                ("o/a", "control/status.md"): STATUS_OK,
+            },
+        )
+        assert cmd_currency(target, check=True, fetcher=fetch) == 1
