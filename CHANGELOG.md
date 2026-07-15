@@ -17,6 +17,20 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Taxonomy-surface sync checker** (idea
+  `taxonomy-surface-sync-checker-2026-07-09` — PL-010 friction: the
+  task-class taxonomy lives on three surfaces updated by hand with nothing
+  enforcing agreement): new `scripts/check_taxonomy_sync.py` (stdlib,
+  import-free, PL-008 header) asserts set-equality between the canonical
+  `MODEL_TASK_CLASSES` tuple (`src/engine/grammar.py`), the first column of
+  the `telemetry/allocation-ladder.md` ladder table (emphasis/flags
+  stripped, revision-log table ignored), and the class list in
+  `telemetry/README.md` — plus an honesty check on the README's "the N
+  PL-004 classes" count. Parse failure on any surface is itself a finding,
+  never a silent pass. Wired as a kit-quality CI step and a
+  `scripts/preflight.py` leg (`taxonomy-sync`); a repo-level guard, not
+  engine code — it does not ship in `dist/bootstrap.py`.
+
 - **Substrate-gate template plants a pytest step** (idea
   `adopt-plants-pytest-gate-step-2026-07-10` — the superbot-games gen-1
   tests-blind-gate class: 73 pure-domain tests never ran in CI while the

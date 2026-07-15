@@ -1,17 +1,24 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 404
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-15
+outcome: shipped
 ---
 
 # Taxonomy-surface sync checker — TASK_CLASSES ⇄ ladder ⇄ telemetry README (2026-07-09)
 
 > **Status:** `ideas`
 >
-> **State:** captured (PL-010 ruling session, PR #22).
+> **State:** promoted → **shipped** kit PR #404 (2026-07-15, anticipated
+> in-PR date): `scripts/check_taxonomy_sync.py` (stdlib, import-free,
+> PL-008 header) asserts set-equality across the three surfaces — canonical
+> `MODEL_TASK_CLASSES` (`src/engine/grammar.py`, the tuple `TASK_CLASSES`
+> aliases) ⇄ ladder-table first column ⇄ README class list — plus the
+> README's "the N PL-004 classes" count; wired as a kit-quality CI step +
+> a `preflight.py` leg; deliberately-desynced fixtures red in
+> `tests/test_check_taxonomy_sync.py`, the real repo passes.
 > **Origin:** lab — friction felt while shipping the PL-010 amendment.
 
 ## The gap
