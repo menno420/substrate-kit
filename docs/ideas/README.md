@@ -385,9 +385,10 @@ origin repo; frontmatter still tracks their B4 outcome.)
   (2026-07-09) — the survive window closes 2026-08-08; the sweep flips it
   `survived` if no revert exists then.
 - [Archive-ready close-out as a kit surface](archive-ready-close-out-surface-2026-07-11.md)
-  — state: captured (the archive-prep session's 💡, 2026-07-11): chat
-  archival is now a routine program event (three in three days) and its
-  wrap-up ritual is hand-derived each time — auto-draft the archive-ready
-  note from evidence (health runs, open-PR table, ⚑ list, probe-verified
-  routine state) the way KL-5 auto-drafts cards; next: structured plan
-  (loop + templates + checker).
+  — state: routed (plan shipped 2026-07-15:
+  [`docs/planning/2026-07-15-archive-ready-close-out-plan.md`](../planning/2026-07-15-archive-ready-close-out-plan.md)):
+  chat archival is a routine program event and its wrap-up ritual was
+  hand-derived each time — auto-draft the archive-ready note from evidence
+  (health runs, open-PR table, ⚑ list, probe-verified routine state) the way
+  KL-5 auto-drafts cards; next: build slices S1–S5 per the plan, S1
+  (checklist template) first.
