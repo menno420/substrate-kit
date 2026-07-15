@@ -49,14 +49,6 @@ story, the frontmatter keeps the score.
 
 (Captured ideas, each with a state and a next destination — none left at `raw`.)
 
-- [Work claims miss cross-branch ORDER collisions](order-claim-cross-branch-collision-2026-07-14.md)
-  — state: captured; origin: lab (two routine fires the same night both
-  consumed the same unacked ORDER 020 and built duplicate PRs — #362 landed,
-  #363 closed as superseded; the `check_claims` duplicate scan keys on branch
-  token, not work/ORDER overlap, so cross-branch same-work is invisible);
-  next: structured fix — an optional `· order NNN` claim-grammar segment +
-  `bootstrap claim --order` + a cross-branch overlap advisory, engine change →
-  dist byte-pin.
 - [Engagement gate: a "native-substrate consumer" state for pin-only repos](engagement-native-consumer-state-2026-07-12.md)
   — state: captured; origin: consumer (superbot, friction #37 — the pin-only
   repo with the fleet's strongest native enforcement would red
@@ -135,6 +127,15 @@ story, the frontmatter keeps the score.
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [Work claims miss cross-branch ORDER collisions](order-claim-cross-branch-collision-2026-07-14.md)
+  — **shipped** kit PR #365 (2026-07-14): the `· order NNN` claim-grammar
+  segment (`WORK_CLAIM_ORDER_RE` / `work_claim_order_ids()`, one parsing
+  home), `bootstrap claim --order NNN` (round-trip verified; refuses when a
+  live claim on a different branch already names that order), and the
+  `check_claims` `claims-order-collision` cross-branch overlap advisory
+  (advisory-only) — the #362/#363 twin-build root-cause fix. Doc segments
+  (idea flip, local claims-README sync, lab-loop STEP 2 claim-the-ORDER-first
+  line) completed by PR #397 (2026-07-15). Window closes 2026-08-13.
 - [Plain-adopt lane-drift advisory — nudge `--lane` in lane-shaped repos](plain-adopt-lane-drift-advisory-2026-07-10.md)
   — **shipped** kit PR #396 (2026-07-15, anticipated in-PR date):
   `engine.adopt.lane_drift_advisory` + the (0a) advisory branch in
