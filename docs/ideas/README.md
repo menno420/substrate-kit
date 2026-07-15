@@ -63,63 +63,24 @@ story, the frontmatter keeps the score.
   nothing asserts the pinned two still cover the bank; paid in the
   rider-graduation session when Q-014..016 missed both); next: quick-win —
   a coverage test over the pins (order stays pinned for reproducibility).
-- [Session gate: fix the born-red fail-open on PR-added cards (flip-race)](session-gate-flip-race-fail-open-2026-07-13.md)
-  — state: captured; origin: consumer (superbot-mineverse — stranded
-  close-out flips swept by its PR #50, root-caused in #52; finding at
-  mineverse docs/findings/substrate-gate-born-red-fail-open-2026-07-12.md,
-  fix ask routed via its outbox; night-run report §c); next: structured
-  fix — gate-logic change + flip-race regression test, engine change →
-  dist byte-pin.
-- [Auto-merge-enabler: install-time preflight for required checks + branch allowlist](enabler-install-preflight-2026-07-13.md)
-  — state: captured; origin: consumer (idle/gba enabler INERT states — fm
-  OQ B#50/B#51 — plus idea-engine #272 allowlist patch and its outbox ASK
-  001 on upgrades clobbering it; night-run report §a); next: quick-win —
-  install-step verification that reports what the owner must configure.
 - [Heartbeat currency: document the coordinator delegated-tally pattern](heartbeat-delegated-tally-guidance-2026-07-13.md)
   — state: captured; origin: consumer (superbot-mineverse
   "COORDINATOR-DELEGATED heartbeat write" carried games/idle/next tallies
   while those seats' own heartbeats sat stale; night-run report §f); next:
   quick-win — delegated-write convention + sweep guidance (classify by PR
   record + coordinator status, never seat-heartbeat staleness alone).
-- [Seat digest: adaptive description clip instead of a manual ratchet](seat-digest-adaptive-clip-2026-07-13.md)
-  — state: captured; origin: lab (the 120→85→72 clip ratchet — every skill
-  added to the registry is a latent digest-test failure until someone
-  hand-lowers the clip; paid twice in two consecutive sessions, #315 and
-  the rationalize slice); next: quick-win — compute the largest clip that
-  fits all names in the budget, engine change → dist byte-pin.
 - [Engagement gate: a "native-substrate consumer" state for pin-only repos](engagement-native-consumer-state-2026-07-12.md)
   — state: captured; origin: consumer (superbot, friction #37 — the pin-only
   repo with the fleet's strongest native enforcement would red
   `enforcement-unwired`; PL-011 merged without a native-consumer state);
   next: a post-freeze quick-win — declared `native_gate` evidence class in
   the engagement checker, engine change → dist byte-pin.
-- [Regeneration-lag checker for staged `.substrate/` artifacts](staged-artifact-regen-lag-checker-2026-07-12.md)
-  — state: captured; origin: consumer (websites, friction #39 — slots all
-  filled while staged artifacts still carried `${...}`; the engagement gate
-  scans planted docs only); next: a post-freeze quick-win — staged-tree leg
-  reusing the code-span-aware placeholder scan, engine change → dist
-  byte-pin.
 - [Engagement gate: verify wiring STRENGTH, not just existence](engagement-wiring-strength-verification-2026-07-12.md)
   — state: captured; origin: consumer (friction #36 r3 + #38 residuals —
   plain-form `check --strict` reads as fully wired while missing the
   session-log/diff-aware/inbox legs, and required-check status stays
   unverifiable/unsaid); next: post-freeze advisory-only strength +
   required-ness-honesty notes in the engagement checker.
-- [Gate card picker `tail -1` lets a multi-card diff shadow the born-red hold](gate-tail1-multi-card-shadowing-2026-07-11.md)
-  — state: captured; origin: consumer (venture-lab #33, first exercise of
-  the regenerated v1.10.0 gate: head 798a3d0 shipped an ADDED in-progress
-  card GREEN because the picker's `tail -1` graded a modified sibling
-  instead — run 29144734514; single-card head 60e91f8 correctly HELD, run
-  29144777017); **HIGH — partially reopens the superbot-games #40 class the
-  v1.10.0 release closed**; next: a v1.10.1 kit-fixes slice grades EVERY
-  card in the diff (HOLD if any added card is in-progress) in the gate
-  template + the kit's own `ci.yml` in lockstep.
-- [`_MODEL_DOCTRINE_PHRASE` exact-substring match is emphasis-blind](model-doctrine-emphasis-blind-phrase-2026-07-11.md)
-  — state: captured; origin: consumer (websites #105: their hand-merged
-  doctrine had `**…**` inside the detection phrase, so the retroactive
-  append missed it and added a harmless near-duplicate paragraph;
-  idempotent afterwards); next: quick-win — normalize emphasis before the
-  substring test + one regression fixture; engine change → dist byte-pin.
 - [Folded-gate hosts need the PR-diff-aware card selection too](folded-gate-diff-aware-card-2026-07-11.md)
   — state: captured; origin: consumer (superbot-next folded the session
   gate into its own CI as a `gate` job that still grades the
@@ -167,17 +128,6 @@ story, the frontmatter keeps the score.
   seed; runner deviated to 424243 by rule, manifest `runner_notes`);
   next: fix + prepare-runs-the-seed-suite smoke (guard recipe in the
   file); ⚑ `bench/seeds/` is a PIN PATH → the fix rides `do-not-automerge`.
-- [`bootstrap heartbeat` — a mechanical status.md writer](heartbeat-verb-2026-07-09.md)
-  — state: captured; origin: lab (band KL-8 — the moment the heartbeat
-  became enforced, its hand-formatted timestamp became the weakest link;
-  guard recipe in the file); next: a groomed-ideas increment ships the verb
-  (ordinary lane — additive CLI verb, MINOR).
-- [CHANGELOG Unreleased-section structure checker](changelog-unreleased-structure-checker-2026-07-09.md)
-  — state: captured; origin: lab (run close-out 2026-07-09 — the docs-drift
-  audit found the same mid-section `### Fixed` insertion made twice
-  independently, PR #14 on main + PR #17's pending patch); next: a
-  groomed-ideas increment ships checker + test + CI step (guard recipe in
-  the file); sequenced AFTER #17 merges.
 - [Pinned feed contract — doctrine for cross-repo committed-artifact seams](pinned-feed-contract-doctrine-2026-07-09.md)
   — state: captured; origin: consumer:menno420/superbot (pattern proven
   end-to-end in superbot PR #1884 + websites PR #11 — the first consumer-side
@@ -208,6 +158,47 @@ story, the frontmatter keeps the score.
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [Regeneration-lag checker for staged `.substrate/` artifacts](staged-artifact-regen-lag-checker-2026-07-12.md)
+  — **shipped** kit PR #345 (merged 2026-07-14, commit c603cc9):
+  `check_staged_regen`, advisory-first — staged-tree leg reusing the
+  code-span-aware placeholder scan (ORDER 019 item 6; websites friction
+  #39 origin). Parked `do-not-automerge` at open, review-merged 07-14;
+  index reconciled 2026-07-15. Window closes 2026-08-13.
+- [CHANGELOG Unreleased-section structure checker](changelog-unreleased-structure-checker-2026-07-09.md)
+  — **shipped** kit PR #351 (2026-07-14): `check_changelog_structure` +
+  test + CI leg guarding the mid-section `### Fixed` insertion class the
+  2026-07-09 docs-drift audit found twice independently. Index
+  reconciled 2026-07-15. Window closes 2026-08-13.
+- [Seat digest: adaptive description clip instead of a manual ratchet](seat-digest-adaptive-clip-2026-07-13.md)
+  — **shipped** kit PR #349 (2026-07-14): the digest computes the largest
+  description clip that fits every skill name in the budget, retiring the
+  120→85→72 manual ratchet (paid twice, #315 + the rationalize slice).
+  Index reconciled 2026-07-15. Window closes 2026-08-13.
+- [`bootstrap heartbeat` — a mechanical status.md writer](heartbeat-verb-2026-07-09.md)
+  — **shipped** kit PR #346 (2026-07-13): additive CLI verb restamping
+  the enforced heartbeat mechanically (ORDER 019 item 7; band KL-8
+  weakest-link origin). Index reconciled 2026-07-15. Window closes
+  2026-08-12.
+- [Auto-merge-enabler: install-time preflight for required checks + branch allowlist](enabler-install-preflight-2026-07-13.md)
+  — **shipped** kit PR #344 (2026-07-13): install-time preflight
+  (advisory, fail-open) reporting what the owner must configure
+  (ORDER 019 item 4; idle/gba INERT states + idea-engine ASK 001 origin).
+  Index reconciled 2026-07-15. Window closes 2026-08-12.
+- [Session gate: fix the born-red fail-open on PR-added cards (flip-race)](session-gate-flip-race-fail-open-2026-07-13.md)
+  — **shipped** kit PR #342 (2026-07-13): split closure — CI-side hold
+  verified already closed at HEAD and PINNED with flip-race regression
+  tests; the live local-selection false-green fixed by diff-derived card
+  selection (`_derive_diff_session_cards`, fail-closed grading; ORDER 019
+  item 1). Index reconciled 2026-07-15. Window closes 2026-08-12.
+- [Gate card picker `tail -1` lets a multi-card diff shadow the born-red hold](gate-tail1-multi-card-shadowing-2026-07-11.md)
+  — **shipped** kit PR #187 (2026-07-11): the gate grades EVERY card in
+  the diff (HOLD if any added card is in-progress) in the gate template +
+  the kit's own `ci.yml` in lockstep (venture-lab #33 origin). Index
+  reconciled 2026-07-15. Window closes 2026-08-10.
+- [`_MODEL_DOCTRINE_PHRASE` exact-substring match is emphasis-blind](model-doctrine-emphasis-blind-phrase-2026-07-11.md)
+  — **shipped** kit PR #187 (2026-07-11): emphasis normalized before the
+  substring test + regression fixture (websites #105 origin). Index
+  reconciled 2026-07-15. Window closes 2026-08-10.
 - [`check_idea_index` merged-reality leg — grace-windowed git-truth verification](idea-index-merged-reality-2026-07-14.md)
   — **shipped** kit PR #355 (2026-07-14): shipped-idea frontmatter verified
   against local git history (PR merge marker on main, real-merge-date
