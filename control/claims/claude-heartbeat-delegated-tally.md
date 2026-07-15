@@ -1,0 +1,1 @@
+- `claude/heartbeat-delegated-tally` · **scope** — document the coordinator delegated-tally heartbeat pattern (control-README.md.tmpl + control-status.md.tmpl + kit control/README.md doctrine; idea heartbeat-delegated-tally-guidance-2026-07-13) · 2026-07-15
