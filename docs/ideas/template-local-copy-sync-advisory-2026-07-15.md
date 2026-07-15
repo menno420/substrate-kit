@@ -1,20 +1,27 @@
 ---
-state: captured
+state: promoted
 origin: lab
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 399
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-15
+outcome: shipped
 ---
 
 # Template↔local-copy sync advisory — heading-set drift between planted templates and the kit's own rendered copies (2026-07-15)
 
 > **Status:** `ideas`
 >
-> **State:** captured (groomed from the 2026-07-15 heartbeat-delegated-tally
-> session card's 💡 — PR #395 — which observed the class live; PR #397 then
-> paid for a second instance by hand the same day. Filed by the 2026-07-15
-> groom slice so the idea stops living card-only.)
+> **State:** promoted → shipped (kit PR #399, 2026-07-15, anticipated in-PR
+> date): `src/engine/checks/check_template_sync.py` runs in `check`'s full
+> lane as the advisory-only `template-local-heading-drift` leg — heading-set
+> compare per `ADOPT_PLAN` pair, `${slot}`-pattern matching, `[[fill:]]`
+> skip, live-traffic destinations excluded; self-gates on
+> `src/engine/templates/` presence so adopters pay nothing. First live run
+> surfaced 4 real drift pairs on the kit tree (collaboration-model,
+> CAPABILITIES, control/README, ideas README) — recorded on the heartbeat as
+> next-wake sync material. (Groomed from the 2026-07-15
+> heartbeat-delegated-tally session card's 💡 — PR #395 — which observed the
+> class live; PR #397 then paid for a second instance by hand the same day.)
 
 ## The class
 

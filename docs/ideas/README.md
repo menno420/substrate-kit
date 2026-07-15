@@ -53,13 +53,6 @@ historical` — the ship fact lives in `outcome: shipped`, never in `state:`;
 see "Frontmatter" above. Recorded here because two sessions in one day paid a
 red preflight round rediscovering it via checker error.)
 
-- [Template↔local-copy sync advisory — heading-set drift between planted templates and the kit's own rendered copies](template-local-copy-sync-advisory-2026-07-15.md)
-  — state: captured; origin: lab (the #395 card's 💡 + PR #397's paid
-  hand-fix the same day — the kit's `control/claims/README.md` lagged its
-  shipped template by a whole feature paragraph); next: quick-win advisory
-  leg in `check`'s full lane comparing `## ` heading sets per `ADOPT_PLAN`
-  pair whose destination exists in the kit's own tree (guard recipe in the
-  file); engine change → dist byte-pin.
 - [Engagement gate: a "native-substrate consumer" state for pin-only repos](engagement-native-consumer-state-2026-07-12.md)
   — state: captured; origin: consumer (superbot, friction #37 — the pin-only
   repo with the fleet's strongest native enforcement would red
@@ -130,6 +123,14 @@ red preflight round rediscovering it via checker error.)
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [Template↔local-copy sync advisory — heading-set drift between planted templates and the kit's own rendered copies](template-local-copy-sync-advisory-2026-07-15.md)
+  — **shipped** kit PR #399 (2026-07-15, anticipated in-PR date):
+  `check_template_sync` runs in `check`'s full lane as the advisory-only
+  `template-local-heading-drift` leg — heading-set compare per `ADOPT_PLAN`
+  pair, slot-pattern matching, live-traffic skips; self-gates on
+  `src/engine/templates/` so only the kit's own tree scans. First run
+  surfaced 4 real drift pairs (heartbeat carries them as sync material).
+  Window closes 2026-08-14.
 - [Dispatch race: briefs need an explicit re-verify-then-stand-down clause](dispatch-race-reverify-clause-2026-07-10.md)
   — **shipped** kit PR #398 (2026-07-15, anticipated in-PR date): the
   re-verify-then-stand-down clause ("re-verify at origin/main HEAD first;
