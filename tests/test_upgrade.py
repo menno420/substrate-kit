@@ -1042,6 +1042,68 @@ def test_upgrade_report_states_clean_carveout_scan_explicitly(tmp_path):
     assert "Gate carve-outs" not in report_text
 
 
+def test_carveout_scan_honors_the_confirmed_verify_command(tmp_path):
+    # The #403 follow-on's writer/scanner symmetry: an installed gate whose
+    # test step runs the CONFIRMED verify_command must scan clean — without
+    # gate_test_command in the rescan's expectation, kit-owned verify-step
+    # bytes would misreport as a host carve-out (and the regen would flap
+    # between the two forms).
+    from engine.adopt import LIVE_CI_RELPATH, live_ci_workflow
+
+    command = "python3 -m pytest tests/ -q && python3 bootstrap.py check --strict"
+    root, config, backend = _adopted(tmp_path)
+    with backend.transaction():
+        slots = dict(backend.get("slots", {}))
+        slots["verify_command"] = "filled"
+        backend.set("slots", slots)
+        values = dict(backend.get("slot_values", {}))
+        values["verify_command"] = {"value": command, "source": "user"}
+        backend.set("slot_values", values)
+    gate = root / LIVE_CI_RELPATH
+    gate.parent.mkdir(parents=True)
+    gate.write_text(live_ci_workflow(test_command=command), encoding="utf-8")
+    _fake_old_dist(root)
+    running = _fake_new_dist(tmp_path)
+    lines = run_upgrade(
+        root,
+        config,
+        backend,
+        kit_root=tmp_path / "kit",
+        running=running,
+    )
+    assert f"carve-out scan: {LIVE_CI_RELPATH} — ran, 0 found" in lines
+    assert not any(line.startswith("carve-out: ") for line in lines)
+    # The regen keeps the verify-command form (adopt reads the same state).
+    text = gate.read_text(encoding="utf-8")
+    assert "- name: verify suite" in text
+    assert f"          {command}\n" in text
+
+
+def test_scan_gate_carveouts_reads_the_verify_command_slot(tmp_path):
+    # The post-hoc --apply-docs rescan is read-only (no adopt pass, no
+    # backend in scope): it must load state.json itself and expect the same
+    # verify-command gate the writer produced, or a clean kit-owned gate
+    # would rescan as a phantom carve-out.
+    from engine.adopt import LIVE_CI_RELPATH, live_ci_workflow
+    from engine.upgrade import scan_gate_carveouts
+
+    command = "python3 -m pytest -q; python3 bootstrap.py check --strict"
+    root, config, backend = _adopted(tmp_path)
+    with backend.transaction():
+        slots = dict(backend.get("slots", {}))
+        slots["verify_command"] = "filled"
+        backend.set("slots", slots)
+        values = dict(backend.get("slot_values", {}))
+        values["verify_command"] = {"value": command, "source": "user"}
+        backend.set("slot_values", values)
+    gate = root / LIVE_CI_RELPATH
+    gate.parent.mkdir(parents=True)
+    gate.write_text(live_ci_workflow(test_command=command), encoding="utf-8")
+    lines = scan_gate_carveouts(root, config)
+    assert f"carve-out scan: {LIVE_CI_RELPATH} — ran, 0 found" in lines
+    assert not any(line.startswith("carve-out: ") for line in lines)
+
+
 def test_upgrade_report_names_nothing_to_scan_when_no_live_workflow(tmp_path):
     # No kit-owned live workflow installed → the report still states scan
     # status: ran, nothing to scan (absence of the section would read as

@@ -69,6 +69,7 @@ from engine.adopt import (
     dist_version,
     doc_is_untouched,
     gate_carveouts,
+    gate_test_command,
     live_ci_workflow,
     record_doc_hash,
     with_unrendered_banner,
@@ -707,9 +708,26 @@ def scan_gate_carveouts(root: Path, config: Config) -> list[str]:
     nothing to scan); unreadable is reported as skipped, never a crash.
     """
     lines: list[str] = []
+    # The expected gate honors the same verify_command verdict adopt's regen
+    # applied (gate_test_command over the install's state.json) — without
+    # this the rescan would diff kit-owned verify-step bytes against the
+    # pytest-fallback expectation and misreport them as a host carve-out.
+    # Read-only + fail-open: a missing/corrupt state document degrades to
+    # the fallback expectation, never a crash.
+    try:
+        state = json.loads(
+            (root / config.state_dir / "state.json").read_text(encoding="utf-8"),
+        )
+    except (OSError, ValueError):
+        state = {}
+    gate_interpreter = config.interpreter_for_checks or "python3"
     gate_expected = live_ci_workflow(
-        config.interpreter_for_checks or "python3",
+        gate_interpreter,
         sessions_dir=config.sessions_dir,
+        test_command=gate_test_command(
+            state if isinstance(state, dict) else {},
+            gate_interpreter,
+        ),
     )
     enabler_patterns, enabler_context = _automerge_params(config)
     enabler_expected = automerge_enabler_workflow(enabler_patterns, enabler_context)

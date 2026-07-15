@@ -676,8 +676,93 @@ def ci_snippet() -> str:
 
 LIVE_CI_RELPATH = ".github/workflows/substrate-gate.yml"
 
+# Characters a verify_command may carry and still be embedded verbatim in the
+# generated gate's `run: |` block. A conservative allowlist on purpose: the
+# slot is free prose routed into markdown (templates/CLAUDE.md), so values
+# like websites' real one — a pytest line with "(all four service suites)"
+# annotations — are documentation, not shell; embedding one would red every
+# PR at that adopter with a syntax error, not a test failure. Rejected values
+# fall back to the hardened pytest step (never a broken workflow), and adopt
+# reports the fallback so the divergence stays visible. No newlines (YAML
+# block integrity), no `$`/backticks/parens/redirects/globs — plain commands
+# joined by spaces, `&&`, `|`, or `;` all pass.
+_GATE_TEST_COMMAND_SAFE_RE = re.compile(r"^[A-Za-z0-9 ._/:=,;&|'\"-]+$")
 
-def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".sessions") -> str:
+
+def _is_default_pytest_command(command: str, interpreter: str) -> bool:
+    """True when ``command`` adds nothing over the planted pytest step.
+
+    The hardened fallback step already runs ``<interpreter> -m pytest tests/
+    -q`` (with a tests/-absent self-skip and dependency installs), so a
+    verify_command that is just pytest — bare, or ``-m pytest`` on the
+    gate's/derive's interpreter, with at most ``tests/`` / ``-q`` arguments
+    (the exact shapes ``derive.detect_verify_command`` seeds and the #403
+    step runs) — keeps the fallback: it is strictly more robust than an
+    inlined equivalent. Anything else (extra paths, flags, chained
+    commands) is a real divergence worth honoring.
+    """
+    tokens = command.split()
+    for prefix in (
+        [interpreter, "-m", "pytest"],
+        ["python3", "-m", "pytest"],
+        ["pytest"],
+    ):
+        if tokens[: len(prefix)] == prefix:
+            rest = tokens[len(prefix) :]
+            return all(token in ("tests/", "tests", "-q") for token in rest)
+    return False
+
+
+def gate_test_command(
+    state: dict[str, Any],
+    interpreter: str = "python3",
+) -> str | None:
+    """Return the verify_command the gate's test step should run, or None.
+
+    None means "plant the hardened pytest fallback" (#403's step, unchanged
+    bytes). The interview's ``verify_command`` slot drives the step only when
+    ALL of:
+
+    - the slot is **filled** — user-confirmed. A ``provisional`` value is
+      either derive's own pytest default (nothing to honor) or an
+      unconfirmed self-answer (``ASSUMED: …`` is not shell), and the
+      interview contract says provisional answers never count until
+      confirmed;
+    - the value is **gate-safe** — single line, no unfilled ``${...}``
+      placeholder, and within :data:`_GATE_TEST_COMMAND_SAFE_RE` (the slot
+      is free prose; only a value that is unambiguously a runnable command
+      may be embedded in a workflow every PR executes);
+    - the value is **non-default** — a plain pytest invocation keeps the
+      fallback step, which is strictly more robust (tests/-absent
+      self-skip, dependency installs) than inlining the same command.
+
+    Called with the same state document by adopt's gate render and
+    upgrade's read-only carve-out rescan, so the expected gate text can
+    never disagree between the writer and the scanner.
+    """
+    slots = state.get("slots")
+    if not isinstance(slots, dict) or slots.get("verify_command") != "filled":
+        return None
+    values = state.get("slot_values")
+    entry = values.get("verify_command") if isinstance(values, dict) else None
+    value = entry.get("value") if isinstance(entry, dict) else None
+    if not isinstance(value, str):
+        return None
+    command = value.strip()
+    if not command or "\n" in command or "${" in command:
+        return None
+    if not _GATE_TEST_COMMAND_SAFE_RE.match(command):
+        return None
+    if _is_default_pytest_command(command, interpreter):
+        return None
+    return command
+
+
+def live_ci_workflow(
+    interpreter: str = "python3",
+    sessions_dir: str = ".sessions",
+    test_command: str | None = None,
+) -> str:
     """Return the LIVE (uncommented) CI gate workflow — the locked door.
 
     Unlike :func:`ci_snippet` (a commented example the host installs by hand),
@@ -806,7 +891,72 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
     short-circuit — heartbeat PRs never pay a test suite), installs pytest
     plus the host's ``requirements.txt`` when present, and runs the suite on
     the same interpreter as the gate step.
+
+    **verify_command honored (the #403 follow-on):** when ``test_command``
+    is provided — the caller passing :func:`gate_test_command`'s verdict on
+    the interview's ``verify_command`` slot (filled + gate-safe +
+    non-default; see its docstring for why each condition exists) — the
+    test step runs THAT command verbatim instead of the hardcoded pytest
+    line, so the CI runner and the verify line ``templates/CLAUDE.md``
+    teaches every session stop diverging (websites' four-suite line and
+    non-pytest stacks were invisible to the planted step). The command is
+    an owner-confirmed runnable promise, so the ``tests/``-absent self-skip
+    does not apply to it (a verify command need not touch ``tests/`` at
+    all); ``requirements.txt`` still installs when present, and pytest
+    installs only when the command mentions it. ``test_command=None``
+    keeps #403's hardened fallback byte-identical — adopters whose slot
+    does not qualify see zero gate churn.
     """
+    if test_command is None:
+        test_step = (
+            "      - name: pytest suite (a test suite ships with its CI runner; "
+            "self-skips when tests/ is absent)\n"
+            "        if: steps.lane.outputs.control_only != 'true'\n"
+            "        # A host can live its whole life with a green gate while its\n"
+            "        # tests never run in CI (superbot-games' 73 tests were\n"
+            "        # invisible to gen-1 CI until games#16 hand-added a runner).\n"
+            "        # Always planted, self-skips when tests/ is absent — so the\n"
+            "        # gate self-heals the moment tests arrive. Full lane only:\n"
+            "        # control/** heartbeat PRs never pay the test suite.\n"
+            "        run: |\n"
+            "          if [ ! -d tests ]; then\n"
+            '            echo "no tests/ directory — pytest step skipped'
+            ' (self-heals when tests/ arrives)."\n'
+            "            exit 0\n"
+            "          fi\n"
+            "          if [ -f requirements.txt ]; then\n"
+            f"            {interpreter} -m pip install --quiet -r requirements.txt\n"
+            "          fi\n"
+            f"          {interpreter} -m pip install --quiet pytest\n"
+            f"          {interpreter} -m pytest tests/ -q\n"
+        )
+    else:
+        pytest_install = (
+            f"          {interpreter} -m pip install --quiet pytest\n"
+            if "pytest" in test_command
+            else ""
+        )
+        test_step = (
+            "      - name: verify suite (the interview's verify_command drives "
+            "the gate's test step)\n"
+            "        if: steps.lane.outputs.control_only != 'true'\n"
+            "        # The command below is this repo's own CONFIRMED\n"
+            "        # verify_command interview slot — the same line the planted\n"
+            "        # CLAUDE.md/CONSTITUTION teach every session to run — so the\n"
+            "        # CI runner can no longer diverge from the doctrine (the\n"
+            "        # #403 step hardcoded pytest). An owner-confirmed command is\n"
+            "        # a runnable promise, so there is no tests/-absent self-skip\n"
+            "        # here (the command need not touch tests/ at all). Change it\n"
+            "        # via `bootstrap.py answer verify_command \"...\"` and the\n"
+            "        # next adopt/upgrade regen. Full lane only: control/**\n"
+            "        # heartbeat PRs never pay the suite.\n"
+            "        run: |\n"
+            "          if [ -f requirements.txt ]; then\n"
+            f"            {interpreter} -m pip install --quiet -r requirements.txt\n"
+            "          fi\n"
+            f"{pytest_install}"
+            f"          {test_command}\n"
+        )
     return (
         "# substrate-kit enforcement gate (LIVE — installed by "
         "`bootstrap.py adopt --wire-enforcement`).\n"
@@ -1024,26 +1174,7 @@ def live_ci_workflow(interpreter: str = "python3", sessions_dir: str = ".session
         f"{sessions_dir}/__no-card-in-diff__.md\n"
         "          fi\n"
         '          exit "$fail"\n'
-        "      - name: pytest suite (a test suite ships with its CI runner; "
-        "self-skips when tests/ is absent)\n"
-        "        if: steps.lane.outputs.control_only != 'true'\n"
-        "        # A host can live its whole life with a green gate while its\n"
-        "        # tests never run in CI (superbot-games' 73 tests were\n"
-        "        # invisible to gen-1 CI until games#16 hand-added a runner).\n"
-        "        # Always planted, self-skips when tests/ is absent — so the\n"
-        "        # gate self-heals the moment tests arrive. Full lane only:\n"
-        "        # control/** heartbeat PRs never pay the test suite.\n"
-        "        run: |\n"
-        "          if [ ! -d tests ]; then\n"
-        '            echo "no tests/ directory — pytest step skipped'
-        ' (self-heals when tests/ arrives)."\n'
-        "            exit 0\n"
-        "          fi\n"
-        "          if [ -f requirements.txt ]; then\n"
-        f"            {interpreter} -m pip install --quiet -r requirements.txt\n"
-        "          fi\n"
-        f"          {interpreter} -m pip install --quiet pytest\n"
-        f"          {interpreter} -m pytest tests/ -q\n"
+        f"{test_step}"
     )
 
 
@@ -2125,9 +2256,22 @@ def adopt(
         ci_snippet(),
         report,
     )
+    # The gate's test step honors the interview's verify_command (#403
+    # follow-on): filled + gate-safe + non-default → the confirmed command
+    # drives the step; anything else keeps the hardened pytest fallback.
+    # Computed from the SAME state document upgrade's read-only carve-out
+    # rescan reads, so writer and scanner can never expect different bytes.
+    gate_interpreter = config.interpreter_for_checks or "python3"
+    gate_test = gate_test_command(backend.data, gate_interpreter)
+    if gate_test is not None:
+        report.append(
+            "gate test step: runs the interview's confirmed verify_command "
+            f"({gate_test!r}) — pytest fallback not planted.",
+        )
     gate_text = live_ci_workflow(
-        config.interpreter_for_checks or "python3",
+        gate_interpreter,
         sessions_dir=config.sessions_dir,
+        test_command=gate_test,
     )
     gate_rel = f"{config.state_dir}/ci/substrate-gate.yml"
     # Three-way compare inputs (v1.11.0-wave phantom-carve-out fix): until
