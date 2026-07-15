@@ -1,1 +1,0 @@
-- `claude/model-line-unrecorded-marker` · **sanction unrecorded as advisory-silent terminal effort value in check_model_line (idea model-line-unrecorded-effort-marker-2026-07-15)** · src/engine/checks/ + tests/ + .sessions/README.md + dist regen · 2026-07-15
