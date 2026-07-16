@@ -1,1 +1,1 @@
-- claude/staged-regen-render · re-render staged .substrate/ (architect.md, reviewer.md, claude/CLAUDE.md) to clear 3 staged-regen-lag advisories · 2026-07-16
+- `claude/staged-regen-render` · **re-render staged .substrate/** — regenerate architect.md, reviewer.md, claude/CLAUDE.md to clear 3 staged-regen-lag advisories · `.substrate/agents/`, `.substrate/claude/` · 2026-07-16

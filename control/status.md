@@ -1,11 +1,11 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-16T15:22:42Z · phase: 1 work PR in flight (#430 registry refresh)
+updated: 2026-07-16T16:16:39Z · phase: 1 work PR in flight (#432 staged-regen render; #430 registry refresh merged at HEAD)
 
 ## This wake (2026-07-16 close-out slice) — SEAT-CLOSING HEARTBEAT
 
 - Wake source: coordinator-dispatched close-out slice; control-only diff (status heartbeat), card-less fast lane.
 - **PR ledger: #414–#429 ALL MERGED on green; #430 now OPEN** (#429 merged at HEAD d007294 — the no-badge grammar graduation into check_log + shared `_status_grammar_findings` helper landed; #430 opened this wake on top of it).
-- **#430 OPEN — regenerate adopters.md registry from live discovery · auto-merge armed SQUASH 2026-07-16T15:18:55Z · born-red, self-lands on green at card flip.** Registry truth by discovery: 12 repos scanned COMPLETE, no degraded reads; substrate-kit self-report drift row resolved (control/status.md now truthfully v1.18.0) + fleet-manager self-report updated to the truthful 'no kit: line' live read; gate + adopters format test green.
+- **#430 MERGED at HEAD (registry refresh).** **#432 OPEN — re-render staged .substrate/ tree (architect.md, reviewer.md, claude/CLAUDE.md) to clear 3 staged-regen-lag advisories · auto-merge armed SQUASH 2026-07-16T16:13:43Z · born-red, self-lands on green at card flip.** The staged tree carried unrendered `${slot}` tokens for interview slots filled since #381; the kit's own render path (`agents --build` + scoped `adopt` keeping only `.substrate/claude/CLAUDE.md`) fills them — net diff exactly 3 files, `check --strict` staged-regen-lag advisories → 0. Registry-refresh detail below reflects #430 as merged.
 - Merged this calendar day: #414 S3 · #415 · #416 S4 · #417 · #418 v1.18.0 bump · #419 close-out · #420 KL-5 residue generalization · #421 · #422 status-badge value-parse fix · #423 · #424 archive S2 evidence-hint coverage + adopt-planted surface settled empty · #425 claim prune · #426 valueless-badge grammar finding + residue coverage pin. Release v1.18.0 out (run 29466068874, sha256 three-way PASS — full record @ 13a0b44 history).
 - Denial records live in PR bodies, not here: adopter-wave classifier denial verbatim in the **PR #420 body** (§ "Denial routing"). This heartbeat carries pointers + asks only.
 
@@ -39,7 +39,7 @@ kit: v1.18.0
 
 ## Next-2 baton
 
-1. **SHIPPED this session** — adopters.md registry refresh (#430): regenerate docs/adopters.md from live discovery (registry truth by discovery), self-lands on green at card flip.
+1. **SHIPPED this session** — staged-regen render (#432): re-render the staged `.substrate/` tree (architect.md, reviewer.md, claude/CLAUDE.md) so interview slots filled since #381 render, clearing the 3 staged-regen-lag advisories; self-lands on green at card flip. (Prior slice #430 adopters.md registry refresh — merged at HEAD.)
 2. Date-parked / owner-gated (unchanged): grounded-skills window ~2026-07-19..26; KL-5/PL-008 graduation awaits the advisory quiet period; v1.18.0 adopter wave awaits owner authorization.
 
 ## ⚑ FOR OWNER (standing set carried forward + one new ask)
