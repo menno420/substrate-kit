@@ -10,7 +10,11 @@
 > `src/engine/templates/archive-ready.md.tmpl`; the drafting verb is
 > `bootstrap.py archive-prep` (S2, `src/engine/loop/archive.py`).
 > S3 (REQUIRES-PROBE resolve semantics) is shipped in the engine.
-> Follow-up slices: S4 the `check --strict` advisory, S5 distribution
+> S4 (the `check --strict` advisory) is shipped:
+> `src/engine/checks/check_archive_ready.py` surfaces an incomplete note —
+> unresolved slots or guarded-slot residue — on every `check` run,
+> advisory-only (PL-008 unverified posture; graduation to a preflight/gate
+> leg is a later, separate decision). Follow-up slice: S5 distribution
 > (plan §5).
 
 ## When this runs
@@ -71,7 +75,9 @@ found still armed by the live probe — plan §1).
   where the templated instruction text survives marker-stripping is
   reported NOT complete — stripping the `[[fill:]]` markers around the
   default text is not a resolution, and a sham note is never silently
-  superseded by a fresh draft.
+  superseded by a fresh draft. S4 (shipped) surfaces the same verdict —
+  plus the plain unresolved-slot count — as a `check --strict` advisory on
+  every run, so an incomplete note is visible without re-running the verb.
 - **The confirmation slot is never drafted as complete.** "Nothing remains
   chat-only" is an explicit attestation written after everything above is
   resolved — writing it IS the final check.

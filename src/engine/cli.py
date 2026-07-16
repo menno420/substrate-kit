@@ -94,6 +94,7 @@ from engine.claim import (
 from engine.checks.check_seat_digest import check_seat_digest
 from engine.checks.check_setup_script import check_setup_script
 from engine.checks.check_skill_grounds import check_skill_grounds
+from engine.checks.check_archive_ready import check_archive_ready
 from engine.checks.check_staged_regen import check_staged_regen
 from engine.checks.check_template_sync import check_template_sync
 from engine.contextpack import generate_packs, load_pack_index
@@ -1188,6 +1189,17 @@ def cmd_check(
     # nothing. Full lane only: template sources are not control-lane
     # traffic.
     template_sync_advisories = check_template_sync(target, config)
+    # Archive-note completeness scan (archive-ready close-out plan §5 S4):
+    # advisory-only by contract, like every nudge above — an
+    # `archive-ready-*.md` note still carrying `[[fill:]]` slots, or a
+    # zero-slot note whose guarded default text survives marker-stripping
+    # (the S3 sham-resolution class, `probe_slot_residue` reused verbatim),
+    # is a resolve-with-live-facts nudge, never a required-check red
+    # (UNVERIFIED per its PL-008 provenance header; graduation to a
+    # preflight/gate leg is a later, deliberate decision — plan §4.3).
+    # Self-gates on repos with no archive notes. Full lane only: retro
+    # notes are not control-lane traffic.
+    archive_ready_advisories = check_archive_ready(target, config)
     # Seat-digest drift guard (grounded-skills slice 6, §8 Q2=B):
     # advisory-only by contract, like every nudge above — a planted
     # docs/seat-digest.md whose bytes differ from a fresh render of its
@@ -1644,6 +1656,28 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=template_sync_advisories,
+        )
+    if archive_ready_advisories and not status_only:
+        # Same warn-only contract as the advisories above (archive-ready
+        # close-out plan §5 S4, advisory-first per plan §4.3): an incomplete
+        # archive note — unresolved slots, or guarded-slot residue from a
+        # sham resolution — is surfaced + telemetry-recorded, never counted
+        # toward the exit code — the checker is UNVERIFIED (PL-008 header)
+        # and the fix is resolving the note with live facts, not a locked
+        # door.
+        _emit(
+            f"check: {len(archive_ready_advisories)} archive-note advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in archive_ready_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=archive_ready_advisories,
         )
     if digest_advisories and not status_only:
         # Same warn-only contract as the advisories above (grounded-skills

@@ -1,0 +1,1 @@
+- `claude/archive-advisory-s4` · archive-ready close-out S4: `check --strict` unresolved-slot/residue advisory (src/engine/checks/check_archive_ready.py, src/engine/cli.py, tests/test_check_archive_ready.py, dist regen, doctrine doc) · 2026-07-16

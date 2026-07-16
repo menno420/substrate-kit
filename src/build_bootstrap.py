@@ -115,6 +115,11 @@ MODULE_ORDER = (
     # slots from tree evidence, and a loop-block position would strip the
     # render import into a forward reference at dist runtime.
     "loop/archive.py",
+    # After loop/archive.py (imports probe_slot_residue + the note-glob
+    # constants) and render.py (load_templates for the residue template):
+    # the S4 archive-note completeness advisory (archive-ready close-out
+    # plan §5 S4).
+    "checks/check_archive_ready.py",
     "derive.py",
     "contextpack.py",
     # Before adopt.py (which plants the doc it renders), upgrade.py (the
