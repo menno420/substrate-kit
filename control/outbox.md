@@ -195,3 +195,7 @@ to touch; ORDER 024's no-re-arm posture also stands) — data for the manager
 to arbitrate: presumably delete one of each pair, the manager's call which.
 Provenance: Self Improvement seat worker wake 2026-07-16T01:36Z (PR #416
 session card `.sessions/2026-07-16-archive-advisory-s4.md`).
+
+## 2026-07-16 · Sibling-lane duplicate failsafe pairs — coordinator-reported (lane→manager)
+
+Sibling-lane duplicate failsafe pairs (coordinator-reported, snapshot 2026-07-16T14:16:39Z): Ideas Lab, SuperBot 2.0, SuperBot World, Venture Lab, Websites each reported to have two ENABLED failsafe copies bound to different sessions. Not this seat's to delete — flagging for manager arbitration.
