@@ -109,6 +109,12 @@ MODULE_ORDER = (
     "hooks/stop_check.py",
     "hooks/settings.py",
     "render.py",
+    # After render.py (imports load_templates for the embedded S1 note
+    # skeleton) — NOT with the loop/ block above: the archive-prep drafter
+    # (archive-ready close-out plan §5 S2) fills the archive-ready.md.tmpl
+    # slots from tree evidence, and a loop-block position would strip the
+    # render import into a forward reference at dist runtime.
+    "loop/archive.py",
     "derive.py",
     "contextpack.py",
     # Before adopt.py (which plants the doc it renders), upgrade.py (the

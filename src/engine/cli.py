@@ -148,6 +148,7 @@ from engine.lib.config import (
 from engine.lib.guardrail import UnsafeTargetError, assert_safe_target
 from engine.lib.modes import actuators_may_apply, triggers_mandate
 from engine.lib.state import JsonStateBackend, default_state
+from engine.loop.archive import ensure_archive_draft
 from engine.loop.episodes import (
     EPISODIC_INDEX_FILENAME,
     rebuild_episodic_index,
@@ -2604,6 +2605,26 @@ def cmd_draft(target: Path) -> int:
     return 0
 
 
+def cmd_archive_prep(target: Path) -> int:
+    """Draft / report the archive-ready close-out note (plan §5 S2).
+
+    The KL-5 evidence-draft seam pointed at the archive ritual
+    (``docs/operations/archive-ready-close-out.md``): a missing note gets a
+    drafted ``docs/retro/archive-ready-<date>.md`` with evidence pre-fills, a
+    drafted note reports its unresolved ``[[fill:]]`` slots, and a completed
+    note is never touched. Separate verb by design (plan §4.1): the archive
+    ritual is rare and produces a ``docs/retro/`` note, not a card close-out —
+    a ``session-close --archive`` flag would fork that function's contract.
+    """
+    loaded = _require_state(target, "archive-prep")
+    if loaded is None:
+        return 1
+    config, _ = loaded
+    for line in ensure_archive_draft(target, config):
+        _emit(f"archive-prep: {line}")
+    return 0
+
+
 def cmd_friction(
     target: Path,
     action: str,
@@ -3204,6 +3225,7 @@ def build_parser() -> argparse.ArgumentParser:
         ("session-start", "print this session's orientation injection"),
         ("session-close", "draft the close-out, mine reflections, report KPIs"),
         ("draft", "auto-draft the session card / close-out from evidence"),
+        ("archive-prep", "draft the archive-ready close-out note from evidence"),
     ):
         child = sub.add_parser(name, help=helptext)
         child.add_argument("--target", type=Path, default=Path.cwd())
@@ -3780,6 +3802,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_session_close(args.target)
         if args.command == "draft":
             return cmd_draft(args.target)
+        if args.command == "archive-prep":
+            return cmd_archive_prep(args.target)
         if args.command == "friction":
             return cmd_friction(
                 args.target,

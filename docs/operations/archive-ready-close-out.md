@@ -7,9 +7,10 @@
 > generalizing the hand-written evidence note
 > [`../retro/archive-ready-2026-07-11.md`](../retro/archive-ready-2026-07-11.md).
 > This doc is the checklist doctrine; the note template is
-> `src/engine/templates/archive-ready.md.tmpl`. Follow-up slices: S2 ships
-> the `archive-prep` draft verb, S3 the REQUIRES-PROBE slot semantics, S4
-> the `check --strict` advisory, S5 distribution (plan §5).
+> `src/engine/templates/archive-ready.md.tmpl`; the drafting verb is
+> `bootstrap.py archive-prep` (S2, `src/engine/loop/archive.py`).
+> Follow-up slices: S3 the REQUIRES-PROBE slot semantics, S4 the
+> `check --strict` advisory, S5 distribution (plan §5).
 
 ## When this runs
 
@@ -24,11 +25,14 @@ found still armed by the live probe — plan §1).
 
 ## The ritual
 
-1. **Instantiate the note.** Copy the template
-   (`src/engine/templates/archive-ready.md.tmpl`) to
-   `docs/retro/archive-ready-<date>.md` in the archiving repo. (S2's
-   `archive-prep` verb automates this with evidence pre-fills; until it
-   ships, copy by hand — the checklist is the template's section list.)
+1. **Instantiate the note.** Run `python3 bootstrap.py archive-prep` in the
+   archiving repo (S2, shipped): it drafts
+   `docs/retro/archive-ready-<date>.md` from the template with evidence
+   pre-fills (claims scan · heartbeat ⚑ extraction · CHANGELOG
+   `[Unreleased]` park), reports unresolved slots on re-run, and never
+   touches a completed note. Fallback when the verb is unavailable: copy
+   `src/engine/templates/archive-ready.md.tmpl` by hand — the checklist is
+   the template's section list.
 2. **Resolve every `[[fill:]]` slot with live facts**, section by section:
    - **True state** — re-verify health *from scratch this session* (run the
      repo's verify command + kit check) and paste the real output numbers.

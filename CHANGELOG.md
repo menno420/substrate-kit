@@ -17,6 +17,20 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Archive-ready close-out S2 — the `archive-prep` draft verb**
+  (`docs/planning/2026-07-15-archive-ready-close-out-plan.md` §5 S2, on
+  S1's template): new `engine.loop.archive` module — the KL-5
+  evidence-draft seam (`ensure_draft`) pointed at the archive ritual.
+  `bootstrap.py archive-prep` drafts `docs/retro/archive-ready-<date>.md`
+  from the embedded S1 template with tree-evidence pre-fills (claims-dir
+  scan · heartbeat ⚑ line extraction · CHANGELOG `[Unreleased]` park),
+  reports unresolved `[[fill:]]` slots on re-run, and never touches a
+  completed note; REQUIRES-PROBE slots (routine state) and the chat-only
+  confirmation are never auto-filled, by doctrine (plan §4.2). Separate
+  verb, not a `session-close` flag (plan §4.1). Fail-open: any drafting
+  failure returns the hand-copy fallback advisory instead of raising.
+  The `check --strict` unresolved-slot advisory is slice S4, not here.
+
 - **Archive-ready close-out S1 — checklist doctrine + note template**
   (docs-only slice per
   `docs/planning/2026-07-15-archive-ready-close-out-plan.md` §5):
