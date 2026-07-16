@@ -4,7 +4,7 @@
 
 Intent: baton item 1 — archive-ready close-out slice S1 (checklist doctrine + note template, docs-only) per docs/planning/2026-07-15-archive-ready-close-out-plan.md §5.
 
-- **📊 Model:** Claude Fable · low · docs build
+- **📊 Model:** Claude Fable · low · docs-only
 - ⚑ Self-initiated: no — baton-named (control/status.md Next-2 item 1 at sync HEAD e8a00fc); failsafe wake 2026-07-16T00:05Z, no ORDER >024, `currency --check` exit 0.
 
 ## What shipped (PR #412)

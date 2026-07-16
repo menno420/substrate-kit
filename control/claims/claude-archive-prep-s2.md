@@ -1,1 +1,0 @@
-- `claude/archive-prep-s2` · **archive-ready close-out slice S2 — `archive-prep` draft verb** · src/engine/loop/archive.py + src/engine/cli.py + src/build_bootstrap.py + tests + dist regen · 2026-07-16
