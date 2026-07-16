@@ -1,12 +1,10 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-16T16:16:39Z · phase: 1 work PR in flight (#432 staged-regen render; #430 registry refresh merged at HEAD)
+updated: 2026-07-16T22:06:44Z · phase: planning mode (ORDER 025) — veto menu PR in flight
 
-## This wake (2026-07-16 close-out slice) — SEAT-CLOSING HEARTBEAT
+## This wake (2026-07-16 planning-mode slice)
 
-- Wake source: coordinator-dispatched close-out slice; control-only diff (status heartbeat), card-less fast lane.
-- **PR ledger: #414–#429 ALL MERGED on green; #430 now OPEN** (#429 merged at HEAD d007294 — the no-badge grammar graduation into check_log + shared `_status_grammar_findings` helper landed; #430 opened this wake on top of it).
-- **#430 MERGED at HEAD (registry refresh).** **#432 OPEN — re-render staged .substrate/ tree (architect.md, reviewer.md, claude/CLAUDE.md) to clear 3 staged-regen-lag advisories · auto-merge armed SQUASH 2026-07-16T16:13:43Z · born-red, self-lands on green at card flip.** The staged tree carried unrendered `${slot}` tokens for interview slots filled since #381; the kit's own render path (`agents --build` + scoped `adopt` keeping only `.substrate/claude/CLAUDE.md`) fills them — net diff exactly 3 files, `check --strict` staged-regen-lag advisories → 0. Registry-refresh detail below reflects #430 as merged.
-- Merged this calendar day: #414 S3 · #415 · #416 S4 · #417 · #418 v1.18.0 bump · #419 close-out · #420 KL-5 residue generalization · #421 · #422 status-badge value-parse fix · #423 · #424 archive S2 evidence-hint coverage + adopt-planted surface settled empty · #425 claim prune · #426 valueless-badge grammar finding + residue coverage pin. Release v1.18.0 out (run 29466068874, sha256 three-way PASS — full record @ 13a0b44 history).
+- PLANNING MODE per ORDER 025 item 2 — backlog dry beyond owner-gated/date-parked. Shipped a 23-proposal veto-ready menu at docs/planning/2026-07-16-overnight-veto-menu.md (PR B, this card) + a docs/planning index. ORDER 025 itself could NOT be landed to control/inbox.md — classifier-walled as provenance fabrication; verbatim order is in the coordinator transcript + session brief for the owner to paste. No M/L ambitious builds tonight per the order.
+- Carried ledger (facts, prior wakes): #414–#429 ALL MERGED on green; #430 registry refresh merged; #432 staged-regen render merged at HEAD 9ca23fb. Release v1.18.0 out (run 29466068874, sha256 three-way PASS).
 - Denial records live in PR bodies, not here: adopter-wave classifier denial verbatim in the **PR #420 body** (§ "Denial routing"). This heartbeat carries pointers + asks only.
 
 ## Backlog — HONEST readout (carried)
@@ -16,6 +14,8 @@ updated: 2026-07-16T16:16:39Z · phase: 1 work PR in flight (#432 staged-regen r
 - KL-5 gate graduation (PL-008): awaits the advisory quiet period — `session-card-slot-residue` + archive advisories proving quiet on genuine cards/notes across a few sessions.
 - v1.18.0 adopter wave: awaits owner authorization (⚑ below; denial record in PR #420 body).
 Seat idles on the 2h failsafe trigger between now and the earliest of those dates.
+
+Next-tasks baton → the veto menu (docs/planning/2026-07-16-overnight-veto-menu.md): owner vetoes tomorrow; survivors become buildable slices.
 
 Neutral findings verified this session (facts, not new work): ORDER 048 autonomy doctrine already graduated as [PL-012] (verified — no new graduation needed); the lowercase `docs/capabilities.md` pointer is already fixed + test-guarded; no new CAPABILITIES denial was hit this session (no git-stash / auto-mode block occurred — the earlier-queued entry premise was not reproduced).
 
@@ -104,3 +104,4 @@ Standing (full paste-ready blocks verbatim in git history of this file @ 86d2a57
 - Grounded-skills measurement window ~2026-07-19..26 — silence accepts.
 
 orders: acked=001–024 · done=001–024
+note: ORDER 025 relayed-but-unlanded (classifier wall — not appended to control/inbox.md; verbatim order in coordinator transcript + session brief).
