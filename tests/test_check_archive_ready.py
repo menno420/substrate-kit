@@ -23,6 +23,7 @@ from engine.checks.check_session_log import DRAFT_FILL_TOKEN
 from engine.cli import cmd_check
 from engine.lib.config import Config
 from engine.loop.archive import (
+    ARCHIVE_HINT_CLAIMS,
     ARCHIVE_TEMPLATE_NAME,
     REQUIRES_PROBE_TOKEN,
 )
@@ -134,6 +135,23 @@ def test_every_note_scanned_not_just_newest(tmp_path: Path) -> None:
     assert [f.path for f in findings] == [
         "docs/retro/archive-ready-2026-01-01.md",
     ]
+
+
+def test_evidence_hint_residue_fires(tmp_path: Path) -> None:
+    """The S2 evidence-judgment hint surface (KL-5 sweep, baton 2b): a
+    zero-slot note carrying a drafter-injected judgment hint bare (markers
+    stripped, hint kept) is residue — the checker names the hint slot."""
+    _plant_note(
+        tmp_path,
+        "# Archive-ready note — 2026-07-16 · session X\n\n"
+        "## Claims\n\n"
+        f"`claude-live-work.md` (evidence) — {ARCHIVE_HINT_CLAIMS}\n",
+    )
+    findings = check_archive_ready(tmp_path, Config())
+    assert len(findings) == 1
+    finding = findings[0]
+    assert finding.kind == "archive-note-slot-residue"
+    assert "claims disposition" in finding.message
 
 
 def test_self_gates_without_notes(tmp_path: Path) -> None:
