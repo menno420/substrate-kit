@@ -1,0 +1,1 @@
+- branch `claude/valueless-badge-check-log` · scope: graduate the valueless Status-badge finding into check_log (modified-card lane) in src/engine/checks/check_session_log.py + mirror tests + regen dist · 2026-07-16
