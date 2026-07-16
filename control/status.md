@@ -1,11 +1,11 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-16T14:25:21Z · phase: SEAT CLOSING · 1 work PR in flight (#428)
+updated: 2026-07-16T14:48:28Z · phase: SEAT CLOSING · 1 work PR in flight (#429)
 
 ## This wake (2026-07-16 close-out slice) — SEAT-CLOSING HEARTBEAT
 
 - Wake source: coordinator-dispatched close-out slice; control-only diff (status heartbeat), card-less fast lane.
-- **PR ledger: #414–#426 ALL MERGED on green; #428 now OPEN** (as of 09:47Z the open-PR list was empty and #426 merged 2026-07-16T04:00:09Z — this fixed the prior heartbeat's stale "#426 OPEN" line; #428 opened this wake).
-- **#428 — valueless Status-badge finding graduated into check_log (modified-card lane): OPEN READY, auto-merge armed 14:16:53Z, held born-red pending this session's card flip; merges on green after flip. Suite 1716→1718.**
+- **PR ledger: #414–#428 ALL MERGED on green; #429 now OPEN** (#428 merged 2026-07-16T14:40Z as HEAD 1377a63 — the valueless-badge check_log graduation landed; #429 opened this wake on top of it).
+- **#429 — no-badge Status-badge grammar finding graduated into check_log (modified-card lane) + shared `_status_grammar_findings` helper both lanes call: OPEN READY, auto-merge armed 14:46:27Z (SQUASH), held born-red pending this session's card flip; merges on green after flip. Suite 1718→1720. Landing path: born-red card → implement → heartbeat → flip; graduates baton item 1 from #428.**
 - Merged this calendar day: #414 S3 · #415 · #416 S4 · #417 · #418 v1.18.0 bump · #419 close-out · #420 KL-5 residue generalization · #421 · #422 status-badge value-parse fix · #423 · #424 archive S2 evidence-hint coverage + adopt-planted surface settled empty · #425 claim prune · #426 valueless-badge grammar finding + residue coverage pin. Release v1.18.0 out (run 29466068874, sha256 three-way PASS — full record @ 13a0b44 history).
 - Denial records live in PR bodies, not here: adopter-wave classifier denial verbatim in the **PR #420 body** (§ "Denial routing"). This heartbeat carries pointers + asks only.
 
@@ -23,7 +23,7 @@ Routine facts below are COORDINATOR-REPORTED via session relay (coordinator's ow
 
 - **failsafe `Self Improvement failsafe wake`** (coordinator-reported) — trigger `trig_01Mw9yn9r21Bi5q19v7QcqjN`, cron `0 */2 * * *`, reported ARMED + bound to the coordinator session, next fire reported 2026-07-16T16:01:36Z.
 - **pacemaker send_later** (coordinator-reported) — `trig_017ANi5hZQmyFM5tdjHeaHGv` → coordinator, reported firing 14:21Z.
-- **prior/stale twin** (coordinator-reported) — `trig_01AHRsGDBmbSDAc8AkjU2zJN` (prior seat session `session_01TEnyj8QTuxfywgYwWP75Am`, reported last fired 12:11Z; reported to have spawned a ghost wake session 14:09Z, stood down) — reported cutover-deleted this boot by the coordinator; record as **coordinator-reported deleted-pending-verify**.
+- **prior/stale twin** (coordinator-reported) — `trig_01AHRsGDBmbSDAc8AkjU2zJN` (prior seat session `session_01TEnyj8QTuxfywgYwWP75Am`, reported last fired 12:11Z; reported to have spawned a ghost wake session 14:09Z, stood down) — record as **deleted (coordinator-reported, server-confirmed; not re-verified by this seat)**.
 
 ## State
 
@@ -37,12 +37,19 @@ kit: v1.18.0
 
 ## Next-2 baton
 
-1. Graduate the **no-badge** grammar finding into `check_log` for full added/modified card-check lane parity (`check_added_card` flags a no-badge card via `has_status_badge`; `check_log` still lacks it) — and extract a shared `_status_grammar_findings(text)` helper both lanes call so gate findings can't drift between lanes. Source `src/engine/checks/check_session_log.py`; mirror `tests/test_checks.py`.
+1. **SHIPPING in PR #429** — graduate the **no-badge** grammar finding into `check_log` for full added/modified card-check lane parity + extract the shared `_status_grammar_findings(text)` helper both lanes call so gate findings can't drift between lanes (`src/engine/checks/check_session_log.py` + `tests/test_checks.py`). Merges on green after the card flip.
 2. Date-parked (unchanged): grounded-skills window ~2026-07-19..26; KL-5 gate graduation (PL-008) awaits advisory quiet period; v1.18.0 adopter wave awaits owner authorization.
 
 ## ⚑ FOR OWNER (standing set carried forward + one new ask)
 
-⚑ FINDING (coordinator-reported) — the 06:00Z 'kit-lab daily' owner business cron was NOT found anywhere in the account trigger registry (coordinator paginated ~2021 entries to exhaustion). Doctrine (docs/operations/lab-loop.md) says keep it armed across every cutover, but the coordinator reports nothing to keep — never created or deleted. Owner decision needed: recreate the kit-lab daily cron, or retire the doctrine line.
+⚑ FOR OWNER — kit-lab daily cron: recreate or retire? (A/B)
+  WHAT:   The 06:00Z 'kit-lab daily' owner-business cron is absent from the account trigger registry (coordinator-reported: ~2021 entries paginated to exhaustion 2026-07-15; no kit-named or hour-6 cron; never created or deleted — not re-verified by this stateless seat).
+  WHERE:  docs/operations/lab-loop.md asserts it "stays armed across every cutover"; the registry has nothing to keep. The doc documents NO deliberate disarm — the loop is owner-armed-only (👤 P4, console Schedule) and cannot arm itself.
+  HOW:    (A) RECREATE — owner arms a daily `0 6 * * *` UTC Schedule in the Claude Code console pointed at the kit-lab loop; (B) RETIRE — remove the "stays armed" line from lab-loop.md and mark the loop dormant-by-design pending reboot.
+  WHY:    doctrine and reality contradict; a rebooted seat reads "armed" and trusts a loop that never runs. ORDER 024 also bars the seat from re-arming routines pending the per-seat reboot go, so it will not create the cron unilaterally.
+  UNBLOCKS: honest lab-loop doctrine — either daily owner business resumes (A) or the false "armed" claim is removed (B).
+  VERIFY: (A) the Schedule shows in the console trigger list and a 06:00Z run lands; (B) `grep -n "stays armed" docs/operations/lab-loop.md` returns nothing.
+  RISK ↩️ reversible either way. RECOMMENDATION: **A — recreate** (lab-loop.md frames it as genuine daily owner business; retiring silently drops it over a transient cutover gap; re-arming is one console action gated on the reboot go). Answer: A (recreate) / B (retire).
 
 ⚑ v1.18.0 adopter-wave authorization
 WHAT: authorize the v1.18.0 adopter-upgrade wave.
