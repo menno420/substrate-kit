@@ -95,6 +95,7 @@ from engine.checks.check_seat_digest import check_seat_digest
 from engine.checks.check_setup_script import check_setup_script
 from engine.checks.check_skill_grounds import check_skill_grounds
 from engine.checks.check_archive_ready import check_archive_ready
+from engine.checks.check_card_residue import check_card_residue
 from engine.checks.check_staged_regen import check_staged_regen
 from engine.checks.check_template_sync import check_template_sync
 from engine.contextpack import generate_packs, load_pack_index
@@ -1200,6 +1201,17 @@ def cmd_check(
     # Self-gates on repos with no archive notes. Full lane only: retro
     # notes are not control-lane traffic.
     archive_ready_advisories = check_archive_ready(target, config)
+    # Session-card sham-resolution scan (KL-5 residue generalization, idea
+    # filed on the archive-probe-s3 card): advisory-only by contract, like
+    # every nudge above — a card that declares itself finished while a
+    # drafted judgment-slot hint survives marker-stripping (the S3
+    # sham-resolution class, shared fingerprint core in engine.lib.residue)
+    # is a replace-wholesale nudge, never a required-check red (UNVERIFIED
+    # per its PL-008 provenance header; graduation into the merge-blocking
+    # session-gate lanes is a later, deliberate decision). Self-gates on
+    # repos with no sessions dir. Full lane only: cards are not control-lane
+    # traffic.
+    card_residue_advisories = check_card_residue(target, config)
     # Seat-digest drift guard (grounded-skills slice 6, §8 Q2=B):
     # advisory-only by contract, like every nudge above — a planted
     # docs/seat-digest.md whose bytes differ from a fresh render of its
@@ -1678,6 +1690,28 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=archive_ready_advisories,
+        )
+    if card_residue_advisories and not status_only:
+        # Same warn-only contract as the advisories above (KL-5 residue
+        # generalization, advisory-first mirroring the S4 introduction): a
+        # sham-resolved session card — drafted hint text surviving with its
+        # [[fill:]] markers stripped — is surfaced + telemetry-recorded,
+        # never counted toward the exit code — the checker is UNVERIFIED
+        # (PL-008 header) and the fix is replacing each surviving hint
+        # wholesale with genuine session text, not a locked door.
+        _emit(
+            f"check: {len(card_residue_advisories)} session-card residue "
+            "advisory warning(s) (never exit-affecting):",
+        )
+        for finding in card_residue_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=card_residue_advisories,
         )
     if digest_advisories and not status_only:
         # Same warn-only contract as the advisories above (grounded-skills

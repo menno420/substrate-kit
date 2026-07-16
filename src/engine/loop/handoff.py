@@ -56,6 +56,16 @@ from engine.checks.check_session_log import (
 )
 from engine.lib.atomicio import atomic_write_text
 from engine.lib.config import Config
+from engine.lib.residue import (
+    CARD_HINT_DECISIONS,
+    CARD_HINT_IDEA,
+    CARD_HINT_MODEL,
+    CARD_HINT_POINTER,
+    CARD_HINT_REVIEW,
+    CARD_HINT_VERIFY_HOW,
+    CARD_HINT_VERIFY_RESULT,
+    probe_card_residue,
+)
 from engine.loop.handoff_pointer import resolved_handoff_pointer, write_handoff_pointer
 
 # State key for the session-start evidence anchor.
@@ -407,10 +417,10 @@ def _evidence_lines(evidence: SessionEvidence) -> list[str]:
     if evidence.verify_command:
         lines.append(
             f"- verify: run `{evidence.verify_command}` and record the result "
-            f"→ {_fill('verify result — the engine cannot execute commands')}",
+            f"→ {_fill(CARD_HINT_VERIFY_RESULT)}",
         )
     else:
-        lines.append(f"- verify: {_fill('how this session was verified (command + result)')}")
+        lines.append(f"- verify: {_fill(CARD_HINT_VERIFY_HOW)}")
     return lines
 
 
@@ -424,18 +434,14 @@ def _marker_line(marker: dict[str, str]) -> str | None:
     if not needle or needle == "**Status:**":
         return None
     if label == "Session idea":
-        return f"## 💡 Session idea\n\n{_fill('one idea you genuinely believe in — never filler')}"
+        return f"## 💡 Session idea\n\n{_fill(CARD_HINT_IDEA)}"
     if label == "Previous-session review":
-        return (
-            "## ⟲ Previous-session review\n\n"
-            f"{_fill('one genuine remark on the previous session + one workflow improvement')}"
-        )
+        return f"## ⟲ Previous-session review\n\n{_fill(CARD_HINT_REVIEW)}"
     if label == "Model line":
         # ONE slot, not three (run-8: the judge counted "8 unresolved slots"
         # as the skeleton's headline — every slot the session must touch is
         # friction; one edit fills the whole line).
-        hint = "model \N{MIDDLE DOT} effort \N{MIDDLE DOT} task-class (Q-0248 taxonomy)"
-        return f"- **\N{BAR CHART} Model:** {_fill(hint)}"
+        return f"- **\N{BAR CHART} Model:** {_fill(CARD_HINT_MODEL)}"
     return f"- {needle} {_fill(label or 'resolve this marker')}"
 
 
@@ -459,8 +465,8 @@ def draft_close_out(
         "",
         "**Judgment (the half only the session knows — resolve every slot):**",
         "",
-        f"- Decisions made: {_fill('decisions taken this session, or none')}",
-        f"- Next session should know: {_fill('the handoff pointer — where to pick up')}",
+        f"- Decisions made: {_fill(CARD_HINT_DECISIONS)}",
+        f"- Next session should know: {_fill(CARD_HINT_POINTER)}",
     ]
     for marker in markers or []:
         line = _marker_line(marker)
@@ -559,6 +565,19 @@ def _draft_advisories(root: Path, config: Config, backend: Any) -> list[str]:
                 return [
                     f"auto-draft in {card.name}: {slots} [[fill:]] slot(s) still "
                     "unresolved — the card counts drafted, not completed",
+                ]
+            # Zero slots but a drafted hint survives marker-stripping: the
+            # sham-resolution class (KL-5 wholesale-replacement semantics,
+            # the S3 archive verdict applied to the card surface). Report,
+            # never touch — same contract as ensure_archive_draft.
+            guilty = probe_card_residue(text)
+            if guilty:
+                return [
+                    f"auto-draft in {card.name}: zero [[fill:]] slots remain "
+                    "but drafted hint text survives in judgment slot(s): "
+                    f"{', '.join(guilty)} — stripping the markers around a "
+                    "hint is not a resolution; replace each surviving hint "
+                    "wholesale with genuine session text",
                 ]
             return []
         if not status_in_progress(text):

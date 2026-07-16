@@ -34,6 +34,12 @@ MODULE_ORDER = (
     "lib/state.py",
     "lib/guardrail.py",
     "lib/modes.py",
+    # Before checks/check_session_log.py's siblings and loop/handoff.py /
+    # loop/archive.py: the shared wholesale-replacement residue core (KL-5
+    # generalization of the S3 archive probe) + the canonical card
+    # judgment-slot hints both drafters and checkers consume. Pure stdlib,
+    # no engine references.
+    "lib/residue.py",
     # Before hooks/stop_check.py (the ORDER 022 merged-head push guard's
     # ancestry primitive). Engine-shipped port of scripts/_git_truth.py —
     # pure stdlib, no engine references; parity-pinned by tests.
@@ -52,6 +58,11 @@ MODULE_ORDER = (
     # check_session_log.py (the completeness gate it reuses): the 📊 Model
     # payload lint (idea model-line-payload-lint-advisory-2026-07-11).
     "checks/check_model_line.py",
+    # After check_session_log.py (reuses unresolved_fill_count +
+    # status_in_progress) and lib/residue.py (the shared fingerprint core):
+    # the session-card sham-resolution advisory (KL-5 residue
+    # generalization).
+    "checks/check_card_residue.py",
     "checks/check_namespace.py",
     "checks/check_seam_authority.py",
     "checks/check_orientation_budget.py",

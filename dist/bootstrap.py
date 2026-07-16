@@ -727,6 +727,161 @@ def active_practices(
     unlocked = 1 + sessions // interval
     return list(GUIDED_ROLLOUT[:unlocked])
 
+# --- engine/lib/residue.py ---
+"""Shared wholesale-replacement residue guard for KL-5 drafted surfaces.
+
+Why + provenance: the KL-5 generalization of S3's archive-note residue probe
+(idea filed on the archive-probe-s3 session card, PR #414). Every KL-5
+drafted surface — the auto-drafted session card (``loop/handoff.py``), the
+archive-ready note (``loop/archive.py``), and any future ``ensure_draft``
+sibling — shares the same sham corridor: completeness is counted by
+``[[fill:]]`` tokens, so a surface whose slots were "resolved" by stripping
+the markers while keeping the drafted default/hint text in place *looks*
+done while carrying no session knowledge at all. S3 built the fingerprint
+answer for archive notes; this module lifts the mechanism into a shared,
+surface-agnostic seam so every drafted surface points at ONE implementation
+(the S4 rule — "reused verbatim; no second fingerprint implementation" —
+applied at lib level).
+
+The mechanism (unchanged from S3): a guarded body is fingerprinted as
+whitespace-normalized word shingles (:data:`RESIDUE_SHINGLE_WORDS`
+consecutive words — long enough that genuine session text cannot collide
+with drafted instruction text by accident, short enough that keeping even
+one full default line still trips the guard); any shingle surviving in the
+probed text means the slot was NOT wholesale-replaced. A body still wrapped
+in its intact ``[[fill: …]]`` markers is *unresolved*, not residue — the
+fill-token count owns that report.
+
+This module also owns the canonical session-card judgment-slot hints
+(:data:`CARD_GUARDED_HINTS`): ``loop/handoff.py`` draws its ``_fill()``
+hints from these constants, so the drafted text and the fingerprints can
+never drift apart (one source, the same no-second-copy rule the archive
+probe applies by extracting bodies from the shipped template).
+
+Layering: pure stdlib, no engine imports — ``lib/`` sits below ``checks/``
+and ``loop/``, so both the checkers and the drafters may import from here.
+:data:`RESIDUE_FILL_TOKEN` mirrors ``checks.check_session_log.
+DRAFT_FILL_TOKEN`` (which this module must not import — checks/ sits above
+lib/); ``tests/test_residue.py`` pins the two constants equal, the same
+mirror-pin contract ``AUTO_DRAFT_MARKER`` already uses.
+"""
+
+
+
+# Mirror of ``checks.check_session_log.DRAFT_FILL_TOKEN`` — pinned equal by
+# tests/test_residue.py (lib/ must not import checks/).
+RESIDUE_FILL_TOKEN = "[[fill:"
+
+# Shingle window: runs of this many whitespace-normalized words fingerprint
+# a guarded body (the S3 calibration, unchanged — see module docstring).
+RESIDUE_SHINGLE_WORDS = 8
+
+# Inline code spans + fenced blocks are stripped before probing a prose
+# surface: text that *quotes* a drafted hint (session cards about the draft
+# mechanism legitimately do, in backticks or fences) is not residue. Mirrors
+# of ``checks.check_session_log._CODE_SPAN_RE`` / ``_FENCE_RE`` — pinned
+# pattern-equal by tests/test_residue.py, same reason as the token above.
+_RESIDUE_CODE_SPAN_RE = re.compile(r"`[^`\n]*`")
+_RESIDUE_FENCE_RE = re.compile(r"^```.*?^```", re.MULTILINE | re.DOTALL)
+
+
+def strip_code_regions(text: str) -> str:
+    """Return ``text`` with fenced blocks and inline code spans removed."""
+    return _RESIDUE_CODE_SPAN_RE.sub("", _RESIDUE_FENCE_RE.sub("", text))
+
+
+def residue_normalize_ws(text: str) -> str:
+    """Collapse all whitespace runs to single spaces (re-wrap-proof)."""
+    return " ".join(text.split())
+
+
+def residue_shingles(body: str, words: int = RESIDUE_SHINGLE_WORDS) -> set[str]:
+    """Word-run fingerprints of a guarded body, whitespace-normalized.
+
+    A body shorter than the window fingerprints as one whole-body shingle;
+    an empty/whitespace-only body fingerprints as nothing (never matches).
+    """
+    tokens = residue_normalize_ws(body).split(" ")
+    if tokens == [""]:
+        return set()
+    if len(tokens) <= words:
+        return {" ".join(tokens)}
+    return {" ".join(tokens[i : i + words]) for i in range(len(tokens) - words + 1)}
+
+
+def probe_residue(
+    text: str,
+    guarded: Sequence[tuple[str, str]],
+    *,
+    fill_token: str = RESIDUE_FILL_TOKEN,
+    shingle_words: int = RESIDUE_SHINGLE_WORDS,
+) -> list[str]:
+    """Return the names of guarded bodies whose default text survives in ``text``.
+
+    ``guarded`` is ``(name, body)`` pairs — the body is the drafted default /
+    hint text between the ``[[fill:`` and ``]]`` markers. Empty list = every
+    guarded body was wholesale-replaced (or still sits inside its intact
+    markers, which the fill-token count already reports as *unresolved* — a
+    marker-carrying slot is never residue). Callers own the finding message;
+    this core reports guilty names only, in ``guarded`` order.
+    """
+    normalized = residue_normalize_ws(text)
+    guilty: list[str] = []
+    for name, body in guarded:
+        # Intact-slot skip: the slot may have been drafted with or without a
+        # space after the token — both normalize distinctly, so check both.
+        intact_forms = {
+            residue_normalize_ws(f"{fill_token}{body}]]"),
+            residue_normalize_ws(f"{fill_token} {body}]]"),
+        }
+        if any(form and form in normalized for form in intact_forms):
+            continue
+        if any(s in normalized for s in residue_shingles(body, shingle_words)):
+            guilty.append(name)
+    return guilty
+
+
+# ---------------------------------------------------------------------------
+# The session-card surface — canonical judgment-slot hints
+# ---------------------------------------------------------------------------
+
+# The drafted judgment hints ``loop/handoff.py`` writes into every card
+# draft, named. Handoff imports these constants for its ``_fill()`` calls,
+# so the fingerprints track the drafted text without a second copy to
+# drift (tests/test_residue.py additionally pins each hint into a real
+# ``draft_card`` render). The generic host-marker fallback hint
+# ("resolve this marker") is deliberately NOT guarded: it is three common
+# words — too short to fingerprint without false positives.
+CARD_HINT_VERIFY_RESULT = "verify result — the engine cannot execute commands"
+CARD_HINT_VERIFY_HOW = "how this session was verified (command + result)"
+CARD_HINT_DECISIONS = "decisions taken this session, or none"
+CARD_HINT_POINTER = "the handoff pointer — where to pick up"
+CARD_HINT_IDEA = "one idea you genuinely believe in — never filler"
+CARD_HINT_REVIEW = (
+    "one genuine remark on the previous session + one workflow improvement"
+)
+CARD_HINT_MODEL = "model \N{MIDDLE DOT} effort \N{MIDDLE DOT} task-class (Q-0248 taxonomy)"
+
+CARD_GUARDED_HINTS: tuple[tuple[str, str], ...] = (
+    ("verify result", CARD_HINT_VERIFY_RESULT),
+    ("verify command+result", CARD_HINT_VERIFY_HOW),
+    ("decisions", CARD_HINT_DECISIONS),
+    ("handoff pointer", CARD_HINT_POINTER),
+    ("session idea", CARD_HINT_IDEA),
+    ("previous-session review", CARD_HINT_REVIEW),
+    ("model line", CARD_HINT_MODEL),
+)
+
+
+def probe_card_residue(text: str) -> list[str]:
+    """Return guilty judgment-slot names for one session card's text.
+
+    Code spans and fenced blocks are stripped first (cards that *discuss*
+    the draft mechanism quote hints in backticks — prose mentions are not
+    residue), then the card is probed against every canonical drafted hint.
+    """
+    return probe_residue(strip_code_regions(text), CARD_GUARDED_HINTS)
+
 # --- engine/lib/git_truth.py ---
 """Safe git-ancestry answers for engine code (ORDER 022 push guard).
 
@@ -2722,6 +2877,83 @@ def check_model_line(
             Finding(path=rel, kind=kind, message=message)
             for kind, message in model_line_findings(text)
         )
+    return findings
+
+# --- engine/checks/check_card_residue.py ---
+"""check_card_residue — session-card sham-resolution (residue) advisory.
+
+Why + provenance: the KL-5 generalization of the archive-note residue guard
+(S3 ``probe_slot_residue``, PR #414; S4 ``check_archive_ready``, PR #416 —
+idea filed on the archive-probe-s3 session card). Session cards have the
+identical sham corridor, and it matters MORE here: the session gate
+(``check_session_log`` via the kit-quality workflow) counts ``[[fill:]]``
+tokens only, so a card whose slots were "resolved" by stripping the markers
+while keeping the drafted hint text in place currently passes the
+MERGE-BLOCKING gate — a looks-done-isn't card buys a merge. This checker
+puts the S3 verdict on every ``check --strict`` run for the card surface,
+via the shared fingerprint core (``engine.lib.residue`` — one
+implementation, no second copy; the S4 rule applied at lib level).
+
+Added 2026-07-16. Reliability (PL-008): UNVERIFIED — confirm its findings
+against ground truth a few times across sessions before trusting it;
+**delete this if it proves unreliable over multiple sessions.**
+
+Posture is **advisory-only, never exit-affecting** — deliberately mirroring
+how S4 introduced the archive advisory. Wiring residue into the
+merge-blocking gate lanes themselves is a LATER, deliberate graduation:
+an unverified fingerprint heuristic must not gain merge-blocking power on
+day one (a false positive would brick a genuine session's merge), and the
+advisory period is what earns that trust.
+
+What fires — one ``session-card-slot-residue`` finding per session card
+that *declares itself finished* (Status not in-progress/drafted) while a
+drafted judgment-slot hint survives with its markers stripped. Cards still
+carrying ``[[fill:]]`` slots are skipped (the gate's drafted-vs-completed
+report owns that state), as are in-progress cards (judged only at
+completion — the born-red HOLD owns the mid-flight state) and README.md.
+Code spans and fences are stripped before probing (cards that *discuss*
+the draft mechanism quote hints in backticks — prose mentions are not
+residue). Self-gating: no sessions dir → the scan contributes nothing.
+Every card is scanned, not just the newest — an old sham card is exactly
+the leak worth surfacing.
+"""
+
+
+
+
+
+def check_card_residue(target: Path, config: Any) -> list[Finding]:
+    """Return sham-resolved-card findings for ``target`` (empty = ok)."""
+    sessions = target / config.sessions_dir
+    if not sessions.is_dir():
+        return []
+    findings: list[Finding] = []
+    for card in sorted(sessions.glob("*.md")):
+        if card.name == "README.md":
+            continue
+        try:
+            text = card.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if unresolved_fill_count(text):
+            continue  # drafted — the gate's slot count owns that report
+        if status_in_progress(text):
+            continue  # mid-flight — judged only once the card declares done
+        guilty = probe_card_residue(text)
+        if guilty:
+            findings.append(
+                Finding(
+                    f"{config.sessions_dir}/{card.name}",
+                    "session-card-slot-residue",
+                    "zero [[fill:]] slots remain but drafted hint text "
+                    f"survives in judgment slot(s): {', '.join(guilty)} — "
+                    "the card is NOT a completed close-out (KL-5 "
+                    "wholesale-replacement semantics); stripping the "
+                    "[[fill:]] markers around a drafted hint is not a "
+                    "resolution — replace each surviving hint wholesale "
+                    "with genuine session text.",
+                ),
+            )
     return findings
 
 # --- engine/checks/check_namespace.py ---
@@ -7242,10 +7474,10 @@ def _evidence_lines(evidence: SessionEvidence) -> list[str]:
     if evidence.verify_command:
         lines.append(
             f"- verify: run `{evidence.verify_command}` and record the result "
-            f"→ {_fill('verify result — the engine cannot execute commands')}",
+            f"→ {_fill(CARD_HINT_VERIFY_RESULT)}",
         )
     else:
-        lines.append(f"- verify: {_fill('how this session was verified (command + result)')}")
+        lines.append(f"- verify: {_fill(CARD_HINT_VERIFY_HOW)}")
     return lines
 
 
@@ -7259,18 +7491,14 @@ def _marker_line(marker: dict[str, str]) -> str | None:
     if not needle or needle == "**Status:**":
         return None
     if label == "Session idea":
-        return f"## 💡 Session idea\n\n{_fill('one idea you genuinely believe in — never filler')}"
+        return f"## 💡 Session idea\n\n{_fill(CARD_HINT_IDEA)}"
     if label == "Previous-session review":
-        return (
-            "## ⟲ Previous-session review\n\n"
-            f"{_fill('one genuine remark on the previous session + one workflow improvement')}"
-        )
+        return f"## ⟲ Previous-session review\n\n{_fill(CARD_HINT_REVIEW)}"
     if label == "Model line":
         # ONE slot, not three (run-8: the judge counted "8 unresolved slots"
         # as the skeleton's headline — every slot the session must touch is
         # friction; one edit fills the whole line).
-        hint = "model \N{MIDDLE DOT} effort \N{MIDDLE DOT} task-class (Q-0248 taxonomy)"
-        return f"- **\N{BAR CHART} Model:** {_fill(hint)}"
+        return f"- **\N{BAR CHART} Model:** {_fill(CARD_HINT_MODEL)}"
     return f"- {needle} {_fill(label or 'resolve this marker')}"
 
 
@@ -7294,8 +7522,8 @@ def draft_close_out(
         "",
         "**Judgment (the half only the session knows — resolve every slot):**",
         "",
-        f"- Decisions made: {_fill('decisions taken this session, or none')}",
-        f"- Next session should know: {_fill('the handoff pointer — where to pick up')}",
+        f"- Decisions made: {_fill(CARD_HINT_DECISIONS)}",
+        f"- Next session should know: {_fill(CARD_HINT_POINTER)}",
     ]
     for marker in markers or []:
         line = _marker_line(marker)
@@ -7394,6 +7622,19 @@ def _draft_advisories(root: Path, config: Config, backend: Any) -> list[str]:
                 return [
                     f"auto-draft in {card.name}: {slots} [[fill:]] slot(s) still "
                     "unresolved — the card counts drafted, not completed",
+                ]
+            # Zero slots but a drafted hint survives marker-stripping: the
+            # sham-resolution class (KL-5 wholesale-replacement semantics,
+            # the S3 archive verdict applied to the card surface). Report,
+            # never touch — same contract as ensure_archive_draft.
+            guilty = probe_card_residue(text)
+            if guilty:
+                return [
+                    f"auto-draft in {card.name}: zero [[fill:]] slots remain "
+                    "but drafted hint text survives in judgment slot(s): "
+                    f"{', '.join(guilty)} — stripping the markers around a "
+                    "hint is not a resolution; replace each surviving hint "
+                    "wholesale with genuine session text",
                 ]
             return []
         if not status_in_progress(text):
@@ -11758,13 +11999,6 @@ _ARCHIVE_SLOT_RE = re.compile(r"\[\[fill:.*?\]\]", re.DOTALL)
 _FLAG_RENDER_CAP = 20
 _FLAG_LINE_CAP = 120
 _PAYLOAD_RENDER_CAP = 30
-# Residue fingerprinting (S3): a guarded slot body is shingled into runs of
-# this many whitespace-normalized words; ANY shingle surviving in a
-# zero-slot note means the slot was not wholesale-replaced. Eight consecutive
-# identical words is long enough that a genuine probe output cannot collide
-# with the template's instruction text by accident, and short enough that
-# keeping even one full default line still trips the guard.
-_ARCHIVE_SHINGLE_WORDS = 8
 
 
 def _judgment_slot(hint: str) -> str:
@@ -11933,11 +12167,6 @@ def draft_archive_note(root: Path, config: Config, day: str | None = None) -> st
 # ---------------------------------------------------------------------------
 
 
-def _archive_normalize_ws(text: str) -> str:
-    """Collapse all whitespace runs to single spaces (re-wrap-proof)."""
-    return " ".join(text.split())
-
-
 def _archive_guarded_bodies(template: str) -> list[tuple[str, str]]:
     """Return ``(name, inner body)`` for each doctrine-guarded template slot.
 
@@ -11960,15 +12189,6 @@ def _archive_guarded_bodies(template: str) -> list[tuple[str, str]]:
     return guarded
 
 
-def _archive_shingles(body: str) -> set[str]:
-    """Word-run fingerprints of a guarded slot body, whitespace-normalized."""
-    words = _archive_normalize_ws(body).split(" ")
-    n = _ARCHIVE_SHINGLE_WORDS
-    if len(words) <= n:
-        return {" ".join(words)} if words else set()
-    return {" ".join(words[i : i + n]) for i in range(len(words) - n + 1)}
-
-
 def probe_slot_residue(text: str, template: str | None = None) -> list[str]:
     """Return residue findings — guarded default text surviving in ``text``.
 
@@ -11977,24 +12197,23 @@ def probe_slot_residue(text: str, template: str | None = None) -> list[str]:
     finding per guarded slot whose templated instruction text survives with
     the markers stripped — the sham-resolution a record-shaped default
     produces. S4's ``check --strict`` advisory reuses this seam.
+
+    The fingerprint core lives in ``engine.lib.residue`` since the KL-5
+    generalization (shingle window, whitespace normalization, intact-slot
+    skip — behavior identical to the original S3 in-module implementation);
+    this function keeps the archive surface's guarded-body extraction and
+    finding wording.
     """
     if template is None:
         template = load_templates()[ARCHIVE_TEMPLATE_NAME]
-    normalized = _archive_normalize_ws(text)
-    findings: list[str] = []
-    for name, body in _archive_guarded_bodies(template):
-        # A slot still carrying its markers is "unresolved", not residue —
-        # the [[fill:]] count reports it; residue is marker-stripped default.
-        if _archive_normalize_ws(f"{DRAFT_FILL_TOKEN}{body}]]") in normalized:
-            continue
-        if any(s in normalized for s in _archive_shingles(body)):
-            findings.append(
-                f"{name}: templated default text survives — this slot "
-                "resolves ONLY by wholesale replacement with freshly probed "
-                "output; stripping the [[fill:]] markers around the "
-                "template's instruction text is not a resolution."
-            )
-    return findings
+    guilty = probe_residue(text, _archive_guarded_bodies(template))
+    return [
+        f"{name}: templated default text survives — this slot "
+        "resolves ONLY by wholesale replacement with freshly probed "
+        "output; stripping the [[fill:]] markers around the "
+        "template's instruction text is not a resolution."
+        for name in guilty
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -20149,6 +20368,17 @@ def cmd_check(
     # Self-gates on repos with no archive notes. Full lane only: retro
     # notes are not control-lane traffic.
     archive_ready_advisories = check_archive_ready(target, config)
+    # Session-card sham-resolution scan (KL-5 residue generalization, idea
+    # filed on the archive-probe-s3 card): advisory-only by contract, like
+    # every nudge above — a card that declares itself finished while a
+    # drafted judgment-slot hint survives marker-stripping (the S3
+    # sham-resolution class, shared fingerprint core in engine.lib.residue)
+    # is a replace-wholesale nudge, never a required-check red (UNVERIFIED
+    # per its PL-008 provenance header; graduation into the merge-blocking
+    # session-gate lanes is a later, deliberate decision). Self-gates on
+    # repos with no sessions dir. Full lane only: cards are not control-lane
+    # traffic.
+    card_residue_advisories = check_card_residue(target, config)
     # Seat-digest drift guard (grounded-skills slice 6, §8 Q2=B):
     # advisory-only by contract, like every nudge above — a planted
     # docs/seat-digest.md whose bytes differ from a fresh render of its
@@ -20627,6 +20857,28 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=archive_ready_advisories,
+        )
+    if card_residue_advisories and not status_only:
+        # Same warn-only contract as the advisories above (KL-5 residue
+        # generalization, advisory-first mirroring the S4 introduction): a
+        # sham-resolved session card — drafted hint text surviving with its
+        # [[fill:]] markers stripped — is surfaced + telemetry-recorded,
+        # never counted toward the exit code — the checker is UNVERIFIED
+        # (PL-008 header) and the fix is replacing each surviving hint
+        # wholesale with genuine session text, not a locked door.
+        _emit(
+            f"check: {len(card_residue_advisories)} session-card residue "
+            "advisory warning(s) (never exit-affecting):",
+        )
+        for finding in card_residue_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=card_residue_advisories,
         )
     if digest_advisories and not status_only:
         # Same warn-only contract as the advisories above (grounded-skills

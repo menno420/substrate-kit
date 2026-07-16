@@ -56,6 +56,7 @@ from engine.checks.check_session_log import DRAFT_FILL_TOKEN
 from engine.checks.check_status_current import heartbeat_relpaths
 from engine.lib.atomicio import atomic_write_text
 from engine.lib.config import Config
+from engine.lib.residue import probe_residue
 from engine.loop.handoff import DRAFT_MARKER
 from engine.render import load_templates
 
@@ -79,13 +80,6 @@ _ARCHIVE_SLOT_RE = re.compile(r"\[\[fill:.*?\]\]", re.DOTALL)
 _FLAG_RENDER_CAP = 20
 _FLAG_LINE_CAP = 120
 _PAYLOAD_RENDER_CAP = 30
-# Residue fingerprinting (S3): a guarded slot body is shingled into runs of
-# this many whitespace-normalized words; ANY shingle surviving in a
-# zero-slot note means the slot was not wholesale-replaced. Eight consecutive
-# identical words is long enough that a genuine probe output cannot collide
-# with the template's instruction text by accident, and short enough that
-# keeping even one full default line still trips the guard.
-_ARCHIVE_SHINGLE_WORDS = 8
 
 
 def _judgment_slot(hint: str) -> str:
@@ -254,11 +248,6 @@ def draft_archive_note(root: Path, config: Config, day: str | None = None) -> st
 # ---------------------------------------------------------------------------
 
 
-def _archive_normalize_ws(text: str) -> str:
-    """Collapse all whitespace runs to single spaces (re-wrap-proof)."""
-    return " ".join(text.split())
-
-
 def _archive_guarded_bodies(template: str) -> list[tuple[str, str]]:
     """Return ``(name, inner body)`` for each doctrine-guarded template slot.
 
@@ -281,15 +270,6 @@ def _archive_guarded_bodies(template: str) -> list[tuple[str, str]]:
     return guarded
 
 
-def _archive_shingles(body: str) -> set[str]:
-    """Word-run fingerprints of a guarded slot body, whitespace-normalized."""
-    words = _archive_normalize_ws(body).split(" ")
-    n = _ARCHIVE_SHINGLE_WORDS
-    if len(words) <= n:
-        return {" ".join(words)} if words else set()
-    return {" ".join(words[i : i + n]) for i in range(len(words) - n + 1)}
-
-
 def probe_slot_residue(text: str, template: str | None = None) -> list[str]:
     """Return residue findings — guarded default text surviving in ``text``.
 
@@ -298,24 +278,23 @@ def probe_slot_residue(text: str, template: str | None = None) -> list[str]:
     finding per guarded slot whose templated instruction text survives with
     the markers stripped — the sham-resolution a record-shaped default
     produces. S4's ``check --strict`` advisory reuses this seam.
+
+    The fingerprint core lives in ``engine.lib.residue`` since the KL-5
+    generalization (shingle window, whitespace normalization, intact-slot
+    skip — behavior identical to the original S3 in-module implementation);
+    this function keeps the archive surface's guarded-body extraction and
+    finding wording.
     """
     if template is None:
         template = load_templates()[ARCHIVE_TEMPLATE_NAME]
-    normalized = _archive_normalize_ws(text)
-    findings: list[str] = []
-    for name, body in _archive_guarded_bodies(template):
-        # A slot still carrying its markers is "unresolved", not residue —
-        # the [[fill:]] count reports it; residue is marker-stripped default.
-        if _archive_normalize_ws(f"{DRAFT_FILL_TOKEN}{body}]]") in normalized:
-            continue
-        if any(s in normalized for s in _archive_shingles(body)):
-            findings.append(
-                f"{name}: templated default text survives — this slot "
-                "resolves ONLY by wholesale replacement with freshly probed "
-                "output; stripping the [[fill:]] markers around the "
-                "template's instruction text is not a resolution."
-            )
-    return findings
+    guilty = probe_residue(text, _archive_guarded_bodies(template))
+    return [
+        f"{name}: templated default text survives — this slot "
+        "resolves ONLY by wholesale replacement with freshly probed "
+        "output; stripping the [[fill:]] markers around the "
+        "template's instruction text is not a resolution."
+        for name in guilty
+    ]
 
 
 # ---------------------------------------------------------------------------

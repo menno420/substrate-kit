@@ -15,6 +15,29 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **KL-5 residue generalization — shared wholesale-replacement guard +
+  session-card sham-resolution advisory** (idea filed on the
+  archive-probe-s3 session card, PR #414): the S3 archive-note residue
+  fingerprint is lifted into a shared, surface-agnostic core
+  (`src/engine/lib/residue.py` — whitespace-normalized word shingles,
+  intact-slot skip, one implementation for every KL-5 drafted surface;
+  `probe_slot_residue` now delegates to it, findings unchanged) and
+  pointed at the session-card surface, where the sham corridor is
+  merge-blocking: the session gate counts `[[fill:]]` tokens only, so a
+  card whose drafted hints were marker-stripped but kept currently passes
+  it. New `src/engine/checks/check_card_residue.py` emits one
+  `session-card-slot-residue` advisory per finished-declaring card with
+  surviving hint text — advisory-only, never exit-affecting (PL-008
+  unverified posture, mirroring the S4 introduction; graduation into the
+  gate lanes is a later, deliberate decision) — and
+  `ensure_draft` reports the same verdict at the Stop-hook/`session-close`
+  seam. The card judgment-slot hints are now canonical constants in the
+  shared lib (`CARD_GUARDED_HINTS`), drawn by `loop/handoff.py` at draft
+  time and pinned into a real draft render by tests, so drafted text and
+  fingerprints cannot drift apart.
+
 ## [1.18.0] - 2026-07-16
 
 <!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
