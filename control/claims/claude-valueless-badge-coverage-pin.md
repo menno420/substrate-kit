@@ -1,0 +1,1 @@
+- `claude/valueless-badge-coverage-pin` · valueless Status-badge grammar finding (added-card lane) + residue-surface coverage-pin test + heartbeat wholesale rewrite · files: src/engine/checks/check_session_log.py, src/engine/lib/residue.py, src/engine/loop/archive.py, tests/, dist/bootstrap.py, CHANGELOG.md, control/status.md · 2026-07-16T03:44Z
