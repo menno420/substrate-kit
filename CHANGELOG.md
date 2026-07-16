@@ -17,6 +17,21 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Archive-ready close-out S1 — checklist doctrine + note template**
+  (docs-only slice per
+  `docs/planning/2026-07-15-archive-ready-close-out-plan.md` §5):
+  `src/engine/templates/archive-ready.md.tmpl` carries the fixed-shape
+  archive note (true state · PR/claims/branch disposition · routine state ·
+  unreleased-payload park · ⚑ owner-actions · resume path · chat-only
+  confirmation) in the KL-5 `[[fill:]]` slot grammar, with routine state
+  marked REQUIRES-PROBE (wholesale-replacement-only — the realized
+  stale-routine-record failure, plan §4.2) and the confirmation slot never
+  drafted complete; `docs/operations/archive-ready-close-out.md` is the
+  binding checklist doctrine (ritual, slot rules, engine⇄session division
+  of labor), linked from the operations index. No engine code — the
+  template ships unplanted/unwired until S2 (`archive-prep` draft verb)
+  consumes it; dist regenerated for the template embed only.
+
 - **Answer-time gate-safety advisory for `verify_command`** (idea
   `answer-time-gate-safety-advisory-2026-07-15` — the #405 card's 💡: a
   prose-y verify answer records silently and its gate-unsafety surfaces
