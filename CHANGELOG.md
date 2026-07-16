@@ -15,6 +15,10 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.18.0] - 2026-07-16
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
 ### Added
 
 - **Grounded-skills measurement harness** (PR #386, kit-internal — entry
