@@ -2667,6 +2667,18 @@ BORN_RED_HOLD_MESSAGE = (
 )
 
 
+# The no-badge Status grammar finding (a session card carries a Status badge
+# LINE from its first commit — born-red exempts the badge's VALUE, never its
+# presence). Shipped for the added-card lane and graduated into ``check_log``
+# — the modified-card lane — for full lane parity. Both lanes emit this exact
+# string via :func:`_status_grammar_findings`; keep it a single constant.
+NO_BADGE_MESSAGE = (
+    "a Status badge line (expected `> **Status:**`) — a session card "
+    "carries one from its first commit; born-red exempts the badge's "
+    "VALUE, never its presence"
+)
+
+
 # The valueless Status-badge grammar finding (the #422 card's filed 💡,
 # shipped for the added-card lane in PR #426 and graduated into ``check_log``
 # — the modified-card lane — here). Both lanes emit this exact string so a
@@ -2679,6 +2691,22 @@ VALUELESS_BADGE_MESSAGE = (
     "a valueless badge claims nothing, so it can neither hold as "
     "born-red nor be graded as a completed close-out"
 )
+
+
+def _status_grammar_findings(text: str) -> list[str]:
+    """Status-badge grammar shared by both card-check lanes.
+
+    A well-formed session card carries a Status badge line, and that badge
+    carries a value. Both are grammar rules — about the badge's *presence*,
+    not its born-red *value* — so the added-card and modified-card lanes must
+    enforce them identically, or a card malformed in one lane slips through
+    the other. Returns the first grammar finding (at most one), or [] when clean.
+    """
+    if not has_status_badge(text):
+        return [NO_BADGE_MESSAGE]
+    if not _status_badge_value(text):
+        return [VALUELESS_BADGE_MESSAGE]
+    return []
 
 
 def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
@@ -2721,18 +2749,14 @@ def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[s
         text = path.read_text(encoding="utf-8")
     except OSError:
         return ["an unreadable added card (cannot grammar-check)"]
-    if not has_status_badge(text):
-        return [
-            "a Status badge line (expected `> **Status:**`) — a session card "
-            "carries one from its first commit; born-red exempts the badge's "
-            "VALUE, never its presence",
-        ]
+    # The no-badge and valueless-badge grammar findings are shared with the
+    # modified-card lane (:func:`_status_grammar_findings`) so a card-grammar
+    # finding can never live in one lane and not the other. Either returns at
+    # most one finding and HOLDS the added-card lane.
+    grammar = _status_grammar_findings(text)
+    if grammar:
+        return grammar
     value = _status_badge_value(text)
-    # ``not value`` catches both parse shapes of a valueless badge: ``None``
-    # (nothing after the colon) and ``""`` (whitespace/emphasis-only
-    # remainder — the bare-badge fallback strips it to empty).
-    if not value:
-        return [VALUELESS_BADGE_MESSAGE]
     if _value_declares(value, IN_PROGRESS_TOKENS):
         return [BORN_RED_HOLD_MESSAGE]
     return check_log(path, markers)
@@ -2759,14 +2783,14 @@ def check_log(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
         )
     if status_in_progress(text):
         missing.append("a completed Status (badge still says in-progress)")
-    if not _status_badge_value(text):
-        # A modified card whose Status badge declares no value is the same
-        # valueless grammar the added-card lane blocks: ``status_in_progress``
-        # returns False for it (no value → not in-progress), so without this
-        # branch a valueless modified card with all markers present passes
-        # clean — the symmetric false-green PR #426 closed only on the
-        # added-card lane.
-        missing.append(VALUELESS_BADGE_MESSAGE)
+    # Shared card-grammar findings (no-badge / valueless), the same the
+    # added-card lane blocks — a card whose Status badge line is absent, or
+    # present but valueless, makes ``status_in_progress`` False (no value →
+    # not in-progress), so without this a card malformed in its badge grammar
+    # with all markers present passes ``check_log`` clean. Extracted into
+    # :func:`_status_grammar_findings` so the two lanes cannot drift (the
+    # no-badge half graduated here; the valueless half is the #426 close).
+    missing.extend(_status_grammar_findings(text))
     return missing
 
 # --- engine/checks/check_model_line.py ---
