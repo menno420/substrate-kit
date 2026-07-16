@@ -1,1 +1,0 @@
-- branch: claude/registry-refresh-2026-07-16 · scope: regenerate docs/adopters.md from live discovery (registry truth by discovery) · files: docs/adopters.md, .sessions/, control/ · date: 2026-07-16
