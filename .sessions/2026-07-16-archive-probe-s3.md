@@ -1,8 +1,24 @@
 # Session · 2026-07-16 · archive-probe-s3
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 Intent: baton item 1 — archive-ready close-out slice S3 (REQUIRES-PROBE slot semantics: a slot type that resolves only by wholesale replacement, no templated default survives, covering routine state and the chat-only confirmation; tests prove a templated default cannot pass) per docs/planning/2026-07-15-archive-ready-close-out-plan.md §5 S3, building on S2's `ensure_archive_draft` (src/engine/loop/archive.py).
 
-- **📊 Model:** [[fill: model · effort · task-class]]
+- **📊 Model:** Claude Fable · medium · feature build
 - ⚑ Self-initiated: no — baton-named (control/status.md Next-2 item 1 at sync HEAD efec845); coordinator-dispatched worker slice, no ORDER >024, zero open PRs at orient.
+
+## What shipped (PR #414)
+
+- `src/engine/loop/archive.py` — the S3 resolve-time seam: `probe_slot_residue` extracts the doctrine-guarded slot bodies (routine-state REQUIRES-PROBE, chat-only confirmation) from the shipped template and fingerprints them as whitespace-normalized 8-word shingles (re-wrap-proof); any shingle surviving in a zero-`[[fill:]]` note means the slot was NOT wholesale-replaced. `ensure_archive_draft` now reports such a note "NOT complete (S3 resolve semantics)" with one finding per guilty slot, touches nothing, and never silently supersedes a sham note (any date) with a fresh draft. Marker-carrying slots stay the `[[fill:]]` count's report, not residue; a genuine wholesale replacement — with the template preamble (which quotes the doctrine) kept — still reads complete. Fail-open contract unchanged.
+- `tests/test_archive.py` — +7 tests (12 → 19): sham resolution (markers stripped, defaults kept) cannot pass and names both guarded slots; genuine wholesale replacement passes with preamble kept; partial sham names only the guilty slot; re-wrapped default still detected (normalization); a prior-date sham note blocks a new draft; an unresolved draft is not residue; direct `probe_slot_residue` template round-trip. The dist end-to-end test now also drives the sham path through the built artifact (re-run on a marker-stripped note asserts "NOT complete") — the S2 flat-namespace lesson applied forward; new symbols are uniquely named (`_archive_*`, `probe_slot_residue`), collision-grepped before writing.
+- Doctrine doc (`docs/operations/archive-ready-close-out.md`) — slot-rule section now states the enforcement (S3 shipped; S4/S5 remain); CHANGELOG `[Unreleased]` S3 entry; dist regenerated (byte-pin green).
+- Claim-format drift fixed on sight: this session's own claim tripped the claims-format advisory (timestamp-with-time rejected; the checker wants plain YYYY-MM-DD) — fixed in the heartbeat commit.
+- Verified at e423880: `scripts/preflight.py` 9/9 green (pytest `1671 passed, 1 skipped in 37.90s`); `dist/bootstrap.py check --strict` shows only the designed born-red HOLD (this card, pre-flip), the known staged-regen-lag ×3, and the required-unverified NOTE. Wall (verbatim, ×2): `enable_pr_auto_merge` #414 → "API rate limit already exceeded for user ID 225413533" — alternative path: the auto-merge-enabler workflow re-arms on `pull_request: synchronize`, fired by this session's own pushes.
+
+## 💡 Session idea
+
+Generalize `probe_slot_residue` into a shared wholesale-replacement guard for EVERY KL-5 drafted surface, not just archive notes: session cards drafted by `ensure_draft` (loop/handoff.py) have the identical sham corridor — a card whose `[[fill:]]` markers are stripped while the templated hint text survives passes the session gate today, because the gate counts fill tokens only. The mechanism is already surface-agnostic (template in → guarded/all slot bodies → shingle fingerprints → residue findings); lifting it to a shared lib seam and pointing the session-log checker at the card template would close the same looks-done-isn't class where it matters most (the gate is merge-blocking, so a sham card currently buys a merge). Dedup: zero hits for residue/shingle/wholesale-guard in docs/ideas/ (grepped this session; `session-gate-*` ideas cover selection and flip-race, not sham resolution).
+
+## ⟲ Previous-session review
+
+The S2 session set S3 up to be nearly frictionless: its flat-namespace bug writeup (card §"Bug found + fixed en route") read as a direct instruction — unique-prefix naming and a built-artifact drive test — and both were applied here in minutes rather than re-discovered; the baton line even named the exact seam to build on (`REQUIRES_PROBE_TOKEN already guarded at draft time; S3 adds the resolve-time check`). One genuine miss: S2's re-run advisory text already *promised* "REQUIRES-PROBE slots by wholesale replacement" while nothing enforced it — doctrine shipped ahead of its guard with no marker distinguishing prose-binding from enforced (the exact exhort-vs-enforce gap PL-007 names). Workflow improvement: when a slice ships doctrine text whose enforcement is a later slice, the advisory/doc line should carry an explicit "(enforced in S-N)" tag so a reader — or an adopter mid-wave — can tell a rule that bites from a rule that asks; the doctrine doc got exactly that treatment in this session's edit ("S3 (shipped) enforces this at resolve time").
