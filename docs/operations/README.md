@@ -12,6 +12,12 @@
 - [release-runbook.md](release-runbook.md) — the proven release recipe
   (version homes, CHANGELOG cut, dist byte-pin, release.yml dispatch,
   three-way hash verification, adopters regen).
+- [archive-ready-close-out.md](archive-ready-close-out.md) — the
+  archive-ready close-out checklist doctrine (binding): the fixed-shape
+  wrap-up ritual for a chat about to be archived, the `[[fill:]]` /
+  REQUIRES-PROBE slot rules, and the engine⇄session division of labor
+  (S1 of the 2026-07-15 plan; note template at
+  `src/engine/templates/archive-ready.md.tmpl`).
 - [grounded-skills-measurement.md](grounded-skills-measurement.md) — the
   pre-registered before/after measurement protocol for the grounded-skills
   program (frozen metrics + the turnkey `scripts/measure_grounded_skills.py`

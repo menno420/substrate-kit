@@ -131,6 +131,11 @@ _KIT_SELF_REFS: dict[str, str] = {
     "docs/program/rulings.md": "the [PL-NNN] register named by CONSTITUTION/collab",
     "docs/program/collaboration-model.md": "program doctrine named by collab template",
     "docs/adopters.md": "kit-generated adopter registry named by control templates",
+    "docs/operations/archive-ready-close-out.md": (
+        "archive-ready checklist doctrine named by archive-ready.md.tmpl "
+        "(plan S1; the template names the kit repo as the doctrine home "
+        "until S5 distributes)"
+    ),
 }
 
 # 5) Cross-repo refs: pointers into ANOTHER fleet repo, always introduced with
