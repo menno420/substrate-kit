@@ -1,14 +1,22 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-16T03:33:33Z · phase: EAP EXTENSION ACTIVE (EAP through 2026-07-21; inbox consumed 001–024; worker-slice wake 2026-07-16T03:08Z)
+updated: 2026-07-16T03:55:05Z · phase: EAP EXTENSION ACTIVE (EAP through 2026-07-21; inbox consumed 001–024; worker-slice wake 2026-07-16 — final buildable slice; backlog now date-parked)
 
-## This wake (2026-07-16 03:08Z worker session) — STATUS-BADGE VALUE-PARSE FIX + RESIDUE SURFACE SWEEP
+## This wake (2026-07-16 worker session) — VALUELESS-BADGE GRAMMAR FINDING + RESIDUE COVERAGE PIN (final buildable slice)
 
-- Wake source: coordinator-dispatched worker slice (bugs-first); hard-sync landed on 0bda967 (#421 merge); no ORDER >024 at inbox HEAD.
-- **MERGED: #422** (`claude/status-badge-value-parse`, squash `7337672`, all 4 checks green) — the #420 card's filed 💡 bug fixed at root: `status_in_progress` (the MERGE-BLOCKING session gate's card-status detection) stopped substring-matching hold tokens across the badge LINE (the auto-draft parenthetical contains "drafted", false-holding `complete` cards). Value-parsing now: shared `_status_badge_value` (backticked span via `_STATUS_VALUE_RE` preferred; bare-remainder fallback keeps `> **Status:** in progress` working) + `_value_declares` (leading-token word-boundary match). Regression pair pinned end-to-end through the added-card lane; sweep old-vs-new over all 238 `.sessions/*.md` cards: **0 flips**. Suite 1702 → 1705.
-- **OPEN: #424** (`claude/residue-uncovered-surfaces`, auto-merge armed SQUASH 2026-07-16T03:27:28Z) — baton 2(b): the archive note's S2 *evidence-judgment* hints (claims disposition · ⚑ verification · payload park) are now guarded residue surfaces via canonical constants (`ARCHIVE_EVIDENCE_HINTS`, the `CARD_GUARDED_HINTS` one-source pattern; drafter renders FROM them, probe fingerprints THEM; `ensure_archive_draft` + `check_archive_ready` inherit through the one `probe_slot_residue` seam). The sweep's other surface — adopt-planted doc `[[fill:]]` slots — investigated and settled EMPTY (no `ADOPT_PLAN` template carries the token; planted docs use `${slot}` placeholders owned by the engagement gate + `check_staged_regen`) — documented in the ops doc, nothing built, no double-reporting. Advisory posture unchanged; `check_card_residue` gate-lane graduation stays PARKED. Suite 1705 → 1709. Verified silent on the kit's own `docs/retro/` notes.
-- **OPEN: #423** (claim prune for #422's claim, auto-merge armed 2026-07-16T03:26:36Z — the #415/#417/#421 pattern).
-- Verified at bf03fc3: `scripts/preflight.py` 9/9 PASS (pytest `1709 passed, 1 skipped`); dist byte-pin green (1091548 bytes); `dist/bootstrap.py check --strict` pre-flip = designed born-red HOLD (own card) + known staged-regen-lag ×3 + required-unverified NOTE only.
-- Merged this calendar day (earlier wakes): #412 S1 · #413 S2 · #414 S3 · #415 · #416 S4 · #417 · #418 v1.18.0 bump · #419 close-out · #420 KL-5 residue generalization · #421 · #422 value-parse fix. Release v1.18.0 out (run 29466068874, sha256 three-way PASS — full record @ 13a0b44 history).
+- Wake source: coordinator-dispatched worker slice; hard-sync landed on e8feabe (#425 merge); no ORDER >024 at inbox HEAD.
+- **OPEN: #426** (`claude/valueless-badge-coverage-pin`, auto-merge armed SQUASH 2026-07-16T03:44:45Z) — the two items filed on the #422/#424 cards, one PR:
+  - **Valueless-badge grammar finding** (the #422 card's 💡): a `> **Status:**` badge LINE with no VALUE (parses None/empty — nothing, whitespace, or bare emphasis after the colon) used to fall through `check_added_card` to the completeness check as if it declared `complete` — a marker-complete card RELEASED the gate while declaring nothing. Now a named grammar finding that HOLDS. In-progress/drafted/complete behavior unchanged. Swept all 240 real `.sessions/` cards: **0 fires** (only hold = this session's own born-red card, as designed).
+  - **Residue-surface coverage pin** (the #424 card's 💡): `tests/test_residue_coverage.py` AST-discovers every fill-slot constructor in the engine (`loop.handoff._fill`, `loop.archive._judgment_slot` — discovery blindness itself is a failure), enumerates all 12 call sites, statically resolves each hint, and fails naming `file:line` + hint unless the hint is residue-guarded (registry demonstrably fingerprinted via `probe_residue`) or an explicit `(name, hint, reason)` entry in the new canonical `engine.lib.residue.RESIDUE_SETTLED_EMPTY`. The two deliberate non-guards graduated from code comments to registry entries: host-marker fallback (too short to fingerprint) + archive date slot (real date substituted beside it, #424 decide-and-flag). Inline fill-slot f-strings outside constructors fail; stale settled entries fail. A future drafted surface cannot ship unguarded silently.
+- Suite 1709 → 1716 (+7). Dist regenerated (byte-pin, 1094403 bytes). CHANGELOG `[Unreleased]` carries both entries. Verified pre-flip: `scripts/preflight.py` 9/9 PASS; `dist/bootstrap.py check --strict` = designed born-red HOLD (own card) + known staged-regen-lag ×3 + required-unverified NOTE only; gate self-test on own card = HOLD via the born-red message, NOT the new valueless finding.
+- Merged this calendar day (earlier wakes): #414 S3 · #415 · #416 S4 · #417 · #418 v1.18.0 bump · #419 close-out · #420 KL-5 residue generalization · #421 · #422 status-badge value-parse fix · #423 · #424 archive S2 evidence-hint coverage + adopt-planted surface settled empty · #425. Release v1.18.0 out (run 29466068874, sha256 three-way PASS — full record @ 13a0b44 history).
+
+## Backlog — HONEST readout (session ender, 2026-07-16)
+
+**Buildable backlog DRY as of this slice.** #426 lands the last coordinator-judged buildable item (both filed 💡s from the #422/#424 cards). Everything remaining is DATE-PARKED, not buildable now:
+- Grounded-skills measurement window opens ~2026-07-19 (run ~07-19..26 per docs/operations/grounded-skills-measurement.md; owner silence accepts).
+- KL-5 gate graduation (PL-008): awaits the advisory quiet period — `session-card-slot-residue` + archive advisories proving quiet on genuine cards/notes across a few sessions.
+- v1.18.0 adopter wave: awaits owner authorization (⚑ below; classifier denial on record).
+Seat idles on the 2h failsafe trigger between now and the earliest of those dates.
 
 ## Routine / denial state (carried)
 - This seat's ONLY trigger: `Self Improvement failsafe wake` trig_01AHRsGDBmbSDAc8AkjU2zJN · cron `0 */2 * * *` · ENABLED · bound to persistent session session_01TEnyj8QTuxfywgYwWP75Am (verified exhaustively 2026-07-16T01:52Z; no trigger writes this wake).
@@ -17,8 +25,8 @@ updated: 2026-07-16T03:33:33Z · phase: EAP EXTENSION ACTIVE (EAP through 2026-0
 
 ## State
 - kit: v1.18.0
-- Session gate judges the badge VALUE, not line prose (#422 MERGED) — a latent false-hold class on the merge-blocking gate closed at root.
-- KL-5 residue program: every named drafted-fill surface now covered or settled (#420 cards + archive doctrine slots; #424 in flight adds the S2 evidence hints and settles the adopt-planted surface empty). Remaining deliberate step: PL-008 graduation of the advisories once proven quiet across sessions.
+- Session gate judges the badge VALUE, not line prose (#422), and a present-but-valueless badge is a grammar finding, never a release (#426 in flight) — the value-grammar family closed.
+- KL-5 residue program: every named drafted-fill surface covered or settled (#420 cards · #424 archive S2 hints + adopt-planted settled empty) AND mechanically pinned (#426 coverage pin — unguarded future surfaces fail the suite). Remaining deliberate step: PL-008 graduation of the advisories once proven quiet across sessions.
 - Registry (docs/adopters.md): regenerated at v1.18.0 (#419); every adopter row reads stale until its own upgrade wave (parked — see denial record + ⚑ ask).
 - Wake currency scan turnkey (#392): `python3 dist/bootstrap.py currency --check`.
 - Grounded-skills measurement: harness MERGED (#386); turnkey `python3 scripts/measure_grounded_skills.py --clone --workdir <dir> --json <f> --out <f>`; protocol pre-registered at docs/operations/grounded-skills-measurement.md.
@@ -26,7 +34,7 @@ updated: 2026-07-16T03:33:33Z · phase: EAP EXTENSION ACTIVE (EAP through 2026-0
 
 ## Next-2 baton
 1. Grounded-skills measurement window ~2026-07-19..26 — run per docs/operations/grounded-skills-measurement.md, publish the findings report under docs/reports/.
-2. KL-5 residue graduation (deliberate, PL-008): once `session-card-slot-residue` + the archive advisories prove quiet on genuine cards/notes across a few sessions, graduate them into the merge-blocking gate lanes; plus the #424 card's 💡 idea (valueless Status badge as a grammar finding in the added-card lane — see the #422 card's filed idea, same mechanism family).
+2. KL-5 gate graduation (deliberate, PL-008) on quiet evidence: once `session-card-slot-residue` + the archive advisories prove quiet on genuine cards/notes across a few sessions, graduate them into the merge-blocking gate lanes.
 
 ## ⚑ FOR OWNER (standing set carried forward — no new ask this wake)
 
