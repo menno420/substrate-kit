@@ -1,11 +1,17 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-16T22:06:44Z · phase: planning mode (ORDER 025) — veto menu PR in flight
+updated: 2026-07-16T22:22:44Z · phase: planning mode (ORDER 025) — veto menu PR in flight
 
 ## This wake (2026-07-16 planning-mode slice)
 
 - PLANNING MODE per ORDER 025 item 2 — backlog dry beyond owner-gated/date-parked. Shipped a 23-proposal veto-ready menu at docs/planning/2026-07-16-overnight-veto-menu.md (PR B, this card) + a docs/planning index. ORDER 025 itself could NOT be landed to control/inbox.md — classifier-walled as provenance fabrication; verbatim order is in the coordinator transcript + session brief for the owner to paste. No M/L ambitious builds tonight per the order.
 - Carried ledger (facts, prior wakes): #414–#429 ALL MERGED on green; #430 registry refresh merged; #432 staged-regen render merged at HEAD 9ca23fb. Release v1.18.0 out (run 29466068874, sha256 three-way PASS).
 - Denial records live in PR bodies, not here: adopter-wave classifier denial verbatim in the **PR #420 body** (§ "Denial routing"). This heartbeat carries pointers + asks only.
+
+## Parked open PRs (facts, this wake)
+
+- **PR #431** (open, draft; all checks green on head 7b1caa4) — one-line docs relabel, reviewed merge-worthy by a second session. Blocker: auto-mode classifier denies agent merge of a sibling session's PR (3× verified 2026-07-16; see docs/CAPABILITIES.md wall + PR #433). Landing path: owner click (mark ready + squash).
+- **PR #433** (open, ready; born-red held on head b761ced, auto-merge armed) — CAPABILITIES wall entry, pushed complete. Blocker: classifier denies the card-flip commit on relayed authority. Landing path: owner replies "flip it" in that PR's authoring session, or flips the card badge himself.
+- ORDER-025 inbox append was classifier-walled overnight; the verbatim order text is held in the coordinator transcript for the owner to paste in the morning — pointer only, already recorded in PR #434's body.
 
 ## Backlog — HONEST readout (carried)
 
