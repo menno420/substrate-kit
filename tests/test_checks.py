@@ -16,6 +16,7 @@ from engine.checks.check_docs import (
 )
 from engine.checks.check_session_log import (
     BORN_RED_HOLD_MESSAGE,
+    NO_BADGE_MESSAGE,
     VALUELESS_BADGE_MESSAGE,
     check_added_card,
     check_log,
@@ -309,6 +310,23 @@ def test_check_log_valueless_branch_leaves_real_values_alone(tmp_path):
     assert check_log(card, _MARKERS) == []
 
 
+def test_check_log_without_any_badge_is_a_grammar_finding(tmp_path):
+    card = tmp_path / "2026-07-16-c.md"
+    _write(card, "# c\n\nnotes, no Status badge line at all\n")
+    findings = check_log(card, _MARKERS)
+    assert NO_BADGE_MESSAGE in findings
+
+
+def test_both_card_lanes_flag_a_missing_badge_identically(tmp_path):
+    body = "# x\n\n## Session idea\nfree-form, no badge\n"
+    added = tmp_path / "2026-07-16-added.md"
+    modified = tmp_path / "2026-07-16-modified.md"
+    _write(added, body)
+    _write(modified, body)
+    assert NO_BADGE_MESSAGE in check_added_card(added, _MARKERS)
+    assert NO_BADGE_MESSAGE in check_log(modified, _MARKERS)
+
+
 def test_status_in_progress_token_variants():
     assert status_in_progress("> **Status:** `WIP`\n")
     assert status_in_progress("> **Status:** in progress\n")
@@ -398,7 +416,7 @@ def test_added_card_without_any_badge_is_a_grammar_finding(tmp_path):
     _write(card, "# b\n\n## Session idea\nfree-form, no badge\n")
     misses = check_added_card(card, _MARKERS)
     assert len(misses) == 1
-    assert "Status badge" in misses[0]
+    assert NO_BADGE_MESSAGE in misses
 
 
 def test_added_card_valueless_badge_is_a_grammar_finding_not_a_release(tmp_path):
