@@ -1,10 +1,11 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-16T09:51:29Z · phase: SEAT CLOSING (EAP through 2026-07-21; inbox consumed 001–024; buildable backlog dry — remaining items date-parked; seat idles on the 2h failsafe bridge)
+updated: 2026-07-16T14:25:21Z · phase: SEAT CLOSING · 1 work PR in flight (#428)
 
 ## This wake (2026-07-16 close-out slice) — SEAT-CLOSING HEARTBEAT
 
 - Wake source: coordinator-dispatched close-out slice; control-only diff (status heartbeat), card-less fast lane.
-- **PR ledger settled: #414–#426 ALL MERGED on green. Zero open seat PRs** (verified live 2026-07-16T09:47Z: open-PR list empty; #426 merged 2026-07-16T04:00:09Z — this fixes the prior heartbeat's stale "#426 OPEN" line).
+- **PR ledger: #414–#426 ALL MERGED on green; #428 now OPEN** (as of 09:47Z the open-PR list was empty and #426 merged 2026-07-16T04:00:09Z — this fixed the prior heartbeat's stale "#426 OPEN" line; #428 opened this wake).
+- **#428 — valueless Status-badge finding graduated into check_log (modified-card lane): OPEN READY, auto-merge armed 14:16:53Z, held born-red pending this session's card flip; merges on green after flip. Suite 1716→1718.**
 - Merged this calendar day: #414 S3 · #415 · #416 S4 · #417 · #418 v1.18.0 bump · #419 close-out · #420 KL-5 residue generalization · #421 · #422 status-badge value-parse fix · #423 · #424 archive S2 evidence-hint coverage + adopt-planted surface settled empty · #425 claim prune · #426 valueless-badge grammar finding + residue coverage pin. Release v1.18.0 out (run 29466068874, sha256 three-way PASS — full record @ 13a0b44 history).
 - Denial records live in PR bodies, not here: adopter-wave classifier denial verbatim in the **PR #420 body** (§ "Denial routing"). This heartbeat carries pointers + asks only.
 
@@ -16,12 +17,13 @@ updated: 2026-07-16T09:51:29Z · phase: SEAT CLOSING (EAP through 2026-07-21; in
 - v1.18.0 adopter wave: awaits owner authorization (⚑ below; denial record in PR #420 body).
 Seat idles on the 2h failsafe trigger between now and the earliest of those dates.
 
-## Routine / trigger state — verified via list_triggers at 2026-07-16T09:51Z (paginated to end, 21 pages)
+## Routine / trigger state — COORDINATOR-REPORTED via session relay
 
-- This seat's ONLY trigger: `Self Improvement failsafe wake` trig_01AHRsGDBmbSDAc8AkjU2zJN · cron `0 */2 * * *` · ENABLED · bound to persistent session session_01TEnyj8QTuxfywgYwWP75Am · next fire 2026-07-16T10:07Z. It is the successor's dead-man bridge; no other trigger of any kind is bound to this seat's session anywhere in the full listing.
-- The three send_later one-shots the 01:52Z audit saw pending (created 01:37–01:43Z) have all since fired (`ended_reason=run_once_fired`); none was bound to this seat's session (they target other seats' persistent sessions). Zero pending send_later one-shots bound to this seat.
-- Fleet-wide, one send_later remains pending at audit time (trig_01Rs2X36wg6GzKYtnhdnDt9B, fires 2026-07-16T10:12Z, bound to the Fleet Manager session) — noted for completeness; not this seat's.
-- ⚑ FOR OWNER REVIEW (carried forward): ORDER 024 says "do NOT re-arm routines yet; wait for the owner's per-seat go". The enabled failsafe above (created 2026-07-16T01:09Z) post-dates that order. Recorded neutrally for owner review/veto; not adjudicated here. Kit-lab daily loop re-arm recipe: docs/operations/lab-loop.md.
+Routine facts below are COORDINATOR-REPORTED via session relay (coordinator's own paginated list_triggers snapshot 2026-07-16T14:16:39Z); this stateless seat did not independently re-verify the trigger registry — recorded with provenance for cutover audit, not as this seat's verified state.
+
+- **failsafe `Self Improvement failsafe wake`** (coordinator-reported) — trigger `trig_01Mw9yn9r21Bi5q19v7QcqjN`, cron `0 */2 * * *`, reported ARMED + bound to the coordinator session, next fire reported 2026-07-16T16:01:36Z.
+- **pacemaker send_later** (coordinator-reported) — `trig_017ANi5hZQmyFM5tdjHeaHGv` → coordinator, reported firing 14:21Z.
+- **prior/stale twin** (coordinator-reported) — `trig_01AHRsGDBmbSDAc8AkjU2zJN` (prior seat session `session_01TEnyj8QTuxfywgYwWP75Am`, reported last fired 12:11Z; reported to have spawned a ghost wake session 14:09Z, stood down) — reported cutover-deleted this boot by the coordinator; record as **coordinator-reported deleted-pending-verify**.
 
 ## State
 
@@ -35,10 +37,12 @@ kit: v1.18.0
 
 ## Next-2 baton
 
-1. Grounded-skills measurement window ~2026-07-19..26 — run per docs/operations/grounded-skills-measurement.md, publish the findings report under docs/reports/.
-2. KL-5 gate graduation (deliberate, PL-008) on quiet evidence: once `session-card-slot-residue` + the archive advisories prove quiet on genuine cards/notes across a few sessions, graduate them into the merge-blocking gate lanes.
+1. Graduate the **no-badge** grammar finding into `check_log` for full added/modified card-check lane parity (`check_added_card` flags a no-badge card via `has_status_badge`; `check_log` still lacks it) — and extract a shared `_status_grammar_findings(text)` helper both lanes call so gate findings can't drift between lanes. Source `src/engine/checks/check_session_log.py`; mirror `tests/test_checks.py`.
+2. Date-parked (unchanged): grounded-skills window ~2026-07-19..26; KL-5 gate graduation (PL-008) awaits advisory quiet period; v1.18.0 adopter wave awaits owner authorization.
 
 ## ⚑ FOR OWNER (standing set carried forward + one new ask)
+
+⚑ FINDING (coordinator-reported) — the 06:00Z 'kit-lab daily' owner business cron was NOT found anywhere in the account trigger registry (coordinator paginated ~2021 entries to exhaustion). Doctrine (docs/operations/lab-loop.md) says keep it armed across every cutover, but the coordinator reports nothing to keep — never created or deleted. Owner decision needed: recreate the kit-lab daily cron, or retire the doctrine line.
 
 ⚑ v1.18.0 adopter-wave authorization
 WHAT: authorize the v1.18.0 adopter-upgrade wave.
