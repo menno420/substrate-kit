@@ -11706,8 +11706,17 @@ Contract (plan §2):
    template when no unresolved note exists — evidence fills what the tree can
    prove; everything else stays a named ``[[fill:]]`` slot.
 2. **Reports** unresolved slots on re-run (the ``cmd_draft`` idiom); a note
-   with zero remaining slots is complete and is **never touched**.
-3. The ``check --strict`` advisory half is slice S4, not here.
+   with zero remaining slots *and no guarded-slot residue* is complete and is
+   **never touched**.
+3. **REQUIRES-PROBE resolve semantics (S3):** the doctrine-guarded slots
+   (routine state, the chat-only confirmation) resolve ONLY by wholesale
+   replacement. Stripping the ``[[fill:`` / ``]]`` markers while keeping the
+   templated instruction text is the sham-resolution the guard exists for — a
+   record-shaped default that *looks* done. ``probe_slot_residue`` fingerprints
+   the guarded slot bodies from the shipped template (whitespace-normalized
+   word shingles) and reports any surviving run of default text; a note with
+   residue is never reported complete and never blocks on silence.
+4. The ``check --strict`` advisory half is slice S4, not here.
 
 Evidence sources (plan §3 — tree-local, pure stdlib, no subprocess):
 
@@ -11749,6 +11758,13 @@ _ARCHIVE_SLOT_RE = re.compile(r"\[\[fill:.*?\]\]", re.DOTALL)
 _FLAG_RENDER_CAP = 20
 _FLAG_LINE_CAP = 120
 _PAYLOAD_RENDER_CAP = 30
+# Residue fingerprinting (S3): a guarded slot body is shingled into runs of
+# this many whitespace-normalized words; ANY shingle surviving in a
+# zero-slot note means the slot was not wholesale-replaced. Eight consecutive
+# identical words is long enough that a genuine probe output cannot collide
+# with the template's instruction text by accident, and short enough that
+# keeping even one full default line still trips the guard.
+_ARCHIVE_SHINGLE_WORDS = 8
 
 
 def _judgment_slot(hint: str) -> str:
@@ -11912,6 +11928,76 @@ def draft_archive_note(root: Path, config: Config, day: str | None = None) -> st
 
 
 # ---------------------------------------------------------------------------
+# Resolve-time semantics (S3) — guarded slots resolve only by wholesale
+# replacement; a templated default surviving marker-stripping is residue
+# ---------------------------------------------------------------------------
+
+
+def _archive_normalize_ws(text: str) -> str:
+    """Collapse all whitespace runs to single spaces (re-wrap-proof)."""
+    return " ".join(text.split())
+
+
+def _archive_guarded_bodies(template: str) -> list[tuple[str, str]]:
+    """Return ``(name, inner body)`` for each doctrine-guarded template slot.
+
+    Guarded = the slots the drafter never auto-fills (plan §4.2): the
+    REQUIRES-PROBE routine-state slot and the never-drafted-as-complete
+    confirmation slot. Bodies come from the shipped template itself, so the
+    fingerprints track the doctrine text without a second copy to drift.
+    """
+    guarded: list[tuple[str, str]] = []
+    for match in _ARCHIVE_SLOT_RE.finditer(template):
+        slot = match.group(0)
+        if REQUIRES_PROBE_TOKEN in slot:
+            name = f"routine-state ({REQUIRES_PROBE_TOKEN})"
+        elif _NEVER_DRAFT_TOKEN in slot:
+            name = "chat-only confirmation"
+        else:
+            continue
+        body = slot[len(DRAFT_FILL_TOKEN) : -len("]]")]
+        guarded.append((name, body))
+    return guarded
+
+
+def _archive_shingles(body: str) -> set[str]:
+    """Word-run fingerprints of a guarded slot body, whitespace-normalized."""
+    words = _archive_normalize_ws(body).split(" ")
+    n = _ARCHIVE_SHINGLE_WORDS
+    if len(words) <= n:
+        return {" ".join(words)} if words else set()
+    return {" ".join(words[i : i + n]) for i in range(len(words) - n + 1)}
+
+
+def probe_slot_residue(text: str, template: str | None = None) -> list[str]:
+    """Return residue findings — guarded default text surviving in ``text``.
+
+    Empty list = every guarded slot was wholesale-replaced (or still carries
+    its ``[[fill:]]`` markers, which the slot count already reports). One
+    finding per guarded slot whose templated instruction text survives with
+    the markers stripped — the sham-resolution a record-shaped default
+    produces. S4's ``check --strict`` advisory reuses this seam.
+    """
+    if template is None:
+        template = load_templates()[ARCHIVE_TEMPLATE_NAME]
+    normalized = _archive_normalize_ws(text)
+    findings: list[str] = []
+    for name, body in _archive_guarded_bodies(template):
+        # A slot still carrying its markers is "unresolved", not residue —
+        # the [[fill:]] count reports it; residue is marker-stripped default.
+        if _archive_normalize_ws(f"{DRAFT_FILL_TOKEN}{body}]]") in normalized:
+            continue
+        if any(s in normalized for s in _archive_shingles(body)):
+            findings.append(
+                f"{name}: templated default text survives — this slot "
+                "resolves ONLY by wholesale replacement with freshly probed "
+                "output; stripping the [[fill:]] markers around the "
+                "template's instruction text is not a resolution."
+            )
+    return findings
+
+
+# ---------------------------------------------------------------------------
 # The verb's engine seam (cmd_archive_prep calls this)
 # ---------------------------------------------------------------------------
 
@@ -11922,8 +12008,11 @@ def ensure_archive_draft(root: Path, config: Config) -> list[str]:
     The ``ensure_draft`` contract at the archive seam: no note (or only
     completed ones from earlier archives) → draft today's from evidence; the
     newest note still carrying ``[[fill:]]`` slots → report the count and
-    touch nothing; a completed note is never touched. Fail-open: any failure
-    returns the hand-copy fallback advisory instead of raising.
+    touch nothing; a zero-slot note with guarded-slot residue (S3) → report
+    the sham resolution and touch nothing — it is never "complete" and never
+    silently superseded; a genuinely completed note is never touched.
+    Fail-open: any failure returns the hand-copy fallback advisory instead of
+    raising.
     """
     try:
         retro = root / config.docs_root / _RETRO_DIR
@@ -11939,6 +12028,16 @@ def ensure_archive_draft(root: Path, config: Config) -> list[str]:
                     "each with live facts (REQUIRES-PROBE slots by wholesale "
                     "replacement with probe output), write the confirmation "
                     "LAST, then land the note on main before the chat closes.",
+                ]
+            residue = probe_slot_residue(text)
+            if residue:
+                return [
+                    f"{rel}: zero [[fill:]] slots remain, but templated "
+                    "default text survives in guarded slot(s) — the note is "
+                    "NOT complete (S3 resolve semantics):",
+                    *[f"  - {finding}" for finding in residue],
+                    "replace the surviving instruction text wholesale with "
+                    "live probe output, then land the note on main.",
                 ]
             if newest == archive_note_path(root, config):
                 return [

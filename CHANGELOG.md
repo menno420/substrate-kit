@@ -17,6 +17,23 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Archive-ready close-out S3 — REQUIRES-PROBE resolve-time semantics**
+  (`docs/planning/2026-07-15-archive-ready-close-out-plan.md` §5 S3, on
+  S2's verb): the doctrine-guarded slots (routine state REQUIRES-PROBE,
+  the chat-only confirmation) now resolve ONLY by wholesale replacement,
+  enforced at resolve time. `engine.loop.archive.probe_slot_residue`
+  fingerprints the guarded slot bodies from the shipped template
+  (whitespace-normalized word shingles, re-wrap-proof) and detects the
+  sham resolution the guard exists for: `[[fill:]]` markers stripped while
+  the templated instruction text — a record-shaped default — survives.
+  `archive-prep` reports such a note NOT complete (one finding per guilty
+  slot), touches nothing, and never silently supersedes a sham note with a
+  fresh draft; a genuinely wholesale-replaced note still reads complete
+  (the template preamble quoting the doctrine does not trip the guard).
+  Tests prove a templated default cannot pass, src and dist both (the
+  built-artifact drive re-runs `archive-prep` on a sham-resolved note).
+  `probe_slot_residue` is the seam S4's `check --strict` advisory reuses.
+
 - **Archive-ready close-out S2 — the `archive-prep` draft verb**
   (`docs/planning/2026-07-15-archive-ready-close-out-plan.md` §5 S2, on
   S1's template): new `engine.loop.archive` module — the KL-5
