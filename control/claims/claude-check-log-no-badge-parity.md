@@ -1,0 +1,1 @@
+- `claude/check-log-no-badge-parity` · graduate no-badge grammar finding into check_log + shared _status_grammar_findings helper · src/engine/checks/check_session_log.py + tests/test_checks.py · 2026-07-16
