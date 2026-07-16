@@ -17,6 +17,14 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Grounded-skills measurement harness** (PR #386, kit-internal — entry
+  backfilled at the v1.18.0 cut for payload completeness): turnkey
+  pre-build for the ~2026-07-19..26 measurement window —
+  `scripts/measure_grounded_skills.py` (M1 skill-grounding, M2 owner-ask
+  compliance, M3 capability-ledger activity, M4 merge-throughput proxy;
+  grammar from `engine.grammar`, honest nulls, shallow-clone guard), the
+  frozen metric protocol in
+  `docs/operations/grounded-skills-measurement.md`, and 15 fixture tests.
 - **Archive-ready close-out S4 — `check --strict` archive-note advisory**
   (`docs/planning/2026-07-15-archive-ready-close-out-plan.md` §5 S4, on
   S3's seam): new checker `engine.checks.check_archive_ready` puts the
