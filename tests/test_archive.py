@@ -9,6 +9,7 @@ from engine.checks.check_session_log import DRAFT_FILL_TOKEN
 from engine.lib.config import Config, save_config
 from engine.lib.state import JsonStateBackend, default_state
 from engine.loop.archive import (
+    ARCHIVE_EVIDENCE_HINTS,
     ARCHIVE_TEMPLATE_NAME,
     REQUIRES_PROBE_TOKEN,
     archive_note_path,
@@ -306,6 +307,71 @@ def test_probe_slot_residue_direct():
     assert len(findings) == 2
     assert all("wholesale replacement" in f for f in findings)
     assert probe_slot_residue(_wholesale_resolve(template), template=template) == []
+
+
+# ---------------------------------------------------------------------------
+# S2 evidence-judgment hints are guarded too (KL-5 surface sweep, baton 2b)
+# ---------------------------------------------------------------------------
+
+
+def test_draft_injects_canonical_evidence_hints(tmp_path):
+    # The drafter renders its judgment slots FROM the canonical constants
+    # (the CARD_GUARDED_HINTS one-source pattern): every hint appears in a
+    # real evidence-seeded draft as an intact [[fill:]] slot — and an
+    # intact slot is UNRESOLVED, never residue.
+    config, _ = _init(tmp_path)
+    _seed_evidence(tmp_path, config)
+    text = draft_archive_note(tmp_path, config)
+    for _, body in ARCHIVE_EVIDENCE_HINTS:
+        assert f"{DRAFT_FILL_TOKEN} {body}]]" in text
+    assert probe_slot_residue(text) == []
+
+
+def test_evidence_hint_residue_detected(tmp_path):
+    # The deliberate red fixture for the S2 evidence-hint surface: the two
+    # doctrine slots genuinely replaced, the three drafter-injected
+    # judgment hints marker-stripped but kept — the note reads zero-slot
+    # yet each surviving hint is named, and the doctrine slots are not.
+    config, _ = _init(tmp_path)
+    _seed_evidence(tmp_path, config)
+    ensure_archive_draft(tmp_path, config)
+    note = archive_note_path(tmp_path, config)
+    text = note.read_text(encoding="utf-8")
+
+    def replacement(match):
+        body = match.group(1)
+        if REQUIRES_PROBE_TOKEN in body:
+            return _GENUINE_PROBE
+        if "never drafted as complete" in body:
+            return _GENUINE_CONFIRMATION
+        return body  # judgment hints sham-resolved (markers stripped)
+
+    sham = _SLOT_STRIP_RE.sub(replacement, text)
+    assert DRAFT_FILL_TOKEN not in sham
+    note.write_text(sham, encoding="utf-8")
+    lines = ensure_archive_draft(tmp_path, config)
+    joined = "\n".join(lines)
+    assert "NOT complete" in joined
+    assert "claims disposition" in joined
+    assert "\N{BLACK FLAG} verification" in joined
+    assert "payload park" in joined
+    assert f"routine-state ({REQUIRES_PROBE_TOKEN})" not in joined
+    assert "chat-only confirmation" not in joined
+    # Touches nothing, same contract as every residue report.
+    assert note.read_text(encoding="utf-8") == sham
+
+
+def test_evidence_hint_wholesale_resolution_stays_silent(tmp_path):
+    # Genuine judgment text in the evidence slots leaves no residue — the
+    # guard fires on surviving drafted hints, not on the slot existing.
+    config, _ = _init(tmp_path)
+    _seed_evidence(tmp_path, config)
+    ensure_archive_draft(tmp_path, config)
+    note = archive_note_path(tmp_path, config)
+    resolved = _wholesale_resolve(note.read_text(encoding="utf-8"))
+    note.write_text(resolved, encoding="utf-8")
+    lines = ensure_archive_draft(tmp_path, config)
+    assert any("never touched" in line for line in lines)
 
 
 # ---------------------------------------------------------------------------

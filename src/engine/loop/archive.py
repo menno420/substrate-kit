@@ -81,6 +81,35 @@ _FLAG_RENDER_CAP = 20
 _FLAG_LINE_CAP = 120
 _PAYLOAD_RENDER_CAP = 30
 
+# The S2 evidence-judgment hints — the judgment slots the DRAFTER ITSELF
+# injects into its evidence replacements (claims disposition, ⚑
+# verification, payload park). They are not template slots, so
+# ``_archive_guarded_bodies`` never sees them — yet they carry the same
+# sham corridor as the doctrine-guarded slots: strip the ``[[fill:`` /
+# ``]]`` markers, keep the drafted hint text, and the note reads complete
+# while the judgment half was never written. Canonical constants on the
+# ``CARD_GUARDED_HINTS`` pattern (one source: the drafter renders FROM
+# these and the residue probe fingerprints THEM — no second copy to
+# drift). The date slot's hint ("which chat/session is being archived")
+# is deliberately unguarded for now: the drafter substitutes the real date
+# beside it, so the surviving-hint signal is weaker — extend later if a
+# real sham shows up there.
+ARCHIVE_HINT_CLAIMS = "kept-or-pruned disposition per claim, with a reason"
+ARCHIVE_HINT_FLAGS = (
+    "verify against the live heartbeat — one line + where each unblocks, "
+    "prune what is stale"
+)
+ARCHIVE_HINT_PAYLOAD = (
+    "unshipped slices / pinned PRs beyond the CHANGELOG, and what the next "
+    'session cuts/ships from the park — or "nothing further parked"'
+)
+
+ARCHIVE_EVIDENCE_HINTS: tuple[tuple[str, str], ...] = (
+    ("claims disposition", ARCHIVE_HINT_CLAIMS),
+    ("\N{BLACK FLAG} verification", ARCHIVE_HINT_FLAGS),
+    ("payload park", ARCHIVE_HINT_PAYLOAD),
+)
+
 
 def _judgment_slot(hint: str) -> str:
     """Return one unresolved judgment slot for the drafted text."""
@@ -111,7 +140,7 @@ def _claims_replacement(root: Path, config: Config) -> str:
     names = ", ".join(f"`{name}`" for name in entries)
     return (
         f"{names} (evidence: `{config.claims_dir}/` at draft time) — "
-        f"{_judgment_slot('kept-or-pruned disposition per claim, with a reason')}"
+        f"{_judgment_slot(ARCHIVE_HINT_CLAIMS)}"
     )
 
 
@@ -142,9 +171,7 @@ def _flags_replacement(root: Path, config: Config) -> str:
     tail = len(flags) - len(shown)
     bullets = "\n".join(f"- {line} (evidence)" for line in shown)
     more = f"\n- \N{HORIZONTAL ELLIPSIS} +{tail} more \N{BLACK FLAG} line(s) in the heartbeat" if tail > 0 else ""
-    slot = _judgment_slot(
-        "verify against the live heartbeat — one line + where each unblocks, prune what is stale",
-    )
+    slot = _judgment_slot(ARCHIVE_HINT_FLAGS)
     return f"extracted from {heartbeats} at draft time:\n\n{bullets}{more}\n\n{slot}"
 
 
@@ -173,10 +200,7 @@ def _changelog_unreleased(root: Path) -> list[str]:
 
 def _payload_replacement(root: Path) -> str:
     """Render the unreleased-payload evidence for the park slot."""
-    slot = _judgment_slot(
-        "unshipped slices / pinned PRs beyond the CHANGELOG, and what the next "
-        'session cuts/ships from the park — or "nothing further parked"',
-    )
+    slot = _judgment_slot(ARCHIVE_HINT_PAYLOAD)
     content = _changelog_unreleased(root)
     if not content:
         return (
@@ -284,15 +308,24 @@ def probe_slot_residue(text: str, template: str | None = None) -> list[str]:
     skip — behavior identical to the original S3 in-module implementation);
     this function keeps the archive surface's guarded-body extraction and
     finding wording.
+
+    Guarded set = the doctrine-guarded TEMPLATE slots (REQUIRES-PROBE
+    routine state, the chat-only confirmation — bodies extracted from the
+    shipped template) plus the S2 evidence-judgment hints the drafter
+    itself injects (:data:`ARCHIVE_EVIDENCE_HINTS` — claims disposition,
+    ⚑ verification, payload park), which are not template slots and were
+    uncovered until the KL-5 surface sweep (baton item 2b).
     """
     if template is None:
         template = load_templates()[ARCHIVE_TEMPLATE_NAME]
-    guilty = probe_residue(text, _archive_guarded_bodies(template))
+    guarded = _archive_guarded_bodies(template) + list(ARCHIVE_EVIDENCE_HINTS)
+    guilty = probe_residue(text, guarded)
     return [
-        f"{name}: templated default text survives — this slot "
-        "resolves ONLY by wholesale replacement with freshly probed "
-        "output; stripping the [[fill:]] markers around the "
-        "template's instruction text is not a resolution."
+        f"{name}: drafted default/hint text survives — this slot "
+        "resolves ONLY by wholesale replacement with genuine "
+        "session judgment (probe output for REQUIRES-PROBE slots); "
+        "stripping the [[fill:]] markers around the drafted text "
+        "is not a resolution."
         for name in guilty
     ]
 

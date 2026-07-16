@@ -17,6 +17,25 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **KL-5 residue guard — archive-note S2 evidence-judgment hints covered;
+  adopt-planted `[[fill:]]` surface settled empty** (baton item 2b, PR
+  #424): the three judgment hints the S2 drafter itself injects into
+  evidence replacements (claims disposition · ⚑ verification · payload
+  park) were invisible to `probe_slot_residue`'s template-body extraction
+  — marker-stripping them read complete. They are now canonical constants
+  (`ARCHIVE_EVIDENCE_HINTS`, the `CARD_GUARDED_HINTS` one-source pattern:
+  the drafter renders FROM them, the probe fingerprints THEM) and part of
+  the guarded set, so `ensure_archive_draft` and `check_archive_ready`
+  both report the sham; advisory posture unchanged, deliberate red
+  fixtures per surface, verified silent on the kit's own
+  `docs/retro/` notes. The sweep's other surface — adopt-planted doc
+  `[[fill:]]` slots — was investigated and is empty: no `ADOPT_PLAN`
+  template carries `[[fill:]]`; planted docs carry `${slot}` interview
+  placeholders, already owned by the engagement gate + `check_staged_regen`
+  (a guard there would double-report that lane) — documented in
+  `docs/operations/archive-ready-close-out.md` § Slot rules, nothing
+  built. Gate-lane graduation of `check_card_residue` stays parked.
+
 - **KL-5 residue generalization — shared wholesale-replacement guard +
   session-card sham-resolution advisory** (idea filed on the
   archive-probe-s3 session card, PR #414): the S3 archive-note residue
