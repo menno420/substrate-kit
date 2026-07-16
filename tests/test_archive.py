@@ -1,5 +1,6 @@
-"""Tests for the archive-ready note drafter (archive-ready close-out plan §5 S2)."""
+"""Tests for the archive-ready note drafter (archive-ready close-out plan §5 S2+S3)."""
 
+import re
 from datetime import date
 
 import pytest
@@ -8,12 +9,15 @@ from engine.checks.check_session_log import DRAFT_FILL_TOKEN
 from engine.lib.config import Config, save_config
 from engine.lib.state import JsonStateBackend, default_state
 from engine.loop.archive import (
+    ARCHIVE_TEMPLATE_NAME,
     REQUIRES_PROBE_TOKEN,
     archive_note_path,
     draft_archive_note,
     ensure_archive_draft,
+    probe_slot_residue,
 )
 from engine.loop.handoff import DRAFT_MARKER
+from engine.render import load_templates
 
 TODAY = date.today().isoformat()
 _RETRO_DIR_NAME = "retro"
@@ -159,6 +163,152 @@ def test_prior_unresolved_note_blocks_new_draft(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# S3 — REQUIRES-PROBE resolve semantics: no templated default survives
+# ---------------------------------------------------------------------------
+
+_SLOT_STRIP_RE = re.compile(r"\[\[fill:(.*?)\]\]", re.DOTALL)
+
+_GENUINE_PROBE = (
+    "Probed live at 2026-07-16T01:20Z via list_triggers (2 pages, exhaustive): "
+    "trig_01ABC · cron `0 */2 * * *` · ENABLED · next fire 02:00Z. "
+    "All other ids verified deleted; nothing armed beyond the failsafe."
+)
+_GENUINE_CONFIRMATION = (
+    "Attested after resolving every section above: lessons in docs/retro/, "
+    "routine record in this note, owner-action list in control/status.md, "
+    "unreleased payload in CHANGELOG.md. Nothing remains chat-only."
+)
+
+
+def _sham_resolve(text):
+    """Strip every [[fill:]] marker pair but keep the templated default text.
+
+    The exact sham S3 exists to catch: zero slots remain, yet nothing was
+    actually replaced — a record-shaped default that *looks* done.
+    """
+    return _SLOT_STRIP_RE.sub(lambda m: m.group(1), text)
+
+
+def _wholesale_resolve(text):
+    """Replace every [[fill:]] slot wholesale with plausible live output."""
+
+    def replacement(match):
+        body = match.group(1)
+        if REQUIRES_PROBE_TOKEN in body:
+            return _GENUINE_PROBE
+        if "never drafted as complete" in body:
+            return _GENUINE_CONFIRMATION
+        return "resolved with live facts this session."
+
+    return _SLOT_STRIP_RE.sub(replacement, text)
+
+
+def test_sham_resolution_templated_default_cannot_pass(tmp_path):
+    config, _ = _init(tmp_path)
+    _seed_evidence(tmp_path, config)
+    ensure_archive_draft(tmp_path, config)
+    note = archive_note_path(tmp_path, config)
+    sham = _sham_resolve(note.read_text(encoding="utf-8"))
+    assert DRAFT_FILL_TOKEN not in sham  # zero slots — the old "complete"
+    note.write_text(sham, encoding="utf-8")
+    lines = ensure_archive_draft(tmp_path, config)
+    joined = "\n".join(lines)
+    assert "NOT complete" in joined
+    assert f"routine-state ({REQUIRES_PROBE_TOKEN})" in joined
+    assert "chat-only confirmation" in joined
+    assert not any("never touched" in line for line in lines)
+    # Touches nothing: the sham note survives byte-identical, no new draft.
+    assert note.read_text(encoding="utf-8") == sham
+    assert len(list(note.parent.glob("archive-ready-*.md"))) == 1
+
+
+def test_wholesale_replacement_passes(tmp_path):
+    config, _ = _init(tmp_path)
+    _seed_evidence(tmp_path, config)
+    ensure_archive_draft(tmp_path, config)
+    note = archive_note_path(tmp_path, config)
+    resolved = _wholesale_resolve(note.read_text(encoding="utf-8"))
+    note.write_text(resolved, encoding="utf-8")
+    lines = ensure_archive_draft(tmp_path, config)
+    # The template preamble (which quotes the doctrine) survives in a genuine
+    # resolution and must not trip the residue guard.
+    assert any("never touched" in line for line in lines)
+    assert note.read_text(encoding="utf-8") == resolved
+
+
+def test_partial_sham_names_only_the_guilty_slot(tmp_path):
+    config, _ = _init(tmp_path)
+    _seed_evidence(tmp_path, config)
+    ensure_archive_draft(tmp_path, config)
+    note = archive_note_path(tmp_path, config)
+    text = note.read_text(encoding="utf-8")
+
+    def replacement(match):
+        body = match.group(1)
+        if REQUIRES_PROBE_TOKEN in body:
+            return _GENUINE_PROBE  # genuinely replaced
+        return body  # everything else sham-resolved (markers stripped)
+
+    note.write_text(_SLOT_STRIP_RE.sub(replacement, text), encoding="utf-8")
+    lines = ensure_archive_draft(tmp_path, config)
+    joined = "\n".join(lines)
+    assert "chat-only confirmation" in joined
+    assert f"routine-state ({REQUIRES_PROBE_TOKEN})" not in joined
+
+
+def test_rewrapped_default_still_detected(tmp_path):
+    # Re-flowing the default text to a different line width is still residue:
+    # fingerprints are whitespace-normalized word runs.
+    config, _ = _init(tmp_path)
+    _seed_evidence(tmp_path, config)
+    ensure_archive_draft(tmp_path, config)
+    note = archive_note_path(tmp_path, config)
+    sham = _sham_resolve(note.read_text(encoding="utf-8"))
+    rewrapped_lines = []
+    for line in sham.splitlines():
+        words = line.split(" ")
+        if len(words) > 4:
+            rewrapped_lines.append(" ".join(words[:4]))
+            rewrapped_lines.append(" ".join(words[4:]))
+        else:
+            rewrapped_lines.append(line)
+    note.write_text("\n".join(rewrapped_lines) + "\n", encoding="utf-8")
+    lines = ensure_archive_draft(tmp_path, config)
+    assert any("NOT complete" in line for line in lines)
+
+
+def test_prior_sham_note_blocks_new_draft(tmp_path):
+    # A sham-resolved note from an earlier date is reported, never silently
+    # superseded by a fresh draft (masking would defeat the guard).
+    config, _ = _init(tmp_path)
+    old = archive_note_path(tmp_path, config, day="2026-01-01")
+    old.parent.mkdir(parents=True)
+    old.write_text(
+        _sham_resolve(draft_archive_note(tmp_path, config, day="2026-01-01")),
+        encoding="utf-8",
+    )
+    lines = ensure_archive_draft(tmp_path, config)
+    assert any("NOT complete" in line for line in lines)
+    assert not archive_note_path(tmp_path, config).is_file()
+
+
+def test_probe_slot_residue_clean_on_unresolved_draft(tmp_path):
+    # Marker-carrying guarded slots are "unresolved", not residue — the
+    # [[fill:]] count owns that report; residue is marker-stripped default.
+    config, _ = _init(tmp_path)
+    text = draft_archive_note(tmp_path, config)
+    assert probe_slot_residue(text) == []
+
+
+def test_probe_slot_residue_direct():
+    template = load_templates()[ARCHIVE_TEMPLATE_NAME]
+    findings = probe_slot_residue(_sham_resolve(template), template=template)
+    assert len(findings) == 2
+    assert all("wholesale replacement" in f for f in findings)
+    assert probe_slot_residue(_wholesale_resolve(template), template=template) == []
+
+
+# ---------------------------------------------------------------------------
 # Fail-open + the CLI verb
 # ---------------------------------------------------------------------------
 
@@ -255,3 +405,16 @@ def test_dist_flat_namespace_does_not_shadow_archive_symbols(tmp_path):
     # ...and the doctrine-guarded slots survive untouched.
     assert f"{DRAFT_FILL_TOKEN} {REQUIRES_PROBE_TOKEN}" in text
     assert "never drafted as complete" in text
+    # S3 through the same artifact: sham-resolve the note (strip markers,
+    # keep the templated defaults) and re-run — the dist must detect residue,
+    # not report complete (guards the residue seam against dist shadowing).
+    note.write_text(_sham_resolve(text), encoding="utf-8")
+    rerun = subprocess.run(
+        [sys.executable, str(boot), "archive-prep", "--target", str(repo)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert rerun.returncode == 0, rerun.stderr
+    assert "NOT complete" in rerun.stdout
+    assert "wholesale replacement" in rerun.stdout

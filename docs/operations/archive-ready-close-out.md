@@ -9,8 +9,9 @@
 > This doc is the checklist doctrine; the note template is
 > `src/engine/templates/archive-ready.md.tmpl`; the drafting verb is
 > `bootstrap.py archive-prep` (S2, `src/engine/loop/archive.py`).
-> Follow-up slices: S3 the REQUIRES-PROBE slot semantics, S4 the
-> `check --strict` advisory, S5 distribution (plan §5).
+> S3 (REQUIRES-PROBE resolve semantics) is shipped in the engine.
+> Follow-up slices: S4 the `check --strict` advisory, S5 distribution
+> (plan §5).
 
 ## When this runs
 
@@ -64,8 +65,13 @@ found still armed by the live probe — plan §1).
   trusted at archive time — the 2026-07-11 archive order recorded a
   failsafe as already deleted; the live probe found it still armed
   ([`../retro/archive-ready-2026-07-11.md`](../retro/archive-ready-2026-07-11.md)
-  § "Routine state at archive"). S3 formalizes these semantics in the
-  engine; the rule binds now.
+  § "Routine state at archive"). S3 (shipped) enforces this at resolve
+  time: `archive-prep` fingerprints the guarded slot bodies from the
+  shipped template (whitespace-normalized word runs), and a zero-slot note
+  where the templated instruction text survives marker-stripping is
+  reported NOT complete — stripping the `[[fill:]]` markers around the
+  default text is not a resolution, and a sham note is never silently
+  superseded by a fresh draft.
 - **The confirmation slot is never drafted as complete.** "Nothing remains
   chat-only" is an explicit attestation written after everything above is
   resolved — writing it IS the final check.
