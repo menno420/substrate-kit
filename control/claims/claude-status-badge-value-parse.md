@@ -1,0 +1,1 @@
+- `claude/status-badge-value-parse` · status-badge substring bug: `status_in_progress` value-parse fix in src/engine/checks/check_session_log.py + tests + sweep + dist regen · 2026-07-16

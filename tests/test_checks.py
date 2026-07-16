@@ -267,6 +267,55 @@ def test_status_in_progress_token_variants():
     assert not status_in_progress("no badge at all\n")
 
 
+# The auto-drafted badge prose, verbatim from ``draft_card`` — the badge
+# line's parenthetical says "auto-drafted", which CONTAINS the hold token
+# "drafted". Only the VALUE decides the state.
+_AUTO_DRAFT_BADGE = (
+    "# card\n\n"
+    "> **Status:** `{value}` *(auto-drafted by substrate-kit — edit the\n"
+    "> close-out, resolve every slot, then flip this badge to\n"
+    "> `complete`.)*\n\n"
+)
+
+
+def test_status_in_progress_judges_the_value_not_the_line_prose():
+    # The false-hold regression (the #420 card's filed bug): the old
+    # substring scan matched "drafted" inside the badge prose "auto-drafted"
+    # and held a card whose VALUE reads `complete`. The value decides:
+    # `in-progress` with that prose HOLDS; `complete` with the SAME prose
+    # RELEASES.
+    assert status_in_progress(_AUTO_DRAFT_BADGE.format(value="in-progress"))
+    assert not status_in_progress(_AUTO_DRAFT_BADGE.format(value="complete"))
+
+
+def test_status_in_progress_value_boundaries():
+    # Tokens count only at the value's start, on a word boundary.
+    assert not status_in_progress("> **Status:** `holding`\n")  # not `hold`
+    assert status_in_progress("> **Status:** `in-progress · slice 1`\n")
+    # A bare (unbackticked) value with trailing prose that merely MENTIONS a
+    # hold token releases — the value is `complete`, the prose is commentary.
+    assert not status_in_progress("> **Status:** complete — drafted skeleton adopted\n")
+    # A badge line with no value at all is not in-progress.
+    assert not status_in_progress("> **Status:**\n")
+
+
+def test_added_card_with_auto_draft_prose_releases_on_complete(tmp_path):
+    # End-to-end through the gate's added-card lane: a card that flipped its
+    # VALUE to `complete` but kept the auto-draft parenthetical on the badge
+    # line must get the full completeness check (and pass with its markers),
+    # not the born-red HOLD the substring scan produced.
+    card = tmp_path / "2026-07-16-c.md"
+    _write(
+        card,
+        _AUTO_DRAFT_BADGE.format(value="complete")
+        + "💡 idea\n\nprevious-session review: ok\n\n📊 Model: m · e · docs-only\n",
+    )
+    assert check_added_card(card, _MARKERS) == []
+    # Same prose, value still in-progress: the designed HOLD stands.
+    _write(card, _AUTO_DRAFT_BADGE.format(value="in-progress"))
+    assert check_added_card(card, _MARKERS) == [BORN_RED_HOLD_MESSAGE]
+
+
 def test_has_status_badge_detects_presence_not_value():
     assert has_status_badge("> **Status:** `in-progress`\n")
     assert has_status_badge("> **Status:** `complete`\n")

@@ -38,6 +38,24 @@ workflow refuses to publish a version that has no section in this file.
   time and pinned into a real draft render by tests, so drafted text and
   fingerprints cannot drift apart.
 
+### Fixed
+
+- **Session gate judges the Status badge VALUE, not the badge line's
+  prose** (the #420 session card's filed bug, PR #422): `status_in_progress`
+  substring-matched hold tokens anywhere on the badge LINE, so a card whose
+  Status VALUE reads `complete` but whose badge still carries the auto-draft
+  parenthetical "*(auto-drafted by substrate-kit …)*" counted in-progress —
+  "auto-drafted" contains "drafted" — a false-hold class on the
+  merge-blocking gate (a visibly-complete card held red). The badge VALUE is
+  now parsed (backticked span preferred, bare line remainder as fallback —
+  the shared `_status_badge_value`, the same mechanism `_status_value_drafted`
+  already used) and in-progress tokens must match the VALUE at its start on a
+  word boundary: `` `hold` — waiting`` still holds, `holding` and prose
+  mentions never do. Regression tests pin the auto-drafted false-hold pair
+  (same prose: `in-progress` HOLDS, `complete` RELEASES) end-to-end through
+  the added-card lane; an old-vs-new sweep over all 238 existing `.sessions/`
+  cards showed zero state flips.
+
 ## [1.18.0] - 2026-07-16
 
 <!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->

@@ -133,28 +133,69 @@ def is_unadopted_draft(text: str) -> bool:
     return AUTO_DRAFT_MARKER in text and _status_value_drafted(text)
 
 
+# The badge VALUE is the backticked span right after ``**Status:**`` (the
+# grammar every drafted/documented card writes); a badge that skips
+# backticks contributes the bare remainder of its line instead. Trailing
+# prose after a backticked value is commentary, never state.
 _STATUS_VALUE_RE = re.compile(r"\*\*status:\*\*\s*`([^`]+)`", re.IGNORECASE)
+_STATUS_BARE_RE = re.compile(r"\*\*status:\*\*\s*(.+)", re.IGNORECASE)
 
 
-def _status_value_drafted(text: str) -> bool:
-    """True when the Status badge's backticked VALUE is the auto-draft
-    ``drafted`` — a substring scan would misread a badge whose trailing
-    prose says "*(auto-drafted by substrate-kit …)*" after a session flips
-    the value to ``in-progress`` (adoption must end the advisory)."""
+def _status_badge_value(text: str) -> str | None:
+    """Return the Status badge's declared VALUE, or ``None`` without one.
+
+    Prefers the backticked span (`` `complete` ``); falls back to the bare
+    remainder of the badge line (leading emphasis markers stripped) for
+    badges that don't backtick their value. Only the FIRST badge line is
+    read — same single-badge contract the substring scan had.
+    """
     for line in text.splitlines():
         if "**status:**" in line.lower():
             match = _STATUS_VALUE_RE.search(line)
-            return bool(match) and match.group(1).strip().lower() == "drafted"
+            if match:
+                return match.group(1).strip()
+            match = _STATUS_BARE_RE.search(line)
+            if match:
+                return match.group(1).strip().strip("*_").strip()
+            return None
+    return None
+
+
+def _value_declares(value: str, tokens: tuple[str, ...]) -> bool:
+    """True when the badge ``value`` declares one of ``tokens``.
+
+    A token counts only at the START of the value and on a word boundary:
+    `` `hold` — waiting`` declares ``hold``; ``holding`` declares nothing.
+    """
+    lowered = value.lower()
+    for token in tokens:
+        rest = lowered[len(token) : len(token) + 1]
+        if lowered.startswith(token) and (not rest or not rest.isalnum()):
+            return True
     return False
+
+
+def _status_value_drafted(text: str) -> bool:
+    """True when the Status badge's VALUE is the auto-draft ``drafted``
+    — a substring scan would misread a badge whose trailing prose says
+    "*(auto-drafted by substrate-kit …)*" after a session flips the value
+    to ``in-progress`` (adoption must end the advisory)."""
+    value = _status_badge_value(text)
+    return value is not None and value.lower() == "drafted"
 
 
 def status_in_progress(text: str) -> bool:
-    """True when the log's Status badge line carries an in-progress value."""
-    for line in text.splitlines():
-        if "**status:**" in line.lower():
-            lowered = line.lower()
-            return any(token in lowered for token in IN_PROGRESS_TOKENS)
-    return False
+    """True when the Status badge's declared VALUE is an in-progress one.
+
+    Judged on the parsed badge VALUE (:func:`_status_badge_value`), never a
+    whole-line substring scan: badge prose legitimately contains hold
+    tokens — the auto-draft provenance "*(auto-drafted by substrate-kit
+    …)*" contains "drafted" — and the old substring scan false-held a
+    ``complete`` card over its own commentary (a latent false-hold class on
+    the merge-blocking gate; found via the #420 sham fixture).
+    """
+    value = _status_badge_value(text)
+    return value is not None and _value_declares(value, IN_PROGRESS_TOKENS)
 
 
 def has_status_badge(text: str) -> bool:
