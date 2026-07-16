@@ -17,6 +17,21 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Archive-ready close-out S4 — `check --strict` archive-note advisory**
+  (`docs/planning/2026-07-15-archive-ready-close-out-plan.md` §5 S4, on
+  S3's seam): new checker `engine.checks.check_archive_ready` puts the
+  note-completeness verdict on every `check` run instead of only on
+  `archive-prep` re-runs — one advisory finding per
+  `docs/retro/archive-ready-*.md` note that still carries unresolved
+  `[[fill:]]` slots (`archive-note-unresolved-slots`) or, at zero slots,
+  guarded-slot residue from a sham resolution
+  (`archive-note-slot-residue`, reusing `probe_slot_residue` verbatim —
+  no second fingerprint implementation). Advisory-only, never
+  exit-affecting (plan §4.3 advisory-first; PL-008 UNVERIFIED provenance
+  header with the delete-if-unreliable clause); self-gates on repos with
+  no archive notes; a genuinely completed note (including the
+  hand-written 2026-07-11 evidence note) stays silent. Graduation to a
+  preflight/gate leg remains a later, separate decision.
 - **Archive-ready close-out S3 — REQUIRES-PROBE resolve-time semantics**
   (`docs/planning/2026-07-15-archive-ready-close-out-plan.md` §5 S3, on
   S2's verb): the doctrine-guarded slots (routine state REQUIRES-PROBE,
