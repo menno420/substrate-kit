@@ -78,6 +78,13 @@ found still armed by the live probe — plan §1).
   superseded by a fresh draft. S4 (shipped) surfaces the same verdict —
   plus the plain unresolved-slot count — as a `check --strict` advisory on
   every run, so an incomplete note is visible without re-running the verb.
+  **Generalized (2026-07-16, KL-5 residue generalization):** the fingerprint
+  core now lives in `src/engine/lib/residue.py`, shared by every KL-5
+  drafted surface — the same wholesale-replacement verdict covers **session
+  cards** (`check_card_residue`, the `session-card-slot-residue` advisory,
+  plus the same report at the Stop-hook/`session-close` seam): a card whose
+  drafted `[[fill:]]` hints were marker-stripped but kept passes the
+  token-counting session gate, and the advisory is what names it a sham.
 - **The confirmation slot is never drafted as complete.** "Nothing remains
   chat-only" is an explicit attestation written after everything above is
   resolved — writing it IS the final check.

@@ -1,0 +1,1 @@
+- `claude/kl5-residue-generalization` · KL-5 generalization of probe_slot_residue: shared residue lib (src/engine/lib/residue.py) + session-card sham-resolution advisory (checks/check_card_residue.py), tests, dist regen · 2026-07-16
