@@ -1,1 +1,0 @@
-- `claude/archive-probe-s3` · archive-ready close-out S3: REQUIRES-PROBE resolve-time residue semantics (src/engine/loop/archive.py, tests/test_archive.py, dist regen, doctrine doc) · 2026-07-16
