@@ -1,21 +1,23 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-16T14:48:28Z · phase: SEAT CLOSING · 1 work PR in flight (#429)
+updated: 2026-07-16T15:22:42Z · phase: 1 work PR in flight (#430 registry refresh)
 
 ## This wake (2026-07-16 close-out slice) — SEAT-CLOSING HEARTBEAT
 
 - Wake source: coordinator-dispatched close-out slice; control-only diff (status heartbeat), card-less fast lane.
-- **PR ledger: #414–#428 ALL MERGED on green; #429 now OPEN** (#428 merged 2026-07-16T14:40Z as HEAD 1377a63 — the valueless-badge check_log graduation landed; #429 opened this wake on top of it).
-- **#429 — no-badge Status-badge grammar finding graduated into check_log (modified-card lane) + shared `_status_grammar_findings` helper both lanes call: OPEN READY, auto-merge armed 14:46:27Z (SQUASH), held born-red pending this session's card flip; merges on green after flip. Suite 1718→1720. Landing path: born-red card → implement → heartbeat → flip; graduates baton item 1 from #428.**
+- **PR ledger: #414–#429 ALL MERGED on green; #430 now OPEN** (#429 merged at HEAD d007294 — the no-badge grammar graduation into check_log + shared `_status_grammar_findings` helper landed; #430 opened this wake on top of it).
+- **#430 OPEN — regenerate adopters.md registry from live discovery · auto-merge armed SQUASH 2026-07-16T15:18:55Z · born-red, self-lands on green at card flip.** Registry truth by discovery: 12 repos scanned COMPLETE, no degraded reads; substrate-kit self-report drift row resolved (control/status.md now truthfully v1.18.0) + fleet-manager self-report updated to the truthful 'no kit: line' live read; gate + adopters format test green.
 - Merged this calendar day: #414 S3 · #415 · #416 S4 · #417 · #418 v1.18.0 bump · #419 close-out · #420 KL-5 residue generalization · #421 · #422 status-badge value-parse fix · #423 · #424 archive S2 evidence-hint coverage + adopt-planted surface settled empty · #425 claim prune · #426 valueless-badge grammar finding + residue coverage pin. Release v1.18.0 out (run 29466068874, sha256 three-way PASS — full record @ 13a0b44 history).
 - Denial records live in PR bodies, not here: adopter-wave classifier denial verbatim in the **PR #420 body** (§ "Denial routing"). This heartbeat carries pointers + asks only.
 
 ## Backlog — HONEST readout (carried)
 
-**Buildable backlog DRY.** #426 landed the last coordinator-judged buildable item. Everything remaining is DATE-PARKED, not buildable now:
+**Buildable backlog DRY beyond date-parked / owner-gated items.** This session took the one open contained rung — the adopters.md registry refresh (#430). Everything remaining is DATE-PARKED or OWNER-GATED, not buildable now:
 - Grounded-skills measurement window opens ~2026-07-19 (run ~07-19..26 per docs/operations/grounded-skills-measurement.md; owner silence accepts).
 - KL-5 gate graduation (PL-008): awaits the advisory quiet period — `session-card-slot-residue` + archive advisories proving quiet on genuine cards/notes across a few sessions.
 - v1.18.0 adopter wave: awaits owner authorization (⚑ below; denial record in PR #420 body).
 Seat idles on the 2h failsafe trigger between now and the earliest of those dates.
+
+Neutral findings verified this session (facts, not new work): ORDER 048 autonomy doctrine already graduated as [PL-012] (verified — no new graduation needed); the lowercase `docs/capabilities.md` pointer is already fixed + test-guarded; no new CAPABILITIES denial was hit this session (no git-stash / auto-mode block occurred — the earlier-queued entry premise was not reproduced).
 
 ## Routine / trigger state — COORDINATOR-REPORTED via session relay
 
@@ -37,8 +39,8 @@ kit: v1.18.0
 
 ## Next-2 baton
 
-1. **SHIPPING in PR #429** — graduate the **no-badge** grammar finding into `check_log` for full added/modified card-check lane parity + extract the shared `_status_grammar_findings(text)` helper both lanes call so gate findings can't drift between lanes (`src/engine/checks/check_session_log.py` + `tests/test_checks.py`). Merges on green after the card flip.
-2. Date-parked (unchanged): grounded-skills window ~2026-07-19..26; KL-5 gate graduation (PL-008) awaits advisory quiet period; v1.18.0 adopter wave awaits owner authorization.
+1. **SHIPPED this session** — adopters.md registry refresh (#430): regenerate docs/adopters.md from live discovery (registry truth by discovery), self-lands on green at card flip.
+2. Date-parked / owner-gated (unchanged): grounded-skills window ~2026-07-19..26; KL-5/PL-008 graduation awaits the advisory quiet period; v1.18.0 adopter wave awaits owner authorization.
 
 ## ⚑ FOR OWNER (standing set carried forward + one new ask)
 
@@ -86,6 +88,15 @@ WHY: sibling repos cannot read kit data today, so cross-repo sweeps and the merg
 UNBLOCKS: B2–B4 cross-repo sweeps + kit data in the merged console.
 VERIFY: a sibling-seat session fetches a kit file read-only without "Access denied: repository … is not configured for this session".
 RISK: ⚠️ P11 effectively irreversible (history exposed once public) · ↩️ P13 reversible — revoke anytime.
+
+⚑ **Kit self-pin version-truth ruling (§7)** — the kit's own adopters.md row shows a permanent cosmetic tree-internal DRIFT.
+- WHAT: rule how the kit's OWN substrate.config.json pin should read so `currency` stops emitting a permanent tree-internal DRIFT row on substrate-kit itself.
+- WHERE: substrate.config.json `kit_version: 1.0.0` vs tree dist/bootstrap.py v1.18.0; emitted by src/engine/currency.py drifts(); surfaces on every docs/adopters.md regen.
+- HOW (A/B): **A (recommended)** — bump the kit's own pin to track its release (pin == KIT_VERSION, bumped at each release cut) ↩️ reversible; B — teach currency.drifts() the source repo's own pin is N/A (a floor, never DRIFT) and suppress/annotate that one row ↩️ reversible.
+- WHY: it is the only permanent false-DRIFT in the registry; it muddies every currency scan and the registry-truth signal.
+- UNBLOCKS: a clean self-row on adopters.md; clears the 2026-07-11 "§7 version-truth" retro park.
+- VERIFY: after the ruling, `dist/bootstrap.py currency` shows substrate-kit `current` with no tree-internal drift line.
+- RISK: ✅ (both options contained + reversible; no adopter writes).
 
 Standing (full paste-ready blocks verbatim in git history of this file @ 86d2a57):
 - fm #122 v3.4 restamp — owner reviews/merges PERSONALLY.
