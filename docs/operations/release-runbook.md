@@ -74,5 +74,8 @@
 - Adopters regen: `python3 dist/bootstrap.py currency` →
   `docs/adopters.md` (close-out PR; kit's own row self-heals next regen).
 - `control/status.md` release record + claim delete.
+- The close-out PR touches `docs/adopters.md`, so it takes kit-quality's
+  full lane — it needs a session card in its diff; only pure-`control/**`
+  PRs ride the card-less fast lane (paid red: v1.18.0 close-out #419).
 - Next slice: the distribution wave (`upgrade` each adopter, merged on
   green, then registry regen).
