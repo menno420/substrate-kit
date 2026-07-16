@@ -23,7 +23,7 @@ ORDER 025 (the owner's overnight order) could NOT be appended to control/inbox.m
 Ship a `bootstrap.py doctor` self-audit verb that runs the DISCOVERY-RULE sweep in one command (config-pin drift · registry staleness · un-dogfooded shipped workflows like branch-sweep · armed-vs-documented routines · dist byte-equality) and prints a green/red ledger — collapsing today's scattered fix-on-sight classes into one observable surface. (Deduped against docs/ideas/README.md — not currently captured.)
 
 ## 📊 Model
-claude-opus-4-8 · effort high · task-class: planning (menu generation + record hygiene).
+- **📊 Model:** opus-4.8 · high · idea/planning (menu generation + record hygiene)
 
 ## ⟲ Previous-session review
 Previous session (#432, staged-regen re-render) did the right minimal thing — cleared 3 staged-regen-lag advisories with a byte-verified render, no scope creep. What the chain leaves implicit: status.md reports done=023 (branch-sweep) via the range line only, no PR citation — a reader can't tell the sweep shipped as *generated* code (adopt.py) and is NOT dogfooded in the kit's own repo. System improvement: the menu's item 1 (dogfood branch-sweep) + a done= line that cites the shipping PR would close that evidence gap.

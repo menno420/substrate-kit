@@ -1,5 +1,7 @@
 # docs/planning/ — index
 
+> **Status:** `reference`
+>
 > Generated 2026-07-16 for record hygiene (ORDER 025 item 3). Not source of truth; the files win.
 
 ## Active
