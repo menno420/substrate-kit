@@ -1,1 +1,0 @@
-- `claude/archive-ready-s1` · **archive-ready close-out S1 — checklist doctrine + note template (docs-only)** · src/engine/templates/archive-ready.md.tmpl, docs/operations/, dist regen · 2026-07-16
