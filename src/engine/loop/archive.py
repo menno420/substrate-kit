@@ -91,9 +91,11 @@ _PAYLOAD_RENDER_CAP = 30
 # ``CARD_GUARDED_HINTS`` pattern (one source: the drafter renders FROM
 # these and the residue probe fingerprints THEM — no second copy to
 # drift). The date slot's hint ("which chat/session is being archived")
-# is deliberately unguarded for now: the drafter substitutes the real date
-# beside it, so the surviving-hint signal is weaker — extend later if a
-# real sham shows up there.
+# is deliberately unguarded: the drafter substitutes the real date beside
+# it, so the surviving-hint signal is weaker — an explicit settled-empty
+# entry in ``engine.lib.residue.RESIDUE_SETTLED_EMPTY`` (the coverage pin
+# fails if it silently becomes a hole); extend to guarded if a real sham
+# shows up there.
 ARCHIVE_HINT_CLAIMS = "kept-or-pruned disposition per claim, with a reason"
 ARCHIVE_HINT_FLAGS = (
     "verify against the live heartbeat — one line + where each unblocks, "

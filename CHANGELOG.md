@@ -17,6 +17,24 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Residue-surface coverage pin — a drafted hint can no longer ship
+  unguarded silently** (the #424 card's filed 💡, PR #426):
+  `tests/test_residue_coverage.py` AST-discovers every fill-slot
+  constructor in the engine (a function whose f-string writes the
+  `[[fill:` token — today `loop.handoff._fill` and
+  `loop.archive._judgment_slot`), enumerates all their call sites (12),
+  statically resolves each hint, and fails — naming the exact
+  `file:line` and hint — unless the hint is residue-guarded (in a
+  registry demonstrably fingerprinted via `engine.lib.residue.
+  probe_residue`) or an explicit `(name, hint, reason)` entry in the new
+  canonical `engine.lib.residue.RESIDUE_SETTLED_EMPTY` registry. The two
+  deliberate non-guards graduate from code comments to registry entries:
+  the host-marker fallback hint (too short to fingerprint) and the
+  archive date-slot hint (real date substituted beside it — the #424
+  decide-and-flag). Companion pins: constructor discovery itself is
+  asserted non-blind, inline fill-slot f-strings outside a constructor
+  fail, and stale settled-empty entries are reported for removal.
+
 - **KL-5 residue guard — archive-note S2 evidence-judgment hints covered;
   adopt-planted `[[fill:]]` surface settled empty** (baton item 2b, PR
   #424): the three judgment hints the S2 drafter itself injects into
@@ -58,6 +76,18 @@ workflow refuses to publish a version that has no section in this file.
   fingerprints cannot drift apart.
 
 ### Fixed
+
+- **Session gate (added-card lane): a present-but-valueless Status badge
+  is a grammar finding, not a release** (the #422 card's filed 💡, PR
+  #426): a card whose badge LINE exists but whose VALUE parses to
+  None/empty (`> **Status:**` with nothing, whitespace, or bare emphasis
+  markers after it) previously fell through to the completeness check
+  exactly as if it had declared `complete` — a marker-complete card then
+  RELEASED the gate while declaring nothing. `check_added_card` now reds
+  it with a named grammar finding (holds, never releases); in-progress /
+  drafted / complete badges behave exactly as before. Swept all 240 real
+  `.sessions/` cards: zero fires (the only hold is the in-flight session's
+  own born-red card, as designed).
 
 - **Session gate judges the Status badge VALUE, not the badge line's
   prose** (the #420 session card's filed bug, PR #422): `status_in_progress`

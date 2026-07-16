@@ -351,6 +351,42 @@ def test_added_card_without_any_badge_is_a_grammar_finding(tmp_path):
     assert "Status badge" in misses[0]
 
 
+def test_added_card_valueless_badge_is_a_grammar_finding_not_a_release(tmp_path):
+    # The #422 card's filed 💡: a badge LINE with no VALUE used to fall
+    # through to the completeness check as if it had declared `complete` —
+    # a card carrying every marker then RELEASED the gate while declaring
+    # nothing. A valueless badge is a grammar finding that HOLDS.
+    card = tmp_path / "2026-07-16-v.md"
+    _write(
+        card,
+        "# v\n\n> **Status:**\n\n💡 idea\n\n"
+        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n",
+    )
+    misses = check_added_card(card, _MARKERS)
+    assert len(misses) == 1
+    assert "Status badge VALUE" in misses[0]
+    assert misses != [BORN_RED_HOLD_MESSAGE]
+    # Whitespace-only remainder parses valueless too.
+    _write(card, "# v\n\n> **Status:**   \n")
+    misses = check_added_card(card, _MARKERS)
+    assert len(misses) == 1
+    assert "Status badge VALUE" in misses[0]
+
+
+def test_added_card_valueless_branch_leaves_real_values_alone(tmp_path):
+    # The neighbouring states are untouched: in-progress still HOLDs with
+    # the designed born-red message, complete still gets the full check.
+    card = tmp_path / "2026-07-16-w.md"
+    _write(card, "# w\n\n> **Status:** `in-progress`\n")
+    assert check_added_card(card, _MARKERS) == [BORN_RED_HOLD_MESSAGE]
+    _write(
+        card,
+        "# w\n\n> **Status:** `complete`\n\n💡 idea\n\n"
+        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n",
+    )
+    assert check_added_card(card, _MARKERS) == []
+
+
 def test_added_card_claiming_complete_gets_the_full_check(tmp_path):
     # The venture-lab #15 false-green class: an ADDED card declaring
     # `complete` while missing its grammar tokens (💡 / 📊 Model:) merged

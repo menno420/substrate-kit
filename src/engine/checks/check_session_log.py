@@ -232,6 +232,13 @@ def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[s
     - **no Status badge at all** → a grammar finding: every session card
       carries a parseable ``> **Status:**`` badge from its first commit
       (the born-red convention *requires* the badge; it exempts the VALUE).
+    - **badge line present but VALUELESS** (``> **Status:**`` with nothing
+      after it — :func:`_status_badge_value` parses ``None``) → a grammar
+      finding that HOLDS. Before this branch a valueless badge fell through
+      to the completeness check below exactly as if it had declared
+      ``complete`` — a card that declares NOTHING must never be graded as a
+      claimed close-out and released on its markers (the #422 card's filed
+      💡, same value-grammar family as the value-parse fix).
     - **badge declares in-progress/drafted** → the born-red **HOLD**
       (:data:`BORN_RED_HOLD_MESSAGE`): the PR is a mid-flight session and
       must stay red until the card flips complete. This supersedes the
@@ -255,7 +262,19 @@ def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[s
             "carries one from its first commit; born-red exempts the badge's "
             "VALUE, never its presence",
         ]
-    if status_in_progress(text):
+    value = _status_badge_value(text)
+    # ``not value`` catches both parse shapes of a valueless badge: ``None``
+    # (nothing after the colon) and ``""`` (whitespace/emphasis-only
+    # remainder — the bare-badge fallback strips it to empty).
+    if not value:
+        return [
+            "a Status badge VALUE (expected a backticked value on the badge "
+            "line, e.g. `> **Status:** in-progress` or `> **Status:** "
+            "complete`) — the badge line is present but declares no value; "
+            "a valueless badge claims nothing, so it can neither hold as "
+            "born-red nor be graded as a completed close-out",
+        ]
+    if _value_declares(value, IN_PROGRESS_TOKENS):
         return [BORN_RED_HOLD_MESSAGE]
     return check_log(path, markers)
 

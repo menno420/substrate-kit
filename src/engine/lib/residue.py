@@ -146,6 +146,37 @@ CARD_GUARDED_HINTS: tuple[tuple[str, str], ...] = (
 )
 
 
+# ---------------------------------------------------------------------------
+# Settled-empty registry — drafted hints DELIBERATELY not fingerprinted
+# ---------------------------------------------------------------------------
+
+# Every ``[[fill:]]``-writing drafter's hint must be either residue-guarded
+# (fingerprinted via a ``(name, body)`` registry probed through
+# :func:`probe_residue`) or named HERE with a reason — the coverage pin
+# (``tests/test_residue_coverage.py``) enumerates the drafters' call sites
+# and fails on any hint in neither place, so a future drafted surface
+# cannot ship unguarded *silently* (the #424 lesson: the S2 evidence hints
+# sat unguarded for two days because no mechanism noticed them). Entries
+# are ``(name, hint, reason)``; an entry whose hint no longer appears at
+# any call site is stale and the pin reports it for removal.
+RESIDUE_SETTLED_EMPTY: tuple[tuple[str, str, str], ...] = (
+    (
+        "host-marker fallback",
+        "resolve this marker",
+        "three common words — too short to fingerprint without false "
+        "positives; the same call site also drafts host-config marker "
+        "labels, which are host data and cannot be enumerated statically",
+    ),
+    (
+        "archive date slot",
+        "which chat/session is being archived",
+        "the drafter substitutes the real date beside the slot, so a "
+        "surviving hint is a weaker sham signal (#424 decide-and-flag); "
+        "extend to guarded if a real sham shows up there",
+    ),
+)
+
+
 def probe_card_residue(text: str) -> list[str]:
     """Return guilty judgment-slot names for one session card's text.
 

@@ -873,6 +873,37 @@ CARD_GUARDED_HINTS: tuple[tuple[str, str], ...] = (
 )
 
 
+# ---------------------------------------------------------------------------
+# Settled-empty registry — drafted hints DELIBERATELY not fingerprinted
+# ---------------------------------------------------------------------------
+
+# Every ``[[fill:]]``-writing drafter's hint must be either residue-guarded
+# (fingerprinted via a ``(name, body)`` registry probed through
+# :func:`probe_residue`) or named HERE with a reason — the coverage pin
+# (``tests/test_residue_coverage.py``) enumerates the drafters' call sites
+# and fails on any hint in neither place, so a future drafted surface
+# cannot ship unguarded *silently* (the #424 lesson: the S2 evidence hints
+# sat unguarded for two days because no mechanism noticed them). Entries
+# are ``(name, hint, reason)``; an entry whose hint no longer appears at
+# any call site is stale and the pin reports it for removal.
+RESIDUE_SETTLED_EMPTY: tuple[tuple[str, str, str], ...] = (
+    (
+        "host-marker fallback",
+        "resolve this marker",
+        "three common words — too short to fingerprint without false "
+        "positives; the same call site also drafts host-config marker "
+        "labels, which are host data and cannot be enumerated statically",
+    ),
+    (
+        "archive date slot",
+        "which chat/session is being archived",
+        "the drafter substitutes the real date beside the slot, so a "
+        "surviving hint is a weaker sham signal (#424 decide-and-flag); "
+        "extend to guarded if a real sham shows up there",
+    ),
+)
+
+
 def probe_card_residue(text: str) -> list[str]:
     """Return guilty judgment-slot names for one session card's text.
 
@@ -2652,6 +2683,13 @@ def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[s
     - **no Status badge at all** → a grammar finding: every session card
       carries a parseable ``> **Status:**`` badge from its first commit
       (the born-red convention *requires* the badge; it exempts the VALUE).
+    - **badge line present but VALUELESS** (``> **Status:**`` with nothing
+      after it — :func:`_status_badge_value` parses ``None``) → a grammar
+      finding that HOLDS. Before this branch a valueless badge fell through
+      to the completeness check below exactly as if it had declared
+      ``complete`` — a card that declares NOTHING must never be graded as a
+      claimed close-out and released on its markers (the #422 card's filed
+      💡, same value-grammar family as the value-parse fix).
     - **badge declares in-progress/drafted** → the born-red **HOLD**
       (:data:`BORN_RED_HOLD_MESSAGE`): the PR is a mid-flight session and
       must stay red until the card flips complete. This supersedes the
@@ -2675,7 +2713,19 @@ def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[s
             "carries one from its first commit; born-red exempts the badge's "
             "VALUE, never its presence",
         ]
-    if status_in_progress(text):
+    value = _status_badge_value(text)
+    # ``not value`` catches both parse shapes of a valueless badge: ``None``
+    # (nothing after the colon) and ``""`` (whitespace/emphasis-only
+    # remainder — the bare-badge fallback strips it to empty).
+    if not value:
+        return [
+            "a Status badge VALUE (expected a backticked value on the badge "
+            "line, e.g. `> **Status:** in-progress` or `> **Status:** "
+            "complete`) — the badge line is present but declares no value; "
+            "a valueless badge claims nothing, so it can neither hold as "
+            "born-red nor be graded as a completed close-out",
+        ]
+    if _value_declares(value, IN_PROGRESS_TOKENS):
         return [BORN_RED_HOLD_MESSAGE]
     return check_log(path, markers)
 
@@ -12051,9 +12101,11 @@ _PAYLOAD_RENDER_CAP = 30
 # ``CARD_GUARDED_HINTS`` pattern (one source: the drafter renders FROM
 # these and the residue probe fingerprints THEM — no second copy to
 # drift). The date slot's hint ("which chat/session is being archived")
-# is deliberately unguarded for now: the drafter substitutes the real date
-# beside it, so the surviving-hint signal is weaker — extend later if a
-# real sham shows up there.
+# is deliberately unguarded: the drafter substitutes the real date beside
+# it, so the surviving-hint signal is weaker — an explicit settled-empty
+# entry in ``engine.lib.residue.RESIDUE_SETTLED_EMPTY`` (the coverage pin
+# fails if it silently becomes a hole); extend to guarded if a real sham
+# shows up there.
 ARCHIVE_HINT_CLAIMS = "kept-or-pruned disposition per claim, with a reason"
 ARCHIVE_HINT_FLAGS = (
     "verify against the live heartbeat — one line + where each unblocks, "
