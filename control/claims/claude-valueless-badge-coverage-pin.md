@@ -1,1 +1,0 @@
-- `claude/valueless-badge-coverage-pin` · valueless Status-badge grammar finding in the added-card lane (checks/check_session_log.py) + residue-surface coverage-pin test (lib/residue.py RESIDUE_SETTLED_EMPTY, tests/test_residue_coverage.py), dist regen, heartbeat wholesale rewrite · 2026-07-16
