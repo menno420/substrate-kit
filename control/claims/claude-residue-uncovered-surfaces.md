@@ -1,0 +1,1 @@
+- `claude/residue-uncovered-surfaces` · KL-5 residue guard, uncovered surfaces: archive-note S2 evidence-judgment hints (loop/archive.py probe_slot_residue) + adopt-planted doc [[fill:]] slot surface (dedupe vs check_staged_regen), tests, dist regen · 2026-07-16
