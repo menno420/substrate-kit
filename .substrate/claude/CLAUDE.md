@@ -1,9 +1,3 @@
-> ⚠️ **UNRENDERED SLOTS BELOW — run `python3 bootstrap.py ask`.**
-> Every `${...}` token in this file is an unfilled interview slot, not
-> project truth. Fill: `bootstrap answer <slot> <value...>`, then
-> `bootstrap render --live` (fills in place and removes this banner).
-> Prose without `${...}` tokens is live guidance already.
-
 # substrate-kit — agent working agreement
 
 > **Status:** `binding`
@@ -14,30 +8,58 @@
 
 ## What this project is
 
-substrate-kit is built in Python >=3.10.
+substrate-kit is built in Python 3.10+ (stdlib-only engine; no third-party runtime deps).
 
 ## Orientation — read first, in order
 
+0. **Preflight — land on origin's HEAD before reading anything else:**
+   `git fetch origin main && git reset --hard origin/main` (or
+   `git checkout -B main origin/main`). A warm container clone can lag
+   origin by dozens of commits, and a stale clone reads stale orders.
+   Mechanics + safety notes: `docs/AGENT_ORIENTATION.md` § "Start every
+   session".
 1. This file — the working agreement.
-2. `docs/current-state.md` — what is true right now.
-3. `docs/AGENT_ORIENTATION.md` — the task-specific reading router.
+2. `HANDOFF.md` at repo root (when present) — the previous session's trail:
+   newest session card + where to pick up. Regenerated at every session
+   boot, untracked by design — read it before re-deriving history from
+   `git log`/`git show`; never commit or edit it.
+3. `docs/current-state.md` — what is true right now.
+
+That is the whole boot set. Everything else is routed, **not front-loaded**
+(reading every planted doc up front buys ceremony, not context — measured):
+open `docs/AGENT_ORIENTATION.md` when a task needs its reading route,
+`docs/SKILLS.md` (the skill index) **before improvising a procedure for a
+recurring action**, and
+`docs/CAPABILITIES.md` (the verified can/cannot ledger) **before declaring
+any wall or missing credential** — its discovery rule: check the file →
+check the env → attempt once + capture the exact error → append the finding
+same session — and `docs/ROUTINES.md` (the wake-chain/trigger doctrine)
+**before arming, deleting, or auditing any scheduled trigger/routine**.
+
+## Kit machinery — search hygiene
+
+`bootstrap.py` (~12k generated lines) and `.substrate/` (kit state + a byte
+backup of the previous dist) are substrate-kit machinery, not project code.
+Exclude them from repo-wide searches: `grep -r --exclude=bootstrap.py
+--exclude-dir=.substrate …`, or ripgrep `rg -g '!bootstrap.py' -g
+'!.substrate' …`.
 
 ## Architecture — layers & import rules
 
-${architecture_layers}
+src/engine/ is the source of truth (stdlib-only; no print/assert/subprocess; atomic file writes); dist/bootstrap.py is GENERATED from it by src/build_bootstrap.py and byte-pinned by CI; templates live in src/engine/templates/ and render into planted docs; tests/ covers engine + dist equality; planted docs/ are output, never engine input. Import rule: engine modules import stdlib + each other only.
 
 ## Verifying a change
 
 Run before every push:
 
 ```
-python3 -m pytest
+python3.10 -m pytest tests/ -q
 ```
 
 ## How the maintainer works
 
-${owner_profile}
+Owner designs and steers; agents build end-to-end under program law: decide-and-flag (Q-0240) and never-wait (Q-0241 — silence = consent, control is reacting to what ships). Concise reports, flags over questions; reversible-by-default, telemetry-not-caps (Q-0249).
 
 ## Workflow adoption
 
-Current adoption pace for the substrate workflow: **guided**.
+Current adoption pace for the substrate workflow: **active**.
