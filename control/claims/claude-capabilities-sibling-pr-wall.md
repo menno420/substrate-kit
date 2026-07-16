@@ -1,1 +1,1 @@
-- claude/capabilities-sibling-pr-wall · docs/CAPABILITIES.md (append sibling-PR-merge wall) + doc-truth verify · 2026-07-16
+- `claude/capabilities-sibling-pr-wall` · **append sibling-PR-merge wall to docs/CAPABILITIES.md + doc-truth verify** · docs/CAPABILITIES.md, control/status.md · 2026-07-16

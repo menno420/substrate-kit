@@ -101,6 +101,7 @@ credential is missing:
 
 Format: `- YYYY-MM-DD · capability|wall · finding · evidence · workaround`.
 
+- 2026-07-16 · wall · An agent session cannot merge OR arm-auto-merge a SIBLING session's PR, even on relayed coordinator authority — the auto-mode classifier gates the merge/arm capability on PR authorship, not on cited authority (distinct from the 2026-07-10 self-merge wall: a session's OWN contained PR IS armable, a sibling's is not). · PR #431 denied 3× same shape (author self-arm; a non-author reviewer's merge; a coordinator-authority relay through a worker), independently corroborated live this session by #431 remaining unmerged/auto-merge-unarmed while the SAME classifier permitted arming the session's OWN contained PR #432 (merged 9ca23fb 2026-07-16T16:19:41Z). · Route sibling-PR merges to an owner hub-venue click (deep link queued in control/status.md ⚑); a session lands only its own PRs.
 - 2026-07-14 · wall+recipe · **negative git ancestry answers are UNRELIABLE
   on shallow/grafted clones — container clones here are routinely shallow,
   so `git merge-base --is-ancestor` (and kin) returning non-zero proves

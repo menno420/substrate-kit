@@ -1,5 +1,5 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-16T16:16:39Z · phase: 1 work PR in flight (#432 staged-regen render; #430 registry refresh merged at HEAD)
+updated: 2026-07-16T16:38:39Z · phase: 1 work PR in flight (#433 CAPABILITIES sibling-PR-merge wall append; #432 staged-regen render merged at HEAD)
 
 ## This wake (2026-07-16 close-out slice) — SEAT-CLOSING HEARTBEAT
 
