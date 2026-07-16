@@ -2667,6 +2667,20 @@ BORN_RED_HOLD_MESSAGE = (
 )
 
 
+# The valueless Status-badge grammar finding (the #422 card's filed 💡,
+# shipped for the added-card lane in PR #426 and graduated into ``check_log``
+# — the modified-card lane — here). Both lanes emit this exact string so a
+# valueless badge is named identically wherever it is caught; keep it a
+# single module-level constant.
+VALUELESS_BADGE_MESSAGE = (
+    "a Status badge VALUE (expected a backticked value on the badge "
+    "line, e.g. `> **Status:** in-progress` or `> **Status:** "
+    "complete`) — the badge line is present but declares no value; "
+    "a valueless badge claims nothing, so it can neither hold as "
+    "born-red nor be graded as a completed close-out"
+)
+
+
 def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
     """Grade a card newly ADDED by a PR (the gate's added-card lane).
 
@@ -2718,13 +2732,7 @@ def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[s
     # (nothing after the colon) and ``""`` (whitespace/emphasis-only
     # remainder — the bare-badge fallback strips it to empty).
     if not value:
-        return [
-            "a Status badge VALUE (expected a backticked value on the badge "
-            "line, e.g. `> **Status:** in-progress` or `> **Status:** "
-            "complete`) — the badge line is present but declares no value; "
-            "a valueless badge claims nothing, so it can neither hold as "
-            "born-red nor be graded as a completed close-out",
-        ]
+        return [VALUELESS_BADGE_MESSAGE]
     if _value_declares(value, IN_PROGRESS_TOKENS):
         return [BORN_RED_HOLD_MESSAGE]
     return check_log(path, markers)
@@ -2751,6 +2759,14 @@ def check_log(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
         )
     if status_in_progress(text):
         missing.append("a completed Status (badge still says in-progress)")
+    if not _status_badge_value(text):
+        # A modified card whose Status badge declares no value is the same
+        # valueless grammar the added-card lane blocks: ``status_in_progress``
+        # returns False for it (no value → not in-progress), so without this
+        # branch a valueless modified card with all markers present passes
+        # clean — the symmetric false-green PR #426 closed only on the
+        # added-card lane.
+        missing.append(VALUELESS_BADGE_MESSAGE)
     return missing
 
 # --- engine/checks/check_model_line.py ---

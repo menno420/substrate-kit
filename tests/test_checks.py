@@ -16,6 +16,7 @@ from engine.checks.check_docs import (
 )
 from engine.checks.check_session_log import (
     BORN_RED_HOLD_MESSAGE,
+    VALUELESS_BADGE_MESSAGE,
     check_added_card,
     check_log,
     has_status_badge,
@@ -254,6 +255,55 @@ def test_in_progress_status_keeps_the_card_incomplete(tmp_path):
     _write(
         card,
         "# x\n\n> **Status:** `complete`\n\n💡 idea\n\n"
+        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n",
+    )
+    assert check_log(card, _MARKERS) == []
+
+
+def test_check_log_valueless_badge_is_a_grammar_finding_not_a_release(tmp_path):
+    # The #426 card's filed 💡, graduated: a MODIFIED card whose badge LINE
+    # carries no VALUE makes `status_in_progress` False (no value → not
+    # in-progress), so before this branch a valueless card carrying every
+    # marker passed `check_log` clean — the symmetric false-green PR #426
+    # closed only on the added-card lane. A valueless badge is a grammar
+    # finding on the modified-card lane too.
+    card = tmp_path / "2026-07-16-vl.md"
+    _write(
+        card,
+        "# vl\n\n> **Status:**\n\n💡 idea\n\n"
+        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n",
+    )
+    missing = check_log(card, _MARKERS)
+    assert VALUELESS_BADGE_MESSAGE in missing
+    assert "Status badge VALUE" in missing[0]
+    assert missing != []
+    # Whitespace-only remainder parses valueless too.
+    _write(
+        card,
+        "# vl\n\n> **Status:**   \n\n💡 idea\n\n"
+        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n",
+    )
+    missing = check_log(card, _MARKERS)
+    assert VALUELESS_BADGE_MESSAGE in missing
+    assert "Status badge VALUE" in missing[0]
+
+
+def test_check_log_valueless_branch_leaves_real_values_alone(tmp_path):
+    # The neighbouring states are untouched on the modified-card lane: an
+    # in-progress badge still yields the completeness miss (not the valueless
+    # one), and a `complete` badge with all markers passes clean.
+    card = tmp_path / "2026-07-16-vr.md"
+    _write(
+        card,
+        "# vr\n\n> **Status:** `in-progress`\n\n💡 idea\n\n"
+        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n",
+    )
+    assert check_log(card, _MARKERS) == [
+        "a completed Status (badge still says in-progress)"
+    ]
+    _write(
+        card,
+        "# vr\n\n> **Status:** `complete`\n\n💡 idea\n\n"
         "previous-session review: ok\n\n📊 Model: m · e · docs-only\n",
     )
     assert check_log(card, _MARKERS) == []
