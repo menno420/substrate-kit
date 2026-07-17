@@ -26,6 +26,38 @@
 > to restore K0 orientation headroom. Rows below are the condensed ledger;
 > the archive + run dirs + CHANGELOG are the full record.
 
+## Fresh-start reconciliation (2026-07-17) — READ THIS FIRST
+
+*(This block is the current truth; the dated sections below it are a
+historical snapshot and are superseded where they disagree. Live ledgers
+`control/status.md` + [`docs/adopters.md`](adopters.md) win over both.)*
+
+- **EAP read-only cutover: 2026-07-21.** The Claude Code Projects EAP goes
+  **read-only on 2026-07-21**; the autonomous Project seats + routine wakes
+  stop then. The autonomy apparatus (daily lab-loop cron, failsafe/pacemaker
+  triggers, coordinator inbox bus) is **winding down** and the owner is
+  **recreating the Projects** from a clean state — so orientation must boot a
+  fresh seat on *true* state, not the EAP-console-era gate stack below.
+- **Classifier freeze: ~2026-07-15.** The auto-mode permission classifier now
+  denies an agent **arming auto-merge, REST/MCP-merging, or ready-flipping**
+  its own OR a sibling's PR (verified: `docs/CAPABILITIES.md` 2026-07-16 /
+  2026-07-17 entries). **The merge doctrine is corrected accordingly** —
+  agents open PRs READY and let the **server-side merge-on-green workflow**
+  (`auto-merge-enabler.yml` → native auto-merge on green `kit-quality`) land
+  them; owner-live sessions merge directly. The propagating fix ships in
+  `src/engine/templates/CONSTITUTION.md.tmpl` (see "Review rhythm" below).
+- **v1.18.0 is released + verified but NOT yet distributed.** The kit tree is
+  v1.18.0 (`dist/bootstrap.py`; tag `v1.18.0`, sha256 three-way PASS) and the
+  **registry** [`docs/adopters.md`](adopters.md) already reads v1.18.0, but
+  **no adopter tree has been upgraded** — every one of the ~15 adopter repos
+  is still on v1.17.0-or-older. The earlier "distribution COMPLETE" line
+  below is **wrong**. **Running the v1.18.0 adopter-distribution wave is the
+  TOP next task** → [`docs/NEXT-TASKS.md`](NEXT-TASKS.md) #1.
+- **Owner-gate stack (P4/P5/P10/P11/P13) is EAP-console-era.** Those gates
+  presume the Projects console + autonomous routines that go read-only
+  2026-07-21; treat them as historical, not live blockers, pending the
+  recreation. Fresh next-task set: [`docs/NEXT-TASKS.md`](NEXT-TASKS.md).
+
 ## Stability baseline
 
 *(dated snapshot: 2026-07-09; full band narratives in the archive)*
@@ -194,8 +226,11 @@ either probe (firings bullet above; run dir PR #307). B2/B3/B4 still need
 OWNER-ACTION 6.
 
 **→ Post-freeze state (2026-07-12):** the penciled v1.13.0 shipped as
-**v1.12.1** (PATCH per the owner's 2026-07-11 feature FREEZE); distribution
-COMPLETE — all 9 adopters current (`control/status.md`). Pins #220/#238
+**v1.12.1** (PATCH per the owner's 2026-07-11 feature FREEZE). *(Correction
+2026-07-17: the "distribution COMPLETE — all 9 adopters current" claim that
+stood here was already stale by 2026-07-12 and is now flatly wrong — v1.13.0
+through v1.18.0 shipped since, and NO adopter tree is on v1.18.0. See the
+Fresh-start reconciliation block at the top and [`docs/NEXT-TASKS.md`](NEXT-TASKS.md) #1.)* Pins #220/#238
 RATIFIED 2026-07-12 (⚑ OA-14/15 resolved) and **bench run-10 FIRED same
 day** (FAIL, M2-only win; run dir PR #307). Pending: the freeze-lift call
 (until then, no new surface). Daily loop ARMED but 2-for-2 missed fires —
@@ -353,10 +388,14 @@ in CHANGELOG.md.)*
 ## Review rhythm
 
 Every session opens a born-red session card PR early and flips it complete
-as the last commit; PRs merge on green CI (kit-quality) via auto-merge once
-§3.2 item 7 makes the check required — **until P10 is confirmed, prefer
-merging by hand (MCP) after verifying CI green on the final head**: the #7
-incident proved arming can mean merging instantly. Releases are semver
+as the last commit; PRs merge on green CI (kit-quality) via the
+**server-side merge-on-green workflow** (`auto-merge-enabler.yml` arms native
+auto-merge on green `kit-quality`). **Agents do NOT ready-flip, arm
+auto-merge, or REST/MCP-merge their own or a sibling's PR — the auto-mode
+classifier denies it (since ~2026-07-15; `docs/CAPABILITIES.md`)**; an
+owner-live session merges directly, and everything else is left to the
+server-side workflow. *(This supersedes the former "prefer merging by hand
+(MCP)" line, which the classifier now blocks for agents.)* Releases are semver
 GitHub Releases from v1.0.0 with bootstrap.py + sha256 + release.json
 assets (plan §4); a release = the `release.yml` **`workflow_dispatch` run**
 on a main commit whose CHANGELOG.md carries that version's section (the run
