@@ -31,6 +31,14 @@ name = "fixture"
 version = "0.1.0"
 """
 
+# The kit's own self-pin — kept equal to KIT_VERSION so the kit's own
+# `currency` row reads `current` (the tree-internal false-DRIFT fix).
+FIXTURE_KIT_CONFIG = """\
+{
+  "kit_version": "0.1.0"
+}
+"""
+
 FIXTURE_CHANGELOG = """\
 # Changelog
 
@@ -80,6 +88,13 @@ cut_release 0.1.0 -> 0.2.0 (MINOR) [DRY-RUN]
  # Kept equal to KIT_VERSION.
 -version = "0.1.0"
 +version = "0.2.0"
+--- a/substrate.config.json
++++ b/substrate.config.json
+@@ -1,3 +1,3 @@
+ {
+-  "kit_version": "0.1.0"
++  "kit_version": "0.2.0"
+ }
 --- a/CHANGELOG.md
 +++ b/CHANGELOG.md
 @@ -4,7 +4,11 @@
@@ -106,6 +121,9 @@ def make_fixture(tmp_path: Path) -> Path:
         FIXTURE_CONFIG, encoding="utf-8"
     )
     (root / "pyproject.toml").write_text(FIXTURE_PYPROJECT, encoding="utf-8")
+    (root / "substrate.config.json").write_text(
+        FIXTURE_KIT_CONFIG, encoding="utf-8"
+    )
     (root / "CHANGELOG.md").write_text(FIXTURE_CHANGELOG, encoding="utf-8")
     return root
 
@@ -154,15 +172,15 @@ class TestGoldenDryRun:
 
     def test_dry_run_changes_nothing(self, tmp_path):
         root = make_fixture(tmp_path)
-        before = {
-            p: (root / p).read_text(encoding="utf-8")
-            for p in (cr.CONFIG_RELPATH, cr.PYPROJECT_RELPATH, cr.CHANGELOG_RELPATH)
-        }
+        paths = (
+            cr.CONFIG_RELPATH,
+            cr.PYPROJECT_RELPATH,
+            cr.KIT_CONFIG_RELPATH,
+            cr.CHANGELOG_RELPATH,
+        )
+        before = {p: (root / p).read_text(encoding="utf-8") for p in paths}
         cr.main(["0.2.0", "--root", str(root), "--date", "2026-07-14"])
-        after = {
-            p: (root / p).read_text(encoding="utf-8")
-            for p in (cr.CONFIG_RELPATH, cr.PYPROJECT_RELPATH, cr.CHANGELOG_RELPATH)
-        }
+        after = {p: (root / p).read_text(encoding="utf-8") for p in paths}
         assert before == after
 
     def test_live_repo_dry_run_is_green(self, capsys):
@@ -198,7 +216,7 @@ class TestGoldenDryRun:
 
 
 class TestWrite:
-    def test_bump_lands_in_both_homes(self, tmp_path, capsys):
+    def test_bump_lands_in_all_homes(self, tmp_path, capsys):
         root = make_git_fixture(tmp_path)
         rc = cr.main(
             ["0.2.0", "--root", str(root), "--date", "2026-07-14", "--write"]
@@ -206,10 +224,14 @@ class TestWrite:
         assert rc == 0
         cfg = (root / cr.CONFIG_RELPATH).read_text(encoding="utf-8")
         py = (root / cr.PYPROJECT_RELPATH).read_text(encoding="utf-8")
+        kit_cfg = (root / cr.KIT_CONFIG_RELPATH).read_text(encoding="utf-8")
         assert 'KIT_VERSION = "0.2.0"' in cfg
         assert '"0.1.0"' not in cfg
         assert 'version = "0.2.0"' in py
         assert 'version = "0.1.0"' not in py
+        # Third home: the kit's own self-pin advances in lockstep.
+        assert '"kit_version": "0.2.0"' in kit_cfg
+        assert '"0.1.0"' not in kit_cfg
 
     def test_changelog_passes_structure_checker(self, tmp_path, capsys):
         root = make_git_fixture(tmp_path)

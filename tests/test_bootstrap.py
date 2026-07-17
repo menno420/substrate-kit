@@ -1,5 +1,6 @@
 """Tests for the bootstrap builder + the generated single-file artifact."""
 
+import json
 import re
 import subprocess
 import sys
@@ -42,6 +43,18 @@ def test_pyproject_version_matches_kit_version():
     match = re.search(r'^version = "([^"]+)"$', pyproject, re.MULTILINE)
     assert match is not None
     assert match.group(1) == build_bootstrap.kit_version()
+
+
+def test_substrate_config_kit_version_matches_kit_version():
+    # The kit's own substrate.config.json self-pin is the third version home
+    # (alongside config.py KIT_VERSION + pyproject.toml). It MUST track the
+    # release, or `currency`/docs/adopters.md re-emits a permanent
+    # tree-internal false-DRIFT on the kit's own row. scripts/cut_release.py
+    # advances all three in lockstep; this test is the drift brake.
+    kit_config = json.loads(
+        (_KIT / "substrate.config.json").read_text(encoding="utf-8")
+    )
+    assert kit_config["kit_version"] == build_bootstrap.kit_version()
 
 
 def test_generated_file_compiles():

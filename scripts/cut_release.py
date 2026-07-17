@@ -64,11 +64,18 @@ import check_changelog_structure as _ccs  # noqa: E402
 
 CONFIG_RELPATH = "src/engine/lib/config.py"
 PYPROJECT_RELPATH = "pyproject.toml"
+KIT_CONFIG_RELPATH = "substrate.config.json"
 CHANGELOG_RELPATH = "CHANGELOG.md"
 
 _SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 _KIT_VERSION_RE = re.compile(r'^KIT_VERSION = "(\d+\.\d+\.\d+)"$', re.MULTILINE)
 _PYPROJECT_VERSION_RE = re.compile(r'^version = "(\d+\.\d+\.\d+)"$', re.MULTILINE)
+# The kit's own substrate.config.json self-pin — kept equal to KIT_VERSION so
+# the kit's own `currency` row reads `current` (the tree-internal false-DRIFT
+# fix). Matches the pretty-printed `"kit_version": "X.Y.Z"` line.
+_KIT_CONFIG_VERSION_RE = re.compile(
+    r'^(?P<indent>\s*)"kit_version": "(\d+\.\d+\.\d+)"', re.MULTILINE
+)
 _H3_RE = re.compile(r"^###\s")
 
 # The machine comment every released section carries; release.yml refuses a
@@ -154,16 +161,27 @@ def classify_increment(current: str, target: str) -> str:
     )
 
 
-def read_version_homes(root: Path) -> tuple[str, str, str, str]:
-    """Return (config_text, config_version, pyproject_text, pyproject_version)."""
+def read_version_homes(root: Path) -> tuple[str, str, str, str, str, str]:
+    """Return the three version homes' text + parsed version.
+
+    Order: (config_text, config_version, pyproject_text, pyproject_version,
+    kit_config_text, kit_config_version). The kit's own
+    ``substrate.config.json`` ``kit_version`` self-pin is the third home — it
+    is kept equal to ``KIT_VERSION`` so the kit's own ``currency`` row reads
+    ``current`` instead of a permanent tree-internal false-DRIFT.
+    """
     config_path = root / CONFIG_RELPATH
     pyproject_path = root / PYPROJECT_RELPATH
+    kit_config_path = root / KIT_CONFIG_RELPATH
     if not config_path.is_file():
         raise CutError(f"{CONFIG_RELPATH} not found under {root}")
     if not pyproject_path.is_file():
         raise CutError(f"{PYPROJECT_RELPATH} not found under {root}")
+    if not kit_config_path.is_file():
+        raise CutError(f"{KIT_CONFIG_RELPATH} not found under {root}")
     config_text = config_path.read_text(encoding="utf-8")
     pyproject_text = pyproject_path.read_text(encoding="utf-8")
+    kit_config_text = kit_config_path.read_text(encoding="utf-8")
     cfg_matches = _KIT_VERSION_RE.findall(config_text)
     if len(cfg_matches) != 1:
         raise CutError(
@@ -176,17 +194,33 @@ def read_version_homes(root: Path) -> tuple[str, str, str, str]:
             f'expected exactly one `version = "X.Y.Z"` line in '
             f"{PYPROJECT_RELPATH}, found {len(py_matches)}"
         )
-    return config_text, cfg_matches[0], pyproject_text, py_matches[0]
+    kit_matches = _KIT_CONFIG_VERSION_RE.findall(kit_config_text)
+    if len(kit_matches) != 1:
+        raise CutError(
+            f'expected exactly one `"kit_version": "X.Y.Z"` line in '
+            f"{KIT_CONFIG_RELPATH}, found {len(kit_matches)}"
+        )
+    return (
+        config_text,
+        cfg_matches[0],
+        pyproject_text,
+        py_matches[0],
+        kit_config_text,
+        kit_matches[0][1],
+    )
 
 
 def bump_version_texts(
-    config_text: str, pyproject_text: str, target: str
-) -> tuple[str, str]:
+    config_text: str, pyproject_text: str, kit_config_text: str, target: str
+) -> tuple[str, str, str]:
     new_config = _KIT_VERSION_RE.sub(f'KIT_VERSION = "{target}"', config_text)
     new_pyproject = _PYPROJECT_VERSION_RE.sub(
         f'version = "{target}"', pyproject_text
     )
-    return new_config, new_pyproject
+    new_kit_config = _KIT_CONFIG_VERSION_RE.sub(
+        rf'\g<indent>"kit_version": "{target}"', kit_config_text
+    )
+    return new_config, new_pyproject, new_kit_config
 
 
 def transform_changelog(text: str, target: str, date: str, breaking: bool) -> str:
@@ -303,12 +337,20 @@ def _diff(old: str, new: str, relpath: str) -> str:
 
 def run(root: Path, target: str, write: bool, date: str) -> int:
     parse_semver(target)
-    config_text, cfg_version, pyproject_text, py_version = read_version_homes(root)
-    if cfg_version != py_version:
+    (
+        config_text,
+        cfg_version,
+        pyproject_text,
+        py_version,
+        kit_config_text,
+        kit_config_version,
+    ) = read_version_homes(root)
+    if not (cfg_version == py_version == kit_config_version):
         raise CutError(
             f"version homes disagree — {CONFIG_RELPATH} says {cfg_version}, "
-            f"{PYPROJECT_RELPATH} says {py_version}; reconcile them first "
-            "(they are bumped in the same commit by contract)"
+            f"{PYPROJECT_RELPATH} says {py_version}, {KIT_CONFIG_RELPATH} says "
+            f"{kit_config_version}; reconcile them first (they are bumped in "
+            "the same commit by contract)"
         )
     increment = classify_increment(cfg_version, target)
     changelog_path = root / CHANGELOG_RELPATH
@@ -318,8 +360,8 @@ def run(root: Path, target: str, write: bool, date: str) -> int:
     new_changelog = transform_changelog(
         changelog_text, target, date, breaking=(increment == "major")
     )
-    new_config, new_pyproject = bump_version_texts(
-        config_text, pyproject_text, target
+    new_config, new_pyproject, new_kit_config = bump_version_texts(
+        config_text, pyproject_text, kit_config_text, target
     )
 
     if write:
@@ -331,6 +373,7 @@ def run(root: Path, target: str, write: bool, date: str) -> int:
     for relpath, old, new in (
         (CONFIG_RELPATH, config_text, new_config),
         (PYPROJECT_RELPATH, pyproject_text, new_pyproject),
+        (KIT_CONFIG_RELPATH, kit_config_text, new_kit_config),
         (CHANGELOG_RELPATH, changelog_text, new_changelog),
     ):
         print(_diff(old, new, relpath), end="")
@@ -339,9 +382,10 @@ def run(root: Path, target: str, write: bool, date: str) -> int:
     if write:
         (root / CONFIG_RELPATH).write_text(new_config, encoding="utf-8")
         (root / PYPROJECT_RELPATH).write_text(new_pyproject, encoding="utf-8")
+        (root / KIT_CONFIG_RELPATH).write_text(new_kit_config, encoding="utf-8")
         changelog_path.write_text(new_changelog, encoding="utf-8")
         print(
-            f"applied: both version homes {cfg_version} -> {target}; "
+            f"applied: all three version homes {cfg_version} -> {target}; "
             f"{CHANGELOG_RELPATH} [Unreleased] -> [{target}] - {date}"
         )
     else:
