@@ -10,6 +10,7 @@ doctrine).
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -81,3 +82,57 @@ def test_fresh_stamp_has_no_staleness_advisory(tmp_path: Path):
     _write_registry(tmp_path, _generated(NOW))
     _, advisory = check_adopters_current(tmp_path, now=NOW, max_age_days=14)
     assert advisory == []
+
+
+# --- version-home-move advisory (prev-card Q-0089 idea → guard) -------------
+
+
+def _write_version_home(root: Path, version: str) -> None:
+    (root / "substrate.config.json").write_text(
+        json.dumps({"kit_version": version}), encoding="utf-8"
+    )
+
+
+def test_version_home_moved_fires_advisory(tmp_path: Path):
+    # The #438 class: registry generated against v1.7.0, version home now
+    # bumped to v1.8.0 — freshly generated (young stamp), so `adopters-stale`
+    # can't catch it. The version-lag advisory must.
+    _write_registry(tmp_path, _generated(NOW))  # stamped kit release: v1.7.0
+    _write_version_home(tmp_path, "1.8.0")
+    gate, advisory = check_adopters_current(tmp_path, now=NOW)
+    assert gate == []  # advisory-only, never a gate
+    assert [f.kind for f in advisory] == ["adopters-version-lag"]
+    assert "v1.7.0" in advisory[0].message and "v1.8.0" in advisory[0].message
+
+
+def test_version_home_matches_no_advisory(tmp_path: Path):
+    _write_registry(tmp_path, _generated(NOW))  # kit release: v1.7.0
+    _write_version_home(tmp_path, "1.7.0")
+    _, advisory = check_adopters_current(tmp_path, now=NOW)
+    assert advisory == []
+
+
+def test_no_version_home_fails_open(tmp_path: Path):
+    # No substrate.config.json (the existing tests' shape) → no version source
+    # → the version-lag check must not fire.
+    _write_registry(tmp_path, _generated(NOW))
+    _, advisory = check_adopters_current(tmp_path, now=NOW)
+    assert [f.kind for f in advisory] == []
+
+
+def test_unparseable_version_home_fails_open(tmp_path: Path):
+    _write_registry(tmp_path, _generated(NOW))
+    (tmp_path / "substrate.config.json").write_text("{not json", encoding="utf-8")
+    _, advisory = check_adopters_current(tmp_path, now=NOW)
+    assert "adopters-version-lag" not in [f.kind for f in advisory]
+
+
+def test_version_lag_rides_alongside_staleness(tmp_path: Path):
+    # An old registry generated against a now-superseded version home fires
+    # both advisories independently.
+    _write_registry(tmp_path, _generated(OLD))  # old stamp, kit release v1.7.0
+    _write_version_home(tmp_path, "1.8.0")
+    gate, advisory = check_adopters_current(tmp_path, now=NOW)
+    assert gate == []
+    kinds = sorted(f.kind for f in advisory)
+    assert kinds == ["adopters-stale", "adopters-version-lag"]

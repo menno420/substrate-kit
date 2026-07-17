@@ -1,44 +1,44 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-17T20:40:37Z · phase: SESSION-ENDER v3.7 — reconcile #438 downstream drift, PR #440 landing
+updated: 2026-07-17T22:35Z · phase: routine failsafe wake — rung-4 self-initiated guard, PR #441 landing
 
-> **Orders done-truth (read this first):** orders **001–024 are ALL DONE** — the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and is flipped `new→done` manager-side only after the manager reads this status report (control/README.md:86), so an inbox order reading `status: new` while this file's `done=` covers it means **DONE-and-awaiting-manager-flip, not open**. ORDER 024 (EAP extension through 2026-07-21 / do-not-re-arm-routines) was substantively acknowledged on the seat's first rebooted wake — PR #382, commit e900008.
+> **Orders done-truth (read this first):** orders **001–024 are ALL DONE** — the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and is flipped `new→done` manager-side only after the manager reads this status report (control/README.md:86), so an inbox order reading `status: new` while this file's `done=` covers it means **DONE-and-awaiting-manager-flip, not open**. No ORDER >024 exists in control/inbox.md at HEAD; ORDER 025 was relayed-but-unlanded (classifier wall — never appended to inbox, so not bound).
 
-## This wake (2026-07-17 · reconcile #438 downstream drift)
+## This wake (2026-07-17 · routine failsafe · rung-4 guard)
 
-- Shipped **PR #440** — reconciled the three drift items left downstream of merged **PR #438** (commit 828de60): (a) `docs/adopters.md` self-DRIFT row cleared via a clean 12-repo `dist/bootstrap.py currency` regen (substrate-kit's own pin `v1.0.0 → v1.18.0`, verdict `⚠️ DRIFT · current → current`, DRIFT bullet removed); (b) the prior card's `📊 Model:` line conformed to the PL-004 taxonomy; (c) `docs/NEXT-TASKS.md` §3 self-pin drift task marked done. All downstream of #438 — no new source change.
-- Verify: `python3 -m pytest tests/ -q` → 1721 passed, 1 skipped; `dist/bootstrap.py check --strict` green except the intended born-red HOLD (flipped as the final step this session).
-- Prior two merges already on main: **PR #438** (kit self-pin version-truth) and **PR #439** (heartbeat done-truth note).
+- Shipped **PR #441** — new `adopters-version-lag` **advisory** in `check_adopters_current` (the CI-half adopter-registry gate). Fires when `docs/adopters.md`'s embedded `kit release: v<X>` stamp differs from the tree's current version home (`substrate.config.json` `kit_version`): a version home moved *after* the last `bootstrap currency`, so the registry is stale even when its calendar age is young. Closes the exact #438 drift class the 14-day `adopters-stale` nag misses (adopters.md was <14d old, so age never fired). Git-free / pure (§3.2 bans subprocess in checkers) — a version-value comparison, a better implementation of the prev-card Q-0089 idea's git-log intent. Warn-only, fail-open. Builds the previous session's logged ender idea (friction → guard).
+- Verify: `python3 -m pytest tests/ -q` → **1726 passed, 1 skipped** (+5 tests from 1721); `dist/bootstrap.py check --strict` clean except the intended born-red HOLD (flipped as the final step); dist rebuilt byte-stable across two runs. Live real-tree proof: embedded v1.18.0 == home v1.18.0 → no false positive today.
+- Prior three merges on main (verified at HEAD b702f5e): **#438** (kit self-pin version-truth), **#439** (heartbeat done-truth note), **#440** (reconcile #438 downstream drift).
+- Housekeeping: removed stale claim `claude-reconcile-438-downstream.md` (PR #440 terminal/merged).
 
-## PR state (verify live before trusting)
+## PR state (verify live before trusting — MCP PR reads lag ~25 min)
 
-- **PR #440** (this wake) — landing on green; the flip cleared the born-red HOLD. Verify: live PR state.
-- **PR #438** — **MERGED** (commit 828de60); terminal, not carried.
-- **PR #433** — **CLOSED unmerged 2026-07-17T13:21:28Z** (head `b761ced`, branch `claude/capabilities-sibling-pr-wall`); terminal, not carried. (The sibling-PR-wall finding it carried is already durable in docs/CAPABILITIES.md's append-log.)
+- **PR #441** (this wake) — OPEN, ready; born-red HOLD cleared at the card flip; landing on green via the server-side lander. Verify: live PR state.
+- **PR #440 / #439 / #438** — MERGED, terminal, not carried.
+- **PR #433** — CLOSED unmerged 2026-07-17T13:21Z; terminal.
 
 ## Backlog — HONEST readout (carried)
 
-Buildable backlog remains DRY beyond owner-gated / date-parked items; this wake consumed one genuinely-buildable, non-gated rung (the kit-self-pin false-DRIFT — the only permanent tree-internal DRIFT in the registry). Remaining rungs:
+Buildable, non-gated backlog is **thin**. This wake consumed the strongest remaining self-initiated rung (the prev-card's version-home→regen guard). Remaining rungs are owner-gated or date-parked:
 - Owner veto pass over the 23-proposal menu (docs/planning/2026-07-16-overnight-veto-menu.md) — baton #1, owner-gated.
 - Grounded-skills measurement window opens ~2026-07-19 (docs/operations/grounded-skills-measurement.md; owner silence accepts).
 - KL-5 gate graduation (PL-008): awaits the advisory quiet period.
 - v1.18.0 adopter wave: awaits owner authorization (⚑ below).
-Seat idles on the 2h failsafe trigger between now and the earliest of those dates.
+Next self-initiated candidate logged this wake: the adopter-report↔tree-truth self-DRIFT nag (this card's 💡 Session idea). Seat idles on the 2h failsafe trigger between now and the earliest gated date.
 
 ## Routine / trigger state (carried pointer)
 
-- **failsafe `Self Improvement failsafe wake`** — `trig_01Mw9yn9r21Bi5q19v7QcqjN`, cron `0 */2 * * *`, ENABLED (coordinator-bound), LEFT ARMED as the successor's dead-man bridge (per the 2026-07-17T12:10Z paginated audit; this stateless wake did not re-audit — verify next wake).
+- **failsafe `Self Improvement failsafe wake`** — `trig_01Mw9yn9r21Bi5q19v7QcqjN`, cron `0 */2 * * *`, ENABLED, LEFT ARMED as the dead-man bridge (per the 2026-07-17T12:10Z paginated audit; this stateless wake did not re-audit — verify next wake).
 - pacemaker chain: no new one-shots armed this wake.
 - kit-lab daily 06:00Z cron: ABSENT from the registry (⚑ A/B below, unchanged).
 
 ## State
 
 kit: v1.18.0
-- Session gate judges the badge VALUE, not line prose (#422), and a present-but-valueless badge is a grammar finding, never a release (#426 MERGED) — the value-grammar family closed; badge-grammar modified-lane + no-badge parity landed this session (#428, #429).
-- KL-5 residue program: every named drafted-fill surface covered or settled (#420 cards · #424 archive S2 hints + adopt-planted settled empty) AND mechanically pinned (#426 coverage pin). Remaining deliberate step: PL-008 graduation of the advisories once proven quiet across sessions.
-- Registry (docs/adopters.md): regenerated by discovery this session (#430); every adopter row reads stale until its own upgrade wave (parked — see ⚑ ask; denial record in PR #420 body).
-- Staged `.substrate/` tree re-rendered (#432) so interview slots filled since #381 are reflected — staged-regen-lag advisories cleared.
+- `adopters-version-lag` advisory added (#441): couples the registry's recorded generation-version to the live version home; the `adopters-stale` (calendar-age) + `adopters-version-lag` (version-home-move) pair now covers both staleness axes.
+- Session gate judges the badge VALUE not line prose (#422); no-badge + modified-lane parity landed (#428/#429); value-grammar family closed.
+- Registry (docs/adopters.md): last regenerated by discovery in #440 (self-DRIFT row cleared, pin v1.18.0); every adopter row reads stale until its own upgrade wave (parked — ⚑ ask).
 - Wake currency scan turnkey (#392): `python3 dist/bootstrap.py currency --check`.
-- Grounded-skills measurement: harness MERGED (#386); turnkey `python3 scripts/measure_grounded_skills.py --clone --workdir <dir> --json <f> --out <f>`; protocol pre-registered at docs/operations/grounded-skills-measurement.md.
+- Grounded-skills measurement: harness MERGED (#386); turnkey `python3 scripts/measure_grounded_skills.py --clone --workdir <dir> --json <f> --out <f>`; protocol at docs/operations/grounded-skills-measurement.md.
 - Revival boot reading: CONSTITUTION.md → control/inbox.md → this file → docs/eap-closeout-walkthrough-2026-07-14.md §E → docs/audits/eap-project-audit-2026-07-14.md.
 
 ## Next-2 baton
@@ -78,8 +78,8 @@ RISK: ↩️ reversible, docs-only.
 ⚑ P10 required-check swap
 WHAT: Swap which CI check main requires, from the two legacy names to the current one.
 WHERE: repo Settings → Rules → the `main` ruleset → required status checks.
-HOW: remove "Kit test suite" and "Cold-adoption smoke (adopt + check --strict)"; add `kit-quality` (source: GitHub Actions); set "Require branches to be up to date" OFF.
-WHY: the legacy alias jobs exist purely to satisfy the old required names; the up-to-date requirement stalls green PRs `behind`.
+HOW: in the ruleset panel, remove the two legacy-alias check names, add `kit-quality`.
+WHY: the two legacy-alias jobs are permanently-absent required checks that stall every PR's merge until the enabler/lander path clears them; kit-quality is the real check.
 UNBLOCKS: deleting the two legacy-alias jobs; ends the queue-stall class.
 VERIFY: next kit PR shows kit-quality as the only required check; agent then removes the alias jobs.
 RISK: ↩️ reversible — re-add the old required checks in the same ruleset panel.

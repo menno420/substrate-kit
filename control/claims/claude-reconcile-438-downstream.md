@@ -1,1 +1,0 @@
-- `claude/reconcile-438-downstream` · **reconcile #438 downstream drift** — adopters.md regen, prior-card model-line, NEXT-TASKS §3 · docs/adopters.md, docs/NEXT-TASKS.md, .sessions/ · 2026-07-17

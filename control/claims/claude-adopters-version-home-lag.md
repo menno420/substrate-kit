@@ -1,0 +1,1 @@
+- `claude/adopters-version-home-lag` · **version-home → adopters-regen advisory** (rung 4, prev card's Q-0089 idea) — new `adopters-version-lag` finding in check_adopters_current.py + tests + dist rebuild · 2026-07-17
