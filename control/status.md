@@ -1,35 +1,31 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-17T12:14:47Z · phase: SESSION-ENDER (owner-pasted v3.7 ender, 2026-07-17) — session closed, chain to successor
+updated: 2026-07-17T16:41:41Z · phase: SESSION-ENDER v3.7 — session closed, chain to successor
 
-## This wake (2026-07-16→17 session close)
+## This wake (2026-07-17 · kit self-pin version-truth)
 
-- SESSION-ENDER heartbeat (v3.7 ender step 4): session window 2026-07-16T14:04Z → 2026-07-17T12:14:47Z closed by the owner-pasted ender. The durable per-session report (shipped/merged list with PR links, open blocker verbatim, walls) lives in this heartbeat's landing PR body; this card carries pointers + asks only.
-- MERGED this session on green: **#428** (badge-grammar modified-lane) · **#429** (no-badge parity + shared helper) · **#430** (adopters.md discovery regen) · **#432** (staged-tree re-render) · **#434** (veto menu — 23 proposals) · **#435** (heartbeat hygiene) · **#431** (model-line relabel, owner-merged 2026-07-17T10:24Z).
-- Walls hit this session (now durable): **sibling-PR merge wall** — an agent cannot merge another session's PR (recorded in docs/CAPABILITIES.md); **inbox-append-on-relayed-authority wall** — ORDER 025 relayed but unplaced (verbatim held with the coordinator for owner paste).
+- Decide-and-flag under fm ORDER 048: the parked "kit self-pin version-truth" A/B ⚑ was RISK ✅ contained + reversible, no adopter writes → decided **Option A** and shipped as **PR #438** (born-red held; enabler armed native squash auto-merge). The kit's own `substrate.config.json` `kit_version` now tracks the release (1.0.0 → 1.18.0); `scripts/cut_release.py` gained `substrate.config.json` as a third synced version-home write target (was config.py + pyproject.toml only); a new drift-brake test (`test_substrate_config_kit_version_matches_kit_version`) pins them equal so it cannot silently re-drift.
+- Verify: `python3 -m pytest tests/ -q` → 1721 passed, 1 skipped; `dist/bootstrap.py check --strict` passes except the intended born-red HOLD. Post-merge: `python3 dist/bootstrap.py currency` — substrate-kit's own row flips ⚠️ DRIFT → `current` on the first post-merge regen (currency is a remote origin/main scan, so it self-heals after landing).
+- The `⚑ Kit self-pin version-truth ruling (§7)` block is REMOVED from the standing owner set below — resolved by decide-and-flag this wake.
 
-## Parked open PRs (facts, this wake)
+## Parked open PRs (verify live before trusting)
 
-- **PR #433** (open, ready; born-red card held on green work, auto-merge armed) — session-card / CAPABILITIES-wall work pushed complete. Blocker: the auto-mode classifier denies the card-flip commit on relayed authority — verbatim: "[Auto Mode Bypass] … no real user message appears anywhere in this transcript, only an untrusted coordinator relay". Landing path (hub venue): owner replies "flip it" in #433's authoring session, or flips the card badge himself.
-- ORDER-025 inbox append remains classifier-walled; the verbatim order text is held in the coordinator transcript for the owner to paste — pointer only.
+- **PR #438** (this wake) — merging on green; the flip cleared the born-red HOLD. Verify: live PR state + post-merge currency row.
+- **PR #433** (carried) — prior heartbeat: open ready, born-red held, card-flip classifier-walled on relayed authority → owner hub-venue flip. Re-verify live state next wake.
 
 ## Backlog — HONEST readout (carried)
 
-**Buildable backlog DRY beyond date-parked / owner-gated items**, except the owner-veto pass now queued as baton #1. Remaining rungs are DATE-PARKED or OWNER-GATED:
-- Owner veto pass over the 23-proposal menu (docs/planning/2026-07-16-overnight-veto-menu.md); survivors become buildable slices — **baton #1**.
-- Grounded-skills measurement window opens ~2026-07-19 (run ~07-19..26 per docs/operations/grounded-skills-measurement.md; owner silence accepts).
-- KL-5 gate graduation (PL-008): awaits the advisory quiet period — `session-card-slot-residue` + archive advisories proving quiet on genuine cards/notes across a few sessions.
-- v1.18.0 adopter wave: awaits owner authorization (⚑ below; denial record in PR #420 body).
+Buildable backlog remains DRY beyond owner-gated / date-parked items; this wake consumed one genuinely-buildable, non-gated rung (the kit-self-pin false-DRIFT — the only permanent tree-internal DRIFT in the registry). Remaining rungs:
+- Owner veto pass over the 23-proposal menu (docs/planning/2026-07-16-overnight-veto-menu.md) — baton #1, owner-gated.
+- Grounded-skills measurement window opens ~2026-07-19 (docs/operations/grounded-skills-measurement.md; owner silence accepts).
+- KL-5 gate graduation (PL-008): awaits the advisory quiet period.
+- v1.18.0 adopter wave: awaits owner authorization (⚑ below).
 Seat idles on the 2h failsafe trigger between now and the earliest of those dates.
 
-## Routine / trigger state — VERIFIED (coordinator paginated list_triggers audit, 2026-07-17 ~12:10Z)
+## Routine / trigger state (carried pointer)
 
-Full paginated `list_triggers` audit (2,318 routines) 2026-07-17 ~12:10Z; this stateless seat records the coordinator's verified snapshot with provenance for the cutover audit.
-
-- **failsafe `Self Improvement failsafe wake`** — `trig_01Mw9yn9r21Bi5q19v7QcqjN`, cron `0 */2 * * *`, ENABLED, next fire 2026-07-17T14:01:11Z, bound to the coordinator session. **LEFT ARMED** as the successor's dead-man bridge — successor boot cutover rebinds-then-deletes it.
-- **pacemaker chain** — zero pending one-shots (12 send_laters all fired, last 2026-07-16T22:31Z; chain closed with no new routines armed).
-- **prior/stale twin** `trig_01AHRsGDBmbSDAc8AkjU2zJN` — confirmed **ABSENT** (deleted 2026-07-16).
-- No other Self Improvement triggers exist. Business crons: none owned by this seat; the 06:00Z **kit-lab daily** remains ABSENT from the account registry (⚑ A/B ask below).
-- Note: `suberbot docs reconciliation` (`trig_018wP6XTPmf9DLnxrG4RpGVh`, poke-only, fresh-session) is a sibling's — **untouched**.
+- **failsafe `Self Improvement failsafe wake`** — `trig_01Mw9yn9r21Bi5q19v7QcqjN`, cron `0 */2 * * *`, ENABLED (coordinator-bound), LEFT ARMED as the successor's dead-man bridge (per the 2026-07-17T12:10Z paginated audit; this stateless wake did not re-audit — verify next wake).
+- pacemaker chain: no new one-shots armed this wake.
+- kit-lab daily 06:00Z cron: ABSENT from the registry (⚑ A/B below, unchanged).
 
 ## State
 
@@ -93,15 +89,6 @@ WHY: sibling repos cannot read kit data today, so cross-repo sweeps and the merg
 UNBLOCKS: B2–B4 cross-repo sweeps + kit data in the merged console.
 VERIFY: a sibling-seat session fetches a kit file read-only without "Access denied: repository … is not configured for this session".
 RISK: ⚠️ P11 effectively irreversible (history exposed once public) · ↩️ P13 reversible — revoke anytime.
-
-⚑ **Kit self-pin version-truth ruling (§7)** — the kit's own adopters.md row shows a permanent cosmetic tree-internal DRIFT.
-- WHAT: rule how the kit's OWN substrate.config.json pin should read so `currency` stops emitting a permanent tree-internal DRIFT row on substrate-kit itself.
-- WHERE: substrate.config.json `kit_version: 1.0.0` vs tree dist/bootstrap.py v1.18.0; emitted by src/engine/currency.py drifts(); surfaces on every docs/adopters.md regen.
-- HOW (A/B): **A (recommended)** — bump the kit's own pin to track its release (pin == KIT_VERSION, bumped at each release cut) ↩️ reversible; B — teach currency.drifts() the source repo's own pin is N/A (a floor, never DRIFT) and suppress/annotate that one row ↩️ reversible.
-- WHY: it is the only permanent false-DRIFT in the registry; it muddies every currency scan and the registry-truth signal.
-- UNBLOCKS: a clean self-row on adopters.md; clears the 2026-07-11 "§7 version-truth" retro park.
-- VERIFY: after the ruling, `dist/bootstrap.py currency` shows substrate-kit `current` with no tree-internal drift line.
-- RISK: ✅ (both options contained + reversible; no adopter writes).
 
 Standing (full paste-ready blocks verbatim in git history of this file @ 86d2a57):
 - fm #122 v3.4 restamp — owner reviews/merges PERSONALLY.
