@@ -1,5 +1,7 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-17T16:41:41Z · phase: SESSION-ENDER v3.7 — session closed, chain to successor
+updated: 2026-07-17T17:55:08Z · phase: SESSION-ENDER v3.7 — session closed, chain to successor
+
+> **Orders done-truth (read this first):** orders **001–024 are ALL DONE** — the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and is flipped `new→done` manager-side only after the manager reads this status report (control/README.md:86), so an inbox order reading `status: new` while this file's `done=` covers it means **DONE-and-awaiting-manager-flip, not open**. ORDER 024 (EAP extension through 2026-07-21 / do-not-re-arm-routines) was substantively acknowledged on the seat's first rebooted wake — PR #382, commit e900008.
 
 ## This wake (2026-07-17 · kit self-pin version-truth)
 
@@ -10,7 +12,7 @@ updated: 2026-07-17T16:41:41Z · phase: SESSION-ENDER v3.7 — session closed, c
 ## Parked open PRs (verify live before trusting)
 
 - **PR #438** (this wake) — merging on green; the flip cleared the born-red HOLD. Verify: live PR state + post-merge currency row.
-- **PR #433** (carried) — prior heartbeat: open ready, born-red held, card-flip classifier-walled on relayed authority → owner hub-venue flip. Re-verify live state next wake.
+- **PR #433** — **CLOSED unmerged 2026-07-17T13:21:28Z** (head `b761ced`, branch `claude/capabilities-sibling-pr-wall`); terminal, not carried. (The sibling-PR-wall finding it carried is already durable in docs/CAPABILITIES.md's append-log.)
 
 ## Backlog — HONEST readout (carried)
 
