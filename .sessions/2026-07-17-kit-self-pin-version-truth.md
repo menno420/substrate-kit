@@ -1,7 +1,7 @@
 # Session card — kit self-pin version-truth
 
 > **Status:** `complete`
-> **📊 Model:** opus-4.8 · effort high · task-class: kit-fix (drift-elimination)
+> **📊 Model:** opus-4.8 · high · mechanical refactor
 
 ## Scope
 Decide-and-flag (MANDATE / fm ORDER 048) the parked "kit self-pin version-truth" ⚑ ruling: option **A** — make the kit's own `substrate.config.json` `kit_version` track its release, so `currency` / `docs/adopters.md` stops emitting the only permanent tree-internal false-DRIFT on substrate-kit itself.
