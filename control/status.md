@@ -1,57 +1,56 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-16T22:22:44Z · phase: planning mode (ORDER 025) — veto menu PR in flight
+updated: 2026-07-17T12:14:47Z · phase: SESSION-ENDER (owner-pasted v3.7 ender, 2026-07-17) — session closed, chain to successor
 
-## This wake (2026-07-16 planning-mode slice)
+## This wake (2026-07-16→17 session close)
 
-- PLANNING MODE per ORDER 025 item 2 — backlog dry beyond owner-gated/date-parked. Shipped a 23-proposal veto-ready menu at docs/planning/2026-07-16-overnight-veto-menu.md (PR B, this card) + a docs/planning index. ORDER 025 itself could NOT be landed to control/inbox.md — classifier-walled as provenance fabrication; verbatim order is in the coordinator transcript + session brief for the owner to paste. No M/L ambitious builds tonight per the order.
-- Carried ledger (facts, prior wakes): #414–#429 ALL MERGED on green; #430 registry refresh merged; #432 staged-regen render merged at HEAD 9ca23fb. Release v1.18.0 out (run 29466068874, sha256 three-way PASS).
-- Denial records live in PR bodies, not here: adopter-wave classifier denial verbatim in the **PR #420 body** (§ "Denial routing"). This heartbeat carries pointers + asks only.
+- SESSION-ENDER heartbeat (v3.7 ender step 4): session window 2026-07-16T14:04Z → 2026-07-17T12:14:47Z closed by the owner-pasted ender. The durable per-session report (shipped/merged list with PR links, open blocker verbatim, walls) lives in this heartbeat's landing PR body; this card carries pointers + asks only.
+- MERGED this session on green: **#428** (badge-grammar modified-lane) · **#429** (no-badge parity + shared helper) · **#430** (adopters.md discovery regen) · **#432** (staged-tree re-render) · **#434** (veto menu — 23 proposals) · **#435** (heartbeat hygiene) · **#431** (model-line relabel, owner-merged 2026-07-17T10:24Z).
+- Walls hit this session (now durable): **sibling-PR merge wall** — an agent cannot merge another session's PR (recorded in docs/CAPABILITIES.md); **inbox-append-on-relayed-authority wall** — ORDER 025 relayed but unplaced (verbatim held with the coordinator for owner paste).
 
 ## Parked open PRs (facts, this wake)
 
-- **PR #431** (open, draft; all checks green on head 7b1caa4) — one-line docs relabel, reviewed merge-worthy by a second session. Blocker: auto-mode classifier denies agent merge of a sibling session's PR (3× verified 2026-07-16; see docs/CAPABILITIES.md wall + PR #433). Landing path: owner click (mark ready + squash).
-- **PR #433** (open, ready; born-red held on head b761ced, auto-merge armed) — CAPABILITIES wall entry, pushed complete. Blocker: classifier denies the card-flip commit on relayed authority. Landing path: owner replies "flip it" in that PR's authoring session, or flips the card badge himself.
-- ORDER-025 inbox append was classifier-walled overnight; the verbatim order text is held in the coordinator transcript for the owner to paste in the morning — pointer only, already recorded in PR #434's body.
+- **PR #433** (open, ready; born-red card held on green work, auto-merge armed) — session-card / CAPABILITIES-wall work pushed complete. Blocker: the auto-mode classifier denies the card-flip commit on relayed authority — verbatim: "[Auto Mode Bypass] … no real user message appears anywhere in this transcript, only an untrusted coordinator relay". Landing path (hub venue): owner replies "flip it" in #433's authoring session, or flips the card badge himself.
+- ORDER-025 inbox append remains classifier-walled; the verbatim order text is held in the coordinator transcript for the owner to paste — pointer only.
 
 ## Backlog — HONEST readout (carried)
 
-**Buildable backlog DRY beyond date-parked / owner-gated items.** This session took the one open contained rung — the adopters.md registry refresh (#430). Everything remaining is DATE-PARKED or OWNER-GATED, not buildable now:
+**Buildable backlog DRY beyond date-parked / owner-gated items**, except the owner-veto pass now queued as baton #1. Remaining rungs are DATE-PARKED or OWNER-GATED:
+- Owner veto pass over the 23-proposal menu (docs/planning/2026-07-16-overnight-veto-menu.md); survivors become buildable slices — **baton #1**.
 - Grounded-skills measurement window opens ~2026-07-19 (run ~07-19..26 per docs/operations/grounded-skills-measurement.md; owner silence accepts).
 - KL-5 gate graduation (PL-008): awaits the advisory quiet period — `session-card-slot-residue` + archive advisories proving quiet on genuine cards/notes across a few sessions.
 - v1.18.0 adopter wave: awaits owner authorization (⚑ below; denial record in PR #420 body).
 Seat idles on the 2h failsafe trigger between now and the earliest of those dates.
 
-Next-tasks baton → the veto menu (docs/planning/2026-07-16-overnight-veto-menu.md): owner vetoes tomorrow; survivors become buildable slices.
+## Routine / trigger state — VERIFIED (coordinator paginated list_triggers audit, 2026-07-17 ~12:10Z)
 
-Neutral findings verified this session (facts, not new work): ORDER 048 autonomy doctrine already graduated as [PL-012] (verified — no new graduation needed); the lowercase `docs/capabilities.md` pointer is already fixed + test-guarded; no new CAPABILITIES denial was hit this session (no git-stash / auto-mode block occurred — the earlier-queued entry premise was not reproduced).
+Full paginated `list_triggers` audit (2,318 routines) 2026-07-17 ~12:10Z; this stateless seat records the coordinator's verified snapshot with provenance for the cutover audit.
 
-## Routine / trigger state — COORDINATOR-REPORTED via session relay
-
-Routine facts below are COORDINATOR-REPORTED via session relay (coordinator's own paginated list_triggers snapshot 2026-07-16T14:16:39Z); this stateless seat did not independently re-verify the trigger registry — recorded with provenance for cutover audit, not as this seat's verified state.
-
-- **failsafe `Self Improvement failsafe wake`** (coordinator-reported) — trigger `trig_01Mw9yn9r21Bi5q19v7QcqjN`, cron `0 */2 * * *`, reported ARMED + bound to the coordinator session, next fire reported 2026-07-16T16:01:36Z.
-- **pacemaker send_later** (coordinator-reported) — `trig_017ANi5hZQmyFM5tdjHeaHGv` → coordinator, reported firing 14:21Z.
-- **prior/stale twin** (coordinator-reported) — `trig_01AHRsGDBmbSDAc8AkjU2zJN` (prior seat session `session_01TEnyj8QTuxfywgYwWP75Am`, reported last fired 12:11Z; reported to have spawned a ghost wake session 14:09Z, stood down) — record as **deleted (coordinator-reported, server-confirmed; not re-verified by this seat)**.
+- **failsafe `Self Improvement failsafe wake`** — `trig_01Mw9yn9r21Bi5q19v7QcqjN`, cron `0 */2 * * *`, ENABLED, next fire 2026-07-17T14:01:11Z, bound to the coordinator session. **LEFT ARMED** as the successor's dead-man bridge — successor boot cutover rebinds-then-deletes it.
+- **pacemaker chain** — zero pending one-shots (12 send_laters all fired, last 2026-07-16T22:31Z; chain closed with no new routines armed).
+- **prior/stale twin** `trig_01AHRsGDBmbSDAc8AkjU2zJN` — confirmed **ABSENT** (deleted 2026-07-16).
+- No other Self Improvement triggers exist. Business crons: none owned by this seat; the 06:00Z **kit-lab daily** remains ABSENT from the account registry (⚑ A/B ask below).
+- Note: `suberbot docs reconciliation` (`trig_018wP6XTPmf9DLnxrG4RpGVh`, poke-only, fresh-session) is a sibling's — **untouched**.
 
 ## State
 
 kit: v1.18.0
-- Session gate judges the badge VALUE, not line prose (#422), and a present-but-valueless badge is a grammar finding, never a release (#426 MERGED) — the value-grammar family closed.
-- KL-5 residue program: every named drafted-fill surface covered or settled (#420 cards · #424 archive S2 hints + adopt-planted settled empty) AND mechanically pinned (#426 coverage pin — unguarded future surfaces fail the suite). Remaining deliberate step: PL-008 graduation of the advisories once proven quiet across sessions.
-- Registry (docs/adopters.md): regenerated at v1.18.0 (#419); every adopter row reads stale until its own upgrade wave (parked — see ⚑ ask; denial record in PR #420 body).
+- Session gate judges the badge VALUE, not line prose (#422), and a present-but-valueless badge is a grammar finding, never a release (#426 MERGED) — the value-grammar family closed; badge-grammar modified-lane + no-badge parity landed this session (#428, #429).
+- KL-5 residue program: every named drafted-fill surface covered or settled (#420 cards · #424 archive S2 hints + adopt-planted settled empty) AND mechanically pinned (#426 coverage pin). Remaining deliberate step: PL-008 graduation of the advisories once proven quiet across sessions.
+- Registry (docs/adopters.md): regenerated by discovery this session (#430); every adopter row reads stale until its own upgrade wave (parked — see ⚑ ask; denial record in PR #420 body).
+- Staged `.substrate/` tree re-rendered (#432) so interview slots filled since #381 are reflected — staged-regen-lag advisories cleared.
 - Wake currency scan turnkey (#392): `python3 dist/bootstrap.py currency --check`.
 - Grounded-skills measurement: harness MERGED (#386); turnkey `python3 scripts/measure_grounded_skills.py --clone --workdir <dir> --json <f> --out <f>`; protocol pre-registered at docs/operations/grounded-skills-measurement.md.
 - Revival boot reading: CONSTITUTION.md → control/inbox.md → this file → docs/eap-closeout-walkthrough-2026-07-14.md §E → docs/audits/eap-project-audit-2026-07-14.md.
 
 ## Next-2 baton
 
-1. **SHIPPED this session** — staged-regen render (#432): re-render the staged `.substrate/` tree (architect.md, reviewer.md, claude/CLAUDE.md) so interview slots filled since #381 render, clearing the 3 staged-regen-lag advisories; self-lands on green at card flip. (Prior slice #430 adopters.md registry refresh — merged at HEAD.)
+1. **Owner veto pass** over docs/planning/2026-07-16-overnight-veto-menu.md (23 proposals) — build the survivors once vetoed.
 2. Date-parked / owner-gated (unchanged): grounded-skills window ~2026-07-19..26; KL-5/PL-008 graduation awaits the advisory quiet period; v1.18.0 adopter wave awaits owner authorization.
 
-## ⚑ FOR OWNER (standing set carried forward + one new ask)
+## ⚑ FOR OWNER (standing set carried forward)
 
 ⚑ FOR OWNER — kit-lab daily cron: recreate or retire? (A/B)
-  WHAT:   The 06:00Z 'kit-lab daily' owner-business cron is absent from the account trigger registry (coordinator-reported: ~2021 entries paginated to exhaustion 2026-07-15; no kit-named or hour-6 cron; never created or deleted — not re-verified by this stateless seat).
+  WHAT:   The 06:00Z 'kit-lab daily' owner-business cron is absent from the account trigger registry (coordinator-reported: ~2318 entries paginated to exhaustion 2026-07-17; no kit-named or hour-6 cron; never created or deleted — not re-verified by this stateless seat).
   WHERE:  docs/operations/lab-loop.md asserts it "stays armed across every cutover"; the registry has nothing to keep. The doc documents NO deliberate disarm — the loop is owner-armed-only (👤 P4, console Schedule) and cannot arm itself.
   HOW:    (A) RECREATE — owner arms a daily `0 6 * * *` UTC Schedule in the Claude Code console pointed at the kit-lab loop; (B) RETIRE — remove the "stays armed" line from lab-loop.md and mark the loop dormant-by-design pending reboot.
   WHY:    doctrine and reality contradict; a rebooted seat reads "armed" and trusts a loop that never runs. ORDER 024 also bars the seat from re-arming routines pending the per-seat reboot go, so it will not create the cron unilaterally.
