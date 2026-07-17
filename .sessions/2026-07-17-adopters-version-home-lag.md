@@ -1,8 +1,8 @@
 # 2026-07-17 — Version-home → adopters-regen advisory (`adopters-version-lag`)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
-📊 Model: Claude Opus 4.8 (1M) · standard · engine-checker build
+- **📊 Model:** Claude Opus 4.8 (1M) · medium · feature build
 
 Rung 4 (self-initiated, contained + reversible). Builds the previous session's
 Q-0089 ender idea (card `.sessions/2026-07-17-reconcile-438-downstream.md`):
