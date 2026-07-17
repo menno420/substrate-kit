@@ -1,6 +1,6 @@
 # Session card — reconcile #438 downstream drift
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 > **📊 Model:** opus-4.8 · high · mechanical refactor
 
 ## Scope
