@@ -1,6 +1,6 @@
 # Session card — kit self-pin version-truth
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 > **📊 Model:** opus-4.8 · effort high · task-class: kit-fix (drift-elimination)
 
 ## Scope
