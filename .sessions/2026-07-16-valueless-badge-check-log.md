@@ -4,7 +4,7 @@
 
 Intent: graduate the valueless Status-badge grammar finding — shipped in PR #426 for the gate's ADDED-card lane (`check_added_card`) — into the MODIFIED-card lane (`check_log`) in `src/engine/checks/check_session_log.py`, closing the symmetric false-green where a modified card whose Status badge declares no value passes clean.
 
-- **📊 Model:** opus-4.8 · medium · gate-integrity build (kit-quality gate source, check_log lane)
+- **📊 Model:** opus-4.8 · medium · feature build (gate-integrity: kit-quality gate source, check_log lane)
 - ⚑ Self-initiated: no — the filed 💡 from the #426 `valueless-badge-coverage-pin` card, coordinator-dispatched as the next buildable slice.
 
 ## What this session is about
