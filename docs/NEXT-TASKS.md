@@ -57,13 +57,13 @@ upgrade. The paired scaffolding (`auto-merge-enabler.yml` /
 arm on green is the sanctioned landing path; retire it only if a recreated
 project drops auto-merge entirely (owner call).
 
-## 3 — Fix the kit's own self-pin drift
+## 3 — Fix the kit's own self-pin drift — ✅ DONE (PR #438, 2026-07-17)
 
-`substrate.config.json` pins `kit_version` at `1.0.0` while the tree is
-v1.18.0, so `currency` emits a permanent false-`⚠️ DRIFT` self-row in
-[`adopters.md`](adopters.md). Bump the self-pin to track the release
-(veto-menu item 9 / status.md ⚑ §7 option A). Verify no test asserts the
-`1.0.0` value before bumping.
+Resolved by merged PR #438: `substrate.config.json` `kit_version` now tracks
+the release (bumped `1.0.0` → `1.18.0`), and `scripts/cut_release.py` writes it
+as a third synced version-home so it advances at every cut. `currency` no longer
+emits a self-`⚠️ DRIFT` row — [`adopters.md`](adopters.md) reads substrate-kit as
+`current`. Downstream reconciliation (registry regen) landed in PR #440.
 
 ## 4 — Reconcile or retire `current-state.md`
 

@@ -5,7 +5,7 @@
 > **GENERATED — do not hand-edit** — regenerate with `python3 dist/bootstrap.py currency`
 > (agent-side: kit CI cannot auth to sibling repos, so CI validates
 > only this file's format + staleness, never refetches).
-> Generated: 2026-07-16T15:16:30Z · kit release: v1.18.0
+> Generated: 2026-07-17T20:34:39Z · kit release: v1.18.0
 >
 > Who runs which kit version — the substrate-coordinator's
 > visibility surface (inbox ORDER 003; manager research 2026-07-09).
@@ -24,8 +24,8 @@
 
 | repo | tree (vendored dist) | config pin | self-report (`kit:` line) | engaged | verdict vs kit v1.18.0 |
 |---|---|---|---|---|---|
-| menno420/substrate-kit | v1.18.0 (dist/bootstrap.py) | v1.0.0 | v1.18.0 | — | ⚠️ DRIFT · current |
-| menno420/superbot-next | v1.17.0 (bootstrap.py) | v1.17.0 | v1.17.0 | — | stale (v1.17.0 < v1.18.0) |
+| menno420/substrate-kit | v1.18.0 (dist/bootstrap.py) | v1.18.0 | v1.18.0 | — | current |
+| menno420/superbot-next | v1.17.0 (bootstrap.py) | v1.17.0 | v1.17.0 | no | stale (v1.17.0 < v1.18.0) |
 | menno420/websites | v1.17.0 (bootstrap.py) | v1.17.0 | v1.17.0 | — | stale (v1.17.0 < v1.18.0) |
 | menno420/superbot | — | v1.0.0 | no `kit:` line | — | stale (v1.0.0 < v1.18.0) · pin-only (no vendored dist found) |
 | menno420/superbot-games | v1.17.0 (bootstrap.py) | v1.17.0 | status.md: v1.15.0 · status-mining.md: v1.7.1 · status-exploration.md: v1.7.1 | yes | ⚠️ DRIFT · stale (v1.17.0 < v1.18.0) |
@@ -41,7 +41,6 @@
 
 Tree and self-report disagree below — reconcile at the SOURCE (the adopter's own heartbeat / pin), never by hand-editing this file:
 
-- **menno420/substrate-kit** — tree-internal: vendored dist says v1.18.0 but substrate.config.json pins v1.0.0
 - **menno420/superbot-games** — self-report vs tree: control/status.md claims v1.15.0 but the tree says v1.17.0
 - **menno420/superbot-games** — self-report vs tree: control/status-mining.md claims v1.7.1 but the tree says v1.17.0
 - **menno420/superbot-games** — self-report vs tree: control/status-exploration.md claims v1.7.1 but the tree says v1.17.0

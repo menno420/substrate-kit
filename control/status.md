@@ -1,17 +1,18 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-17T17:55:08Z · phase: SESSION-ENDER v3.7 — session closed, chain to successor
+updated: 2026-07-17T20:40:37Z · phase: SESSION-ENDER v3.7 — reconcile #438 downstream drift, PR #440 landing
 
 > **Orders done-truth (read this first):** orders **001–024 are ALL DONE** — the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and is flipped `new→done` manager-side only after the manager reads this status report (control/README.md:86), so an inbox order reading `status: new` while this file's `done=` covers it means **DONE-and-awaiting-manager-flip, not open**. ORDER 024 (EAP extension through 2026-07-21 / do-not-re-arm-routines) was substantively acknowledged on the seat's first rebooted wake — PR #382, commit e900008.
 
-## This wake (2026-07-17 · kit self-pin version-truth)
+## This wake (2026-07-17 · reconcile #438 downstream drift)
 
-- Decide-and-flag under fm ORDER 048: the parked "kit self-pin version-truth" A/B ⚑ was RISK ✅ contained + reversible, no adopter writes → decided **Option A** and shipped as **PR #438** (born-red held; enabler armed native squash auto-merge). The kit's own `substrate.config.json` `kit_version` now tracks the release (1.0.0 → 1.18.0); `scripts/cut_release.py` gained `substrate.config.json` as a third synced version-home write target (was config.py + pyproject.toml only); a new drift-brake test (`test_substrate_config_kit_version_matches_kit_version`) pins them equal so it cannot silently re-drift.
-- Verify: `python3 -m pytest tests/ -q` → 1721 passed, 1 skipped; `dist/bootstrap.py check --strict` passes except the intended born-red HOLD. Post-merge: `python3 dist/bootstrap.py currency` — substrate-kit's own row flips ⚠️ DRIFT → `current` on the first post-merge regen (currency is a remote origin/main scan, so it self-heals after landing).
-- The `⚑ Kit self-pin version-truth ruling (§7)` block is REMOVED from the standing owner set below — resolved by decide-and-flag this wake.
+- Shipped **PR #440** — reconciled the three drift items left downstream of merged **PR #438** (commit 828de60): (a) `docs/adopters.md` self-DRIFT row cleared via a clean 12-repo `dist/bootstrap.py currency` regen (substrate-kit's own pin `v1.0.0 → v1.18.0`, verdict `⚠️ DRIFT · current → current`, DRIFT bullet removed); (b) the prior card's `📊 Model:` line conformed to the PL-004 taxonomy; (c) `docs/NEXT-TASKS.md` §3 self-pin drift task marked done. All downstream of #438 — no new source change.
+- Verify: `python3 -m pytest tests/ -q` → 1721 passed, 1 skipped; `dist/bootstrap.py check --strict` green except the intended born-red HOLD (flipped as the final step this session).
+- Prior two merges already on main: **PR #438** (kit self-pin version-truth) and **PR #439** (heartbeat done-truth note).
 
-## Parked open PRs (verify live before trusting)
+## PR state (verify live before trusting)
 
-- **PR #438** (this wake) — merging on green; the flip cleared the born-red HOLD. Verify: live PR state + post-merge currency row.
+- **PR #440** (this wake) — landing on green; the flip cleared the born-red HOLD. Verify: live PR state.
+- **PR #438** — **MERGED** (commit 828de60); terminal, not carried.
 - **PR #433** — **CLOSED unmerged 2026-07-17T13:21:28Z** (head `b761ced`, branch `claude/capabilities-sibling-pr-wall`); terminal, not carried. (The sibling-PR-wall finding it carried is already durable in docs/CAPABILITIES.md's append-log.)
 
 ## Backlog — HONEST readout (carried)
