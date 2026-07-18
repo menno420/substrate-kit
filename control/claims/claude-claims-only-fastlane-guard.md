@@ -1,0 +1,1 @@
+- `claude/claims-only-fastlane-guard` · **scope** — ci.yml claims-only fast-lane guard + pin test + auto-merge-guards doc row · expected files/area: `.github/workflows/ci.yml`, `tests/test_ci_control_lane.py`, `docs/operations/auto-merge-guards.md` · 2026-07-18
