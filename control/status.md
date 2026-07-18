@@ -15,7 +15,7 @@ IN-FLIGHT: `claude/guard-parity-meta-test` (PR #459) — adds `tests/test_guard_
 
 ## Recently shipped (neutral pointer)
 
-- v1.19.0 version bump merged to main via PR #461; GitHub Release publishing via release.yml workflow_dispatch (verify_release + adopters regen in aftermath). The Release artifact is published post-merge, not yet at write time.
+- v1.19.0 RELEASED + verified — tag v1.19.0, run 29656601475 success, sha256 three-way PASS, https://github.com/menno420/substrate-kit/releases/tag/v1.19.0
 - PR #457 (prior wake): propagated the claims-only fast-lane guard into the generated adopter CI (`src/engine/adopt.py` `live_ci_workflow()`), mirroring the kit's own `ci.yml` guard from PR #455 — so adopter repos get the same #451 fast-lane-race protection. Docs: `docs/operations/auto-merge-guards.md` row 7.
 - PR #455 (prior session): the kit-CI half — a red `kit-quality` step rejecting a `claude/*` work PR whose ENTIRE diff is only `control/claims/**`, while leaving `claim/*` standalone-claim PRs green.
 
