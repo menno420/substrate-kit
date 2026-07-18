@@ -1,1 +1,0 @@
-- `claude/guard-parity-strict` · **extend guard-parity to the third surface (bootstrap check --strict sub-checks)** · src/engine/guards.py, tests/test_guard_parity.py, dist/bootstrap.py · 2026-07-18
