@@ -53,6 +53,17 @@ historical` — the ship fact lives in `outcome: shipped`, never in `state:`;
 see "Frontmatter" above. Recorded here because two sessions in one day paid a
 red preflight round rediscovering it via checker error.)
 
+- [Guard-parity meta-test: kit-vs-adopter guard drift detector](guard-parity-kit-vs-adopter-2026-07-18.md)
+  — state: captured; origin: lab; asserts every *enforcing* guard step in
+  the kit's own `ci.yml` `kit-quality` job has a mirrored counterpart in
+  `src/engine/adopt.py` `live_ci_workflow()` (or a `kit-only-by-design`
+  allowlist entry), so the kit-own and adopter-generated CI guard stacks
+  can't silently diverge; surfaced by PR #457, which existed only because
+  the claims-only fast-lane guard (PR #455) shipped to kit CI but not to
+  the generated adopter CI and nothing caught the gap. Next: a small
+  test-only checker; complements (not duplicates) the added-vs-modified
+  lane-parity meta-test in `docs/planning/2026-07-16-overnight-veto-menu.md`.
+
 - [Folded-gate hosts need the PR-diff-aware card selection too](folded-gate-diff-aware-card-2026-07-11.md)
   — state: captured; origin: consumer (superbot-next folded the session
   gate into its own CI as a `gate` job that still grades the

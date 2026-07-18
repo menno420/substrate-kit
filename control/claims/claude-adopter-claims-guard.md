@@ -1,0 +1,1 @@
+- branch: claude/adopter-claims-guard · scope: propagate the claims-only fast-lane guard into adopter CI (src/engine/adopt.py live_ci_workflow) + dist rebuild + test pin · date: 2026-07-18
