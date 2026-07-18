@@ -17,6 +17,7 @@
 | 4 | Owner-gate label gate: PR diff touching `docs/program/rulings.md` / the canonical program-law docs without the label → **red required check** | `check_program_law.py --label-gate` in `kit-quality` (PR #24) | *forgetting the label entirely* on a law change | **enforcing** |
 | 5 | Bench pin-path label gate (`bench/rubric\|tasks\|seeds`) | `check_bench_integrity.py` (rides open PR #17) | forgetting the label on an oracle change | **enforcing** (once #17 merges) |
 | 6 | Born-red session gate (an `in-progress`/drafted card holds `kit-quality` red) | `dist/bootstrap.py check` in CI | merging before the close-out exists | **enforcing** |
+| 7 | Claims-only fast-lane guard: a `claude/*` PR whose ENTIRE diff is only `control/claims/**` → **red required check** | `ci.yml` "Claims-only fast-lane guard" step in `kit-quality` (fast lane only) | a card-less `claude/*` work PR riding the control fast lane on a pure-claim diff (the #451 race) — while `claim/*` standalone-claim PRs stay green | **enforcing** |
 
 ## The hole that stays open — and why that is OK
 
