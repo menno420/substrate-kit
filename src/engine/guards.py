@@ -169,3 +169,70 @@ def counts() -> dict[str, int]:
     for payload in REGISTRY.values():
         tally[payload[0]] += 1
     return tally
+
+
+# ── Strict sub-check surface (bootstrap check --strict) ──────────────────────
+# `bootstrap check --strict` runs a SECOND guard surface: the sub-checks
+# assembled inline in ``engine.cli._extra_check_findings``. Unlike the ci.yml
+# surface above, NONE of these are kit-only — the whole engine is concatenated
+# into every adopter's ``dist/bootstrap.py`` (build_bootstrap.MODULE_ORDER), so
+# each sub-check ALSO runs when an adopter runs ``bootstrap check --strict``.
+# What varies is *when* each engages: some fire on every rendered adopter, some
+# only when that adopter's interview filled the input the check reads.
+# STRICT_SUBCHECKS pins the set by name; the parity test asserts set-equality
+# against the actual ``check_*(`` calls in the live _extra_check_findings
+# source, so a sub-check can't be dropped or renamed silently and a new one
+# can't be wired in without a documented reason here.
+STRICT_ADOPTER_ALWAYS = "ADOPTER_ALWAYS"  # engages on every rendered adopter
+STRICT_ADOPTER_WHEN_CONFIGURED = "ADOPTER_WHEN_CONFIGURED"  # only when configured
+
+STRICT_SUBCHECK_KINDS = (STRICT_ADOPTER_ALWAYS, STRICT_ADOPTER_WHEN_CONFIGURED)
+
+STRICT_SUBCHECKS: dict[str, tuple[str, str]] = {
+    "check_ledger": (
+        STRICT_ADOPTER_ALWAYS,
+        "the decision ledger is planted at adoption; runs whenever the ledger file exists",
+    ),
+    "check_stamp_discipline": (
+        STRICT_ADOPTER_ALWAYS,
+        "stamp discipline over docs/, which every rendered adopter ships",
+    ),
+    "check_namespace": (
+        STRICT_ADOPTER_WHEN_CONFIGURED,
+        "engages only when the adopter configured namespace.roots that exist on disk (code adopters)",
+    ),
+    "check_seam_authority": (
+        STRICT_ADOPTER_WHEN_CONFIGURED,
+        "engages only when the adopter configured audited seams",
+    ),
+    "check_no_false_walls": (
+        STRICT_ADOPTER_ALWAYS,
+        "called unconditionally; scans docs, CONSTITUTION.md, CAPABILITIES.md and .claude for false capability walls",
+    ),
+    "check_orientation_budget": (
+        STRICT_ADOPTER_ALWAYS,
+        "engages when boot docs exist; every adopter ships CLAUDE.md and current-state.md",
+    ),
+    "check_engagement": (
+        STRICT_ADOPTER_ALWAYS,
+        "the post-adopt engagement gate; engages for any repo carrying a kit_version",
+    ),
+}
+
+# Anchor floor: the strict sub-check surface is exactly these 7 today. A
+# shrinkage guard (like EXPECTED_MIRRORS/EXPECTED_KIT_ONLY above) so removing a
+# sub-check from BOTH the code and this dict — which keeps set-equality green —
+# still trips a red; bump deliberately when the set legitimately changes.
+EXPECTED_STRICT_SUBCHECKS = 7
+
+
+def strict_subcheck_names() -> list[str]:
+    """The engine sub-checks ``cli._extra_check_findings`` must call under
+    ``bootstrap check --strict`` — sourced from the same manifest the parity
+    test asserts set-equality against."""
+    return list(STRICT_SUBCHECKS)
+
+
+def strict_subcheck_reasons() -> list[str]:
+    """The one-line reason string of every strict sub-check entry."""
+    return [reason for _kind, reason in STRICT_SUBCHECKS.values()]
