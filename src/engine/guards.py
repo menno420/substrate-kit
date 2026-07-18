@@ -236,3 +236,132 @@ def strict_subcheck_names() -> list[str]:
 def strict_subcheck_reasons() -> list[str]:
     """The one-line reason string of every strict sub-check entry."""
     return [reason for _kind, reason in STRICT_SUBCHECKS.values()]
+
+
+# ── Fourth-surface guard: the workflow-job census ────────────────────────────
+# The three registries above each pin ONE enforcing guard surface at
+# STEP / SUB-CHECK granularity: REGISTRY pins the ci.yml ``kit-quality`` steps,
+# its MIRRORS subset pins the generated adopter ``substrate-gate`` steps, and
+# STRICT_SUBCHECKS pins the ``bootstrap check --strict`` sub-checks. What NONE
+# of them pins is the SET OF SURFACES itself — a NEW enforcing surface could
+# ship entirely unpinned. The concrete vector is a new WORKFLOW JOB: any job
+# added under a ``.github/workflows/*.yml`` ``jobs:`` key can gate a PR (or run
+# automation beside the gate) without appearing in any of the three step-level
+# registries above.
+#
+# The census closes that vector. It classifies EVERY job across ALL workflow
+# files as one of three kinds — a parity-pinned gate, a temporary legacy alias,
+# or non-enforcing automation — so a FOURTH enforcing surface cannot appear
+# without either a parity pin or an explicit out-of-scope registration with a
+# reason. Pure data + tiny accessors; the meta-test
+# (``tests/test_guard_surface_census.py``) parses the live workflow files with
+# the same stdlib string-splitting the parity test uses and asserts
+# bidirectional set-equality against WORKFLOW_JOB_CENSUS keys — a job added to
+# any workflow, or a census entry with no live job, turns it red.
+
+# The three census KINDS.
+CENSUS_GATE_PINNED = "GATE_PINNED"  # enforcing gate whose parity is pinned elsewhere
+CENSUS_ALIAS = "ALIAS"  # temporary legacy required-context alias (delete after P10)
+CENSUS_AUTOMATION = "AUTOMATION"  # non-enforcing automation/dispatch — never reds a PR
+
+CENSUS_KINDS = (CENSUS_GATE_PINNED, CENSUS_ALIAS, CENSUS_AUTOMATION)
+
+# One entry per REAL job across every ``.github/workflows/*.yml``, keyed
+# ``"<workflow_filename>::<job_id>"``. Read from ground truth (the live
+# ``jobs:`` keys), never guessed. Value is ``(kind, note)``; every note is a
+# descriptive (>15-char) reason, exactly like the KIT_ONLY / STRICT_SUBCHECKS
+# reasons above.
+WORKFLOW_JOB_CENSUS: dict[str, tuple[str, str]] = {
+    # ── the one enforcing PR gate — parity-pinned by all three registries ──
+    "ci.yml::kit-quality": (
+        CENSUS_GATE_PINNED,
+        "the one enforcing PR gate; its guard surface is parity-pinned at "
+        "step/sub-check granularity by REGISTRY (kit-quality steps), the "
+        "MIRRORS subset (adopter substrate-gate steps) and STRICT_SUBCHECKS "
+        "(bootstrap check --strict sub-checks)",
+    ),
+    # ── temporary legacy required-context aliases (delete after the P10 swap) ──
+    "ci.yml::legacy-alias-test": (
+        CENSUS_ALIAS,
+        "temporary legacy required-context alias for the folded-in 'Kit test "
+        "suite' job; reports kit-quality's result verbatim. Delete once the "
+        "P10 ruleset swap requires `kit-quality` instead (control/status.md "
+        "⚡ P10 required-check swap)",
+    ),
+    "ci.yml::legacy-alias-smoke": (
+        CENSUS_ALIAS,
+        "temporary legacy required-context alias for the folded-in "
+        "'Cold-adoption smoke' job; reports kit-quality's result verbatim. "
+        "Delete once the P10 ruleset swap requires `kit-quality` "
+        "(control/status.md ⚡ P10 required-check swap)",
+    ),
+    # ── non-enforcing automation — gates no PR check, never reds a PR ──
+    "auto-merge-enabler.yml::enable-auto-merge": (
+        CENSUS_AUTOMATION,
+        "arms native auto-merge on non-draft claude/*|claim/* PRs; it never "
+        "reds a PR and never merges itself — the merge stays gated by the "
+        "required kit-quality check, so it enforces nothing",
+    ),
+    "auto-merge-disarm.yml::disarm": (
+        CENSUS_AUTOMATION,
+        "disarms native auto-merge when the do-not-automerge label is applied; "
+        "a label-triggered convenience action that gates no PR check",
+    ),
+    "release.yml::release": (
+        CENSUS_AUTOMATION,
+        "tag-push / workflow_dispatch release publisher; runs off the release "
+        "event (tags v*), not pull_request, so it never gates or reds a PR",
+    ),
+}
+
+# Anchor floor: exactly ONE enforcing gate today (kit-quality). A shrinkage
+# guard mirroring EXPECTED_MIRRORS / EXPECTED_STRICT_SUBCHECKS above — so the
+# census can't be gutted to a vacuously-green empty set; bump deliberately when
+# a genuinely new enforcing gate is added AND parity-pinned.
+EXPECTED_CENSUS_GATES = 1
+
+# The three step-level pinning MECHANISMS the census's GATE_PINNED gate leans
+# on — each named with a pointer to its registry. The meta-test asserts this
+# enumerated set is exactly {REGISTRY, MIRRORS, STRICT_SUBCHECKS} and that each
+# resolves to a real, non-empty registry, so a "fourth pinning mechanism" can't
+# be claimed without a home and none of the three can silently empty out.
+PINNING_MECHANISMS: dict[str, str] = {
+    "REGISTRY": (
+        "ci.yml kit-quality step-level parity "
+        "(and its MIRRORS subset -> adopter substrate-gate steps)"
+    ),
+    "MIRRORS": (
+        "generated adopter substrate-gate step names (adopt.live_ci_workflow)"
+    ),
+    "STRICT_SUBCHECKS": (
+        "bootstrap check --strict sub-check set (cli._extra_check_findings)"
+    ),
+}
+
+
+# ── pure accessors (mirroring the REGISTRY / STRICT_SUBCHECKS accessor style) ─
+def workflow_job_census() -> dict[str, tuple[str, str]]:
+    """The full workflow-job census: ``"<workflow>::<job_id>"`` -> ``(kind, note)``.
+
+    Returns a copy so a consumer can't mutate the canonical registry.
+    """
+    return dict(WORKFLOW_JOB_CENSUS)
+
+
+def census_kinds() -> list[str]:
+    """The kind value of every census entry, in registry order."""
+    return [kind for kind, _note in WORKFLOW_JOB_CENSUS.values()]
+
+
+def census_gate_keys() -> list[str]:
+    """The keys of every ``CENSUS_GATE_PINNED`` entry — the enforcing gates."""
+    return [
+        key
+        for key, (kind, _note) in WORKFLOW_JOB_CENSUS.items()
+        if kind == CENSUS_GATE_PINNED
+    ]
+
+
+def census_notes() -> list[str]:
+    """The note string of every census entry."""
+    return [note for _kind, note in WORKFLOW_JOB_CENSUS.values()]
