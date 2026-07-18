@@ -29,6 +29,7 @@ HEAVY_STEP_NAMES = (
     "Idea index (§5.4 — B4 frontmatter + backlog consistency)",
     "Retro index (docs/retro reachability — no unindexed retro file)",
     "CHANGELOG structure ([Unreleased] keep-a-changelog shape)",
+    'No false merge-walls (forward-binding surfaces don\'t re-seed "agents cannot merge")',
     "Taxonomy sync (PL-004 — TASK_CLASSES ⇄ ladder ⇄ telemetry README)",
     "Program law (§8.3 — PL register grammar + planted pointers + owner-gate label)",
     "Bench integrity (§5.0 — pin-path label gate + append-only results)",
