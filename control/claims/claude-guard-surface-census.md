@@ -1,1 +1,0 @@
-- `claude/guard-surface-census` · **B-1 guard-surface census meta-test: WORKFLOW_JOB_CENSUS in guards.py + tests/test_guard_surface_census.py** · src/engine/guards.py + tests/ · 2026-07-18
