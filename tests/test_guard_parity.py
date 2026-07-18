@@ -41,6 +41,26 @@ HOW TO RESPOND WHEN IT GOES RED
   the #457-class drift). Restore the adopter counterpart, or — if the guard is
   now legitimately kit-only — reclassify the entry as ``KIT_ONLY`` with a why.
 
+KIT-SIDE SINGLE-SOURCING — VERIFICATION, NOT CODEGEN
+----------------------------------------------------
+The adopter side of the mapping is single-sourced BY CONSTRUCTION:
+:func:`adopt.live_ci_workflow` imports the ``ADOPTER_*`` step-name constants
+from :mod:`engine.guards`, so the YAML it emits cannot disagree with the
+manifest. The KIT side — ci.yml's own ``kit-quality`` step names — is a static
+workflow file GitHub reads directly, with per-step shell bodies; it cannot be
+regenerated from a names-only manifest without generating the whole workflow.
+So the kit side is single-sourced BY VERIFICATION instead:
+:func:`test_every_kit_quality_step_is_classified` asserts exact set-equality in
+BOTH directions between the manifest ``REGISTRY`` keys and the live ci.yml
+``kit-quality`` step names (``unclassified = ci - REGISTRY`` and
+``stale = REGISTRY - ci``, both empty), so a hand edit to EITHER side goes red —
+proven by mutation both ways (2026-07-18). This closes the "last hand-kept guard
+copy" concern the guard-manifest work (PR #463) queued as an ``--emit-kit-ci``
+codegen baton: codegen would add a 388-line mixed-logic generated artifact for
+no additional safety over this bidirectional check. For a static file GitHub
+reads directly, drift-DETECTION is the terminal design; the codegen baton is
+retired here.
+
 Parsing is stdlib-only string-splitting — the same convention as
 ``tests/test_ci_control_lane.py`` and ``tests/test_adopt.py`` (no YAML parser
 in the test deps, no subprocess). Pure test-side code.
