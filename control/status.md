@@ -1,5 +1,5 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-18T15:42:27Z · phase: SESSION-ENDER v3.7 — coordinator chain closed; failsafe bridge armed for successor
+updated: 2026-07-18T17:18:08Z · phase: SESSION-ENDER v3.7 — coordinator chain closed; failsafe bridge armed for successor; #451-race enabler-guard slice shipping
 
 > **Orders done-truth (read this first):** orders **001–024 are ALL DONE** — the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and is flipped `new→done` manager-side only after the manager reads this status report (control/README.md:86), so an inbox order reading `status: new` while this file's `done=` covers it means **DONE-and-awaiting-manager-flip, not open**. No ORDER >024 exists in control/inbox.md at HEAD; "ORDER 025" is not a standalone bound order — it is the `>`-quoted fm relay inside ORDER 019 item 5 (highest bound order = 024). Its WORK is nonetheless COMPLETE: both cfgdiff writeups are on main (docs/reports/2026-07-09-cfgdiff-differential-testing-method.md + …-v0.1.1-release-decision.md), linked from bench/README.md, merged via PR #340 (2026-07-13). The redundant standalone ORDER-025-block append that hit the classifier wall is therefore MOOT.
 
@@ -9,7 +9,9 @@ Coordinator chain closed. Zero new routines armed at close. Failsafe dead-man br
 
 ## PR state
 
-All seat-session PRs terminal MERGED: #438–#443, #445, #451, #452 (#451 was the claim-only fast-lane race artifact, completed by #452). Sibling lanes merged: #444, #446–#450, #453. NO open PRs. control/claims/ clean (README only).
+All seat-session PRs terminal MERGED: #438–#443, #445, #451, #452 (#451 was the claim-only fast-lane race artifact, completed by #452). Sibling lanes merged: #444, #446–#450, #453.
+
+IN-FLIGHT: `claude/claims-only-fastlane-guard` (this session's PR) — the enabler-guard slice that CLOSES the #451 fast-lane race in CI: a red `kit-quality` step rejects a `claude/*` work PR whose ENTIRE diff is only `control/claims/**`, while leaving `claim/*` standalone-claim PRs green. Landing path: **lands-on-green (auto-merge armed)**. control/claims/ carries this session's own claim file (deleted at close).
 
 ## Backlog — HONEST readout (carried)
 
@@ -41,7 +43,7 @@ kit: v1.18.0
 ## Next-2 baton
 
 1. Grounded-skills window opens 2026-07-19 — the first successor wake on/after that date should evaluate it.
-2. Enabler guard candidate: decline a claude/* PR whose ENTIRE diff is a control/claims/** addition (the #451 fast-lane race) — contained + reversible, fit for a rung-4 slice.
+2. Propagate the claims-only guard to ADOPTERS: the `claude/*`-claims-only reject now lives in the kit's own `ci.yml` (this session), but adopters' generated CI does not yet carry it — port it into `src/engine/adopt.py` `live_ci_workflow()`, rebuild `dist/bootstrap.py`, and pin it in `tests/test_adopt.py`. Kit-only, contained, reversible — the natural next rung. (SHIPPED this session: the kit-CI half — the #451-race enabler-guard on `claude/claims-only-fastlane-guard`.)
 
 ## ⚑ FOR OWNER (standing set carried forward)
 
