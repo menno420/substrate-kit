@@ -1,29 +1,29 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-17T22:35Z · phase: routine failsafe wake — rung-4 self-initiated guard, PR #441 landing
+updated: 2026-07-18T00:37:00Z · phase: routine failsafe wake — rung-2 adopters-DRIFT investigation (document-not-act), heartbeat-only
 
 > **Orders done-truth (read this first):** orders **001–024 are ALL DONE** — the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and is flipped `new→done` manager-side only after the manager reads this status report (control/README.md:86), so an inbox order reading `status: new` while this file's `done=` covers it means **DONE-and-awaiting-manager-flip, not open**. No ORDER >024 exists in control/inbox.md at HEAD; ORDER 025 was relayed-but-unlanded (classifier wall — never appended to inbox, so not bound).
 
-## This wake (2026-07-17 · routine failsafe · rung-4 guard)
+## This wake (2026-07-18 · routine failsafe · rung-2 investigation + heartbeat)
 
-- Shipped **PR #441** — new `adopters-version-lag` **advisory** in `check_adopters_current` (the CI-half adopter-registry gate). Fires when `docs/adopters.md`'s embedded `kit release: v<X>` stamp differs from the tree's current version home (`substrate.config.json` `kit_version`): a version home moved *after* the last `bootstrap currency`, so the registry is stale even when its calendar age is young. Closes the exact #438 drift class the 14-day `adopters-stale` nag misses (adopters.md was <14d old, so age never fired). Git-free / pure (§3.2 bans subprocess in checkers) — a version-value comparison, a better implementation of the prev-card Q-0089 idea's git-log intent. Warn-only, fail-open. Builds the previous session's logged ender idea (friction → guard).
-- Verify: `python3 -m pytest tests/ -q` → **1726 passed, 1 skipped** (+5 tests from 1721); `dist/bootstrap.py check --strict` clean except the intended born-red HOLD (flipped as the final step); dist rebuilt byte-stable across two runs. Live real-tree proof: embedded v1.18.0 == home v1.18.0 → no false positive today.
-- Prior three merges on main (verified at HEAD b702f5e): **#438** (kit self-pin version-truth), **#439** (heartbeat done-truth note), **#440** (reconcile #438 downstream drift).
-- Housekeeping: removed stale claim `claude-reconcile-438-downstream.md` (PR #440 terminal/merged).
+- **Verified PR #441 landed:** MERGED by github-actions[bot] 2026-07-17T22:37:47Z (head SHA 87dd52a), all 4 checks green — `kit-quality` success (Actions run 29618412439). No open PRs in the repo — chain clean.
+- **Rung-2 (baton + docs/adopters.md re-verify) — superbot-games DRIFT investigated; verdict = document-not-act.** The registry's superbot-games row (docs/adopters.md:31) reads tree v1.17.0 with three self-report DRIFT bullets (docs/adopters.md:44-46). Root cause is **adopter-side self-report lag, correctly detected — not a discovery bug, not a stale adopters.md value** (adopters.md is fresh generated output; header `Generated: 2026-07-17T20:34:39Z`). Breakdown:
+  - `control/status.md` claims v1.15.0 vs tree v1.17.0 — a **genuine, canonically-shaped self-report** never re-stamped when the repo upgraded its dist to v1.17.0 (the release-notes "update your `kit:` line" step skipped). Real lag.
+  - `control/status-mining.md` + `control/status-exploration.md` claim v1.7.1 — **historical adoption-prose** on superbot-games' two *consuming* lanes ("adopted... CONSUMES it"), which adopt-once and don't independently version; the lenient `KIT_VERSION_TOKEN_RE` parser reads the historical token as a current claim → two false-positive DRIFT rows.
+  - **No clean kit-only fix.** KF-2: kit-lab has zero write access to adopter repos, and adopters.md itself says reconcile at the SOURCE, never by hand-edit. The status.md re-stamp is superbot-games' own tree → owner-gated (effectively part of the v1.18.0 adopter wave). The one kit-side lever (prune the two lane-heartbeat tokens from docs/fleet-repos.txt) is **declined** — it silences the two false-positive rows by *reducing observability* (hiding lanes that could later carry a real self-report): a cosmetic win at a truth cost. Full breakdown folded into the ⚑ v1.18.0 wave ask below.
+- Housekeeping: pruned stale claim `claude-adopters-version-home-lag.md` (PR #441 terminal/merged).
 
 ## PR state (verify live before trusting — MCP PR reads lag ~25 min)
 
-- **PR #441** (this wake) — OPEN, ready; born-red HOLD cleared at the card flip; landing on green via the server-side lander. Verify: live PR state.
-- **PR #440 / #439 / #438** — MERGED, terminal, not carried.
-- **PR #433** — CLOSED unmerged 2026-07-17T13:21Z; terminal.
+- **No open PRs** at investigation time. PR #441 MERGED 2026-07-17T22:37:47Z @ 87dd52a; #440/#439/#438 MERGED terminal; #433 CLOSED unmerged 2026-07-17T13:21Z. This wake's heartbeat PR opens control-only (fast lane, green by design).
 
 ## Backlog — HONEST readout (carried)
 
-Buildable, non-gated backlog is **thin**. This wake consumed the strongest remaining self-initiated rung (the prev-card's version-home→regen guard). Remaining rungs are owner-gated or date-parked:
-- Owner veto pass over the 23-proposal menu (docs/planning/2026-07-16-overnight-veto-menu.md) — baton #1, owner-gated.
+Buildable, non-gated backlog is **thin** (unchanged from the 2026-07-17 rung-4 wake, which consumed the strongest self-initiated rung). This wake found **no new order** (none >024 at inbox@HEAD) and **no appropriate kit-only build** on rung 2 (the superbot-games DRIFT is owner-gated adopter-side — above); rung 3 (template/gate/graduation) surfaced no concrete ripe candidate. Honest outcome: a rung-2 investigation recorded + heartbeat, no code PR. Remaining rungs owner-gated / date-parked:
+- Owner veto pass over the 23-proposal menu (docs/planning/2026-07-16-overnight-veto-menu.md) — baton #1.
 - Grounded-skills measurement window opens ~2026-07-19 (docs/operations/grounded-skills-measurement.md; owner silence accepts).
 - KL-5 gate graduation (PL-008): awaits the advisory quiet period.
-- v1.18.0 adopter wave: awaits owner authorization (⚑ below).
-Next self-initiated candidate logged this wake: the adopter-report↔tree-truth self-DRIFT nag (this card's 💡 Session idea). Seat idles on the 2h failsafe trigger between now and the earliest gated date.
+- v1.18.0 adopter wave: awaits owner authorization (⚑ below) — now carries the superbot-games DRIFT breakdown.
+Seat idles on the 2h failsafe trigger between now and the earliest gated date.
 
 ## Routine / trigger state (carried pointer)
 
@@ -34,9 +34,9 @@ Next self-initiated candidate logged this wake: the adopter-report↔tree-truth 
 ## State
 
 kit: v1.18.0
-- `adopters-version-lag` advisory added (#441): couples the registry's recorded generation-version to the live version home; the `adopters-stale` (calendar-age) + `adopters-version-lag` (version-home-move) pair now covers both staleness axes.
+- Registry (docs/adopters.md): last regenerated by discovery in #440; superbot-games row DRIFT re-verified this wake (adopter-side self-report lag; breakdown above) — owner-gated, no kit-only fix. Every adopter row reads stale until its own v1.18.0 upgrade wave (parked — ⚑ ask).
+- `adopters-version-lag` advisory (#441) + `adopters-stale` (calendar-age) pair now covers both staleness axes.
 - Session gate judges the badge VALUE not line prose (#422); no-badge + modified-lane parity landed (#428/#429); value-grammar family closed.
-- Registry (docs/adopters.md): last regenerated by discovery in #440 (self-DRIFT row cleared, pin v1.18.0); every adopter row reads stale until its own upgrade wave (parked — ⚑ ask).
 - Wake currency scan turnkey (#392): `python3 dist/bootstrap.py currency --check`.
 - Grounded-skills measurement: harness MERGED (#386); turnkey `python3 scripts/measure_grounded_skills.py --clone --workdir <dir> --json <f> --out <f>`; protocol at docs/operations/grounded-skills-measurement.md.
 - Revival boot reading: CONSTITUTION.md → control/inbox.md → this file → docs/eap-closeout-walkthrough-2026-07-14.md §E → docs/audits/eap-project-audit-2026-07-14.md.
@@ -44,7 +44,7 @@ kit: v1.18.0
 ## Next-2 baton
 
 1. **Owner veto pass** over docs/planning/2026-07-16-overnight-veto-menu.md (23 proposals) — build the survivors once vetoed.
-2. Date-parked / owner-gated (unchanged): grounded-skills window ~2026-07-19..26; KL-5/PL-008 graduation awaits the advisory quiet period; v1.18.0 adopter wave awaits owner authorization.
+2. Date-parked / owner-gated (unchanged): grounded-skills window ~2026-07-19..26; KL-5/PL-008 graduation awaits the advisory quiet period; v1.18.0 adopter wave awaits owner authorization (now with superbot-games DRIFT breakdown).
 
 ## ⚑ FOR OWNER (standing set carried forward)
 
@@ -65,6 +65,7 @@ WHY: the seat session's permission classifier denied adopter-repo writes dispatc
 UNBLOCKS: ~15 adopter currency PRs to v1.18.0.
 VERIFY: wave report with per-adopter PR list.
 RISK: ↩️ reversible, distribution-only diffs.
+  NOTE (superbot-games, added 2026-07-18 rung-2 re-verify): its DRIFT row is 1 genuine self-report lag + 2 consuming-lane false-positives. The wave clears the genuine half when superbot-games re-renders + re-stamps its own control/status.md v1.15.0→v1.18.0. The two consuming lanes (control/status-mining.md / control/status-exploration.md, v1.7.1 adoption-prose) will NOT clear on a version bump — their `kit:` lines are historical prose, not current claims; either reword them adopter-side, or (kit-side, NOT recommended) prune their tokens from docs/fleet-repos.txt at the cost of lane observability.
 
 ⚑ CAPABILITIES denial-record entry (parked)
 WHAT: approve appending the 2026-07-16 adopter-wave denial finding to docs/CAPABILITIES.md in summarized form (finding + date + pointer to the PR #420 body for the verbatim record).
@@ -97,6 +98,14 @@ Standing (full paste-ready blocks verbatim in git history of this file @ 86d2a57
 - fm #122 v3.4 restamp — owner reviews/merges PERSONALLY.
 - UNIVERSAL wake fetch-list vN bump (+ docs/seat-digest.md, docs/SKILLS.md).
 - Grounded-skills measurement window ~2026-07-19..26 — silence accepts.
+
+## 💡 Session idea (Q-0089)
+
+**Consuming-lane roster annotation for multi-lane adopters.** superbot-games is the fleet's only multi-lane adopter; its two *consuming* lanes (status-mining / status-exploration, which adopt-once and don't independently version) surface historical `kit:` prose as false-positive DRIFT rows in docs/adopters.md, because the discovery parser reads any version token as a current claim. A roster annotation in docs/fleet-repos.txt (e.g. a `consumes:` marker per lane) would let discovery still SCAN those lanes (observability kept) but classify their disagreement as informational, not DRIFT — sharpening the registry the owner reads to plan a wave. Genuinely believe in it but **low-priority / one-adopter today**: worth building only if multi-lane adopters proliferate; the simpler true-fix stays adopter-side rewording. Distinct from the prev card's "kit's-own-row self-DRIFT" idea (that couples the kit's dist header to its own registry row; this classifies *adopter consuming-lane* rows). Not built.
+
+## ⟲ Previous-session review (Q-0102)
+
+Of the adopters-version-home-lag session (card .sessions/2026-07-17-adopters-version-home-lag.md): genuine remark — it did the disciplined thing, choosing the git-free version-value comparison over the idea's literal git-log signal once it hit the §3.2 subprocess ban, and folded the "checker constraints apply" lesson back so the next builder inherits the boundary — a clean idea→build→refined-idea link. Small miss: its 💡 idea (kit's-own-row self-DRIFT nag) and this wake's rung-2 finding both circle the SAME registry-truth surface (recorded self-report vs live tree), yet the card didn't note that the *adopter* rows (superbot-games) carry a louder version of the same drift class — so this wake re-derived the adopter-side breakdown from scratch. System improvement it surfaces: a session that ships a registry-truth guard should, in its card, name the *adjacent* registry rows still un-guarded (here: adopter self-report lag) so the successor inherits the map instead of re-investigating — folded into this heartbeat's ⚑ wave note + session idea. Beyond that, nothing to invent.
 
 orders: acked=001–024 · done=001–024
 note: ORDER 025 relayed-but-unlanded (classifier wall — not appended to control/inbox.md; verbatim order in coordinator transcript + session brief).
