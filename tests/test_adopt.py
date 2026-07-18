@@ -947,7 +947,11 @@ def test_live_ci_workflow_wires_the_inbox_base_gate():
     text = live_ci_workflow()
     step = text.split("- name: inbox append-only gate", 1)
     assert len(step) == 2, "planted gate misses the inbox append-only step"
-    body = step[1].split("- uses: actions/setup-python@v6", 1)[0]
+    # Bound the inbox-gate body at the NEXT step. The claims-only fast-lane
+    # guard now sits between the inbox gate and setup-python, so splitting on
+    # setup-python would swallow the guard (whose `if: control_only == 'true'`
+    # would then break the "both lanes" assertion below) — bound on the guard.
+    body = step[1].split("- name: claims-only fast-lane guard", 1)[0]
     assert "if: steps.lane.outputs" not in body  # both lanes
     assert "git merge-base" in body
     assert "git show" in body
@@ -955,6 +959,33 @@ def test_live_ci_workflow_wires_the_inbox_base_gate():
     assert (
         'python3 bootstrap.py check --strict --status-only '
         '--inbox-base "$basefile"' in body
+    )
+
+
+def test_live_ci_workflow_carries_the_claims_only_guard():
+    # The #451 fast-lane race: a claude/* WORK PR whose ENTIRE diff is only
+    # control/claims/** rides the control fast lane, skips the born-red
+    # session gate, and auto-merges card-less. The kit's own ci.yml has
+    # blocked this since PR #455; this pins the SAME guard into the generated
+    # adopter CI (live_ci_workflow) so adopters running substrate-gate get the
+    # same protection. The guard is fast-lane-only (control_only == 'true'),
+    # claude/* heads only, and reds (exit 1) on a claims-only diff — claim/*
+    # standalone claims still ride the lane card-less by design.
+    text = live_ci_workflow()
+    step = text.split("- name: claims-only fast-lane guard", 1)
+    assert len(step) == 2, "planted gate misses the claims-only fast-lane guard"
+    body = step[1].split("- uses: actions/setup-python@v6", 1)[0]
+    assert "if: steps.lane.outputs.control_only == 'true'" in body
+    assert "github.head_ref" in body
+    assert "claude/*" in body
+    assert "grep -v '^control/claims/'" in body
+    assert "exit 1" in body
+    # And it sits AFTER the inbox gate and BEFORE setup-python (the same slot
+    # it occupies in the kit's own ci.yml).
+    assert (
+        text.index("- name: inbox append-only gate")
+        < text.index("- name: claims-only fast-lane guard")
+        < text.index("- uses: actions/setup-python@v6")
     )
 
 
