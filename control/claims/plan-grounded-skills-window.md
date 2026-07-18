@@ -1,1 +1,0 @@
-- branch `claude/plan-grounded-skills-window` · scope: docs/planning grounded-skills execution plan + backlog groom + control/status.md heartbeat baton · 2026-07-18
