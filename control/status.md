@@ -1,26 +1,26 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-18T17:45:22Z · phase: SESSION-ENDER v3.7 — adopter claims-only fast-lane guard propagated (PR #457); baton: grounded-skills window opens 2026-07-19
+updated: 2026-07-18T18:11:22Z · phase: guard-parity meta-test PR #459 IN FLIGHT (kit-vs-adopter guard drift detector); baton: grounded-skills window opens 2026-07-19
 
 > **Orders done-truth (read this first):** orders **001–024 are ALL DONE** — the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and is flipped `new→done` manager-side only after the manager reads this status report (control/README.md:86), so an inbox order reading `status: new` while this file's `done=` covers it means **DONE-and-awaiting-manager-flip, not open**. No ORDER >024 exists in control/inbox.md at HEAD; "ORDER 025" is not a standalone bound order — it is the `>`-quoted fm relay inside ORDER 019 item 5 (highest bound order = 024). Its WORK is nonetheless COMPLETE: both cfgdiff writeups are on main (docs/reports/2026-07-09-cfgdiff-differential-testing-method.md + …-v0.1.1-release-decision.md), linked from bench/README.md, merged via PR #340 (2026-07-13). The redundant standalone ORDER-025-block append that hit the classifier wall is therefore MOOT.
 
-## This wake — SESSION-ENDER v3.7
+## This wake — guard-parity meta-test
 
-Adopter propagation slice: the claims-only fast-lane guard now ships to the GENERATED adopter CI as well as the kit's own. Session PR is landing on green (auto-merge armed). No new routines armed at close; the failsafe dead-man bridge remains armed under the coordinator session (F-1 below).
+Built the guard-parity meta-test (baton #2 from the PR #457 wake): a stdlib-only kit test that fails CI when an enforcing `kit-quality` guard in `.github/workflows/ci.yml` has no mirrored counterpart in the GENERATED adopter CI (`src/engine/adopt.py` `live_ci_workflow()`), unless allowlisted as kit-only with a reason. Converts the kit-vs-adopter guard-drift class from a hand-queued baton (the #455/#457 gap) into an automatic red-CI signal. PR #459 is OPEN and BORN-RED (session card in-progress hold); owner reviews before the card flips complete + merge. No new routines armed; the failsafe dead-man bridge remains armed under the coordinator session (F-1 below).
 
 ## PR state
 
-All seat-session PRs terminal MERGED: #438–#443, #445, #451, #452 (#451 was the claim-only fast-lane race artifact, completed by #452), #455 (kit-CI half of the claims-only guard). Sibling lanes merged: #444, #446–#450, #453.
+All seat-session PRs terminal MERGED: #438–#443, #445, #451, #452, #455, #457 (the adopter-propagation half of the claims-only guard). Sibling lanes merged: #444, #446–#450, #453.
 
-IN-FLIGHT: `claude/adopter-claims-guard` (this session's PR #457) — propagates the claims-only fast-lane guard into the GENERATED adopter CI: `src/engine/adopt.py` `live_ci_workflow()` now mirrors the kit's own `ci.yml` guard from PR #455, `dist/bootstrap.py` rebuilt, pinned in `tests/test_adopt.py` (1761 pytest pass). Landing path: **lands-on-green (auto-merge armed)**. control/claims/ carries this session's own claim file (deleted at close).
+IN-FLIGHT: `claude/guard-parity-meta-test` (PR #459) — adds `tests/test_guard_parity.py` (kit-vs-adopter guard-drift detector). Test-only, no `src/engine` edit → `dist/bootstrap.py` UNMODIFIED (no rebuild). Full suite 1765 pass / 1 skip. Landing path: **owner-reviewed** — the born-red card holds `kit-quality` red until the card flips complete. control/claims/ carries this session's own claim file (`claude-guard-parity-meta-test.md`, deleted at close).
 
 ## Recently shipped (neutral pointer)
 
-- PR #457 (this session): propagated the claims-only fast-lane guard into the generated adopter CI (`src/engine/adopt.py` `live_ci_workflow()`), mirroring the kit's own `ci.yml` guard from PR #455 — so adopter repos get the same #451 fast-lane-race protection. Docs: `docs/operations/auto-merge-guards.md` row 7.
+- PR #457 (prior wake): propagated the claims-only fast-lane guard into the generated adopter CI (`src/engine/adopt.py` `live_ci_workflow()`), mirroring the kit's own `ci.yml` guard from PR #455 — so adopter repos get the same #451 fast-lane-race protection. Docs: `docs/operations/auto-merge-guards.md` row 7.
 - PR #455 (prior session): the kit-CI half — a red `kit-quality` step rejecting a `claude/*` work PR whose ENTIRE diff is only `control/claims/**`, while leaving `claim/*` standalone-claim PRs green.
 
 ## Backlog — HONEST readout (carried)
 
-Buildable, non-gated backlog remains **thin**. This wake shipped the adopter-propagation rung queued by the PR #455 session; no new order exists (none >024 at inbox@HEAD). Remaining rungs owner-gated / date-parked:
+Buildable, non-gated backlog remains **thin**. This wake shipped the guard-parity meta-test queued as baton #2 by the PR #457 wake; no new order exists (none >024 at inbox@HEAD). Remaining rungs owner-gated / date-parked:
 - Owner veto pass over the 23-proposal menu (docs/planning/2026-07-16-overnight-veto-menu.md) — baton #1 (owner).
 - Grounded-skills measurement window opens 2026-07-19 (docs/operations/grounded-skills-measurement.md; owner silence accepts) — not yet (today is 2026-07-18).
 - KL-5 gate graduation (PL-008): awaits the advisory quiet period.
@@ -39,7 +39,7 @@ Seat idles on the 2h failsafe trigger between now and the earliest gated date.
 
 kit: v1.18.0
 - **No-false-walls guard now enforced fleet-wide** (campaign #444–#450): the false "agents cannot merge" doctrine was removed from templates / rendered docs / the session-close skill, then re-defended by `tools/check_no_false_walls.py` (kit CI, full lane) + `src/engine/checks/check_no_false_walls.py` (runs in every adopter's `check --strict`). Sits under CHANGELOG `[Unreleased]` — folds into the next release.
-- **Claims-only fast-lane guard now on BOTH surfaces**: kit's own `ci.yml` (PR #455) + generated adopter CI via `live_ci_workflow()` (PR #457). The two guard stacks are hand-kept in agreement today — see the guard-parity meta-test idea (baton #2 / `docs/ideas/guard-parity-kit-vs-adopter-2026-07-18.md`).
+- **Claims-only fast-lane guard now on BOTH surfaces**: kit's own `ci.yml` (PR #455) + generated adopter CI via `live_ci_workflow()` (PR #457). The two guard stacks were hand-kept in agreement; the guard-parity meta-test (`tests/test_guard_parity.py`, PR #459 in flight) now fails CI on kit-vs-adopter guard drift, replacing the hand-check with a red-CI signal (`docs/ideas/guard-parity-kit-vs-adopter-2026-07-18.md`).
 - Registry (docs/adopters.md): CURRENT per `currency --check` (12 repos); the superbot-games row DRIFT is adopter-side self-report lag (owner-gated, no kit-only fix — folded into the v1.18.0 wave ask). Every adopter row reads stale until its own v1.18.0 upgrade wave.
 - `adopters-version-lag` (#441) + `adopters-stale` (calendar-age) advisories cover both staleness axes.
 - Session gate judges the badge VALUE not line prose (#422); no-badge + modified-lane parity landed (#428/#429).
@@ -50,7 +50,7 @@ kit: v1.18.0
 ## Next-2 baton
 
 1. Grounded-skills measurement window opens 2026-07-19 — the first successor wake on/after that date should evaluate it (docs/operations/grounded-skills-measurement.md).
-2. Build the **guard-parity meta-test** (kit-vs-adopter guard drift detector) from this session's 💡 — a kit test/lint asserting every enforcing `kit-quality` guard in `ci.yml` has a mirrored counterpart in `live_ci_workflow()` (or a kit-only-by-design allowlist entry), so the two guard surfaces can't silently drift. Durable idea: `docs/ideas/guard-parity-kit-vs-adopter-2026-07-18.md`. Small, test-only, reversible — the natural self-initiated next rung.
+2. Successor judgment — the guard-parity meta-test (prior baton #2) is now built (PR #459, owner-reviewed). Pick the next-highest-value rung from the thin backlog: groom a `docs/ideas/*.md` entry down its lifecycle, or extend guard-parity coverage (e.g. the added-vs-modified lane-parity meta-test in docs/planning/2026-07-16-overnight-veto-menu.md).
 
 ## ⚑ FOR OWNER (standing set carried forward)
 
