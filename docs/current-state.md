@@ -46,13 +46,15 @@ historical snapshot and are superseded where they disagree. Live ledgers
   one-off merge refusal, if it ever occurs, is venue-specific — report it
   verbatim, not as a standing wall. The merge doctrine ships in
   `src/engine/templates/CONSTITUTION.md.tmpl` (see "Review rhythm" below).
-- **v1.18.0 is released + verified but NOT yet distributed.** The kit tree is
-  v1.18.0 (`dist/bootstrap.py`; tag `v1.18.0`, sha256 three-way PASS) and the
-  **registry** [`docs/adopters.md`](adopters.md) already reads v1.18.0, but
-  **no adopter tree has been upgraded** — every one of the ~15 adopter repos
-  is still on v1.17.0-or-older. The earlier "distribution COMPLETE" line
-  below is **wrong**. **Running the v1.18.0 adopter-distribution wave is the
-  TOP next task** → [`docs/NEXT-TASKS.md`](NEXT-TASKS.md) #1.
+- **v1.19.0 is released + verified but NOT yet distributed.** The kit tree is
+  v1.19.0 (`dist/bootstrap.py`; tag `v1.19.0`, sha256 three-way PASS,
+  release <https://github.com/menno420/substrate-kit/releases/tag/v1.19.0>) and
+  the **registry** [`docs/adopters.md`](adopters.md) now reads v1.19.0 (self-row
+  regenerated in the release aftermath), but **no adopter tree has been
+  upgraded** — every one of the ~15 adopter repos is still on v1.17.0-or-older.
+  The earlier "distribution COMPLETE" line below is **wrong**. **Running the
+  v1.19.0 adopter-distribution wave (owner-gated) is the TOP next task** →
+  [`docs/NEXT-TASKS.md`](NEXT-TASKS.md) #1.
 - **Owner-gate stack (P4/P5/P10/P11/P13) is EAP-console-era.** Those gates
   presume the Projects console + autonomous routines that go read-only
   2026-07-21; treat them as historical, not live blockers, pending the
