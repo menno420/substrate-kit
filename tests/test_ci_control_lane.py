@@ -121,3 +121,28 @@ def test_inbox_append_gate_runs_on_both_lanes_with_a_git_extracted_base():
     assert "git merge-base" in body
     assert "git show" in body
     assert "check --strict --status-only --inbox-base" in body
+
+
+def test_claims_only_fastlane_guard_rejects_cardless_claude_work_prs():
+    # The #451 fast-lane race: a claude/* WORK PR whose ENTIRE diff is only
+    # control/claims/** rides the control fast lane, skips the born-red session
+    # gate, and auto-merges card-less. This guard step holds such a PR RED —
+    # but ONLY on the fast lane (control_only == 'true') and ONLY for claude/*
+    # heads, so claim/* standalone-claim PRs (meant to ride the lane card-less,
+    # control/claims/README.md) stay green.
+    text = _ci_text()
+    step = "- name: Claims-only fast-lane guard"
+    block = text.split(step, 1)
+    assert len(block) == 2, "CI misses the claims-only fast-lane guard step"
+    body = block[1].split("- uses:", 1)[0].split("- name:", 1)[0]
+    # Runs ONLY on the fast lane (== 'true'), like the other lane-scoped steps.
+    assert "if: steps.lane.outputs.control_only == 'true'" in body
+    # Gates on the claude/* head — a non-claude/* head (claim/*, …) exits 0.
+    assert "github.head_ref" in body
+    assert "claude/*" in body
+    # Only-claims detection: every changed path under control/claims/ → red.
+    assert "grep -v '^control/claims/'" in body
+    assert "exit 1" in body
+    # And it lives in the kit-quality job (before the legacy alias jobs).
+    kit_quality = text.split("kit-quality:", 1)[1].split("legacy-alias-test:", 1)[0]
+    assert step in kit_quality

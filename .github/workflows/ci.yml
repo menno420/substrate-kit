@@ -93,6 +93,45 @@ jobs:
             python3 dist/bootstrap.py check --strict --status-only --inbox-base "$basefile"
           fi
 
+      - name: Claims-only fast-lane guard (claude/* work PRs must carry a session card)
+        if: steps.lane.outputs.control_only == 'true'
+        # The #451 fast-lane race: a `claude/*` WORK PR whose ENTIRE diff is
+        # only `control/claims/**` rides the control fast lane, skips the
+        # born-red session gate, and auto-merges card-less — a claim-file
+        # commit masquerading as finished work. This gate holds such a PR RED.
+        # It runs ONLY on the fast lane and ONLY for `claude/*` heads: a
+        # `claim/*` standalone-claim PR is MEANT to ride the lane card-less
+        # (control/claims/README.md § "Land the claim on main FAST"), so a
+        # non-`claude/*` head exits 0 immediately. The base blob / changed
+        # files come from git in bash — the same merge-base idiom as the inbox
+        # append-only gate above (§3.2 subprocess ban keeps the engine out of
+        # git). A `claude/*` PR that carries any path outside control/claims/
+        # (its real work + its .sessions/ card) is on the FULL lane, not this
+        # one, so it never reaches this step — by construction this fires only
+        # on the pure-claim `claude/*` diff it exists to reject.
+        run: |
+          head_ref="${{ github.head_ref }}"
+          case "$head_ref" in
+            claude/*) ;;
+            *) echo "guard N/A — head '$head_ref' is not a claude/* branch (claim/* and others ride the fast lane card-less by design)."; exit 0 ;;
+          esac
+          if [ -n "${{ github.base_ref }}" ]; then
+            range="origin/${{ github.base_ref }}...HEAD"
+          else
+            range="${{ github.event.before }}..${{ github.sha }}"
+          fi
+          changed="$(git diff --name-only "$range" 2>/dev/null || true)"
+          if [ -z "$changed" ]; then
+            echo "no changed files resolved — nothing to guard."; exit 0
+          fi
+          non_claims="$(printf '%s\n' "$changed" | grep -v '^control/claims/' || true)"
+          if [ -z "$non_claims" ]; then
+            echo "::error::A claude/* work PR whose ENTIRE diff is only control/claims/** rode the control fast lane and would auto-merge card-less (the #451 race). A claude/* PR must carry real work plus its .sessions/ session card — which puts it on the full lane. If this is a standalone claim, land it on a claim/* branch (control/claims/README.md)."
+            printf 'claims-only claude/* diff:\n%s\n' "$changed"
+            exit 1
+          fi
+          echo "claude/* PR carries non-claim paths — not a claims-only diff; guard passes."
+
       - uses: actions/setup-python@v6
         if: steps.lane.outputs.control_only != 'true'
         with:
