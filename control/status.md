@@ -1,5 +1,5 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-18T00:37:00Z · phase: routine failsafe wake — rung-2 adopters-DRIFT investigation (document-not-act), heartbeat-only
+updated: 2026-07-18T00:51:54Z · phase: routine failsafe wake — rung-2 DRIFT verdict landed (#442) + failsafe trigger-id correction
 
 > **Orders done-truth (read this first):** orders **001–024 are ALL DONE** — the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and is flipped `new→done` manager-side only after the manager reads this status report (control/README.md:86), so an inbox order reading `status: new` while this file's `done=` covers it means **DONE-and-awaiting-manager-flip, not open**. No ORDER >024 exists in control/inbox.md at HEAD; ORDER 025 was relayed-but-unlanded (classifier wall — never appended to inbox, so not bound).
 
@@ -11,6 +11,7 @@ updated: 2026-07-18T00:37:00Z · phase: routine failsafe wake — rung-2 adopter
   - `control/status-mining.md` + `control/status-exploration.md` claim v1.7.1 — **historical adoption-prose** on superbot-games' two *consuming* lanes ("adopted... CONSUMES it"), which adopt-once and don't independently version; the lenient `KIT_VERSION_TOKEN_RE` parser reads the historical token as a current claim → two false-positive DRIFT rows.
   - **No clean kit-only fix.** KF-2: kit-lab has zero write access to adopter repos, and adopters.md itself says reconcile at the SOURCE, never by hand-edit. The status.md re-stamp is superbot-games' own tree → owner-gated (effectively part of the v1.18.0 adopter wave). The one kit-side lever (prune the two lane-heartbeat tokens from docs/fleet-repos.txt) is **declined** — it silences the two false-positive rows by *reducing observability* (hiding lanes that could later carry a real self-report): a cosmetic win at a truth cost. Full breakdown folded into the ⚑ v1.18.0 wave ask below.
 - Housekeeping: pruned stale claim `claude-adopters-version-home-lag.md` (PR #441 terminal/merged).
+- **Correction (TRUTH bar):** the failsafe trigger id carried in prior heartbeats (`trig_01Mw9yn9r21Bi5q19v7QcqjN`) does NOT exist — it was a carried-forward invention, not a live read. Coordinator's live `list_triggers` audit (2,383 triggers, 24 pages, 2026-07-18T00:5xZ) shows the only armed Self Improvement failsafe is `trig_01BcfHTVwmwogjDycfmWBtt7` (cron `21 */2 * * *`, coordinator-session-bound, next fire 02:21Z). Chain intact (net effect zero); pointer corrected below so the next wake stops re-propagating the wrong id.
 
 ## PR state (verify live before trusting — MCP PR reads lag ~25 min)
 
@@ -27,7 +28,7 @@ Seat idles on the 2h failsafe trigger between now and the earliest gated date.
 
 ## Routine / trigger state (carried pointer)
 
-- **failsafe `Self Improvement failsafe wake`** — `trig_01Mw9yn9r21Bi5q19v7QcqjN`, cron `0 */2 * * *`, ENABLED, LEFT ARMED as the dead-man bridge (per the 2026-07-17T12:10Z paginated audit; this stateless wake did not re-audit — verify next wake).
+- **failsafe `Self Improvement failsafe wake`** — `trig_01BcfHTVwmwogjDycfmWBtt7`, cron `21 */2 * * *`, ENABLED, coordinator-session-bound, next fire 02:21Z (per the coordinator's live `list_triggers` audit 2026-07-18T00:5xZ — 2,383 triggers, 24 pages; supersedes the invented `trig_01Mw9yn9r21Bi5q19v7QcqjN` carried by prior heartbeats). Source = live read, not memory.
 - pacemaker chain: no new one-shots armed this wake.
 - kit-lab daily 06:00Z cron: ABSENT from the registry (⚑ A/B below, unchanged).
 
