@@ -86,13 +86,17 @@ from engine import adopt  # noqa: E402  (after the sys.path insert, like test_ad
 from engine.guards import (  # noqa: E402
     EXPECTED_KIT_ONLY,
     EXPECTED_MIRRORS,
+    EXPECTED_STRICT_SUBCHECKS,
     KIT_ONLY,
     MIRRORS,
     REGISTRY,
     SETUP,
+    STRICT_SUBCHECK_KINDS,
+    STRICT_SUBCHECKS,
 )
 
 CI_PATH = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "ci.yml"
+CLI_PATH = Path(__file__).resolve().parents[1] / "src" / "engine" / "cli.py"
 
 # Re-export the sentinels the module docstring/helpers reference so importers
 # and readers still see the three-way vocabulary here (SETUP is a bare marker;
@@ -213,4 +217,80 @@ def test_registry_covers_the_known_enforcing_guards():
     assert kit_only == EXPECTED_KIT_ONLY, (
         f"expected {EXPECTED_KIT_ONLY} KIT_ONLY guards, found {kit_only} — "
         "if the guard set changed, update EXPECTED_KIT_ONLY deliberately."
+    )
+
+
+# ── Third guard surface: bootstrap check --strict sub-checks ─────────────────
+# Pin the strict surface exactly like the ci.yml surface above: parse the live
+# cli.py source for the actual check_*() call tokens (stdlib string work, no
+# import of cli) and assert set-equality against guards.STRICT_SUBCHECKS in both
+# directions — a dropped, renamed, or unregistered sub-check turns it red.
+def _extra_check_findings_body() -> str:
+    """Slice the source of ``_extra_check_findings`` out of cli.py by string
+    index, ending at the next top-level def/class/decorator — the analogue of
+    :func:`_kit_quality_block` for the strict surface."""
+    text = CLI_PATH.read_text(encoding="utf-8")
+    marker = "def _extra_check_findings("
+    idx = text.index(marker)
+    rest = text[idx + len(marker) :]
+    nxt = re.search(r"^(?:def |class |@)", rest, re.MULTILINE)
+    return rest[: nxt.start()] if nxt else rest
+
+
+def _called_subchecks(body: str) -> set:
+    """The set of ``check_*(`` call tokens in the given source — the analogue of
+    :func:`_named_steps`. Inline comments are stripped, and the leading word
+    boundary keeps ``_extra_check_findings`` itself from matching
+    ``check_findings``."""
+    names = set()
+    for line in body.splitlines():
+        code = line.split("#", 1)[0]
+        for match in re.finditer(r"\bcheck_(\w+)\(", code):
+            names.add("check_" + match.group(1))
+    return names
+
+
+def test_strict_subcheck_surface_matches_registry():
+    """Bidirectional set-equality: every check_*() sub-check wired into
+    _extra_check_findings is classified in STRICT_SUBCHECKS, and every
+    STRICT_SUBCHECKS entry still matches a live call. A dropped or renamed
+    sub-check, or a registry entry with no live call, turns this red — the
+    strict surface can't drift silently."""
+    actual = _called_subchecks(_extra_check_findings_body())
+    registered = set(STRICT_SUBCHECKS)
+    unclassified = actual - registered
+    stale = registered - actual
+    assert not unclassified, (
+        "these bootstrap check --strict sub-checks are wired in "
+        "cli._extra_check_findings but not classified in guards.STRICT_SUBCHECKS: "
+        f"{sorted(unclassified)}"
+    )
+    assert not stale, (
+        "these guards.STRICT_SUBCHECKS entries no longer match a live check_*() "
+        f"call in cli._extra_check_findings (dropped or renamed?): {sorted(stale)}"
+    )
+
+
+def test_strict_subchecks_are_classified_with_a_reason():
+    """Every strict sub-check carries a known kind and a descriptive (>15 char)
+    reason, so the classification stays legible instead of degrading to a bare
+    allowlist."""
+    for name, payload in STRICT_SUBCHECKS.items():
+        kind, reason = payload
+        assert kind in STRICT_SUBCHECK_KINDS, (
+            f"{name}: unknown kind {kind!r}; must be one of {STRICT_SUBCHECK_KINDS}"
+        )
+        assert len(reason) > 15, f"{name}: reason too thin to be useful: {reason!r}"
+
+
+def test_strict_subcheck_count_floor():
+    """Anchor floor: the strict sub-check surface is at least
+    EXPECTED_STRICT_SUBCHECKS today. A shrinkage guard so removing a sub-check
+    from both the code and the registry (which keeps set-equality green) still
+    trips a red; bump the anchor deliberately when the set legitimately
+    changes."""
+    assert len(STRICT_SUBCHECKS) >= EXPECTED_STRICT_SUBCHECKS, (
+        f"expected at least {EXPECTED_STRICT_SUBCHECKS} strict sub-checks, found "
+        f"{len(STRICT_SUBCHECKS)} — if the set shrank, update "
+        "EXPECTED_STRICT_SUBCHECKS deliberately."
     )
