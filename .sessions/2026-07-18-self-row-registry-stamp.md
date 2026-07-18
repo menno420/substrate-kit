@@ -6,7 +6,7 @@ Intent: automate the substrate-kit self-row registry stamp (B-2) — add a
 born-red gate + wire a network-free self-restamp into `cut_release.py` so the
 version-bump PR itself carries the correct self-row.
 
-- **📊 Model:** Opus 4.8 · high · kit-engine feature + CI gate
+- **📊 Model:** Opus 4.8 · high · feature build
 - ⚑ Self-initiated: none — B-2 is a groomed-baton slice (docs/planning/2026-07-19-grounded-skills-window-run.md) under the ORDER 048 standing grant.
 
 About to: automate the substrate-kit self-row registry stamp — add a born-red
