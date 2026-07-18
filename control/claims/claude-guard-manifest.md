@@ -1,1 +1,0 @@
-- branch `claude/guard-manifest` · scope: single-source GUARD MANIFEST (src/engine/guards.py) read by adopt.live_ci_workflow() + tests/test_guard_parity.py · 2026-07-18
