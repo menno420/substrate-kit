@@ -38,13 +38,13 @@ historical snapshot and are superseded where they disagree. Live ledgers
   triggers, coordinator inbox bus) is **winding down** and the owner is
   **recreating the Projects** from a clean state — so orientation must boot a
   fresh seat on *true* state, not the EAP-console-era gate stack below.
-- **Classifier freeze: ~2026-07-15.** The auto-mode permission classifier now
-  denies an agent **arming auto-merge, REST/MCP-merging, or ready-flipping**
-  its own OR a sibling's PR (verified: `docs/CAPABILITIES.md` 2026-07-16 /
-  2026-07-17 entries). **The merge doctrine is corrected accordingly** —
-  agents open PRs READY and let the **server-side merge-on-green workflow**
-  (`auto-merge-enabler.yml` → native auto-merge on green `kit-quality`) land
-  them; owner-live sessions merge directly. The propagating fix ships in
+- **Merging own PRs is normal agent work (automode OFF).** Agents open PRs
+  READY and land their own green PRs directly — via a merge call (MCP/REST), by
+  arming native auto-merge, or by letting the `auto-merge-enabler.yml` workflow
+  arm it on green `kit-quality`. Draft→ready flips and arming auto-merge are
+  ordinary agent actions; never route a mergeable green PR to the owner. A
+  one-off merge refusal, if it ever occurs, is venue-specific — report it
+  verbatim, not as a standing wall. The merge doctrine ships in
   `src/engine/templates/CONSTITUTION.md.tmpl` (see "Review rhythm" below).
 - **v1.18.0 is released + verified but NOT yet distributed.** The kit tree is
   v1.18.0 (`dist/bootstrap.py`; tag `v1.18.0`, sha256 three-way PASS) and the
@@ -388,14 +388,13 @@ in CHANGELOG.md.)*
 ## Review rhythm
 
 Every session opens a born-red session card PR early and flips it complete
-as the last commit; PRs merge on green CI (kit-quality) via the
-**server-side merge-on-green workflow** (`auto-merge-enabler.yml` arms native
-auto-merge on green `kit-quality`). **Agents do NOT ready-flip, arm
-auto-merge, or REST/MCP-merge their own or a sibling's PR — the auto-mode
-classifier denies it (since ~2026-07-15; `docs/CAPABILITIES.md`)**; an
-owner-live session merges directly, and everything else is left to the
-server-side workflow. *(This supersedes the former "prefer merging by hand
-(MCP)" line, which the classifier now blocks for agents.)* Releases are semver
+as the last commit; PRs merge on green CI (kit-quality). Agents open PRs READY
+and **land their own green PRs directly** — via a merge call (MCP/REST), by
+arming native auto-merge, or by letting `auto-merge-enabler.yml` arm it on
+green `kit-quality`. Draft→ready flips and arming auto-merge are ordinary agent
+actions; never route a mergeable green PR to the owner. A one-off merge
+refusal, if it ever occurs, is venue-specific — report it verbatim, not a
+standing wall. Releases are semver
 GitHub Releases from v1.0.0 with bootstrap.py + sha256 + release.json
 assets (plan §4); a release = the `release.yml` **`workflow_dispatch` run**
 on a main commit whose CHANGELOG.md carries that version's section (the run
