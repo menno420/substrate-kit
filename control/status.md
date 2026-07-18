@@ -1,20 +1,15 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-18T10:41:19Z · phase: routine failsafe wake — verified the no-false-walls campaign (#444–#450) sound + attributable; heartbeat reconciled
+updated: 2026-07-18T15:42:27Z · phase: SESSION-ENDER v3.7 — coordinator chain closed; failsafe bridge armed for successor
 
 > **Orders done-truth (read this first):** orders **001–024 are ALL DONE** — the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and is flipped `new→done` manager-side only after the manager reads this status report (control/README.md:86), so an inbox order reading `status: new` while this file's `done=` covers it means **DONE-and-awaiting-manager-flip, not open**. No ORDER >024 exists in control/inbox.md at HEAD; "ORDER 025" is not a standalone bound order — it is the `>`-quoted fm relay inside ORDER 019 item 5 (highest bound order = 024). Its WORK is nonetheless COMPLETE: both cfgdiff writeups are on main (docs/reports/2026-07-09-cfgdiff-differential-testing-method.md + …-v0.1.1-release-decision.md), linked from bench/README.md, merged via PR #340 (2026-07-13). The redundant standalone ORDER-025-block append that hit the classifier wall is therefore MOOT.
 
-## This wake (2026-07-18 · routine failsafe · campaign verification + heartbeat reconcile)
+## This wake — SESSION-ENDER v3.7
 
-- **Verified the 6-PR "no-false-walls" campaign — verdict SOUND + ATTRIBUTABLE (Q-0120 lead-verification).** Between the 00:51Z heartbeat and this wake, main advanced `d0974cd`→`435afc6` via six merges not reported to this coordinator; a live-tree verification confirms them legitimate sibling-session work, not injected content:
-  - **Provenance:** all six authored on `claude/*` lanes, each with a born-red `.sessions/2026-07-18-*.md` card committed in-branch (kill-false-merge-walls #444, dewall-docs #446, dewall-skill-layer #447, false-wall-guard #448, generalize-wall-guard #449, propagate-wall-guard #450); #448/#449 cards carry `⚑ Self-initiated: no — owner-directed`; contiguous base-SHA chain (each PR's base = the prior merge); all merged by `github-actions[bot]` (enabler path). No injection-guard concern — the change originated from legitimate lanes, not from imperative repo/PR text.
-  - **Soundness — premise holds against the tree:** the "agents cannot merge" wall is FALSE. `.github/workflows/auto-merge-enabler.yml` arms GitHub-native `gh pr merge --auto` on non-draft `claude/*`/`claim/*` PRs → server-side gated merge the instant the required `kit-quality` check is green; all six campaign PRs (and ~20 that day) merged by `github-actions[bot]` prove it empirically.
-  - **Soundness — guard + propagation correct:** #448 added `tools/check_no_false_walls.py` + a full-lane CI step; #449 generalized it to any agent-capability limitation with explicit false-positive discipline (code architecture-rules, read/create verbs, and dated real walls all PASS); #450 ported the core to `src/engine/checks/check_no_false_walls.py` so every adopter's `check --strict` enforces it. Verified on HEAD `435afc6`: `dist/bootstrap.py check --strict` → all passed (exit 0); `python3 -m pytest -q` → **1759 passed, 1 skipped** (new baseline, was 1726); `tools/check_no_false_walls.py` → OK. No false-wall text on `CONSTITUTION.md` / `docs/current-state.md`; the lone `docs/CAPABILITIES.md:106` match is a dated, correctly-scoped *sibling*-PR ledger entry (it affirms a session's OWN-PR merge IS fine) that the checker passes by design.
-- **Reconcile action:** this heartbeat (control-only, fast lane) records the campaign with citations. **`docs/adopters.md` regen NOT warranted:** `dist/bootstrap.py currency --check` → "current — committed registry matches the fresh scan (12 repos)"; kit VERSION unchanged (`dist/bootstrap.py:98 KIT_VERSION = "1.18.0"`; campaign work sits under CHANGELOG `[Unreleased]`, no release cut). No `adopters-stale` / `adopters-version-lag` finding.
-- **Process note (friction→guard) — control fast-lane incomplete-merge race:** the first reconcile attempt (PR #451) opened ready after a claim-only first commit; the `auto-merge-enabler` armed and merged that incomplete diff on green ~24s later (merge `cbe6613`, 2026-07-18T10:37:19Z) BEFORE the heartbeat commit landed — a control-fast-lane analogue of the #843 born-red race (a fast-lane PR carries no session card to hold the merge, so nothing gates a partial diff). This PR completes the heartbeat and removes the orphaned claim `control/claims/claude-heartbeat-dewall-recon.md` that #451 left on main. **Lesson for the next seat:** a control fast-lane PR must push its COMPLETE diff in the first commit before opening — never open after a partial first commit, and never let a lone claim file be the whole PR. Candidate guard (not built this wake, contained-scope follow-up): have the enabler decline a `claude/*` PR whose entire diff is a `control/claims/**` addition.
+Coordinator chain closed. Zero new routines armed at close. Failsafe dead-man bridge left armed for the successor (F-1 below).
 
-## PR state (verify live before trusting — MCP PR reads lag ~25 min)
+## PR state
 
-- Campaign PRs #444/#446/#447/#448/#449/#450 all MERGED terminal 2026-07-18 08:33–10:01Z (`435afc6` = #450 merge). **PR #451** (this wake, first attempt) MERGED `cbe6613` 10:37:19Z but carried only a claim file (enabler race, above). **This PR** (the completion) refreshes this heartbeat and drops that orphaned claim; it opens control-only (fast lane) with the COMPLETE diff in one commit.
+All seat-session PRs terminal MERGED: #438–#443, #445, #451, #452 (#451 was the claim-only fast-lane race artifact, completed by #452). Sibling lanes merged: #444, #446–#450, #453. NO open PRs. control/claims/ clean (README only).
 
 ## Backlog — HONEST readout (carried)
 
@@ -25,11 +20,12 @@ Buildable, non-gated backlog remains **thin**. This wake's work was verification
 - v1.18.0 adopter wave: awaits owner authorization (⚑ below).
 Seat idles on the 2h failsafe trigger between now and the earliest gated date.
 
-## Routine / trigger state (carried pointer)
+## Routine / trigger state — VERIFIED 2026-07-18 by exhaustive list_triggers pagination (2,492 triggers, 25 pages)
 
-- **failsafe `Self Improvement failsafe wake`** — `trig_01BcfHTVwmwogjDycfmWBtt7`, cron `21 */2 * * *`, ENABLED, coordinator-session-bound (per the coordinator's live `list_triggers` audit 2026-07-18T00:5xZ — supersedes the invented `trig_01Mw9yn9r21Bi5q19v7QcqjN` carried by pre-#443 heartbeats). Source = live read, not memory.
-- pacemaker chain: no new one-shots armed this wake.
-- kit-lab daily 06:00Z cron: ABSENT from the registry (⚑ A/B below, unchanged).
+- CLOSED — 8 spent send_later pacemakers, deleted + verified absent:
+  trig_01DSh245ykS6on7WJSyKKQVF · trig_01YSUJ5DAdJEqRrmjN1Lyqpz · trig_01EDx9xMNKeZJrKbeRDkPkPS · trig_01XehM57jw86FT171dT6bc45 · trig_01TwthJQVz8XcvBb3X5wqJsE · trig_019q5TcJj3fPQ4MooUYJpsFW · trig_01WyizzoLMAWg7HmooXQzVzX · trig_013zy1tRdjdYpRQZndRpdrBa
+- ARMED (successor dead-man bridge, F-1): trig_01BcfHTVwmwogjDycfmWBtt7 "Self Improvement failsafe wake", cron `21 */2 * * *`, next fire 2026-07-18T16:21:00Z, bound to the coordinator session. Successor boot cutover rebinds-then-deletes.
+- Business cron: NO trigger named kit-lab exists in this account's trigger list (verified same pagination). The 06:00Z kit-lab daily runs owner-side; the successor should not expect to find or rebind it here.
 
 ## State
 
@@ -44,8 +40,8 @@ kit: v1.18.0
 
 ## Next-2 baton
 
-1. **Owner veto pass** over docs/planning/2026-07-16-overnight-veto-menu.md (23 proposals) — build the survivors once vetoed.
-2. Date-parked / owner-gated: grounded-skills window ~2026-07-19..26; KL-5/PL-008 graduation awaits the advisory quiet period; v1.18.0 adopter wave awaits owner authorization.
+1. Grounded-skills window opens 2026-07-19 — the first successor wake on/after that date should evaluate it.
+2. Enabler guard candidate: decline a claude/* PR whose ENTIRE diff is a control/claims/** addition (the #451 fast-lane race) — contained + reversible, fit for a rung-4 slice.
 
 ## ⚑ FOR OWNER (standing set carried forward)
 
