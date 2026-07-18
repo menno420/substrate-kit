@@ -721,3 +721,144 @@ def test_cmd_currency_check_missing_registry_is_stale():
             },
         )
         assert cmd_currency(target, check=True, fetcher=fetch) == 1
+
+
+# ---------------------------------------------------------------------------
+# Self-row registry stamp (B-2) — network-free local scan + pure restamp
+# ---------------------------------------------------------------------------
+
+from engine.currency import (  # noqa: E402
+    SELF_REPO,
+    local_self_scan,
+    restamp_self_row,
+)
+
+
+def _self_registry(version: str, now: datetime = NOW) -> str:
+    """A registry whose sole row is the substrate-kit self-row at ``version``."""
+    scan = RepoCurrency(
+        repo=SELF_REPO,
+        tree_version=version,
+        tree_source="dist/bootstrap.py",
+        config_pin=version,
+        reports=[SelfReport("control/status.md", version, "green", "yes", found=True)],
+    )
+    return render_adopters([scan], version, now=now)
+
+
+def test_local_self_scan_reads_local_tree_no_network(tmp_path: Path):
+    # A temp tree with the kit's three evidence files; local_self_scan reads
+    # them off disk (no fetcher/network) and yields the same version cells a
+    # network scan of the same tree would.
+    (tmp_path / "substrate.config.json").write_text(
+        '{"kit_version": "1.8.0"}', encoding="utf-8"
+    )
+    (tmp_path / "dist").mkdir()
+    (tmp_path / "dist" / "bootstrap.py").write_text(
+        '"""substrate-kit bootstrap v1.8.0 — GENERATED, DO NOT EDIT.\n"""\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "control").mkdir()
+    (tmp_path / "control" / "status.md").write_text(
+        "# kit · status\nkit: v1.8.0 · check: green · engaged: yes\n",
+        encoding="utf-8",
+    )
+    scan = local_self_scan(tmp_path)
+    assert scan.repo == SELF_REPO
+    assert scan.tree_version == "1.8.0"
+    assert scan.tree_source == "dist/bootstrap.py"
+    assert scan.config_pin == "1.8.0"
+    assert scan.reports and scan.reports[0].version == "1.8.0"
+    assert scan.unreadable is None
+
+
+def test_local_self_scan_matches_network_render_for_same_tree(tmp_path: Path):
+    # The rendered self-row from a local scan is identical to a network scan
+    # of the same tree (the whole point: cut_release stamps a byte-identical
+    # row without CI-forbidden network).
+    (tmp_path / "substrate.config.json").write_text(
+        '{"kit_version": "1.8.0"}', encoding="utf-8"
+    )
+    (tmp_path / "dist").mkdir()
+    (tmp_path / "dist" / "bootstrap.py").write_text(
+        '"""substrate-kit bootstrap v1.8.0 — GENERATED, DO NOT EDIT.\n"""\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "control").mkdir()
+    (tmp_path / "control" / "status.md").write_text(
+        "kit: v1.8.0 · check: green · engaged: yes\n", encoding="utf-8"
+    )
+    local = local_self_scan(tmp_path)
+    network = scan_repo(
+        SELF_REPO,
+        _fetcher(
+            {
+                (SELF_REPO, "substrate.config.json"): '{"kit_version": "1.8.0"}',
+                (SELF_REPO, "dist/bootstrap.py"): (
+                    '"""substrate-kit bootstrap v1.8.0 — GENERATED, DO NOT EDIT.\n"""\n'
+                ),
+                (SELF_REPO, "control/status.md"): (
+                    "kit: v1.8.0 · check: green · engaged: yes\n"
+                ),
+            }
+        ),
+    )
+    assert render_adopters([local], "1.8.0", now=NOW) == render_adopters(
+        [network], "1.8.0", now=NOW
+    )
+
+
+def test_restamp_self_row_updates_only_self_row_and_kit_token():
+    # A two-row registry: the self-row (stale v1.7.0) + one sibling row. The
+    # restamp bumps ONLY the self-row and the `kit release:` token; the
+    # sibling row and the `Generated:` timestamp stay byte-identical.
+    self_scan = RepoCurrency(
+        repo=SELF_REPO,
+        tree_version="1.7.0",
+        tree_source="dist/bootstrap.py",
+        config_pin="1.7.0",
+        reports=[SelfReport("control/status.md", "1.7.0", "green", "yes", found=True)],
+    )
+    sibling = RepoCurrency(
+        repo="o/sibling",
+        tree_version="1.5.0",
+        tree_source="bootstrap.py",
+        config_pin="1.5.0",
+    )
+    committed = render_adopters([self_scan, sibling], "1.7.0", now=NOW)
+    fresh_self = RepoCurrency(
+        repo=SELF_REPO,
+        tree_version="1.8.0",
+        tree_source="dist/bootstrap.py",
+        config_pin="1.8.0",
+        reports=[SelfReport("control/status.md", "1.8.0", "green", "yes", found=True)],
+    )
+    restamped = restamp_self_row(committed, "1.8.0", fresh_self)
+
+    committed_lines = committed.splitlines()
+    restamped_lines = restamped.splitlines()
+
+    def _row(lines, repo):
+        return next(l for l in lines if l.strip().startswith(f"| {repo} "))
+
+    # Self-row moved to v1.8.0; sibling row untouched.
+    assert "v1.8.0" in _row(restamped_lines, SELF_REPO)
+    assert "v1.7.0" not in _row(restamped_lines, SELF_REPO)
+    assert _row(restamped_lines, "o/sibling") == _row(committed_lines, "o/sibling")
+
+    # `kit release:` token bumped; the `Generated:` timestamp is unchanged.
+    def _gen(lines):
+        return next(l for l in lines if l.startswith(GENERATED_STAMP_PREFIX))
+
+    assert "kit release: v1.8.0" in _gen(restamped_lines)
+    committed_stamp = _gen(committed_lines).split("·")[0]
+    restamped_stamp = _gen(restamped_lines).split("·")[0]
+    assert committed_stamp == restamped_stamp  # timestamp intact
+
+
+def test_restamp_self_row_no_self_row_is_noop():
+    # A registry with no substrate-kit row is returned unchanged (fail-safe).
+    sibling = RepoCurrency(repo="o/sibling", tree_version="1.5.0", config_pin="1.5.0")
+    committed = render_adopters([sibling], "1.7.0", now=NOW)
+    self_scan = RepoCurrency(repo=SELF_REPO, config_pin="1.8.0")
+    assert restamp_self_row(committed, "1.8.0", self_scan) == committed

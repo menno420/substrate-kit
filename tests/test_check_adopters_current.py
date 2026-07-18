@@ -19,7 +19,12 @@ import pytest
 pytest.importorskip("engine.checks.check_adopters_current")
 
 from engine.checks.check_adopters_current import check_adopters_current
-from engine.currency import RepoCurrency, render_adopters
+from engine.currency import (
+    SELF_REPO,
+    RepoCurrency,
+    SelfReport,
+    render_adopters,
+)
 
 NOW = datetime(2026, 7, 10, 18, 0, tzinfo=timezone.utc)
 OLD = datetime(2026, 6, 1, 0, 0, tzinfo=timezone.utc)
@@ -136,3 +141,95 @@ def test_version_lag_rides_alongside_staleness(tmp_path: Path):
     assert gate == []
     kinds = sorted(f.kind for f in advisory)
     assert kinds == ["adopters-stale", "adopters-version-lag"]
+
+
+# --- self-row staleness GATE (B-2) ------------------------------------------
+
+
+def _self_registry(version: str, now: datetime = NOW) -> str:
+    """A registry whose sole row is the substrate-kit self-row at ``version``."""
+    scan = RepoCurrency(
+        repo=SELF_REPO,
+        tree_version=version,
+        tree_source="dist/bootstrap.py",
+        config_pin=version,
+        reports=[
+            SelfReport("control/status.md", version, "green", "yes", found=True)
+        ],
+    )
+    return render_adopters([scan], version, now=now)
+
+
+def test_self_row_stale_fires_gate(tmp_path: Path):
+    # The self-row still stamps v1.7.0 but the version home has moved to
+    # v1.8.0 — the self-row is stale and the GATE must RED (self-row scoped).
+    _write_registry(tmp_path, _self_registry("1.7.0"))
+    _write_version_home(tmp_path, "1.8.0")
+    gate, _ = check_adopters_current(tmp_path, now=NOW)
+    assert "adopters-self-row-stale" in [f.kind for f in gate]
+    finding = next(f for f in gate if f.kind == "adopters-self-row-stale")
+    assert "v1.7.0" in finding.message and "v1.8.0" in finding.message
+
+
+def test_self_row_current_no_gate(tmp_path: Path):
+    # Self-row stamped at the current home version — the gate must not fire.
+    _write_registry(tmp_path, _self_registry("1.8.0"))
+    _write_version_home(tmp_path, "1.8.0")
+    gate, _ = check_adopters_current(tmp_path, now=NOW)
+    assert "adopters-self-row-stale" not in [f.kind for f in gate]
+
+
+def test_self_row_gate_ignores_sibling_lag(tmp_path: Path):
+    # The self-row is current (v1.8.0 == home); a sibling adopter lags at
+    # v1.5.0. Sibling lag must NOT red the self-row-scoped gate.
+    self_scan = RepoCurrency(
+        repo=SELF_REPO,
+        tree_version="1.8.0",
+        tree_source="dist/bootstrap.py",
+        config_pin="1.8.0",
+        reports=[
+            SelfReport("control/status.md", "1.8.0", "green", "yes", found=True)
+        ],
+    )
+    sibling = RepoCurrency(
+        repo="o/sibling", tree_version="1.5.0", tree_source="bootstrap.py",
+        config_pin="1.5.0",
+    )
+    _write_registry(tmp_path, render_adopters([self_scan, sibling], "1.8.0", now=NOW))
+    _write_version_home(tmp_path, "1.8.0")
+    gate, _ = check_adopters_current(tmp_path, now=NOW)
+    assert "adopters-self-row-stale" not in [f.kind for f in gate]
+
+
+def test_self_row_gate_tolerates_bump_window_tree_lag(tmp_path: Path):
+    # The cut_release bump window: config pin already bumped to v1.8.0 but the
+    # dist header (tree cell) still reads v1.7.0. The home version (1.8.0)
+    # still appears among the self-row cells, so the gate must NOT false-red.
+    self_scan = RepoCurrency(
+        repo=SELF_REPO,
+        tree_version="1.7.0",  # dist not yet rebuilt
+        tree_source="dist/bootstrap.py",
+        config_pin="1.8.0",  # just bumped
+        reports=[
+            SelfReport("control/status.md", "1.8.0", "green", "yes", found=True)
+        ],
+    )
+    _write_registry(tmp_path, render_adopters([self_scan], "1.8.0", now=NOW))
+    _write_version_home(tmp_path, "1.8.0")
+    gate, _ = check_adopters_current(tmp_path, now=NOW)
+    assert "adopters-self-row-stale" not in [f.kind for f in gate]
+
+
+def test_self_row_gate_fails_open_without_version_home(tmp_path: Path):
+    # No substrate.config.json version home → no verdict → gate fails open.
+    _write_registry(tmp_path, _self_registry("1.7.0"))
+    gate, _ = check_adopters_current(tmp_path, now=NOW)
+    assert "adopters-self-row-stale" not in [f.kind for f in gate]
+
+
+def test_self_row_gate_fails_open_without_self_row(tmp_path: Path):
+    # A registry with no substrate-kit self-row (only a sibling) → fail open.
+    _write_registry(tmp_path, _generated(NOW))  # repo "o/r", no self-row
+    _write_version_home(tmp_path, "1.8.0")
+    gate, _ = check_adopters_current(tmp_path, now=NOW)
+    assert "adopters-self-row-stale" not in [f.kind for f in gate]

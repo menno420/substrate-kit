@@ -64,6 +64,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Callable
 
 from engine.adopt import dist_version
@@ -104,6 +105,15 @@ GENERATED_STAMP_PREFIX = "> Generated:"
 VENDORED_RELPATHS = ("bootstrap.py", "dist/bootstrap.py")
 CONFIG_RELPATH = "substrate.config.json"
 DEFAULT_HEARTBEAT = "control/status.md"
+
+# The kit's own row in the generated registry — the ONE row the lab both
+# reads (`currency`) and can write at the source (this repo's own tree). It is
+# the only row `restamp_self_row` / the `adopters-self-row-stale` gate touch:
+# sibling rows are read-only evidence about repos the lab can't write, so they
+# only self-heal on the next network `currency` regen (KF-2). The self-row is
+# the exception — the lab bumps its own version homes at release time, so the
+# bump PR can carry a correct self-row without any network.
+SELF_REPO = "menno420/substrate-kit"
 
 _NUMERIC_RE = re.compile(r"\d+")
 
@@ -629,6 +639,87 @@ def _registry_rows(text: str) -> dict[str, str]:
             continue  # header / separator, not evidence
         rows[first] = " | ".join(cells)
     return rows
+
+
+def _self_row_line(text: str) -> str | None:
+    """Return the verbatim ``| … |`` table line whose first cell is
+    :data:`SELF_REPO`, or None when the registry carries no self-row."""
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+        if cells and cells[0] == SELF_REPO:
+            return line
+    return None
+
+
+def local_self_scan(target: Path) -> RepoCurrency:
+    """Scan the kit's OWN tree for its currency evidence — no network.
+
+    The self-row is the one registry row the lab can produce from local
+    evidence alone: it reads this repo's own ``substrate.config.json`` pin,
+    ``dist/bootstrap.py`` header (tree truth), and ``control/status.md``
+    ``kit:`` self-report through the SAME ``scan_repo``/``_scan_repo_evidence``
+    path a network scan uses (a local-file fetcher stands in for the HTTP
+    fetcher), so the rendered self-row is byte-identical to what a network
+    render of the same tree would produce. Used by :func:`restamp_self_row` so
+    ``cut_release.py`` can stamp a current self-row into the version-bump PR
+    without CI-forbidden network access.
+    """
+
+    def _fetch(_repo: str, path: str) -> str | None:
+        candidate = target / path
+        if not candidate.is_file():
+            return None
+        try:
+            return candidate.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            return None
+
+    return scan_repo(SELF_REPO, _fetch)
+
+
+def restamp_self_row(
+    committed_text: str,
+    kit_version: str,
+    self_scan: RepoCurrency,
+) -> str:
+    """Restamp ONLY the substrate-kit self-row + the ``kit release:`` token.
+
+    A pure string operation (no network, no other row touched): render a fresh
+    self-row from ``self_scan`` at ``kit_version`` and swap it in for the
+    committed self-row, and update the ``> Generated: … kit release: v<X>``
+    token to ``kit_version``. Every sibling row and the ``Generated:``
+    *timestamp* are left exactly as they were — sibling evidence is read-only
+    (KF-2) and only the next network ``currency`` regen refreshes it. Returns
+    ``committed_text`` unchanged (a fail-safe no-op) when either the freshly
+    rendered self-row or the committed self-row is absent.
+    """
+    fresh_line = _self_row_line(render_adopters([self_scan], kit_version))
+    if fresh_line is None or _self_row_line(committed_text) is None:
+        return committed_text
+    out_lines: list[str] = []
+    swapped = False
+    for line in committed_text.splitlines():
+        stripped = line.strip()
+        if not swapped and stripped.startswith("|"):
+            cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+            if cells and cells[0] == SELF_REPO:
+                out_lines.append(fresh_line)
+                swapped = True
+                continue
+        if line.startswith(GENERATED_STAMP_PREFIX):
+            line = re.sub(
+                r"(kit release:\s*v)\d+\.\d+\.\d+",
+                rf"\g<1>{kit_version}",
+                line,
+            )
+        out_lines.append(line)
+    result = "\n".join(out_lines)
+    if committed_text.endswith("\n"):
+        result += "\n"
+    return result
 
 
 def registry_delta(

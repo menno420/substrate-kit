@@ -71,8 +71,15 @@
 
 ## 6. Aftermath
 
+- The substrate-kit **self-row** is already current: `cut_release.py`
+  stamps it into the version-bump PR at `--write` time (network-free
+  `restamp_self_row` off a local scan), and the `adopters-self-row-stale`
+  gate RED-holds the bump PR if it ever isn't. So the aftermath
+  `bootstrap currency` regen now only has to refresh **sibling** rows
+  (the repos the lab can't write and only re-reads over the network, KF-2).
 - Adopters regen: `python3 dist/bootstrap.py currency` →
-  `docs/adopters.md` (close-out PR; kit's own row self-heals next regen).
+  `docs/adopters.md` (close-out PR; refreshes sibling rows — the self-row
+  landed in the bump PR).
 - `control/status.md` release record + claim delete.
 - The close-out PR touches `docs/adopters.md`, so it takes kit-quality's
   full lane — it needs a session card in its diff; only pure-`control/**`
