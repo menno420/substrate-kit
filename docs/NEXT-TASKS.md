@@ -24,8 +24,8 @@ v1.0.0). The registry-vs-tree gap is exactly what made the old
 "distribution COMPLETE" reading false.
 
 **Mechanism — one upgrade PR per adopter, run IN that adopter's own session**
-(kit-lab has zero write access to adopters, KF-2, which is why the
-coordinator-relayed wave was classifier-denied):
+(kit-lab has zero write access to adopters, KF-2 — the upgrade must run in a
+session scoped to each adopter repo):
 
 1. In the adopter repo, run the kit's upgrade verb:
    `python3 dist/bootstrap.py upgrade` (or `bootstrap.py.new upgrade`) — it
@@ -33,9 +33,10 @@ coordinator-relayed wave was classifier-denied):
    `dist/bootstrap.py`, and writes `.substrate/upgrade-report.md`.
 2. Bump that repo's `substrate.config.json` pin `kit_version`
    1.17.0 → 1.18.0 (or its current pin → 1.18.0).
-3. Open ONE **ready** PR per adopter; let the server-side merge-on-green
-   workflow land it (agents do NOT arm/merge — see the merge doctrine note
-   in `CONSTITUTION.md` / current-state § Review rhythm).
+3. Open ONE **ready** PR per adopter and land it on green — via a merge call
+   (MCP/REST), by arming native auto-merge, or by letting the server-side
+   merge-on-green workflow land it (see the merge doctrine note in
+   `CONSTITUTION.md` / current-state § Review rhythm).
 
 This is an **upgrade** (re-vendor + pin bump), NOT a `bootstrap render`
 (that only fills interview slots) and NOT a single kit-side version-bump PR.
@@ -44,18 +45,24 @@ registry — is at v1.18.0.
 
 ## 2 — Propagate the merge-doctrine template fix
 
-The 2026-07-17 cleanup corrected the fleet-wide merge doctrine in
-`src/engine/templates/CONSTITUTION.md.tmpl` (was: "arm auto-merge → it lands
-itself"; now: "open READY and let the server-side merge-on-green workflow
-land it; agents do NOT ready-flip / arm / REST/MCP-merge — classifier-denied
-since 2026-07-15"). That template is vendored into `dist/bootstrap.py`, so
-**every adopter picks up the corrected doctrine automatically on its
-v1.18.0 upgrade (task #1)** — no separate action, but verify the corrected
-clause is present in each adopter's regenerated `CONSTITUTION.md` after
-upgrade. The paired scaffolding (`auto-merge-enabler.yml` /
-`auto-merge-disarm.yml`) is intentionally NOT deleted here — the server-side
-arm on green is the sanctioned landing path; retire it only if a recreated
-project drops auto-merge entirely (owner call).
+The fleet-wide merge doctrine lives in
+`src/engine/templates/CONSTITUTION.md.tmpl`. The correct doctrine (automode
+OFF): **agents open PRs READY and merge their own green PRs directly** — via a
+merge call (MCP/REST), by arming native auto-merge, or by letting the
+server-side merge-on-green workflow land them; a mergeable green PR is never
+routed to the owner, and a one-off merge refusal is venue-specific, not a
+standing wall. That template is vendored into `dist/bootstrap.py`, so **every
+adopter picks up the doctrine automatically on its v1.18.0 upgrade (task #1)** —
+verify the clause is present and accurate in each adopter's regenerated
+`CONSTITUTION.md` after upgrade. The paired scaffolding
+(`auto-merge-enabler.yml` / `auto-merge-disarm.yml`) is intentionally NOT
+deleted here — arming on green is one sanctioned landing path; retire it only if
+a recreated project drops auto-merge entirely (owner call).
+
+> **Flag (2026-07-18):** the template on `main` still carries the earlier
+> FALSE "agents do NOT ready-flip / arm / REST-merge — classifier-denied"
+> wording (lines ~78–83). It is out of scope for this docs-only PR; the
+> `.tmpl` correction ships in its own PR.
 
 ## 3 — Fix the kit's own self-pin drift — ✅ DONE (PR #438, 2026-07-17)
 
