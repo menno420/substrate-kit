@@ -138,6 +138,20 @@ jobs:
         # once, canonical order, bullets under headings, prose in the preamble.
         run: python3 scripts/check_changelog_structure.py
 
+      - name: No false merge-walls (forward-binding surfaces don't re-seed "agents cannot merge")
+        if: steps.lane.outputs.control_only != 'true'
+        # Three sessions hand-removed the SAME regression from three layers
+        # (templates → rendered docs → skills): a FALSE standing prohibition
+        # asserting an agent cannot land a green PR ("classifier-denied since",
+        # "owner is the merge authority", "agent-unlandable"). Ground truth:
+        # merging a green PR is normal agent work (proven ~20× on 2026-07-18).
+        # This gate scans ONLY forward-binding surfaces (templates, skill
+        # bodies, live docs, root constitution/capabilities) and fails on a
+        # re-seed; dated ledger records, repudiations, and historical sections
+        # pass. Stdlib-only on the system python3 (no engine/pytest dep).
+        # tools/check_no_false_walls.py.
+        run: python3 tools/check_no_false_walls.py
+
       - name: Taxonomy sync (PL-004 — TASK_CLASSES ⇄ ladder ⇄ telemetry README)
         if: steps.lane.outputs.control_only != 'true'
         # Idea 2026-07-09 (PL-010 friction: three task-class surfaces updated
