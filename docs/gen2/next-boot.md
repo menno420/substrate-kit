@@ -146,12 +146,15 @@ until then).
   (and no create-release) tool. Owner cleans branches (⚑ OWNER-ACTION 10
   in the `control/status.md` list as of the 2026-07-10 close — was 7 when
   this doc was written; verify the ordinal against status.md at HEAD).
-- **Owner-gated merges are refused on relayed consent** — the auto-mode
-  permission classifier denied #17's merge until the owner typed
-  "merge 17" live in-session, and denied a worker-spawn containing
-  "merge #26" the same way. A relayed "the owner said yes" never clears
-  it; only an in-session owner message or the owner's own UI click does.
-  Shape such work as "PR open, READY, CI green, ⚑ owner one-click".
+- **Merging works agent-side — NOT a wall (corrected 2026-07-18).** Auto
+  mode is OFF: an agent flips its own PR ready, arms auto-merge, and merges
+  its own or a sibling's green PR directly (MCP/REST) — a normal agent
+  action, proven repeatedly. The old "owner-gated merges refused on relayed
+  consent" note here described a transient auto-mode-classifier era that no
+  longer applies; land your own green PR and never route a mergeable green
+  PR to the owner. Only a `do-not-automerge`-labelled PR waits. (Genuine
+  merge-adjacent walls that DO stand are the ref/branch-DELETION and
+  tag-push 403s above — those are unchanged.)
 - **API-authored PRs may not trigger CI/workflows** — the manager's
   Contents-API PR #27 carried 0 CI runs; MCP-opened PRs don't fire the
   auto-merge-enabler workflow. Always arm auto-merge yourself

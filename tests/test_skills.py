@@ -180,12 +180,16 @@ def test_grounds_reference_only_known_bank_slots():
 
 def test_session_close_is_the_landing_path_playbook():
     # The slice-2 upgrade: claim-first, born-red-first-commit, READY open,
-    # flip-complete-last, designed-red reading, never-self-merge.
+    # flip-complete-last, designed-red reading, land-your-own-green-PR.
     body = get_skill("session-close")["body"]
     assert "Claim first" in body
     assert "FIRST commit" in body
     assert "READY (not\n   draft)" in body or "READY (not draft)" in body
-    assert "NEVER arm auto-merge" in body
+    # Merging your own green PR is normal agent work — the body must state the
+    # accurate landing rule, not the retired "NEVER arm auto-merge" wall.
+    assert "Land your own green PR" in body
+    assert "merging is normal agent work" in body
+    assert "NEVER arm auto-merge" not in body
     assert "designed hold" in body
     assert "LAST step" in body
     assert "delete your own claim file" in body

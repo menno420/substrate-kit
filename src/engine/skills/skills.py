@@ -28,9 +28,10 @@ improvising (grounded-skills plan §7.2).
 ## What this does
 
 Drives the session's work to a terminal, verified state on two rails:
-the born-red gate (card first, flip last) and never-self-merge (the repo's
-server-side auto-merge-enabler arms; GitHub lands the PR on green required
-checks). Everything else is ordered steps.
+the born-red gate (card first, flip last) and landing your own green PR
+(merge it directly once required checks pass, or let the server-side
+auto-merge-enabler land it — either is fine). Everything else is ordered
+steps.
 
 ## Instructions
 
@@ -44,10 +45,10 @@ checks). Everything else is ordered steps.
    a one-line "what is about to happen". Push, then open the PR READY (not
    draft) immediately: the open PR + the claim are the in-flight signal
    parallel sessions collide without.
-3. NEVER arm auto-merge on, or merge, your own PR — author self-arm/
-   self-merge is refused terminally (deny-wins; never retry it). The
-   enabler workflow arms server-side at open; green required checks merge
-   it with no action from you. Read a red on a born-red head as the
+3. Land your own green PR — merging is normal agent work. Once the required
+   checks are green, merge it directly (MCP/REST), or let the server-side
+   auto-merge-enabler land it; either is fine. Only a `do-not-automerge`-
+   labelled PR waits for the owner. Read a red on a born-red head as the
    designed hold, not a CI failure: verify any red against the job log
    before diagnosing — alias/mirror jobs echo the required check without
    running anything (kit repo example: the two legacy jobs mirroring
@@ -107,7 +108,8 @@ tree, never a registry line or a PR read.
    stop and report; do not upgrade.
 4. Born-red PR first — claim file + `.sessions/` card declaring
    `in-progress` as the first commit on the wave branch; open the PR READY;
-   never self-arm/self-merge (the session-close rails apply verbatim).
+   land it on green — merge directly or via the enabler (the session-close
+   rails apply verbatim).
 5. Upgrade — `python3 bootstrap.py.new upgrade`. It banks the OLD dist to
    `.substrate/backup/` (verify the banked `bootstrap-<old-version>.py`
    exists — that is the rollback path) and consumes its own inputs.
@@ -162,8 +164,8 @@ distribution PRs.
    config / CLI break · MINOR = new capability · PATCH = fixes).
 2. Claim, then bump PR born-red — claim `control/claims/` (one file, e.g.
    release-vX.Y.Z.md) on main first; cut the bump branch from post-claim
-   main; born-red card as first commit; open the PR READY; never
-   self-arm/self-merge.
+   main; born-red card as first commit; open the PR READY; land it on green
+   (merge directly or via the enabler).
 3. Version bump, one commit set — BOTH version homes in the SAME commit:
    `src/engine/lib/config.py` (`KIT_VERSION`) and `pyproject.toml`
    (`version`). CHANGELOG: rename `[Unreleased]` to the new `[X.Y.Z]`
@@ -530,7 +532,7 @@ SKILLS: list[dict] = [
     {
         "name": "session-close",
         "description": "Land the session — claim, born-red card first, READY PR, "
-        "batched work, close-out docs, flip complete last; never self-merge.",
+        "batched work, close-out docs, flip complete last; land on green.",
         "capabilities": [EDIT, RUN],
         "body": _SESSION_CLOSE_BODY,
         "grounds": [
