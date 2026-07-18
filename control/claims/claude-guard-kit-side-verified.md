@@ -1,1 +1,0 @@
- - `claude/guard-kit-side-verified` · **scope** — verify/close the rung-2 codegen baton: is ci.yml⇄guards.py manifest single-sourcing already covered by test_guard_parity? · files: tests/test_guard_parity.py (docstring), control/status.md, control/claims/release-v1-19-0.md (stale removal) · 2026-07-18
