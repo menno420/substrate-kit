@@ -1,0 +1,1 @@
+- `claude/fastlane-prefix-symmetry` · **B-3 fast-lane head-prefix <-> enabler branch_patterns symmetry lint** · src/engine/guards.py, tests/test_fastlane_prefix_symmetry.py, dist/bootstrap.py · 2026-07-18

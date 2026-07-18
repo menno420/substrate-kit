@@ -14613,6 +14613,56 @@ def census_notes() -> list[str]:
     """The note string of every census entry."""
     return [note for _kind, note in WORKFLOW_JOB_CENSUS.values()]
 
+
+# ---------------------------------------------------------------------------
+# Fast-lane branch-prefix symmetry (B-3)
+# ---------------------------------------------------------------------------
+# The set of head-branch prefixes that ride the auto-merge fast lane is
+# duplicated across surfaces that nothing keeps in agreement:
+#   * the auto-merge-enabler arms native auto-merge on these prefixes
+#     (.github/workflows/auto-merge-enabler.yml -- startsWith(head_ref, '<p>')),
+#   * the claims-only fast-lane guard cards exactly the CARDED ones
+#     (.github/workflows/ci.yml -- case "$head_ref" in claude/*),
+#   * the engine defaults hand adopters the same set
+#     (adopt.DEFAULT_AUTOMERGE_BRANCH_PATTERNS, claim.BRANCH_PREFIX).
+# A prefix the enabler arms but the registry/guard doesn't know reopens a
+# card-less merge hole; a carded prefix the enabler doesn't arm is the kit#293
+# green-and-unarmed stall. This registry pins the canonical set;
+# tests/test_fastlane_prefix_symmetry.py asserts every live surface agrees,
+# both directions. (The disarm workflow keys on the do-not-automerge LABEL, not
+# a prefix, so it is deliberately outside this symmetry.)
+
+FASTLANE_CARDED = "carded"  # work PRs -- the guard requires a session card
+FASTLANE_CARDLESS = "card-less"  # ride the fast lane card-free by design
+
+FASTLANE_KINDS = (FASTLANE_CARDED, FASTLANE_CARDLESS)
+
+# prefix (trailing "/") -> kind. The enabler must arm every prefix here; the
+# claims-only guard must card exactly the FASTLANE_CARDED ones.
+FASTLANE_PREFIX_REGISTRY = {
+    "claude/": FASTLANE_CARDED,
+    "claim/": FASTLANE_CARDLESS,
+}
+
+# Floor: shrinking below this flags a prefix silently dropped from the fast
+# lane (mirrors EXPECTED_CENSUS_GATES / EXPECTED_MIRRORS).
+EXPECTED_FASTLANE_PREFIXES = 2
+
+
+def fastlane_prefixes():
+    """All fast-lane-eligible head-branch prefixes -> kind (copy)."""
+    return dict(FASTLANE_PREFIX_REGISTRY)
+
+
+def fastlane_carded_prefixes():
+    """Prefixes the claims-only guard must require a session card for."""
+    return {p for p, kind in FASTLANE_PREFIX_REGISTRY.items() if kind == FASTLANE_CARDED}
+
+
+def fastlane_cardless_prefixes():
+    """Prefixes that ride the fast lane card-free by design."""
+    return {p for p, kind in FASTLANE_PREFIX_REGISTRY.items() if kind == FASTLANE_CARDLESS}
+
 # --- engine/adopt.py ---
 """One-step adopt flow — plant the workflow docs, stage the packs (Lane B8).
 
