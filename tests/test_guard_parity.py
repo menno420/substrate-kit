@@ -9,22 +9,32 @@ The kit runs two CI guard surfaces that must stay in agreement:
   * the GENERATED adopter CI every host receives — the ``substrate-gate`` job
     ``src/engine/adopt.py`` :func:`live_ci_workflow` emits.
 
-They were kept in agreement only BY HAND. When the claims-only fast-lane guard
-shipped to the kit's own ``ci.yml`` (PR #455) but not to the generated adopter
-CI, nothing detected the drift — a human had to notice and queue PR #457 to
-close the gap (the #455/#457 gap). This meta-test closes that drift class:
-every ENFORCING ``kit-quality`` guard must either mirror a live adopter guard
-or be listed as legitimately kit-only with a one-line reason.
+They were kept in agreement only BY HAND, and in TWO places at that: the
+adopter step names lived inline in :func:`adopt.live_ci_workflow` while this
+test carried its own private copy of them. When the claims-only fast-lane
+guard shipped to the kit's own ``ci.yml`` (PR #455) but not to the generated
+adopter CI, nothing detected the drift — a human had to notice and queue PR
+#457 to close the gap (the #455/#457 gap). This meta-test closes that drift
+class: every ENFORCING ``kit-quality`` guard must either mirror a live adopter
+guard or be listed as legitimately kit-only with a one-line reason.
+
+The classification itself — the ``REGISTRY`` and the ``SETUP`` / ``MIRRORS`` /
+``KIT_ONLY`` sentinels — now lives in ONE canonical place,
+``src/engine/guards.py``, which :func:`adopt.live_ci_workflow` also reads the
+adopter step NAMES from. So a MIRRORS entry and the YAML the generator emits
+can no longer disagree by construction, and adding/renaming a guard is a
+one-place edit in the manifest, not two. This test imports the manifest and
+classifies the live ``ci.yml`` against it.
 
 HOW TO RESPOND WHEN IT GOES RED
 -------------------------------
 * ``test_every_kit_quality_step_is_classified`` red — a ``kit-quality`` step
-  was ADDED or REMOVED. A NEW step must be classified in the ``REGISTRY``
-  below as ``SETUP`` (non-enforcing setup/detect/echo), ``MIRRORS(<adopter
-  step name>)`` (enforcing, with a live counterpart in the adopter CI), or
-  ``KIT_ONLY(<why>)`` (enforcing but legitimately kit-only). A REMOVED step
-  must be dropped from the registry. This is the primary drift-catch: a new
-  kit guard cannot be added silently.
+  was ADDED or REMOVED. A NEW step must be classified in the ``REGISTRY`` in
+  ``src/engine/guards.py`` as ``SETUP`` (non-enforcing setup/detect/echo),
+  ``MIRRORS(<adopter step name>)`` (enforcing, with a live counterpart in the
+  adopter CI), or ``KIT_ONLY(<why>)`` (enforcing but legitimately kit-only). A
+  REMOVED step must be dropped from the registry. This is the primary
+  drift-catch: a new kit guard cannot be added silently.
 * ``test_mirrored_guards_have_a_live_adopter_counterpart`` red — a ``MIRRORS``
   entry names an adopter step that no longer exists. Someone renamed or removed
   that guard in :func:`live_ci_workflow` while the kit kept it (the reverse of
@@ -48,92 +58,27 @@ if str(_SRC) not in sys.path:
 
 from engine import adopt  # noqa: E402  (after the sys.path insert, like test_adopt)
 
+# The guard mapping is single-sourced in the engine manifest — the SAME module
+# adopt.live_ci_workflow() reads the adopter step names from — so the registry
+# and the generator can no longer drift (that was the whole two-place hazard
+# this file used to embody). Adding/renaming a guard is now a one-place edit in
+# src/engine/guards.py; this test just classifies the live ci.yml against it.
+from engine.guards import (  # noqa: E402
+    EXPECTED_KIT_ONLY,
+    EXPECTED_MIRRORS,
+    KIT_ONLY,
+    MIRRORS,
+    REGISTRY,
+    SETUP,
+)
+
 CI_PATH = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "ci.yml"
 
-
-# ── sentinels ────────────────────────────────────────────────────────────────
-# A tiny three-way classification. SETUP is a bare marker; MIRRORS / KIT_ONLY
-# carry a payload (the adopter step name / the kit-only reason).
-SETUP = ("SETUP",)
-
-
-def MIRRORS(adopter_step_name: str) -> tuple[str, str]:
-    """An enforcing guard with a live counterpart in the adopter ``substrate-gate`` job."""
-    return ("MIRRORS", adopter_step_name)
-
-
-def KIT_ONLY(why: str) -> tuple[str, str]:
-    """An enforcing guard that is legitimately kit-only, with a one-line reason."""
-    return ("KIT_ONLY", why)
-
-
-# ── the maintained registry ─────────────────────────────────────────────────
-# One entry per NAMED kit-quality step (bare `uses:` steps — checkout,
-# setup-python — have no name and are excluded by construction). Keys are the
-# EXACT step-name strings read from ci.yml; MIRRORS targets are the EXACT
-# adopter step-name strings emitted by live_ci_workflow().
-REGISTRY: dict[str, tuple[str, ...]] = {
-    # ── non-enforcing setup / detect / echo — no parity needed ──
-    "Control fast lane detect (KL-8 — control/**-only diff)": SETUP,
-    "Control fast lane (green by design)": SETUP,
-    "Install dev tools": SETUP,
-    # ── enforcing guards mirrored in the generated adopter CI ──
-    "Control-status gate (fast lane — the one check a control diff must still pass)": MIRRORS(
-        "control-status gate (fast lane — a control diff must still prove its heartbeat)"
-    ),
-    "Inbox append-only gate (control/inbox.md pure-append + ORDER grammar)": MIRRORS(
-        "inbox append-only gate (control/inbox.md pure-append + ORDER grammar)"
-    ),
-    "Claims-only fast-lane guard (claude/* work PRs must carry a session card)": MIRRORS(
-        "claims-only fast-lane guard (claude/* work PRs must carry a session card)"
-    ),
-    "Kit test suite (§3.2 item 1)": MIRRORS(
-        "pytest suite (a test suite ships with its CI runner; self-skips when tests/ is absent)"
-    ),
-    "Session gate (§3.2 item 5 — dogfood, the born-red discipline)": MIRRORS(
-        "substrate gate (docs + session-log required)"
-    ),
-    # ── enforcing guards that are legitimately kit-only ──
-    "Dist byte-equality pin (§3.2 item 2)": KIT_ONLY(
-        "adopters ship no dist/bootstrap.py, so there is no built artifact to byte-pin"
-    ),
-    "Engine lint bans (§3.2 item 3 — no print/assert/subprocess)": KIT_ONLY(
-        "adopters carry no src/engine/ tree; the ruff bans target kit engine source only"
-    ),
-    "Idea index (§5.4 — B4 frontmatter + backlog consistency)": KIT_ONLY(
-        "validates the kit repo's own docs/ideas index; not part of the adopter deliverable"
-    ),
-    "Retro index (docs/retro reachability — no unindexed retro file)": KIT_ONLY(
-        "validates the kit repo's own retro index; not part of the adopter deliverable"
-    ),
-    "CHANGELOG structure ([Unreleased] keep-a-changelog shape)": KIT_ONLY(
-        "validates the kit's own CHANGELOG; adopters carry no kit CHANGELOG"
-    ),
-    'No false merge-walls (forward-binding surfaces don\'t re-seed "agents cannot merge")': KIT_ONLY(
-        "propagated into adopters via `bootstrap check --strict` (PR #450), "
-        "not as a separate generated-CI step"
-    ),
-    "Taxonomy sync (PL-004 — TASK_CLASSES ⇄ ladder ⇄ telemetry README)": KIT_ONLY(
-        "validates the kit's own program/taxonomy docs; kit-internal"
-    ),
-    "Program law (§8.3 — PL register grammar + planted pointers + owner-gate label)": KIT_ONLY(
-        "validates the kit's own program-law label gate; kit-internal governance"
-    ),
-    "Bench integrity (§5.0 — pin-path label gate + append-only results)": KIT_ONLY(
-        "validates the kit's own bench harness; kit-internal"
-    ),
-    "Cold-adoption smoke (§3.2 item 4 — the KL-7 RED→ENGAGED→GREEN arc)": KIT_ONLY(
-        "exercises the adopt→render→session arc on the kit itself; an adopter "
-        "does not re-adopt, so it has no adopter-CI analogue"
-    ),
-}
-
-# Anchor floors (this PR): the guard surface today is exactly 5 MIRRORS and 10
-# KIT_ONLY enforcing guards. These track the surface as of this PR so the
-# registry can't be silently gutted to an empty (vacuously green) pass; bump
-# them deliberately when the guard set legitimately changes.
-EXPECTED_MIRRORS = 5
-EXPECTED_KIT_ONLY = 10
+# Re-export the sentinels the module docstring/helpers reference so importers
+# and readers still see the three-way vocabulary here (SETUP is a bare marker;
+# MIRRORS / KIT_ONLY carry a payload — the adopter step name / the kit-only
+# reason). The definitions themselves live in the engine manifest.
+__all__ = ["SETUP", "MIRRORS", "KIT_ONLY", "REGISTRY", "EXPECTED_MIRRORS", "EXPECTED_KIT_ONLY"]
 
 
 # ── stdlib-only parsers ──────────────────────────────────────────────────────

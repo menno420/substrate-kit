@@ -146,6 +146,12 @@ MODULE_ORDER = (
     # install-time enabler preflight imports only stdlib — no adopt imports,
     # by design (the reverse edge would cycle).
     "enabler_preflight.py",
+    # Before adopt.py (which imports the ADOPTER_* step-name constants it emits
+    # into the generated substrate-gate YAML): the single-source guard manifest
+    # both live_ci_workflow() and tests/test_guard_parity.py read. Pure data +
+    # tiny pure accessors, no engine references — so anywhere before adopt.py
+    # works; kept beside adopt.py, its only consumer.
+    "guards.py",
     "adopt.py",
     # After adopt.py on purpose: the engagement gate scans the ADOPT_PLAN
     # destinations and keys off adopt's UNRENDERED banner marker.

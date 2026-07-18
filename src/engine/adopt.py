@@ -33,6 +33,13 @@ from engine.agents.agents import AGENTS, agent_document, agent_relpath
 from engine.contextpack import pack_index_skeleton
 from engine.derive import derive_slots, record_derived_slots
 from engine.enabler_preflight import enabler_install_preflight
+from engine.guards import (
+    ADOPTER_CLAIMS_FASTLANE_GUARD,
+    ADOPTER_CONTROL_STATUS_GATE,
+    ADOPTER_INBOX_APPEND_GATE,
+    ADOPTER_PYTEST_SUITE,
+    ADOPTER_SUBSTRATE_GATE,
+)
 from engine.hooks.settings import full_settings_template, hooks_fill_table
 from engine.lib.atomicio import atomic_write_text
 from engine.lib.config import KIT_VERSION, Config, save_config
@@ -999,8 +1006,7 @@ def live_ci_workflow(
     """
     if test_command is None:
         test_step = (
-            "      - name: pytest suite (a test suite ships with its CI runner; "
-            "self-skips when tests/ is absent)\n"
+            f"      - name: {ADOPTER_PYTEST_SUITE}\n"
             "        if: steps.lane.outputs.control_only != 'true'\n"
             "        # A host can live its whole life with a green gate while its\n"
             "        # tests never run in CI (superbot-games' 73 tests were\n"
@@ -1092,8 +1098,7 @@ def live_ci_workflow(
         "          fi\n"
         '          echo "control_only=$control_only" >> "$GITHUB_OUTPUT"\n'
         '          echo "control-only diff: $control_only"\n'
-        "      - name: control-status gate (fast lane — a control diff must "
-        "still prove its heartbeat)\n"
+        f"      - name: {ADOPTER_CONTROL_STATUS_GATE}\n"
         "        if: steps.lane.outputs.control_only == 'true'\n"
         "        # The lane skips the heavy gate, but a control-only PR edits\n"
         "        # exactly the files the status checker validates — without\n"
@@ -1103,8 +1108,7 @@ def live_ci_workflow(
         "        # (no setup-python): the lane stays fast, and heartbeat PRs\n"
         "        # still need no session card.\n"
         "        run: python3 bootstrap.py check --strict --status-only\n"
-        "      - name: inbox append-only gate (control/inbox.md pure-append + "
-        "ORDER grammar)\n"
+        f"      - name: {ADOPTER_INBOX_APPEND_GATE}\n"
         "        # control/inbox.md is one-writer/append-only by protocol\n"
         "        # (control/README.md): without this step a green control-only\n"
         "        # PR could rewrite or erase orders. Holds the PR red unless\n"
@@ -1135,8 +1139,7 @@ def live_ci_workflow(
         "            python3 bootstrap.py check --strict --status-only "
         '--inbox-base "$basefile"\n'
         "          fi\n"
-        "      - name: claims-only fast-lane guard (claude/* work PRs must "
-        "carry a session card)\n"
+        f"      - name: {ADOPTER_CLAIMS_FASTLANE_GUARD}\n"
         "        if: steps.lane.outputs.control_only == 'true'\n"
         "        # The #451 fast-lane race: a `claude/*` WORK PR whose ENTIRE\n"
         "        # diff is only `control/claims/**` rides the control fast\n"
@@ -1191,7 +1194,7 @@ def live_ci_workflow(
         "        if: steps.lane.outputs.control_only != 'true'\n"
         "        with:\n"
         '          python-version: "3.x"\n'
-        "      - name: substrate gate (docs + session-log required)\n"
+        f"      - name: {ADOPTER_SUBSTRATE_GATE}\n"
         "        if: steps.lane.outputs.control_only != 'true'\n"
         "        # Gate on the session cards THIS PR/push touches (CI flattens\n"
         "        # mtimes, so the engine's newest-by-mtime guess is unreliable\n"
