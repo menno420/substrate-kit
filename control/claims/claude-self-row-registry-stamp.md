@@ -1,1 +1,0 @@
-- `claude/self-row-registry-stamp` · **src/engine/checks/check_adopters_current.py, src/engine/currency.py, scripts/cut_release.py, docs/operations/release-runbook.md, tests** · engine checks + currency + release script · 2026-07-18
