@@ -52,6 +52,11 @@ MODULE_ORDER = (
     "interview/stages.py",
     "interview/interview.py",
     "checks/check_docs.py",
+    # After check_docs.py (its only engine reference is check_docs.Finding):
+    # the no-false-walls leg — propagated from tools/check_no_false_walls.py so
+    # every adopter's `check --strict` reds on a documented false capability
+    # wall, not just substrate-kit's own CI.
+    "checks/check_no_false_walls.py",
     "checks/allowlist.py",
     "checks/check_session_log.py",
     # After grammar.py (the model-line constants + payload parser) and

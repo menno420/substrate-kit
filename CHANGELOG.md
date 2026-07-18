@@ -17,6 +17,24 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **No-false-walls guard propagated to EVERY adopter's `check --strict`**
+  (owner goal 2026-07-18, PR follows #448/#449): the grammar/blocklist/
+  clearing logic of `tools/check_no_false_walls.py` moved into the engine
+  (`src/engine/checks/check_no_false_walls.py`), and `bootstrap.py check`
+  now runs it as an additive finding leg (`_extra_check_findings`). An
+  adopter that documents a FALSE agent-capability limitation ("agents
+  cannot merge", "classifier-denied", "owner is the merge authority") into
+  its own live `docs/**` / `CONSTITUTION.md` / `CAPABILITIES.md` /
+  `.claude/**` now reds its own generated CI (`substrate-gate.yml`'s
+  full-lane `check --strict`), with zero per-repo wiring. The standalone
+  `tools/` wrapper still runs in the kit's own CI and delegates to the
+  shared engine core (no duplicate logic), scanning the kit-only
+  `src/engine/templates/*.tmpl` + `skills/skills.py` surfaces adopters
+  lack. Additive only — a new `false-wall:<rule>` finding class; the #449
+  false-positive discipline (CODE rules, dated/`LAST-VERIFIED` walls,
+  missing-input requests, and repudiations all PASS) is preserved
+  verbatim. Zero findings on substrate-kit's clean tree and on a cold
+  adopt.
 - **Residue-surface coverage pin — a drafted hint can no longer ship
   unguarded silently** (the #424 card's filed 💡, PR #426):
   `tests/test_residue_coverage.py` AST-discovers every fill-slot

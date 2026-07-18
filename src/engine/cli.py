@@ -62,6 +62,7 @@ from engine.checks.check_engagement import (
 from engine.checks.check_inbox_append import INBOX_RELPATH, check_inbox_append
 from engine.checks.check_model_line import check_model_line
 from engine.checks.check_namespace import check_namespace
+from engine.checks.check_no_false_walls import check_no_false_walls
 from engine.checks.check_owner_actions import check_owner_actions
 from engine.checks.check_status_current import (
     CONTROL_README_RELPATH,
@@ -695,6 +696,15 @@ def _extra_check_findings(target: Path, config: Config) -> list:
         )
     if config.seams:
         findings += check_seam_authority(target, config.seams)
+    # No-false-walls leg (propagated from tools/check_no_false_walls.py so EVERY
+    # adopter enforces it via its own `check --strict`, not just substrate-kit's
+    # own CI): a forward-binding surface (live docs / CONSTITUTION / CAPABILITIES
+    # / .claude) that documents a FALSE agent-capability limitation ("agents
+    # cannot merge", "classifier-denied", "owner is the merge authority") reds
+    # the gate. Additive — a new finding class only; dated/repudiated/historical
+    # lines and CODE rules pass (see the checker's false-positive discipline).
+    # Self-quiet on a bare tree (no docs / constitution / .claude to scan).
+    findings += check_no_false_walls(target, config)
     boot_docs = config.orientation.get("boot_docs") or config.readpath_docs
     docs_root = target / config.docs_root
     if any((docs_root / doc).exists() or (target / doc).exists() for doc in boot_docs):
