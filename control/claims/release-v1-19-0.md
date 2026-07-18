@@ -1,0 +1,1 @@
+- `claude/release-v1-19-0` · **scope** — cut substrate-kit v1.19.0 release (version-bump born-red PR: three version homes + CHANGELOG transform + dist rebuild) · files: CHANGELOG.md, src/engine/lib/config.py, pyproject.toml, substrate.config.json, dist/bootstrap.py, .sessions/2026-07-18-kit-release-v1.19.0.md · 2026-07-18

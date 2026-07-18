@@ -15,8 +15,41 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.19.0] - 2026-07-18
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
 ### Added
 
+- **Guard-parity meta-test — a kit CI guard can no longer drift ahead of the
+  adopter CI silently** (idea `docs/ideas/guard-parity-kit-vs-adopter-2026-07-18.md`,
+  PR #459): `tests/test_guard_parity.py` (stdlib-only) fails CI when an
+  enforcing kit-quality step in `.github/workflows/ci.yml` has no mirrored
+  counterpart in the generated adopter CI (`src/engine/adopt.py`
+  `live_ci_workflow()`), unless it is explicitly allowlisted KIT_ONLY with a
+  one-line reason. A maintained REGISTRY classifies every named step as SETUP,
+  `MIRRORS(<adopter step>)`, or `KIT_ONLY(<why>)`; tests assert set-equality
+  (no unclassified/stale step), mirror-existence, non-empty kit-only reasons,
+  and anchor floors. Closes by machine the drift class #457 had to close by
+  hand — the #455/#457 gap where a kit guard shipped a release ahead of its
+  adopter counterpart. Mutation-verified both directions; no `src/engine`
+  change, so no dist rebuild.
+- **Claims-only fast-lane guard propagated to generated adopter CI**
+  (PR #457, adopter-facing): `bootstrap upgrade` now ships adopters the same
+  reject-claims-only guard the kit runs on itself — `adopt.py`
+  `live_ci_workflow()` mirrors the step into every generated
+  `substrate-gate.yml`, so an adopter's `claude/*` PR whose entire diff is
+  only a `control/claims/**` claim file reds its own CI instead of
+  auto-merging through the control fast lane. `tests/test_adopt.py` pins the
+  generated step; dist regenerated + byte-pinned.
+- **Reject `claude/*` PRs whose entire diff is only a claim file** (PR #455,
+  closes the #451 fast-lane race): a new `ci.yml` guard step beside the
+  inbox append-only gate fails when a `claude/*` diff is purely
+  `control/claims/**` — the card-less pure-claim work PR that used to
+  auto-merge with no session card. Standalone `claim/*` heads (meant to ride
+  the control fast lane) still exit 0. `tests/test_ci_control_lane.py` pins
+  the step; `docs/operations/auto-merge-guards.md` records it as guard-stack
+  row 7 (enforcing).
 - **No-false-walls guard propagated to EVERY adopter's `check --strict`**
   (owner goal 2026-07-18, PR follows #448/#449): the grammar/blocklist/
   clearing logic of `tools/check_no_false_walls.py` moved into the engine

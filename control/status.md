@@ -15,6 +15,7 @@ IN-FLIGHT: `claude/guard-parity-meta-test` (PR #459) — adds `tests/test_guard_
 
 ## Recently shipped (neutral pointer)
 
+- v1.19.0 version bump merged to main via PR #461; GitHub Release publishing via release.yml workflow_dispatch (verify_release + adopters regen in aftermath). The Release artifact is published post-merge, not yet at write time.
 - PR #457 (prior wake): propagated the claims-only fast-lane guard into the generated adopter CI (`src/engine/adopt.py` `live_ci_workflow()`), mirroring the kit's own `ci.yml` guard from PR #455 — so adopter repos get the same #451 fast-lane-race protection. Docs: `docs/operations/auto-merge-guards.md` row 7.
 - PR #455 (prior session): the kit-CI half — a red `kit-quality` step rejecting a `claude/*` work PR whose ENTIRE diff is only `control/claims/**`, while leaving `claim/*` standalone-claim PRs green.
 
@@ -37,7 +38,7 @@ Seat idles on the 2h failsafe trigger between now and the earliest gated date.
 
 ## State
 
-kit: v1.18.0
+kit: v1.19.0
 - **No-false-walls guard now enforced fleet-wide** (campaign #444–#450): the false "agents cannot merge" doctrine was removed from templates / rendered docs / the session-close skill, then re-defended by `tools/check_no_false_walls.py` (kit CI, full lane) + `src/engine/checks/check_no_false_walls.py` (runs in every adopter's `check --strict`). Sits under CHANGELOG `[Unreleased]` — folds into the next release.
 - **Claims-only fast-lane guard now on BOTH surfaces**: kit's own `ci.yml` (PR #455) + generated adopter CI via `live_ci_workflow()` (PR #457). The two guard stacks were hand-kept in agreement; the guard-parity meta-test (`tests/test_guard_parity.py`, PR #459 in flight) now fails CI on kit-vs-adopter guard drift, replacing the hand-check with a red-CI signal (`docs/ideas/guard-parity-kit-vs-adopter-2026-07-18.md`).
 - Registry (docs/adopters.md): CURRENT per `currency --check` (12 repos); the superbot-games row DRIFT is adopter-side self-report lag (owner-gated, no kit-only fix — folded into the v1.18.0 wave ask). Every adopter row reads stale until its own v1.18.0 upgrade wave.
@@ -50,7 +51,7 @@ kit: v1.18.0
 ## Next-2 baton
 
 1. Grounded-skills measurement window opens 2026-07-19 — the first successor wake on/after that date should evaluate it (docs/operations/grounded-skills-measurement.md).
-2. Successor judgment — the guard-parity meta-test (prior baton #2) is now built (PR #459, owner-reviewed). Pick the next-highest-value rung from the thin backlog: groom a `docs/ideas/*.md` entry down its lifecycle, or extend guard-parity coverage (e.g. the added-vs-modified lane-parity meta-test in docs/planning/2026-07-16-overnight-veto-menu.md).
+2. Guard-manifest idea (from PR #459's card) — a declarative manifest that BOTH `adopt.py`'s CI generator (`live_ci_workflow()`) AND the guard-parity meta-test (`tests/test_guard_parity.py`, PR #459) read as the single source of truth for the guard list, so adding a guard means editing one manifest instead of three places. Groom it down its lifecycle (file a `docs/ideas/*.md` entry → plan) as the next-highest-value rung from the thin backlog.
 
 ## ⚑ FOR OWNER (standing set carried forward)
 
@@ -63,15 +64,15 @@ kit: v1.18.0
   VERIFY: (A) the Schedule shows in the console trigger list and a 06:00Z run lands; (B) `grep -n "stays armed" docs/operations/lab-loop.md` returns nothing.
   RISK ↩️ reversible either way. RECOMMENDATION: **A — recreate** (lab-loop.md frames it as genuine daily owner business; retiring silently drops it over a transient cutover gap; re-arming is one console action gated on the reboot go). Answer: A (recreate) / B (retire).
 
-⚑ v1.18.0 adopter-wave authorization
-WHAT: authorize the v1.18.0 adopter-upgrade wave.
+⚑ v1.19.0 adopter-wave authorization
+WHAT: authorize the v1.19.0 adopter-upgrade wave. (v1.19.0 now supersedes v1.18.0 as the wave target — v1.18.0 was never distributed.)
 WHERE: the executing seat session, one live owner turn.
-HOW: say 'run the v1.18.0 adopter wave'.
+HOW: say 'run the v1.19.0 adopter wave'.
 WHY: the seat session's permission classifier denied adopter-repo writes dispatched on coordinator relay alone (denial record verbatim: PR #420 body § "Denial routing"); owner provenance in the executing session is the unblock.
-UNBLOCKS: ~15 adopter currency PRs to v1.18.0.
+UNBLOCKS: ~15 adopter currency PRs to v1.19.0.
 VERIFY: wave report with per-adopter PR list.
 RISK: ↩️ reversible, distribution-only diffs.
-  NOTE (superbot-games, carried from 2026-07-18 rung-2 re-verify): its DRIFT row is 1 genuine self-report lag + 2 consuming-lane false-positives. The wave clears the genuine half when superbot-games re-renders + re-stamps its own control/status.md v1.15.0→v1.18.0. The two consuming lanes (control/status-mining.md / control/status-exploration.md, v1.7.1 adoption-prose) will NOT clear on a version bump — their `kit:` lines are historical prose, not current claims; either reword them adopter-side, or (kit-side, NOT recommended) prune their tokens from docs/fleet-repos.txt at the cost of lane observability.
+  NOTE (superbot-games, carried from 2026-07-18 rung-2 re-verify): its DRIFT row is 1 genuine self-report lag + 2 consuming-lane false-positives. The wave clears the genuine half when superbot-games re-renders + re-stamps its own control/status.md v1.15.0→v1.19.0. The two consuming lanes (control/status-mining.md / control/status-exploration.md, v1.7.1 adoption-prose) will NOT clear on a version bump — their `kit:` lines are historical prose, not current claims; either reword them adopter-side, or (kit-side, NOT recommended) prune their tokens from docs/fleet-repos.txt at the cost of lane observability.
 
 ⚑ CAPABILITIES denial-record entry (parked)
 WHAT: approve appending the 2026-07-16 adopter-wave denial finding to docs/CAPABILITIES.md in summarized form (finding + date + pointer to the PR #420 body for the verbatim record).
