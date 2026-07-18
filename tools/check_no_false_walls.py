@@ -1,49 +1,77 @@
 #!/usr/bin/env python3
-"""check_no_false_walls — CI guard against re-seeding the FALSE "agents cannot
-merge" wall into a forward-binding surface.
+"""check_no_false_walls — CI guard against writing ANY false agent-capability
+limitation into a forward-binding surface.
 
-Why + provenance (friction -> guard): three separate sessions have now
-hand-removed the SAME regression from three different layers — the doctrine
-templates (`src/engine/templates/*.tmpl`), the rendered docs, and the skill
-bodies. The regression is a family of FALSE standing prohibitions that assert an
-agent cannot land a green PR:
+OWNER'S PRINCIPLE (the reason this check exists — bake it in, do not soften it):
+**agents have NO owner-imposed limitations.** A capability refusal, when it
+happens at all, is a TRANSIENT auto-mode-classifier state that Anthropic reworks
+continually — so any wall written down is stale on the very next platform update
+AND it makes the next session not even try (a real prior failure: a session read
+a wall list and replied "this is accurate, I will not attempt anything").
+Therefore the docs must record **capabilities, never limitations.** CI is the
+authoritative enforcement of that rule — an agent cannot argue with a red check,
+so no session can quietly re-seed a false limitation. The genuine, momentary
+refusals still get recorded — but as DATED ledger rows / `LAST-VERIFIED` walls
+that carry their own expiry, never as forward-binding standing doctrine.
+
+Why + provenance (friction -> guard): multiple sessions hand-removed the SAME
+regression from three layers — the doctrine templates (`src/engine/templates/
+*.tmpl`), the rendered docs, and the skill bodies. The original regression was a
+family of FALSE standing MERGE prohibitions:
 
     "agents do NOT ready-flip / arm / self-merge — classifier-denied since …"
-    "the owner is the merge authority"
-    "a green PR is agent-unlandable"
+    "the owner is the merge authority"        "a green PR is agent-unlandable"
+
+This check now generalizes past merge to the whole semantic class of false
+capability walls (owner-directed 2026-07-18). It fails (exit 1) when a
+forward-binding surface asserts ANY of:
+  * a SUBJECT {agent|session|worker|seat|the bot|you} is unable / not-allowed to
+    perform a capability {merge|deploy|push|arm|ready-flip|flip|land|delete a
+    branch|update Railway/env/infra variables};
+  * a capability ACTION is asserted owner-only / owner-gated / owner-must /
+    only-the-owner-can, for a merge / deploy / branch-deletion action;
+  * a standing platform wall {classifier-denied, 403-walled, permission-walled,
+    agent-unlandable, self-merge classifier, blocked for agents, …}.
 
 GROUND TRUTH (owner-confirmed, proven ~20× live on 2026-07-18): merging is
-NORMAL agent work. A session flips its own draft to ready, arms native
-auto-merge, and merges its own OR a sibling's green PR (MCP/REST) once CI is
-green. There is **no standing self-merge / owner-gated-merge / classifier-denied
-wall**; a one-off merge refusal is venue-specific, dated, and never generalized
-into doctrine.
+NORMAL agent work; so is deploying / pushing / arming. A session flips its own
+draft to ready, arms native auto-merge, and merges its own OR a sibling's green
+PR once CI is green.
 
-The walls that genuinely DO stand (these are NOT what this checker touches):
-ref/branch DELETION 403, tag-push / release 403, `api.github.com` direct HTTP
-blocked, repo Settings / rulesets / secrets = owner, external accounts = owner.
-
-What this checker enforces (exit 1 on any finding, 0 clean): it scans only
-FORWARD-BINDING surfaces (templates, skill bodies, live docs, root constitution
-/ capabilities) and fails when such a surface asserts one of the curated FALSE
-merge prohibitions as a STANDING rule. It deliberately does NOT flag:
+DELIBERATELY NOT FLAGGED — false positives are the failure mode (owner: a false
+positive that reds CI is worse than a rare miss):
+  * CODE / architecture rules — "services must NOT import views", "never call
+    pool.execute", "utils/ may not import services". These constrain CODE, not
+    an agent's platform capability; the patterns require an agent-capability
+    subject + a GitHub/merge/deploy/infra object, so a bare "must not" / "never"
+    / "cannot" over a code noun never trips.
+  * GENUINE walls that DO stand and are dated — ref/branch DELETION 403,
+    tag-push / release 403, `api.github.com` blocked, repo Settings / rulesets /
+    secrets / env-var provisioning = owner: these survive because each carries a
+    `LAST-VERIFIED` / dated marker (recorded as capabilities-ledger history, not
+    forward doctrine). The generalized verb list also EXCLUDES read / create /
+    access / provision precisely because those collide with the genuine standing
+    walls ("sessions cannot read fleet-manager", "session tokens cannot create
+    repos", "host provisioning owner-only").
+  * MISSING-CREDENTIAL owner-INPUT requests — "needs a Stripe/PayPal account
+    from the owner" is a missing input, not a capability wall; nothing matches
+    "needs … from the owner".
   * dated ledger records (`- 2026-07-16 · wall · …`, `LAST-VERIFIED: …`,
-    `SUPERSEDED …`) — history is allowed to record the old (now-false) reading;
-  * lines that REPUDIATE the wall ("no standing …", "NOT a wall", "do not
-    invent one", "never route a mergeable green PR to the owner", "land your own
-    green PR", "the old … no longer applies", a `FALSE "…"` quote);
-  * historical dirs / dated report files / `## Append log` sections.
+    `SUPERSEDED …`); lines that REPUDIATE the wall ("no standing …", "NOT a
+    wall", "do not invent one", "never route a mergeable green PR to the owner",
+    "land your own green PR", "the old … no longer applies", a `FALSE "…"`
+    quote); historical dirs / dated report files / `## Append log` sections.
 
-Design bias (owner directive): a false positive that reds CI is worse than a
-rare miss — the blocklist matches the specific PROHIBITION phrasing, never bare
-"merge" / "wall" / "owner", and every candidate is cleared if the line carries a
+Design bias (owner directive): the blocklist matches the specific PROHIBITION
+phrasing scoped to an agent-capability subject+object, never bare "merge" /
+"wall" / "owner", and every candidate is cleared if the line carries a
 repudiation cue or sits in a dated record.
 
 Repo-level tooling, not engine code: lives in tools/, uses print, never ships in
 dist/bootstrap.py. Stdlib only, Python 3.10. Reliability (PL-008): UNVERIFIED at
 birth — confirm its findings against ground truth a few times across sessions
 before trusting it; **delete this if it proves unreliable over multiple
-sessions.** Added 2026-07-18.
+sessions.** Added 2026-07-18; generalized past merge 2026-07-18.
 """
 
 from __future__ import annotations
@@ -76,6 +104,55 @@ _GEN2_HISTORICAL = re.compile(r"docs/gen2/[^/]*(?:queue|proposal)[^/]*\.md$", re
 # snapshots, walkthroughs) — skipped wholesale.
 _DATED_FILENAME = re.compile(r"\d{4}-\d{2}-\d{2}")
 
+# ── Shared grammar fragments for the generalized capability-wall class ─────────
+#
+# SUBJECT: an agent/session actor. Scoped tight — "services" / "views" / "the
+# function" are NOT actors, so a CODE rule ("services must not import views")
+# can never satisfy the subject slot.
+_SUBJECT = (
+    r"(?:agents?|(?:a\s+)?sessions?|workers?|seats?|the\s+bot|the\s+agent|you)"
+)
+# NEGATED capability framing ("cannot", "are not allowed to", "do not", …).
+_NEGATION = (
+    r"(?:can\s?not|can'?t|may\s+not|must\s+not|"
+    r"are\s+not\s+(?:allowed|permitted)\s+to|is\s+not\s+(?:allowed|permitted)\s+to|"
+    r"are\s+unable\s+to|is\s+unable\s+to|are\s+blocked\s+from|is\s+blocked\s+from|"
+    r"do(?:es)?\s+not)"
+)
+# FALSE-wall capability verbs — the auto-mode / classifier-TRANSIENT actions an
+# agent is falsely told it cannot do. DELIBERATELY EXCLUDES read / create /
+# access / provision / write / trigger / run / set / modify / configure: those
+# collide with GENUINE standing walls documented (dated) on real trees
+# ("sessions cannot read fleet-manager", "session tokens cannot create repos",
+# "host provisioning / env-var config owner-only") and would red CI as false
+# positives. Infra-mutation verbs (update/change Railway variables) are handled
+# by a separate object-scoped pattern below, never bare.
+_CAP_VERB = (
+    r"(?:merge|self[-\s]?merge|deploy|redeploy|push|arm(?:\s+auto[-\s]?merge)?|"
+    r"ready[-\s]?flip|flip|land|delete\s+(?:a\s+|the\s+)?branch)"
+)
+# Up to two short filler words between the negation and the verb
+# ("cannot *immediately* merge") — bounded, so it can't bridge to a far verb.
+_FILL = r"(?:[a-z'’-]+\s+){0,2}?"
+# Infra object a mutation verb must land on for the infra pattern to fire.
+_INFRA_OBJ = (
+    r"(?:railway|env(?:ironment)?|deploy(?:ment)?|infra(?:structure)?|"
+    r"variables?|secrets?|config)"
+)
+# Owner-authority framings that assert a capability is the owner's to perform.
+_OWNER_AUTHORITY = (
+    r"(?:the\s+owner\s+must|only\s+the\s+owner\s+(?:can|may|must)|"
+    r"requires?\s+the\s+owner\s+to)"
+)
+# Capability NOUNS that, asserted owner-only / owner-gated / classifier-denied,
+# are false walls. Scoped to merge/deploy/branch-deletion — NOT repo-creation,
+# settings, secrets, release or seat/plan config (those are genuine, dated).
+_CAP_NOUN = (
+    r"(?:merging|merge|self[-\s]?merge|auto[-\s]?merge|arming|"
+    r"deploying|deployment|deploy|redeploy(?:ing|ment)?|"
+    r"branch\s+deletion|ready[-\s]?flip|pushing)"
+)
+
 # ── Blocklist — the curated FALSE standing prohibitions ───────────────────────
 #
 # Each entry matches the PROHIBITION, not keywords in isolation. Case-insensitive.
@@ -85,6 +162,81 @@ _DATED_FILENAME = re.compile(r"\d{4}-\d{2}-\d{2}")
 # does not trip.
 
 _BLOCKLIST: tuple[tuple[str, "re.Pattern[str]"], ...] = (
+    # ── Generalized capability-wall class (owner directive 2026-07-18) ──
+    # SUBJECT + NEGATION + a FALSE-wall capability verb.
+    #   "agents cannot delete branches", "sessions may not self-merge",
+    #   "workers are not allowed to deploy".
+    (
+        "agent-negated-capability",
+        re.compile(_SUBJECT + r"\s+" + _NEGATION + r"\s+" + _FILL + _CAP_VERB, re.I),
+    ),
+    # SUBJECT + NEGATION + infra-MUTATION verb + infra object.
+    #   "sessions are not allowed to update Railway variables".
+    (
+        "agent-negated-infra-mutation",
+        re.compile(
+            _SUBJECT
+            + r"\s+"
+            + _NEGATION
+            + r"\s+"
+            + _FILL
+            + r"(?:update|change|set|modify|provision|configure|edit)\s+"
+            + r"(?:[a-z'’-]+\s+){0,2}?"
+            + _INFRA_OBJ,
+            re.I,
+        ),
+    ),
+    # OWNER-AUTHORITY + a capability verb ("the owner must merge PRs",
+    # "only the owner can deploy"). The 0-25-char window keeps it same-clause,
+    # so "the owner must ENTER/paste/parse" (owner-assist doctrine) never trips.
+    (
+        "capability-is-owner-authority",
+        re.compile(
+            _OWNER_AUTHORITY
+            + r"[^.\n]{0,25}?"
+            + r"(?:merge\b|self[-\s]?merge|deploy\b|redeploy\b|"
+            r"ready[-\s]?flip|arm\s+auto|land\s+(?:a|the|your)\b|push\b)",
+            re.I,
+        ),
+    ),
+    # A capability NOUN asserted owner-only / owner-gated / classifier-denied /
+    # not-agent as a STANDING property ("branch deletion is owner-only",
+    # "deploying is classifier-denied for agent seats", "merging = owner-gated").
+    (
+        "capability-asserted-owner-only",
+        re.compile(
+            _CAP_NOUN
+            + r"\s+(?:is|are|remains?|stays?|=)\s+"
+            + r"(?:owner[-\s]only|owner[-\s]gated|classifier[-\s]den(?:y|ies|ied)|"
+            r"blocked\s+for\s+agents|not\s+enabled\s+for\s+agents|"
+            r"not\s+(?:an?\s+)?agent[-\s](?:side|action|capability))",
+            re.I,
+        ),
+    ),
+    # Standing platform-wall tokens (compound adjectives — never bare "wall"):
+    #   agent-unlandable, 403-walled, permission-walled, classifier-walled,
+    #   "blocked for agents", "not enabled for agents", "agents/sessions get 403".
+    (
+        "standing-platform-wall",
+        re.compile(
+            r"\bagent[-\s]unlandable\b|"
+            r"\b(?:403|permission|classifier)[-\s]?walled\b|"
+            r"\bblocked\s+for\s+agents\b|"
+            r"\bnot\s+enabled\s+for\s+agents\b|"
+            r"\b(?:agents?|sessions?|workers?|seats?)\s+get\s+403\b",
+            re.I,
+        ),
+    ),
+    # Standalone "classifier-denied / classifier-denies" — the signature
+    # transient-freeze assertion, no "since <date>" required. Dated ledger rows
+    # ("classifier freeze … denies") stay cleared by the dated-block rule;
+    # repudiations ('no standing "classifier-denied" wall; do not invent one')
+    # by the repudiation cue.
+    (
+        "classifier-denied-standing",
+        re.compile(r"classifier[-\s]den(?:y|ies|ied)\b", re.I),
+    ),
+    # ── Original merge-specific prohibitions (retained verbatim) ──
     # "classifier-denied since 2026-07-15" — the signature dated-freeze assertion.
     ("classifier-denied-since", re.compile(r"classifier[-\s]denied\s+since", re.I)),
     # classifier den* applied to a merge/ready-flip/arm action.

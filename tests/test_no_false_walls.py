@@ -99,6 +99,84 @@ class TestCorrectedPhrasingPasses:
             assert cnfw.check_tree(root) == [], f"corrected phrasing must pass: {text!r}"
 
 
+class TestGeneralizedCapabilityWalls:
+    """The check reds ANY false agent-capability limitation, not just merge
+    (owner directive 2026-07-18): a subject-negated capability, an owner-only
+    capability action, or a standing platform wall."""
+
+    def test_generalized_false_walls_are_caught(self, tmp_path):
+        # MUST-FAIL fixtures from the brief + semantic-class spread. Each is a
+        # forward-binding surface asserting an agent CANNOT do a capability, or
+        # that a capability is owner-only / platform-walled.
+        for text in (
+            "agents cannot delete branches\n",
+            "sessions are not allowed to update Railway variables\n",
+            "branch deletion is owner-only\n",
+            "deploying is classifier-denied for agent seats\n",
+            "the owner must merge PRs\n",
+            "workers are unable to deploy the service\n",
+            "you may not arm auto-merge on any PR\n",
+            "merging is owner-gated\n",
+            "only the owner can deploy to Railway\n",
+            "deploying is blocked for agents\n",
+            "the bot cannot push to protected branches\n",
+        ):
+            root = _write(tmp_path, "d.md", text)
+            assert cnfw.check_tree(root), f"should have caught: {text!r}"
+
+    def test_code_and_architecture_rules_never_trip(self, tmp_path):
+        # The failure mode: a CODE rule ("must not"/"never"/"cannot" over a code
+        # noun) must NEVER be read as an agent-capability wall.
+        for text in (
+            "services must not import views\n",
+            "utils/ may not import services\n",
+            "Never define a utility function in views/ that other layers need.\n",
+            "never call pool.execute directly outside utils/db\n",
+            "the core layer cannot import cogs\n",
+            "views must not reach into the cogs package\n",
+        ):
+            root = _write(tmp_path, "d.md", text)
+            assert cnfw.check_tree(root) == [], f"code rule tripped: {text!r}"
+
+    def test_corrected_capability_text_passes(self, tmp_path):
+        # Today's corrected capability doctrine — the phrasing we WANT to keep.
+        for text in (
+            "merging is normal agent work\n",
+            "never route a mergeable green PR to the owner\n",
+            "there are NO owner-imposed limitations\n",
+            "attempt it before assuming it is walled\n",
+            "do not document limitations; record capabilities\n",
+            "no standing merge wall — deploying works agent-side too\n",
+        ):
+            root = _write(tmp_path, "d.md", text)
+            assert cnfw.check_tree(root) == [], f"corrected text tripped: {text!r}"
+
+    def test_missing_credential_owner_input_is_not_a_wall(self, tmp_path):
+        # A missing external credential framed as an owner INPUT request is a
+        # missing input, not a capability wall.
+        for text in (
+            "needs a Stripe account from the owner\n",
+            "needs a PayPal account from the owner\n",
+            "the deploy needs a RAILWAY_TOKEN provided by the owner\n",
+        ):
+            root = _write(tmp_path, "d.md", text)
+            assert cnfw.check_tree(root) == [], f"missing-input tripped: {text!r}"
+
+    def test_genuine_dated_walls_still_pass(self, tmp_path):
+        # Walls that genuinely stand are recorded as DATED / LAST-VERIFIED
+        # capability-ledger rows (they carry their own expiry) — never flagged.
+        for text in (
+            "- `any` · **Branch deletion**: 403 on every path → owner deletes "
+            "by hand. — LAST-VERIFIED: 2026-07-10\n",
+            "session tokens cannot create repos (gen-1 wall)\n",
+            "this repo's sessions cannot read fleet-manager directly\n",
+            "repo settings / rulesets / secrets / env vars / host provisioning "
+            "remain owner-only\n",
+        ):
+            root = _write(tmp_path, "d.md", text)
+            assert cnfw.check_tree(root) == [], f"genuine wall tripped: {text!r}"
+
+
 class TestExclusions:
     def test_dated_ledger_record_is_ignored(self, tmp_path):
         # A dated `- YYYY-MM-DD · wall · …` bullet is history, not doctrine.
