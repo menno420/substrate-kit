@@ -1,17 +1,17 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-18T18:11:22Z · phase: guard-parity meta-test PR #459 IN FLIGHT (kit-vs-adopter guard drift detector); baton: grounded-skills window opens 2026-07-19
+updated: 2026-07-18T19:20:00Z · phase: guard-manifest single-source refactor PR #463 IN FLIGHT (src/engine/guards.py = single source of the kit↔adopter guard mapping); baton: grounded-skills window opens 2026-07-19
 
 > **Orders done-truth (read this first):** orders **001–024 are ALL DONE** — the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and is flipped `new→done` manager-side only after the manager reads this status report (control/README.md:86), so an inbox order reading `status: new` while this file's `done=` covers it means **DONE-and-awaiting-manager-flip, not open**. No ORDER >024 exists in control/inbox.md at HEAD; "ORDER 025" is not a standalone bound order — it is the `>`-quoted fm relay inside ORDER 019 item 5 (highest bound order = 024). Its WORK is nonetheless COMPLETE: both cfgdiff writeups are on main (docs/reports/2026-07-09-cfgdiff-differential-testing-method.md + …-v0.1.1-release-decision.md), linked from bench/README.md, merged via PR #340 (2026-07-13). The redundant standalone ORDER-025-block append that hit the classifier wall is therefore MOOT.
 
-## This wake — guard-parity meta-test
+## This wake — guard-manifest single-source refactor
 
-Built the guard-parity meta-test (baton #2 from the PR #457 wake): a stdlib-only kit test that fails CI when an enforcing `kit-quality` guard in `.github/workflows/ci.yml` has no mirrored counterpart in the GENERATED adopter CI (`src/engine/adopt.py` `live_ci_workflow()`), unless allowlisted as kit-only with a reason. Converts the kit-vs-adopter guard-drift class from a hand-queued baton (the #455/#457 gap) into an automatic red-CI signal. PR #459 is OPEN and BORN-RED (session card in-progress hold); owner reviews before the card flips complete + merge. No new routines armed; the failsafe dead-man bridge remains armed under the coordinator session (F-1 below).
+Single-sourced the kit↔adopter guard mapping into `src/engine/guards.py` (PR #463, commit d5ac29f), building on the now-merged guard-parity meta-test (PR #459, merged 2026-07-18T18:21Z). `guards.py` is the single source of truth for the guard list, read by BOTH `adopt.live_ci_workflow()` (the adopter-CI generator) and `tests/test_guard_parity.py` (the parity meta-test) — the parity test no longer carries its own hand-kept `REGISTRY`, so adding/renaming a guard is a one-place edit. Adopter YAML byte-identical (empty diff, both toggles); `dist/bootstrap.py` rebuilt reproducibly via `src/build_bootstrap.py` (double-build sha256 identical), not hand-edited. PR #463 is OPEN and BORN-RED (session-card in-progress hold); flips complete + merges as the last step. No new routines armed; the failsafe dead-man bridge remains armed under the coordinator session (F-1 below).
 
 ## PR state
 
-All seat-session PRs terminal MERGED: #438–#443, #445, #451, #452, #455, #457 (the adopter-propagation half of the claims-only guard). Sibling lanes merged: #444, #446–#450, #453.
+All seat-session PRs terminal MERGED: #438–#443, #445, #451, #452, #455, #457 (the adopter-propagation half of the claims-only guard), #459 (the guard-parity meta-test, merged 2026-07-18T18:21Z). Sibling lanes merged: #444, #446–#450, #453.
 
-IN-FLIGHT: `claude/guard-parity-meta-test` (PR #459) — adds `tests/test_guard_parity.py` (kit-vs-adopter guard-drift detector). Test-only, no `src/engine` edit → `dist/bootstrap.py` UNMODIFIED (no rebuild). Full suite 1765 pass / 1 skip. Landing path: **owner-reviewed** — the born-red card holds `kit-quality` red until the card flips complete. control/claims/ carries this session's own claim file (`claude-guard-parity-meta-test.md`, deleted at close).
+IN-FLIGHT: `claude/guard-manifest` (PR #463, commit d5ac29f) — the guard-manifest single-source refactor: `src/engine/guards.py` is now the single source of truth for the kit↔adopter guard mapping, read by both `adopt.live_ci_workflow()` and `tests/test_guard_parity.py` (the parity test no longer carries its own hand-kept `REGISTRY`). Adopter YAML byte-identical; `dist/bootstrap.py` rebuilt reproducibly via `src/build_bootstrap.py` (double-build sha256 identical). Full suite 1765 pass / 1 skip; guard-parity 4/4. Landing path: **born-red session-card hold** — `kit-quality` stays red until `.sessions/2026-07-18-guard-manifest.md` flips complete.
 
 ## Recently shipped (neutral pointer)
 
@@ -50,8 +50,8 @@ kit: v1.19.0
 
 ## Next-2 baton
 
-1. Grounded-skills measurement window opens 2026-07-19 — the first successor wake on/after that date should evaluate it (docs/operations/grounded-skills-measurement.md).
-2. Guard-manifest idea (from PR #459's card) — a declarative manifest that BOTH `adopt.py`'s CI generator (`live_ci_workflow()`) AND the guard-parity meta-test (`tests/test_guard_parity.py`, PR #459) read as the single source of truth for the guard list, so adding a guard means editing one manifest instead of three places. Groom it down its lifecycle (file a `docs/ideas/*.md` entry → plan) as the next-highest-value rung from the thin backlog.
+1. Grounded-skills window opens 2026-07-19 — the first successor wake on/after that date should evaluate it (docs/operations/grounded-skills-measurement.md).
+2. Drive `.github/workflows/ci.yml`'s kit-quality step NAMES from the same `src/engine/guards.py` manifest (a `render`/`--emit-kit-ci` codegen), so the last hand-kept guard copy is closed and the parity test's "all classified" check becomes generation-verified rather than drift-detected.
 
 ## ⚑ FOR OWNER (standing set carried forward)
 
