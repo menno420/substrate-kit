@@ -1,1 +1,0 @@
-- `claude/release-v1-19-0-aftermath` · **scope** — release aftermath: regen docs/adopters.md registry (self-row → v1.19.0) + update docs/current-state.md / control/status.md to v1.19.0 released + verified · files: docs/adopters.md, docs/current-state.md, control/status.md, .sessions/2026-07-18-kit-release-v1.19.0-aftermath.md · 2026-07-18
