@@ -1,1 +1,0 @@
-- branch: claude/heartbeat-dewall-recon · scope: control/status.md heartbeat reconcile — record no-false-walls campaign (#444–#450) verification · 2026-07-18
