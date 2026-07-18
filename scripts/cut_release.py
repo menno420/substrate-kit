@@ -59,8 +59,16 @@ from pathlib import Path
 _SCRIPTS_DIR = Path(__file__).resolve().parent
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
+_SRC_DIR = _SCRIPTS_DIR.parent / "src"
+if str(_SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(_SRC_DIR))
 
 import check_changelog_structure as _ccs  # noqa: E402
+from engine.currency import (  # noqa: E402
+    ADOPTERS_RELPATH,
+    local_self_scan,
+    restamp_self_row,
+)
 
 CONFIG_RELPATH = "src/engine/lib/config.py"
 PYPROJECT_RELPATH = "pyproject.toml"
@@ -122,10 +130,12 @@ Follow-up checklist — steps cut_release.py deliberately does NOT do
     sha256 field AND the committed dist/bootstrap.py at the bump SHA.
     Record run id, tag object, commit SHA, and the hash in the release
     record.
- 8. Aftermath: adopters regen (python3 dist/bootstrap.py currency →
-    docs/adopters.md; the kit's own row self-heals next regen);
-    control/status.md release record + claim delete; then the distribution
-    wave (upgrade each adopter, merged on green, then registry regen).\
+ 8. Aftermath: the substrate-kit self-row was already stamped into this bump
+    (network-free, at --write time), so the adopters regen (python3
+    dist/bootstrap.py currency → docs/adopters.md) now only has to refresh
+    SIBLING rows; control/status.md release record + claim delete; then the
+    distribution wave (upgrade each adopter, merged on green, then registry
+    regen).\
 """
 
 
@@ -384,6 +394,24 @@ def run(root: Path, target: str, write: bool, date: str) -> int:
         (root / PYPROJECT_RELPATH).write_text(new_pyproject, encoding="utf-8")
         (root / KIT_CONFIG_RELPATH).write_text(new_kit_config, encoding="utf-8")
         changelog_path.write_text(new_changelog, encoding="utf-8")
+        # Self-row registry stamp (B-2): substrate.config.json now reads the
+        # target version, so a network-free local scan renders a current
+        # self-row. Restamp only docs/adopters.md's substrate-kit row (+ the
+        # `kit release:` token) so the bump PR carries a current self-row and
+        # the aftermath `currency` regen only has to refresh sibling rows.
+        # Never touches the network or any sibling row (KF-2).
+        adopters_path = root / ADOPTERS_RELPATH
+        if adopters_path.is_file():
+            old_adopters = adopters_path.read_text(encoding="utf-8")
+            new_adopters = restamp_self_row(
+                old_adopters, target, local_self_scan(root)
+            )
+            if new_adopters != old_adopters:
+                adopters_path.write_text(new_adopters, encoding="utf-8")
+                print(
+                    f"self-row stamped: {ADOPTERS_RELPATH} substrate-kit row "
+                    f"-> v{target} (network-free; sibling rows untouched)"
+                )
         print(
             f"applied: all three version homes {cfg_version} -> {target}; "
             f"{CHANGELOG_RELPATH} [Unreleased] -> [{target}] - {date}"

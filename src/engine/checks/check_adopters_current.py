@@ -48,6 +48,9 @@ from engine.currency import (
     ADOPTERS_RELPATH,
     GENERATED_MARKER,
     GENERATED_STAMP_PREFIX,
+    REGEN_COMMAND,
+    SELF_REPO,
+    _registry_rows,
 )
 
 DEFAULT_MAX_AGE_DAYS = 14
@@ -63,6 +66,11 @@ _KIT_CONFIG_RELPATH = "substrate.config.json"
 # ``render_adopters`` stamps ``> Generated: <stamp> · kit release: v<X.Y.Z>``
 # (engine/currency.py) — the kit version the registry was generated against.
 _EMBEDDED_KIT_VERSION_RE = re.compile(r"kit release:\s*v(\d+\.\d+\.\d+)")
+
+# Any ``vX.Y.Z`` token in a registry cell — used to read the self-row's
+# version-bearing cells (tree / config-pin / self-report) for the self-row
+# staleness gate.
+_CELL_VERSION_RE = re.compile(r"v(\d+\.\d+\.\d+)")
 
 
 def _parse_stamp(text: str) -> datetime | None:
@@ -108,6 +116,31 @@ def _current_version_home(target: Path) -> str | None:
         return None
     pin = data.get("kit_version") if isinstance(data, dict) else None
     return pin if isinstance(pin, str) and pin else None
+
+
+def _self_row_versions(text: str) -> set[str] | None:
+    """Return the ``vX.Y.Z`` tokens in the substrate-kit self-row's
+    version-bearing cells (tree / config-pin / self-report), or None when the
+    registry carries no self-row (fail open — nothing to gate).
+
+    An empty set (a self-row present but with no parseable version token in
+    those cells — e.g. all ``—``) reads as "no stamped version", also fail
+    open: the gate only fires when the row *does* stamp a version and that
+    version no longer includes the current home.
+    """
+    rows = _registry_rows(text)
+    row = rows.get(SELF_REPO)
+    if row is None:
+        return None
+    # ``_registry_rows`` joins cells with " | ":
+    # repo | tree | config-pin | self-report | engaged | verdict.
+    cells = [cell.strip() for cell in row.split(" | ")]
+    version_cells = cells[1:4]  # tree, config-pin, self-report
+    return {
+        match.group(1)
+        for cell in version_cells
+        for match in _CELL_VERSION_RE.finditer(cell)
+    }
 
 
 def _has_registry_table(text: str) -> bool:
@@ -174,6 +207,34 @@ def check_adopters_current(
                 "no `## Registry` table with at least one data row — the "
                 "registry's whole payload; regenerate with "
                 "`bootstrap currency`.",
+            ),
+        )
+    # Self-row staleness GATE (B-2): the substrate-kit self-row is the ONE
+    # registry row the lab can regenerate from local evidence alone (its own
+    # version homes), so it need not wait for a network `currency` aftermath
+    # run — cut_release.py stamps it into the bump PR (`restamp_self_row`).
+    # This gate RED-holds when the self-row still stamps a version that no
+    # longer includes the current version home (the #438-class stale window
+    # scoped to the self-row). Robust to the bump window where the tree cell
+    # lags the just-bumped config pin: the gate passes as long as the home
+    # version appears among the self-row's version cells, so a transient
+    # tree-vs-pin spread does not false-red the bump PR. Fail open when: the
+    # registry has no self-row, the self-row stamps no parseable version, or
+    # the version home is unreadable (mirrors `adopters-version-lag`). Scoped
+    # to the SELF row only — sibling adopter lag never reds this gate.
+    self_versions = _self_row_versions(text)
+    self_home = _current_version_home(target)
+    if self_versions and self_home is not None and self_home not in self_versions:
+        stamped = ", ".join(f"v{v}" for v in sorted(self_versions))
+        gate.append(
+            Finding(
+                ADOPTERS_RELPATH,
+                "adopters-self-row-stale",
+                f"the substrate-kit self-row in {ADOPTERS_RELPATH} is stamped "
+                f"{stamped} but the kit version home (`{_KIT_CONFIG_RELPATH}`) "
+                f"is now v{self_home}; run `{REGEN_COMMAND}` or the release "
+                "self-stamp so the self-row (and the bump PR) carry the "
+                "current version.",
             ),
         )
     if stamp is not None:
