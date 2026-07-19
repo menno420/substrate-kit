@@ -42,6 +42,7 @@ def test_starter_pack_present_and_ordered():
         "upgrade-distribution",
         "release",
         "intake",
+        "scope-backlog-item",
         "chase-references",
         "prep-owner-steps",
         "rationalize",
