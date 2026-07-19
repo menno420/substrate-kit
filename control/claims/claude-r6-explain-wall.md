@@ -1,1 +1,0 @@
-- branch: claude/r6-explain-wall · scope: R6 — `check --explain-wall`/`--why` CLI lookup (per-rule false-wall corrections in check_no_false_walls.py + a flag/lookup branch in cli.py) · date: 2026-07-19

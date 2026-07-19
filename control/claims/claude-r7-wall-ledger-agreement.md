@@ -1,1 +1,0 @@
-- branch: `claude/r7-wall-ledger-agreement` · scope: R7 — append-log ⇄ Walls-correction disagreement advisory lint (src/engine/checks/check_wall_ledger_agreement.py, cli.py advisory seam, MODULE_ORDER, test) · date: 2026-07-19
