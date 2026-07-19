@@ -556,6 +556,79 @@ def test_added_card_decorated_valid_task_class_passes(tmp_path):
     assert check_added_card(card, _MARKERS) == []
 
 
+# ── R14: exit-affecting exact-model-ID gate on the PR's OWN added card ───────
+# The fleet-wide `check_model_line` advisory is windowed + never exit-affecting,
+# so an exact-model-ID segment-1 on a NEW card merges green. `check_added_card`
+# folds the same rule in EXIT-AFFECTING, scoped to the single added card: an
+# exact-ID model segment on the PR's own complete card reds like an unflipped
+# badge, a FAMILY-LEVEL name passes, and a card with NO `📊 Model:` line is
+# fail-open.
+
+
+def test_added_card_family_level_model_yields_no_exact_id_finding(tmp_path):
+    # Direction 1 (passes): an otherwise-complete card whose `📊 Model:` model
+    # segment is a family-level name (`opus-4.8`) gets no exact-model-ID finding.
+    card = tmp_path / "2026-07-19-mid-ok.md"
+    _write(
+        card,
+        "# ok\n\n> **Status:** `complete`\n\n💡 idea\n\n"
+        "previous-session review: ok\n\n"
+        "- **📊 Model:** opus-4.8 · high · feature build\n",
+    )
+    assert check_added_card(card, _MARKERS) == []
+
+
+def test_added_card_exact_model_id_reds(tmp_path):
+    # Direction 2 (reds): the SAME card with only the model segment changed to
+    # an exact model-ID token (`claude-opus-4-8`) gains exactly one
+    # exact-model-ID finding (and nothing else — every marker is present).
+    card = tmp_path / "2026-07-19-mid-bad.md"
+    _write(
+        card,
+        "# bad\n\n> **Status:** `complete`\n\n💡 idea\n\n"
+        "previous-session review: ok\n\n"
+        "- **📊 Model:** claude-opus-4-8 · high · feature build\n",
+    )
+    misses = check_added_card(card, _MARKERS)
+    assert len(misses) == 1
+    assert "exact-model-ID" in misses[0]
+    assert "'claude-opus-4-8'" in misses[0]
+    assert "opus-4.8" in misses[0]  # the family-level exemplar is quoted
+
+
+def test_added_card_missing_model_line_is_fail_open_for_exact_id(tmp_path):
+    # Fail-open: a complete card with NO `📊 Model:` needle gains no NEW
+    # exact-model-ID finding — the missing-line case is the marker checks' job
+    # (`check_log`), never a double-red here. The card still reds on the
+    # missing Model-line MARKER, so `check_added_card` == `check_log` exactly.
+    card = tmp_path / "2026-07-19-mid-none.md"
+    _write(
+        card,
+        "# none\n\n> **Status:** `complete`\n\n💡 idea\n\n"
+        "previous-session review: ok\n",  # no 📊 Model: line at all
+    )
+    misses = check_added_card(card, _MARKERS)
+    assert misses == check_log(card, _MARKERS)  # no extra exact-id finding
+    assert not any("exact-model-ID" in m for m in misses)
+    assert any("Model line" in m for m in misses)  # marker miss still reds
+
+
+def test_added_card_dated_suffix_model_id_reds(tmp_path):
+    # The other exact-ID shape EXACT_MODEL_ID_RE flags: a dated `-YYYYMMDD`
+    # suffix (`opus-4-8-20260101`) is still an exact model ID → reds.
+    card = tmp_path / "2026-07-19-mid-dated.md"
+    _write(
+        card,
+        "# dated\n\n> **Status:** `complete`\n\n💡 idea\n\n"
+        "previous-session review: ok\n\n"
+        "- **📊 Model:** opus-4-8-20260101 · high · feature build\n",
+    )
+    misses = check_added_card(card, _MARKERS)
+    assert len(misses) == 1
+    assert "exact-model-ID" in misses[0]
+    assert "'opus-4-8-20260101'" in misses[0]
+
+
 # ---------------------------------------------------------------------------
 # Integration — the kit's own rendered templates pass its own check_docs
 # ---------------------------------------------------------------------------
