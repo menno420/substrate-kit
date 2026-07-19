@@ -1,1 +1,0 @@
-- `claude/r14-exact-model-id-gate` · **exit-affecting segment-1 exact-model-ID gate** — fold the `EXACT_MODEL_ID_RE` rule into the exit-affecting born-red `check_added_card` grader (sibling of R13's task-class helper), scoped to the PR's OWN added card · `src/engine/checks/check_session_log.py` + `tests/test_checks.py` + `dist/bootstrap.py` · 2026-07-19
