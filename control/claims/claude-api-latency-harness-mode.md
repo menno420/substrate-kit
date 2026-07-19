@@ -1,1 +1,0 @@
-- `claude/api-latency-harness-mode` · **scope** — opt-in `--api-latency` mode in scripts/measure_grounded_skills.py · tests + docs · 2026-07-19
