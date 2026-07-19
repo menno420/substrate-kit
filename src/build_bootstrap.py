@@ -81,6 +81,13 @@ MODULE_ORDER = (
     # path/anchor that no longer resolves on disk. Advisory-only, never
     # exit-affecting; wired on the posture="advisory" seam in cli.py.
     "checks/check_baton_resolves.py",
+    # After check_folded_gate.py (it imports that module's REMEDIATION_SNIPPET +
+    # FINDING_KIND as the single source of truth for the folded-gate block): the
+    # `check --remediate <finding-kind>` paste-ready remediation lookup (wave-2
+    # groom S7). Print-only — a static registry lookup, produces no findings and
+    # never affects an exit code; wired on cli.py's pre-check dispatch seam like
+    # R6's --explain-wall.
+    "checks/check_remediate.py",
     # After check_docs.py (its only engine reference is check_docs.Finding): the
     # fast-lane prefix symmetry advisory (groom R8) — warns when a host's ci.yml
     # claims-only fast-lane guard cards a prefix its auto-merge-enabler never
