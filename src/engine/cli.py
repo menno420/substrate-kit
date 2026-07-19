@@ -52,6 +52,7 @@ from engine.checks.check_capability_xref import check_capability_xref
 from engine.checks.check_claims import check_claims, claim_scan_dirs
 from engine.checks.check_docs import Finding, run_doc_checks
 from engine.checks.check_folded_gate import check_folded_gate
+from engine.checks.check_fastlane_symmetry import check_fastlane_symmetry
 from engine.checks.check_stale_walls import check_stale_walls
 from engine.checks.check_wall_ledger_agreement import check_wall_ledger_agreement
 from engine.checks.check_engagement import (
@@ -1402,6 +1403,15 @@ def cmd_check(
     # toward the exit code) and stays off STRICT_SUBCHECKS.
     stale_walls_advisories = check_stale_walls(target, config)
     wall_ledger_advisories = check_wall_ledger_agreement(target, config)
+    # Fast-lane prefix symmetry (night-run groom R8): warns when a host's
+    # ci.yml claims-only fast-lane guard cards a prefix its auto-merge-enabler
+    # never arms — the two host surfaces disagree on which prefixes are
+    # fast-lane seats. Advisory-only, NEVER exit-affecting: the enabler⇄config
+    # half is already the ADVISORY `automerge-branch-drift` (a required-check
+    # red here would be a fleet bomb during version skew), so this complementary
+    # enabler⇄guard half rides the same posture="advisory" seam below (NOT
+    # _extra_check_findings) and stays off STRICT_SUBCHECKS.
+    fastlane_symmetry_advisories = check_fastlane_symmetry(target)
     if status_only:
         # --status-only: the fast lane's scoped gate (see docstring). Only the
         # control-lane checkers run — the heartbeat gate, the control-scoped
@@ -1986,6 +1996,28 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=wall_ledger_advisories,
+        )
+    if fastlane_symmetry_advisories and not status_only:
+        # Same warn-only contract as the advisories above (night-run groom R8):
+        # a ci.yml claims-only fast-lane guard that cards a prefix the enabler
+        # never arms is an enabler⇄guard disagreement — a "make the two
+        # surfaces agree" nudge, not a defect (an installed enabler legitimately
+        # lags its regenerated form during kit version skew). Surfaced +
+        # telemetry-recorded, NEVER counted toward the exit code (deliberately
+        # off STRICT_SUBCHECKS, the enabler⇄config sibling's fleet-bomb reason).
+        _emit(
+            f"check: {len(fastlane_symmetry_advisories)} fast-lane-symmetry "
+            "advisory warning(s) (never exit-affecting):",
+        )
+        for finding in fastlane_symmetry_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=fastlane_symmetry_advisories,
         )
 
     log_missing: list[str] = []

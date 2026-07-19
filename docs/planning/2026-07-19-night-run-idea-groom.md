@@ -99,6 +99,21 @@ also emit the exact diff-aware card-derivation block to port, so a host fixes th
 one paste; recurs across hosts (superbot-next `gate`, websites `quality.yml`).
 (from folded-gate-check card)
 
+**R13 (S/M) — exit-affecting PL-004 task-class gate on the session card the born-red gate
+already grades.** *Recipe:* an off-taxonomy `📊 Model:` task-class (`kit-feature`) reached a
+MERGED card because `check_model_line` (which *does* validate the segment against the 9 PL-004
+classes — `src/engine/checks/check_model_line.py:181` — and *does* scan cards — same file
+`check_model_line(...)` L214) is **advisory-only** (never exit-affecting; `cli.py` emits it on
+the `posture="advisory"` seam) AND **windowed to the 10 newest cards** (`MODEL_LINE_LINT_WINDOW`),
+so a drifted class merges green and ages out of the window unfixed. The gap is not "doesn't
+validate / doesn't scan" — it's that nothing *gates* on it. Buildable slice: fold the
+task-class check (segment-3 ∈ the 9 classes) into the **born-red session-gate** that already
+grades the PR's own added card (`scripts/check_session_gate.py` / the `check --strict`
+added-card grading in `cli.py`), so an off-PL-004 card on the PR's OWN card reds at CI —
+enforce-don't-exhort, scoped to the one card the PR adds (never the fleet-wide window, whose
+advisory posture stays). Recurs: the 2026-07-11 retro W-10a flagged the same drift class.
+(from R7 (#498) card ⟲ previous-session review + this R8 session's investigation)
+
 ## Needs-planning
 - **Config-driven stale-doctrine guard** (false-wall-guard card): generalize
   `check_no_false_walls` into a `substrate.config.json` `stale_doctrine` list
