@@ -1,0 +1,1 @@
+- branch `claude/s4-check-baton-resolves` · scope: build S4 `check_baton_resolves` advisory (verify every `## Next-2 baton` entry names a real resolvable path/anchor) + tests + CLI/dist wiring · area: `src/engine/checks/`, `src/engine/cli.py`, `src/build_bootstrap.py`, `tests/` · 2026-07-19

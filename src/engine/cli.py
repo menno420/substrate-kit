@@ -57,6 +57,7 @@ from engine.checks.check_stale_walls import check_stale_walls
 from engine.checks.check_wall_ledger_agreement import check_wall_ledger_agreement
 from engine.checks.check_recipe_applies_when import check_recipe_applies_when
 from engine.checks.check_ungroomed_ideas import check_ungroomed_ideas
+from engine.checks.check_baton_resolves import check_baton_resolves
 from engine.checks.check_engagement import (
     check_engagement,
     check_engagement_control,
@@ -1428,6 +1429,13 @@ def cmd_check(
     # run a groom pass, not a defect, so it rides the same posture="advisory"
     # seam below (NOT _extra_check_findings) and stays off STRICT_SUBCHECKS.
     ungroomed_ideas_advisories = check_ungroomed_ideas(target, config)
+    # Next-2 baton path/anchor resolver (wave-2 groom S4): warns when a
+    # `## Next-2 baton` entry in control/status*.md cites a repo-relative
+    # path/anchor that no longer resolves on disk — a stale baton pointer strands
+    # the next wake on a renamed/deleted file. A handoff nudge, not a defect, so
+    # it rides the same posture="advisory" seam below (NOT _extra_check_findings)
+    # and stays off STRICT_SUBCHECKS.
+    baton_resolves_advisories = check_baton_resolves(target, config)
     if status_only:
         # --status-only: the fast lane's scoped gate (see docstring). Only the
         # control-lane checkers run — the heartbeat gate, the control-scoped
@@ -2075,6 +2083,26 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=ungroomed_ideas_advisories,
+        )
+    if baton_resolves_advisories and not status_only:
+        # Same warn-only contract as the advisories above (wave-2 groom S4): a
+        # `## Next-2 baton` entry citing a path/anchor that no longer resolves is
+        # a "fix the handoff pointer" nudge, not a defect that should fail an
+        # adopter. Surfaced + telemetry-recorded, NEVER counted toward the exit
+        # code (deliberately off STRICT_SUBCHECKS).
+        _emit(
+            f"check: {len(baton_resolves_advisories)} unresolved-baton "
+            "advisory warning(s) (never exit-affecting):",
+        )
+        for finding in baton_resolves_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=baton_resolves_advisories,
         )
 
     log_missing: list[str] = []
