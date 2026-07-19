@@ -1,6 +1,6 @@
 # Turnkey recipes — the four needs-planning backlog items (2026-07-19)
 
-> **Status:** `planning`
+> **Status:** `plan`
 >
 > Scopes the four items parked as "Needs-planning — scope before building" in
 > `docs/planning/2026-07-19-grounded-skills-window-run.md:115` and the baton in

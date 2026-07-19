@@ -1,1 +1,1 @@
-- claude/backlog-recipes · planning: turnkey recipes for the 4 needs-planning items (folded-gate-diff-aware-card, pinned-feed-contract, t5-headless-guard, control-board-kit-readiness-cell) · docs/planning/ + control/status.md · 2026-07-19
+- `claude/backlog-recipes` · **planning** — turnkey recipes for the 4 needs-planning items (folded-gate-diff-aware-card, pinned-feed-contract, t5-headless-guard, control-board-kit-readiness-cell) · docs/planning/ + control/status.md · 2026-07-19
