@@ -3161,6 +3161,128 @@ def check_no_false_walls(target: Path, config) -> list[Finding]:  # noqa: ANN001
             )
     return findings
 
+
+# --- R6: per-rule ground-truth corrections for `check --explain-wall` ---
+# check_no_false_walls flags a line as a false agent-capability wall; the
+# `bootstrap.py check --explain-wall <phrase>` lookup (alias `--why`) answers
+# "which rule, and what's the ground truth?" Each rule name match_blocklist can
+# return maps to one capability-positive correction sentence. The shared tail
+# (point at the CAPABILITIES.md dated-row form) is appended by the CLI, not
+# here. tests/test_explain_wall.py asserts every rule in all_rule_names() has an
+# entry, so a future blocklist rule cannot ship without its correction.
+WALL_CORRECTIONS: dict[str, str] = {
+    "agent-negated-capability": (
+        "Merging, pushing, deploying, arming auto-merge, ready-flipping and "
+        "landing PRs are all normal agent work — there is no owner-imposed "
+        "capability limit on them."
+    ),
+    "agent-negated-infra-mutation": (
+        "Agents mutate infrastructure — Railway variables, env, deploys, config "
+        "— as normal work via the documented paths; only owner-console settings "
+        "and secrets are genuinely gated."
+    ),
+    "capability-is-owner-authority": (
+        "Merging is not owner-only authority: agents merge their own green PRs "
+        "directly (MCP/REST), and the only merge gate is CI green."
+    ),
+    "capability-asserted-owner-only": (
+        "This is not owner-only — merging, deploying and pushing are ordinary "
+        "agent actions; never route a mergeable green PR to the owner."
+    ),
+    "standing-platform-wall": (
+        "A platform refusal is a transient per-call classifier state, not a "
+        "standing wall: attempt once, record the venue + exact error, and route "
+        "around it."
+    ),
+    "classifier-denied-standing": (
+        "A classifier denial is momentary and specific to one call, not a "
+        "standing rule — re-attempt on material change rather than recording it "
+        "as a wall."
+    ),
+    "classifier-denied-since": (
+        "A dated 'denied since' line records one past refusal, not a durable "
+        "wall; the capability still holds — re-verify rather than assume."
+    ),
+    "classifier-denies-merge": (
+        "Merging works agent-side; a merge refusal is a one-off transient — "
+        "attempt once and record the exact error, do not generalize it."
+    ),
+    "agents-do-not-land": (
+        "Agents do land PRs: they land their own and sibling green PRs directly "
+        "on green CI."
+    ),
+    "agents-cannot-land": (
+        "Agents can land PRs — landing a green PR is normal agent work, not an "
+        "owner-only step."
+    ),
+    "never-agent-side": (
+        "This works agent-side: merging, deploying and pushing are all done by "
+        "agents through the documented paths."
+    ),
+    "never-arm-automerge": (
+        "Arming auto-merge is normal agent work — a claude/* PR arms it at open "
+        "and lands on green CI."
+    ),
+    "owner-is-merge-authority": (
+        "The owner is not the merge authority: the only merge gate is CI green, "
+        "and agents merge their own green PRs."
+    ),
+    "the-owner-merges": (
+        "Agents merge their own green PRs; the owner need not click merge for a "
+        "mergeable green PR."
+    ),
+    "self-merge-classifier": (
+        "Self-merge is normal agent work; a classifier refusal on one call is "
+        "transient — attempt once, record the error, and route around it."
+    ),
+    "agent-unlandable": (
+        "An agent PR is landable: it lands on green CI like any other, by direct "
+        "merge or the auto-merge-enabler."
+    ),
+    "must-not-land": (
+        "A green PR does land — owner direction (a session prompt or in-chat "
+        "instruction) is itself the review; only a do-not-automerge label holds "
+        "a PR back."
+    ),
+    "owner-gated-rule": (
+        "Most actions are not owner-gated: merging, deploying and pushing are "
+        "agent work — only console settings, rulesets, secrets and protected "
+        "main-push are genuinely gated."
+    ),
+    "review-label-prohibition": (
+        "The needs-hermes-review review gate is retired; every green PR "
+        "auto-merges, so a review-label prohibition no longer applies."
+    ),
+}
+
+_UNKNOWN_RULE_CORRECTION = (
+    "This phrase matched the false-wall blocklist but has no dedicated "
+    "correction yet — the ground truth still holds: merging, deploying and "
+    "pushing are normal agent work."
+)
+
+
+def all_rule_names() -> frozenset[str]:
+    """Every rule name ``match_blocklist`` can return — the coverage surface
+    WALL_CORRECTIONS must cover. Used by the R6 explain-wall lookup and its
+    coverage test so a new blocklist rule can't ship without a correction."""
+    return frozenset(name for name, _ in _BLOCKLIST) | {
+        "owner-gated-rule",
+        "review-label-prohibition",
+    }
+
+
+def explain_wall(phrase: str) -> tuple[str, str, str] | None:
+    """R6: map ``phrase`` to ``(rule, matched_phrase, correction)`` or ``None``
+    if no false-wall rule matches. Reuses the checker's own ``match_blocklist``
+    so the explanation and the check never drift. Powers
+    ``bootstrap.py check --explain-wall <phrase>`` (alias ``--why``)."""
+    hit = match_blocklist(phrase)
+    if hit is None:
+        return None
+    rule, matched = hit
+    return rule, matched, WALL_CORRECTIONS.get(rule, _UNKNOWN_RULE_CORRECTION)
+
 # --- engine/checks/allowlist.py ---
 """Reasons-required check allowlist (KL-3 — the §5.3 triage mechanism).
 
@@ -22113,6 +22235,39 @@ def _run_preflight_scripts(
     return findings, notes
 
 
+def _cmd_explain_wall(phrase: str) -> int:
+    """R6: `check --explain-wall <phrase>` / `--why`. Explain whether a phrase
+    reads as a false agent-capability wall — which blocklist rule matched, the
+    one-line ground-truth correction, and how to record a genuine momentary
+    refusal. A lookup, never a gate: always returns 0."""
+    result = explain_wall(phrase)
+    _emit(f"explain-wall: {phrase!r}")
+    if result is None:
+        _emit(
+            "  no false-wall rule matched — this phrase does not read as a "
+            "false agent-capability wall."
+        )
+        _emit(
+            "  (check_no_false_walls flags only agent-can't / owner-only / "
+            "classifier-denied framings.)"
+        )
+        return 0
+    rule, matched, correction = result
+    _emit(f"  matched rule:   false-wall:{rule}")
+    _emit(f"  matched phrase: {matched.strip()!r}")
+    _emit(f"  ground truth:   {correction}")
+    _emit(
+        "  record it right: if the line records a genuine momentary refusal, "
+        "keep it as a dated row in docs/CAPABILITIES.md '## Append log':"
+    )
+    _emit("      - YYYY-MM-DD · wall · <venue> · finding · evidence · workaround")
+    _emit(
+        "    otherwise correct or delete the line — a false wall is not a "
+        "standing limit."
+    )
+    return 0
+
+
 def cmd_check(
     target: Path,
     strict: bool,
@@ -22123,6 +22278,7 @@ def cmd_check(
     simulate_added_card: Path | None = None,
     status_only: bool = False,
     inbox_base: Path | None = None,
+    explain_wall: str | None = None,
 ) -> int:
     """Run every hygiene checker against ``target``.
 
@@ -22218,6 +22374,8 @@ def cmd_check(
       into an existing install; the ``ci`` surface + ``did_not_run`` rows are
       derived by readers from the Checks API, never written in CI.
     """
+    if explain_wall is not None:
+        return _cmd_explain_wall(explain_wall)
     config = load_config(target)
     posture = "blocking" if strict else "advisory"
     # The control-protocol heartbeat (KL-8): static gate findings (missing /
@@ -24895,6 +25053,19 @@ def build_parser() -> argparse.ArgumentParser:
             "when no git context is derivable"
         ),
     )
+    check.add_argument(
+        "--explain-wall",
+        "--why",
+        dest="explain_wall",
+        metavar="PHRASE",
+        default=None,
+        help=(
+            "explain whether PHRASE reads as a false agent-capability wall: "
+            "which blocklist rule matched, the ground-truth correction, and "
+            "how to record a genuine refusal in docs/CAPABILITIES.md "
+            "(a lookup, always exits 0)"
+        ),
+    )
     return parser
 
 
@@ -24979,6 +25150,7 @@ def main(argv: list[str] | None = None) -> int:
                 simulate_added_card=args.simulate_added_card,
                 status_only=args.status_only,
                 inbox_base=args.inbox_base,
+                explain_wall=args.explain_wall,
             )
         if args.command == "answer":
             return cmd_answer(args.target, args.slot, " ".join(args.value))
