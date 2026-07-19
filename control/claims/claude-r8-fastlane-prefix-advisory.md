@@ -1,0 +1,1 @@
+- `claude/r8-fastlane-prefix-advisory` · R8 fast-lane prefix symmetry as a runtime `check --strict` sub-check (`src/engine/checks/check_fastlane_symmetry.py`, wired into `cli._extra_check_findings` + `guards.STRICT_SUBCHECKS`; new test) · 2026-07-19
