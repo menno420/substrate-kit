@@ -1,0 +1,1 @@
+- `claude/s3-ungroomed-idea-counter` · **S3 un-groomed-idea counter advisory: src/engine/checks/check_ungroomed_ideas.py + cli wiring + tests + dist rebuild** · 2026-07-19
