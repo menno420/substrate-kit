@@ -1,37 +1,35 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-19T00:28:53Z · phase: grounded-skills window GSW-1..3 ran this wake — the frozen harness `scripts/measure_grounded_skills.py --clone` ran once over full/non-shallow clones of the 12-repo roster (M4 `shallow:false` on every repo), and 4/4 spot-checks MATCH against git/source ground truth. The before/after report is published at `docs/reports/2026-07-19-grounded-skills-measurement.md` (frozen raw data `docs/reports/data/2026-07-19-grounded-skills-results.json`, linked from `docs/operations/README.md`), PR #476 (born-red, auto-merge armed). GSW-1..3 all DONE; baton advances to GSW-4 (optional API-latency pass) or the next Part-B backlog item per `docs/planning/2026-07-19-grounded-skills-window-run.md`. 1796 pytest pass, dist byte-pin clean
+updated: 2026-07-19T01:01:04Z · phase: GSW-4 shipped this wake — the optional GitHub-API PR open→merge latency pass (`scripts/measure_pr_latency.py` + 12 pure tests) landed in PR #477, adding report §7 + the frozen latency JSON (`docs/reports/data/2026-07-19-grounded-skills-latency.json`, linked from `docs/operations/README.md`) to the grounded-skills report; GSW-1..4 are now ALL complete (the grounded-skills window run is fully done). Headline: fleet median open→merge latency 3.5→4.5 min (before n=1630 / after n=1768) — flat, confound-heavy, descriptive-only; all 12 roster repos returned data, zero nulls. 1808 pytest pass / 1 skipped. PR #477 born-red (session-card in-progress hold); flips complete as the last step.
 
 > **Orders done-truth (read this first):** orders **001–024 are ALL DONE** — the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and is flipped `new→done` manager-side only after the manager reads this status report (control/README.md:86), so an inbox order reading `status: new` while this file's `done=` covers it means **DONE-and-awaiting-manager-flip, not open**. No ORDER >024 exists in control/inbox.md at HEAD; "ORDER 025" is not a standalone bound order — it is the `>`-quoted fm relay inside ORDER 019 item 5 (highest bound order = 024). Its WORK is nonetheless COMPLETE: both cfgdiff writeups are on main (docs/reports/2026-07-09-cfgdiff-differential-testing-method.md + …-v0.1.1-release-decision.md), linked from bench/README.md, merged via PR #340 (2026-07-13). The redundant standalone ORDER-025-block append that hit the classifier wall is therefore MOOT.
 
-## This wake — B-2 self-row registry-stamp automation
+## This wake — GSW-4 open→merge latency pass
 
-Executed the B-2 groomed slice: automate the substrate-kit **self-row** registry stamp so the version-bump PR itself carries the correct self-row, removing the manual aftermath hop. Two halves. (1) A self-row-scoped **born-red gate** `adopters-self-row-stale` in `src/engine/checks/check_adopters_current.py` reds CI when the substrate-kit self-row in `docs/adopters.md` goes stale versus the local kit version home — the self-row can no longer silently lag its own kit. (2) A **network-free self-restamp** — `local_self_scan` + `restamp_self_row` in `src/engine/currency.py` — wired into `scripts/cut_release.py`, so the release-bump PR stamps the correct self-row inline instead of leaving it for a manual aftermath edit. Evidence: full suite 1786 passed, dist byte-pin clean on fresh rebuild, independent review returned SHIP; `check --strict` red only on this wake's born-red card hold. PR #472 OPEN + BORN-RED (session-card in-progress hold); flips complete as the last step. No new routines armed; the failsafe dead-man bridge remains armed under the coordinator session (F-1 below).
+Shipped GSW-4, the optional GitHub-API PR open→merge latency pass (the #247 §2 method the harness deliberately does not fake from git data). From-scratch `scripts/measure_pr_latency.py` (pure bucketing/percentile/aggregation logic separated from an isolated direct-egress GitHub-API fetch) + `tests/test_measure_pr_latency.py` (12 pure tests). Added report §7 (metric, reproduce command, two flagged method decisions, per-repo + fleet tables, descriptive-only interpretation) and a §4 note recording that the optional latency pass WAS run (previously an unrecorded, undeferred gap). Froze the data as `docs/reports/data/2026-07-19-grounded-skills-latency.json` (sha256 `c0fb65ba…8ebf59d`); marked GSW-4 SHIPPED in `docs/planning/2026-07-19-grounded-skills-window-run.md`; kept the `docs/operations/README.md` reachability link. Evidence: 1808 pytest pass / 1 skipped; all 12 roster repos returned data, zero nulls. PR #477 OPEN + BORN-RED (session-card in-progress hold); flips complete as the last step. No new routines armed; the failsafe dead-man bridge remains armed under the coordinator session (F-1 below).
 
-**Prior wake (PR #470):** B-1 — pinned the SET of enforcing guard surfaces via `src/engine/guards.py::WORKFLOW_JOB_CENSUS` (6 jobs across all 4 workflow files) + `tests/test_guard_surface_census.py` (8 tests, bidirectional set-equality against the live workflow `jobs:` keys). Merged 2026-07-18 (claim removed in #471).
-**Prior wake (PR #466):** pinned the THIRD enforcing surface — the `check --strict` sub-checks — via `guards.STRICT_SUBCHECKS` (7 entries) + a bidirectional parity test against the live `cli._extra_check_findings` source. Merged 2026-07-18.
+**Prior wake (PR #476):** GSW-1..3 — the frozen harness `scripts/measure_grounded_skills.py --clone` ran once over full/non-shallow clones of the 12-repo roster, 4/4 spot-checks MATCH, before/after report published at `docs/reports/2026-07-19-grounded-skills-measurement.md` (frozen M1–M4 data `docs/reports/data/2026-07-19-grounded-skills-results.json`, linked from `docs/operations/README.md`). Merged 2026-07-19.
+**Prior wake (PR #472):** B-2 — self-row registry-stamp automation (`adopters-self-row-stale` born-red gate + network-free `local_self_scan`/`restamp_self_row` wired into `scripts/cut_release.py`). Merged 2026-07-18.
 
 ## PR state
 
-All seat-session PRs terminal MERGED: #438–#443, #445, #451, #452, #455, #457, #459, #463 (guard-manifest single-source), #464 (its claim removal), #465 (guard-parity kit-side verified), #466 (third-surface pin), #470 (B-1 guard-surface census, merged 2026-07-18), #471 (its claim removal). Sibling lanes merged: #444, #446–#450, #453.
+All seat-session PRs terminal MERGED through #476: #438–#443, #445, #451, #452, #455, #457, #459, #463, #464, #465, #466, #470, #471, #472 (B-2), #474 (B-3), #476 (GSW-1..3). Sibling lanes merged: #444, #446–#450, #453.
 
-IN-FLIGHT: `claude/self-row-registry-stamp` (PR #472) — B-2: self-row registry-stamp automation. Adds the self-row-scoped born-red gate `adopters-self-row-stale` (`src/engine/checks/check_adopters_current.py`) + the network-free `local_self_scan`/`restamp_self_row` (`src/engine/currency.py`) wired into `scripts/cut_release.py`. `src/engine/` edit + `dist/bootstrap.py` rebuild (byte-pin green); full suite 1786 passed, independent review SHIP, `check --strict` red only on the born-red card hold. Landing path: **born-red session-card hold** — `kit-quality` stays red until `.sessions/2026-07-18-self-row-registry-stamp.md` flips complete.
+IN-FLIGHT: `claude/gsw-4-pr-latency` (PR #477) — GSW-4 open→merge latency pass. Adds `scripts/measure_pr_latency.py` + `tests/test_measure_pr_latency.py` (12 pure tests), report §7 + §4 note, frozen `docs/reports/data/2026-07-19-grounded-skills-latency.json`, GSW-4 marked SHIPPED in the planning doc. Full suite 1808 passed / 1 skipped. Landing path: **born-red session-card hold** — `kit-quality` stays red until `.sessions/2026-07-19-gsw-4-pr-latency.md` flips complete.
 
 ## Recently shipped (neutral pointer)
 
-- PR #470 (prior wake): B-1 guard-surface census — `src/engine/guards.py::WORKFLOW_JOB_CENSUS` (6 jobs) + `tests/test_guard_surface_census.py` pin the SET of enforcing guard surfaces (bidirectional set-equality against the live workflow `jobs:` keys), closing the "a FOURTH enforcing surface ships unpinned" vector. Merged 2026-07-18.
-- PR #465 (prior wake): retired the ci.yml⇄manifest codegen baton as a *verification-covered null* (proven by bidirectional mutation in `tests/test_guard_parity.py`); left a durable in-code trace. Merged 2026-07-18.
-- PR #463 (prior wake): single-sourced the kit↔adopter guard mapping into `src/engine/guards.py`, read by both `adopt.live_ci_workflow()` and `tests/test_guard_parity.py`. Merged 2026-07-18; claim removed in #464.
+- PR #476 (prior wake): GSW-1..3 grounded-skills measurement — harness ran over full/non-shallow clones of the 12-repo roster (M4 valid), 4/4 PL-008 spot-checks MATCH, before/after report published + frozen M1–M4 data + reachability link. Merged 2026-07-19.
+- PR #474 (prior wake): B-3 fast-lane head-prefix ⇄ enabler branch_patterns symmetry lint (advisory). Merged 2026-07-18.
+- PR #472 (prior wake): B-2 self-row registry-stamp automation — `adopters-self-row-stale` born-red gate + network-free self-restamp wired into `scripts/cut_release.py`. Merged 2026-07-18.
+- PR #470 (prior wake): B-1 guard-surface census — `src/engine/guards.py::WORKFLOW_JOB_CENSUS` (6 jobs) + `tests/test_guard_surface_census.py` pin the SET of enforcing guard surfaces. Merged 2026-07-18.
 - v1.19.0 RELEASED + verified — tag v1.19.0, run 29656601475 success, sha256 three-way PASS, https://github.com/menno420/substrate-kit/releases/tag/v1.19.0
-- PR #459: the guard-parity meta-test (`tests/test_guard_parity.py`) — fails CI on kit-vs-adopter guard drift.
 
 ## Backlog — HONEST readout (carried)
 
-With B-1 (PR #470) and B-2 (PR #472) both DONE, the buildable, non-gated backlog holds one remaining groomed slice: **B-3** fast-lane head-prefix ⇄ enabler branch_patterns symmetry lint (S, advisory). Beyond B-3 the backlog is owner-gated or date-parked:
-- Owner veto pass over the 23-proposal menu (docs/planning/2026-07-16-overnight-veto-menu.md) — baton #1 (owner).
-- Grounded-skills measurement window opens 2026-07-19 (docs/operations/grounded-skills-measurement.md; owner silence accepts) — not yet (today is 2026-07-18).
-- KL-5 gate graduation (PL-008): awaits the advisory quiet period.
-- v1.19.0 adopter wave: awaits owner authorization (⚑ below). (v1.19.0 supersedes v1.18.0 — v1.18.0 was never distributed.)
-Seat idles on the 2h failsafe trigger between now and the earliest gated date.
+**Buildable non-gated backlog is DRY.** GSW-1..4 + B-1/B-2/B-3 are all consumed. The remaining Part-B work is either **owner-gated** or **needs-planning** — no turnkey slice remains:
+- Owner-gated: the 5 ⚑ FOR OWNER blocks below; the v1.19.0 adopter wave; the 23-proposal veto menu (`docs/planning/2026-07-16-overnight-veto-menu.md`).
+- Needs-planning (no turnkey recipe): folded-gate-diff-aware-card · pinned-feed-contract · t5-headless-guard · control-board-kit-readiness-cell.
+The next wake with owner-gated items cleared should scope one needs-planning item. This "buildable non-gated backlog dry; remaining work owner-gated or needs-planning" state is the honest, expected readout — not a stall. The seat idles on the 2h failsafe trigger between wakes.
 
 ## Routine / trigger state — corrected at the 2026-07-18 coordinator cutover
 
@@ -47,18 +45,18 @@ kit: v1.19.0
 - **No-false-walls guard now enforced fleet-wide** (campaign #444–#450): the false "agents cannot merge" doctrine was removed from templates / rendered docs / the session-close skill, then re-defended by `tools/check_no_false_walls.py` (kit CI, full lane) + `src/engine/checks/check_no_false_walls.py` (runs in every adopter's `check --strict`). Sits under CHANGELOG `[Unreleased]` — folds into the next release.
 - **Claims-only fast-lane guard now on BOTH surfaces**: kit's own `ci.yml` (PR #455) + generated adopter CI via `live_ci_workflow()` (PR #457). The guard-parity meta-test (`tests/test_guard_parity.py`, PR #459) fails CI on kit-vs-adopter guard drift.
 - Registry (docs/adopters.md): CURRENT per `currency --check` (12 repos); the superbot-games row DRIFT is adopter-side self-report lag (owner-gated, no kit-only fix — folded into the v1.19.0 wave ask). Every adopter row reads stale until its own upgrade wave.
-- `adopters-version-lag` (#441) + `adopters-stale` (calendar-age) advisories cover both staleness axes; `adopters-self-row-stale` (#472, this wake) reds CI when the kit's own self-row lags its version home.
+- `adopters-version-lag` (#441) + `adopters-stale` (calendar-age) advisories cover both staleness axes; `adopters-self-row-stale` (#472) reds CI when the kit's own self-row lags its version home.
 - Session gate judges the badge VALUE not line prose (#422); no-badge + modified-lane parity landed (#428/#429).
 - Wake currency scan turnkey (#392): `python3 dist/bootstrap.py currency --check`.
-- Grounded-skills measurement: harness MERGED (#386); protocol docs/operations/grounded-skills-measurement.md.
+- Grounded-skills measurement: harness MERGED (#386); protocol docs/operations/grounded-skills-measurement.md; window RUN + published (GSW-1..4, PRs #476/#477).
 - Revival boot reading: CONSTITUTION.md → control/inbox.md → this file → docs/eap-closeout-walkthrough-2026-07-14.md §E → docs/audits/eap-project-audit-2026-07-14.md.
 
 ## Next-2 baton
 
-1. **GSW-1..3 · grounded-skills measurement — DONE** (this wake, 2026-07-19; PR #476, born-red). GSW-1 (harness ran over full/non-shallow clones of the 12-repo roster) → GSW-2 (4/4 spot-checks MATCH) → GSW-3 (`audit` report published at `docs/reports/2026-07-19-grounded-skills-measurement.md`, frozen results.json at `docs/reports/data/`, linked from `docs/operations/README.md`, window ⚑ closed). All three traps cleared: clones verified non-shallow (M4 valid), the PL-008-unverified harness was spot-checked, and the report is reachability-linked.
-2. **GSW-4 (optional API-latency pass) OR the next Part-B backlog item** per `docs/planning/2026-07-19-grounded-skills-window-run.md` Part B (needs-planning / owner-gated / dead classification). B-1 (PR #470), B-2 (PR #472), B-3 (PR #474) all DONE.
+1. **GSW-1..4 · grounded-skills window run — DONE.** GSW-1..3 (harness ran, 4/4 spot-checks MATCH, M1–M4 report published — PR #476) → GSW-4 (optional GitHub-API open→merge latency pass, report §7 + frozen latency JSON — PR #477, this wake). The grounded-skills window run is fully complete; all traps cleared (non-shallow clones, PL-008 spot-checks, reachability links, frozen+sha256-cited data).
+2. **Next Part-B item is owner-gated or needs-planning** per `docs/planning/2026-07-19-grounded-skills-window-run.md` Part B — no turnkey slice remains. The next wake with owner-gated items cleared should scope one needs-planning item (folded-gate-diff-aware-card · pinned-feed-contract · t5-headless-guard · control-board-kit-readiness-cell).
 
-**Baton to GSW-4 / next Part-B item; buildable non-gated backlog otherwise thin — everything beyond is owner-gated or date-parked.** The seat idles on the 2h failsafe trigger between wakes.
+**Baton: buildable non-gated backlog dry; everything remaining is owner-gated or needs-planning.** The seat idles on the 2h failsafe trigger between wakes.
 
 ## ⚑ FOR OWNER (standing set carried forward)
 
@@ -111,15 +109,7 @@ RISK: ⚠️ P11 effectively irreversible (history exposed once public) · ↩�
 Standing (full paste-ready blocks verbatim in git history of this file @ 86d2a57):
 - fm #122 v3.4 restamp — owner reviews/merges PERSONALLY.
 - UNIVERSAL wake fetch-list vN bump (+ docs/seat-digest.md, docs/SKILLS.md).
-- Grounded-skills measurement window ~2026-07-19..26 — CLOSED (measurement published 2026-07-19, PR #476).
-
-## 💡 Session idea (Q-0089)
-
-**Rebuild dist BEFORE the self-restamp in the release flow (or render a "pending-rebuild" marker in the self-row tree cell).** B-2's `restamp_self_row` bumps the self-row's config-pin cell but leaves the tree cell (dist header version) lagging until the aftermath dist rebuild, so a release-bump PR momentarily commits a `docs/adopters.md` whose own self-row shows a DRIFT verdict against the kit itself. A follow-up could reorder the release flow to rebuild dist first (or write a `pending-rebuild` marker into the tree cell) so the bump PR always commits a clean, non-self-drifting self-row. Small, contained, reversible. Dedup-checked: no `restamp`/`self-row`/`tree cell` idea exists under docs/ideas/ (the two grep hits — README.md line 269 and heartbeat-verb-2026-07-09.md — are the unrelated CLI restamp verb PR #346 and the restamp-lane contract, not this self-row tree-cell lag).
-
-## ⟲ Previous-session review (Q-0102)
-
-Of the 2026-07-18 B-1 guard-surface-census wake (PR #470): genuine credit — it read all six workflow jobs from ground truth and asserted **bidirectional** set-equality against the live `jobs:` keys, so a new, removed, OR renamed job now reds CI (the rename case is covered, not a gap). What it could improve: the census pins the NAME set but trusts the **hand-declared KIND** (GATE_PINNED / ALIAS / AUTOMATION) — the tests check reason length and kind-membership, not whether a job classified AUTOMATION actually cannot red a PR, so a job's kind could silently drift from declared (AUTOMATION) to actual (gating) without the census noticing. System improvement it surfaces: cross-check each census kind against a ground-truth signal (is the job in the `main` ruleset's required checks? does it run pytest/`check`?) so KIND can't drift undetected from what the workflow actually does.
+- Grounded-skills measurement window ~2026-07-19..26 — CLOSED (measurement published 2026-07-19, PRs #476/#477).
 
 orders: acked=001–024 · done=001–024
 note: "ORDER 025" is the `>`-quoted fm relay inside ORDER 019 item 5, not a standalone bound order (highest bound = 024). Its WORK is DONE — both cfgdiff writeups on main + linked from bench/README.md, merged via PR #340 (2026-07-13); the redundant standalone-block append that hit the classifier wall is MOOT.

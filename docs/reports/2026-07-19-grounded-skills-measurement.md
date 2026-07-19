@@ -146,6 +146,12 @@ consequence of two different, documented bucketing rules, not a defect.
 - **M2 nulls are published, not dropped.** Every M2 dated-card cell is
   `null (n=0)`; those nulls are carried verbatim per the "nulls are published"
   protocol rule.
+- **The optional open→merge latency pass WAS run** (previously an unrecorded
+  gap). The harness marks PR open→merge latency as out of scope (it needs the
+  GitHub API); the GSW-4 API pass now supplies it in **§7** with its own frozen
+  data (`docs/reports/data/2026-07-19-grounded-skills-latency.json`) and two
+  flagged method decisions (all merged PRs included / no squash exclusion; bucket
+  by `merged_at` date). All 12 repos returned data — no per-repo nulls.
 
 ## 5. Confounds
 
@@ -206,3 +212,113 @@ program launch, the before→after deltas are **descriptive only**; where a delt
 is small or moves against the hypothesis (M1 aggregate down, superbot M4 down)
 it is reported as such rather than explained away. The durable value is the
 frozen, spot-checked dataset and an honest negative headline on skill uptake.
+
+## 7. Open→merge latency (GSW-4 · GitHub-API pass)
+
+This is the optional **GSW-4** PR open→merge latency pass, per the
+pre-registered protocol (`docs/planning/2026-07-19-grounded-skills-window-run.md`
+GSW-4) and the PR #247 §2 method. The harness (§1–§6) deliberately does **not**
+measure latency — its M4 is a git-log throughput *proxy* — because open→merge
+latency needs the GitHub API for exact `created_at`/`merged_at` timestamps. This
+section supplies that pass from a from-scratch GitHub-API measurement
+(`scripts/measure_pr_latency.py`; tests `tests/test_measure_pr_latency.py`).
+
+**Metric.** latency = `merged_at − created_at` in minutes, per (repo × bucket):
+`merged` count, `latency_n` (rows in the stat), median, p90, max. Only
+actually-merged PRs count. **Percentile convention:** the harness has no
+percentile helper, so this pass uses the **numpy-style linear-interpolation**
+percentile (`h = (n−1)·p/100`, interpolate between the two nearest ranks;
+median = p50, p90 = p90, max = p100) — stated here so the numbers read alongside
+M1–M4.
+
+**Frozen data:** `docs/reports/data/2026-07-19-grounded-skills-latency.json`
+(sha256 `c0fb65ba08dc10c7a8b9f5ab32dd55db811dc2285e1d0d977f6d607638ebf59d`).
+**Reproduce:**
+
+```
+python3 scripts/measure_pr_latency.py \
+    --start 2026-07-01 --boundary 2026-07-12 --end 2026-07-19 \
+    --repos docs/fleet-repos.txt \
+    --json docs/reports/data/2026-07-19-grounded-skills-latency.json \
+    --generated 2026-07-19T01:00:00Z
+```
+
+Generated `2026-07-19T01:00:00Z`. **All 12 roster repos returned data; no repo
+errored or nulled.** Window: **before = 2026-07-01 .. 2026-07-11**,
+**boundary-day 2026-07-12 excluded from both buckets**, **after = 2026-07-13 ..
+2026-07-19**. Each PR is bucketed by its `merged_at` UTC calendar date.
+
+### Two flagged method decisions (authored deviations from #247 §2)
+
+1. **All merged PRs are included in the latency stat with their exact API
+   timestamps — squash-merges are NOT excluded** (so `latency_n == merged` in
+   every bucket). #247 §2 excluded squash PRs only because its *git-derived
+   open-time proxy* couldn't time them; the GitHub API returns exact
+   `created_at`/`merged_at` for every merged PR regardless of merge method, so
+   the exclusion is unnecessary and inclusion is strictly **more complete**.
+   This is the one authored method deviation from #247 §2.
+2. **PRs are bucketed by `merged_at` calendar date (day resolution, UTC)** to
+   parallel harness M4 (which buckets by merge-commit author date). The boundary
+   DAY (2026-07-12) is reported separately and excluded from before/after.
+
+### Per-repo latency (minutes) — before · boundary-day · after
+
+| repo | before n·med·p90·max | boundary-day n·med | after n·med·p90·max |
+|---|---|---|---|
+| menno420/substrate-kit | 241 · 0.8 · 19.0 · 747.4 | 60 · 4.2 | 160 · 6.5 · 15.6 · 2195.2 |
+| menno420/superbot-next | 215 · 1.9 · 14.2 · 318.5 | 94 · 8.6 | 249 · 7.1 · 165.5 · 4193.1 |
+| menno420/websites | 153 · 2.4 · 14.0 · 248.6 | 67 · 4.6 | 191 · 6.2 · 108.5 · 1814.5 |
+| menno420/superbot | 391 · 7.5 · 80.0 · 7352.2 | 36 · 6.8 | 95 · 7.2 · 229.5 · 2332.4 |
+| menno420/superbot-games | 57 · 4.7 · 396.1 · 861.5 | 6 · 7.8 | 104 · 2.4 · 11.6 · 662.2 |
+| menno420/trading-strategy | 63 · 1.9 · 10.1 · 265.1 | 15 · 0.4 | 72 · 2.4 · 11.8 · 803.4 |
+| menno420/gba-homebrew | 59 · 2.5 · 7.2 · 44.8 | 15 · 21.0 | 107 · 6.5 · 1004.1 · 2282.6 |
+| menno420/pokemon-mod-lab | 50 · 3.3 · 8.0 · 25.1 | 4 · 7.6 | 43 · 652.5 · 1554.0 · 2504.4 |
+| menno420/venture-lab | 55 · 3.1 · 12.3 · 42.3 | 44 · 0.4 | 154 · 1.6 · 19.1 · 498.7 |
+| menno420/fleet-manager | 88 · 8.2 · 25.6 · 1000.2 | 56 · 13.8 | 193 · 2.9 · 25.0 · 811.6 |
+| menno420/idea-engine | 218 · 0.4 · 4.3 · 14.6 | 59 · 0.6 | 322 · 1.9 · 12.4 · 848.2 |
+| menno420/superbot-mineverse | 40 · 0.2 · 1.2 · 1.8 | 14 · 1.4 | 78 · 2.3 · 14.8 · 489.9 |
+
+### Fleet aggregate (pooled PR latencies, minutes)
+
+| bucket | n | median | p90 | max |
+|---|---|---|---|---|
+| before | 1630 | **3.5** | 24.1 | 7352.2 |
+| boundary-day | 470 | 3.7 | 147.0 | 1657.6 |
+| after | 1768 | **4.5** | 41.4 | 4193.1 |
+
+**Headline: median open→merge latency barely moved across the grounded-skills
+boundary — 3.5 min before → 4.5 min after** (a +1.0-minute shift on a pooled
+n=1630 → n=1768). Fleet-wide, PRs open and merge in **single-digit minutes**
+median in both windows; the +1.0-min move is directionally *up* (slightly
+slower), i.e. it does not show the grounded-skills program speeding merges — and
+given its size it is best read as noise/confound, not a program effect.
+
+### Honest interpretation (descriptive only)
+
+- **This latency is a confound-heavy proxy, not a kit/program effect.** Auto-
+  merge-on-green predates the grounded-skills program **fleet-wide** — the whole
+  fleet already lands PRs the instant CI goes green — so open→merge latency
+  mostly measures **CI duration + queue depth**, not agent behavior the program
+  changed. The single-digit-minute medians in *both* windows are consistent with
+  that: merges are gated by CI wall-clock, which the program did not touch. All
+  §5 confounds (born-with-kit, model-mix shift, same-day 07-09 program launch,
+  window asymmetry, agent-under-owner-identity) carry by reference and apply
+  here unchanged.
+- **The aggregate medians are well-powered; the tails and small buckets are
+  not.** before/after pool n≥1630, so the median shift is a real (if tiny)
+  descriptive fact. But p90/max are dominated by long-tail outliers (a 7352-min
+  = ~5-day before-window PR in superbot; a 4193-min after-window PR in
+  superbot-next) — these are individual stuck PRs, not distribution shifts, and
+  p90 should be read as noisy.
+- **Two per-repo movements are real but small-n / outlier-driven, flagged not
+  explained away.** `pokemon-mod-lab` after shows median **652.5 min on n=43** —
+  a genuine jump, but n<50 and outlier-heavy, so the stat is **noisy**; it is
+  reported, not attributed. `gba-homebrew` after p90 = 1004 min (median still
+  6.5) is likewise a tail artifact. The `boundary-day` bucket for
+  `pokemon-mod-lab` is **n=4 (<5) → too small to interpret**; treat its median
+  (7.6) as not-measured.
+- **Bottom line:** open→merge latency is **flat-to-slightly-slower** across the
+  boundary (median 3.5 → 4.5 min) with no signal attributable to the grounded-
+  skills program. Because auto-merge-on-green already governs merge timing fleet-
+  wide, this metric cannot isolate a program effect and is best read as a
+  **measured baseline with honest nulls**, exactly like M1–M4.

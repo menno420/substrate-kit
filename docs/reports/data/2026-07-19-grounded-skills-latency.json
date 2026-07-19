@@ -1,0 +1,370 @@
+{
+  "generated": "2026-07-19T01:00:00Z",
+  "window": {
+    "start": "2026-07-01",
+    "boundary": "2026-07-12",
+    "end": "2026-07-19"
+  },
+  "method": "GitHub API open->merge latency; latency = merged_at - created_at; all merged PRs included (no squash exclusion); bucket by merged_at date",
+  "repos": [
+    {
+      "name": "menno420/substrate-kit",
+      "ok": true,
+      "skip_reason": "",
+      "api_latency": {
+        "before": {
+          "merged": 241,
+          "latency_n": 241,
+          "median_min": 0.8,
+          "p90_min": 19.0,
+          "max_min": 747.4
+        },
+        "boundary-day": {
+          "merged": 60,
+          "latency_n": 60,
+          "median_min": 4.2,
+          "p90_min": 21.4,
+          "max_min": 1657.6
+        },
+        "after": {
+          "merged": 160,
+          "latency_n": 160,
+          "median_min": 6.5,
+          "p90_min": 15.6,
+          "max_min": 2195.2
+        }
+      }
+    },
+    {
+      "name": "menno420/superbot-next",
+      "ok": true,
+      "skip_reason": "",
+      "api_latency": {
+        "before": {
+          "merged": 215,
+          "latency_n": 215,
+          "median_min": 1.9,
+          "p90_min": 14.2,
+          "max_min": 318.5
+        },
+        "boundary-day": {
+          "merged": 94,
+          "latency_n": 94,
+          "median_min": 8.6,
+          "p90_min": 263.7,
+          "max_min": 306.3
+        },
+        "after": {
+          "merged": 249,
+          "latency_n": 249,
+          "median_min": 7.1,
+          "p90_min": 165.5,
+          "max_min": 4193.1
+        }
+      }
+    },
+    {
+      "name": "menno420/websites",
+      "ok": true,
+      "skip_reason": "",
+      "api_latency": {
+        "before": {
+          "merged": 153,
+          "latency_n": 153,
+          "median_min": 2.4,
+          "p90_min": 14.0,
+          "max_min": 248.6
+        },
+        "boundary-day": {
+          "merged": 67,
+          "latency_n": 67,
+          "median_min": 4.6,
+          "p90_min": 143.0,
+          "max_min": 493.1
+        },
+        "after": {
+          "merged": 191,
+          "latency_n": 191,
+          "median_min": 6.2,
+          "p90_min": 108.5,
+          "max_min": 1814.5
+        }
+      }
+    },
+    {
+      "name": "menno420/superbot",
+      "ok": true,
+      "skip_reason": "",
+      "api_latency": {
+        "before": {
+          "merged": 391,
+          "latency_n": 391,
+          "median_min": 7.5,
+          "p90_min": 80.0,
+          "max_min": 7352.2
+        },
+        "boundary-day": {
+          "merged": 36,
+          "latency_n": 36,
+          "median_min": 6.8,
+          "p90_min": 15.2,
+          "max_min": 81.3
+        },
+        "after": {
+          "merged": 95,
+          "latency_n": 95,
+          "median_min": 7.2,
+          "p90_min": 229.5,
+          "max_min": 2332.4
+        }
+      }
+    },
+    {
+      "name": "menno420/superbot-games",
+      "ok": true,
+      "skip_reason": "",
+      "api_latency": {
+        "before": {
+          "merged": 57,
+          "latency_n": 57,
+          "median_min": 4.7,
+          "p90_min": 396.1,
+          "max_min": 861.5
+        },
+        "boundary-day": {
+          "merged": 6,
+          "latency_n": 6,
+          "median_min": 7.8,
+          "p90_min": 1094.9,
+          "max_min": 1126.0
+        },
+        "after": {
+          "merged": 104,
+          "latency_n": 104,
+          "median_min": 2.4,
+          "p90_min": 11.6,
+          "max_min": 662.2
+        }
+      }
+    },
+    {
+      "name": "menno420/trading-strategy",
+      "ok": true,
+      "skip_reason": "",
+      "api_latency": {
+        "before": {
+          "merged": 63,
+          "latency_n": 63,
+          "median_min": 1.9,
+          "p90_min": 10.1,
+          "max_min": 265.1
+        },
+        "boundary-day": {
+          "merged": 15,
+          "latency_n": 15,
+          "median_min": 0.4,
+          "p90_min": 13.5,
+          "max_min": 494.2
+        },
+        "after": {
+          "merged": 72,
+          "latency_n": 72,
+          "median_min": 2.4,
+          "p90_min": 11.8,
+          "max_min": 803.4
+        }
+      }
+    },
+    {
+      "name": "menno420/gba-homebrew",
+      "ok": true,
+      "skip_reason": "",
+      "api_latency": {
+        "before": {
+          "merged": 59,
+          "latency_n": 59,
+          "median_min": 2.5,
+          "p90_min": 7.2,
+          "max_min": 44.8
+        },
+        "boundary-day": {
+          "merged": 15,
+          "latency_n": 15,
+          "median_min": 21.0,
+          "p90_min": 302.3,
+          "max_min": 448.8
+        },
+        "after": {
+          "merged": 107,
+          "latency_n": 107,
+          "median_min": 6.5,
+          "p90_min": 1004.1,
+          "max_min": 2282.6
+        }
+      }
+    },
+    {
+      "name": "menno420/pokemon-mod-lab",
+      "ok": true,
+      "skip_reason": "",
+      "api_latency": {
+        "before": {
+          "merged": 50,
+          "latency_n": 50,
+          "median_min": 3.3,
+          "p90_min": 8.0,
+          "max_min": 25.1
+        },
+        "boundary-day": {
+          "merged": 4,
+          "latency_n": 4,
+          "median_min": 7.6,
+          "p90_min": 15.6,
+          "max_min": 18.9
+        },
+        "after": {
+          "merged": 43,
+          "latency_n": 43,
+          "median_min": 652.5,
+          "p90_min": 1554.0,
+          "max_min": 2504.4
+        }
+      }
+    },
+    {
+      "name": "menno420/venture-lab",
+      "ok": true,
+      "skip_reason": "",
+      "api_latency": {
+        "before": {
+          "merged": 55,
+          "latency_n": 55,
+          "median_min": 3.1,
+          "p90_min": 12.3,
+          "max_min": 42.3
+        },
+        "boundary-day": {
+          "merged": 44,
+          "latency_n": 44,
+          "median_min": 0.4,
+          "p90_min": 3.4,
+          "max_min": 669.4
+        },
+        "after": {
+          "merged": 154,
+          "latency_n": 154,
+          "median_min": 1.6,
+          "p90_min": 19.1,
+          "max_min": 498.7
+        }
+      }
+    },
+    {
+      "name": "menno420/fleet-manager",
+      "ok": true,
+      "skip_reason": "",
+      "api_latency": {
+        "before": {
+          "merged": 88,
+          "latency_n": 88,
+          "median_min": 8.2,
+          "p90_min": 25.6,
+          "max_min": 1000.2
+        },
+        "boundary-day": {
+          "merged": 56,
+          "latency_n": 56,
+          "median_min": 13.8,
+          "p90_min": 235.4,
+          "max_min": 621.1
+        },
+        "after": {
+          "merged": 193,
+          "latency_n": 193,
+          "median_min": 2.9,
+          "p90_min": 25.0,
+          "max_min": 811.6
+        }
+      }
+    },
+    {
+      "name": "menno420/idea-engine",
+      "ok": true,
+      "skip_reason": "",
+      "api_latency": {
+        "before": {
+          "merged": 218,
+          "latency_n": 218,
+          "median_min": 0.4,
+          "p90_min": 4.3,
+          "max_min": 14.6
+        },
+        "boundary-day": {
+          "merged": 59,
+          "latency_n": 59,
+          "median_min": 0.6,
+          "p90_min": 4.4,
+          "max_min": 30.7
+        },
+        "after": {
+          "merged": 322,
+          "latency_n": 322,
+          "median_min": 1.9,
+          "p90_min": 12.4,
+          "max_min": 848.2
+        }
+      }
+    },
+    {
+      "name": "menno420/superbot-mineverse",
+      "ok": true,
+      "skip_reason": "",
+      "api_latency": {
+        "before": {
+          "merged": 40,
+          "latency_n": 40,
+          "median_min": 0.2,
+          "p90_min": 1.2,
+          "max_min": 1.8
+        },
+        "boundary-day": {
+          "merged": 14,
+          "latency_n": 14,
+          "median_min": 1.4,
+          "p90_min": 608.3,
+          "max_min": 1631.5
+        },
+        "after": {
+          "merged": 78,
+          "latency_n": 78,
+          "median_min": 2.3,
+          "p90_min": 14.8,
+          "max_min": 489.9
+        }
+      }
+    }
+  ],
+  "fleet_aggregate": {
+    "before": {
+      "merged": 1630,
+      "latency_n": 1630,
+      "median_min": 3.5,
+      "p90_min": 24.1,
+      "max_min": 7352.2
+    },
+    "boundary-day": {
+      "merged": 470,
+      "latency_n": 470,
+      "median_min": 3.7,
+      "p90_min": 147.0,
+      "max_min": 1657.6
+    },
+    "after": {
+      "merged": 1768,
+      "latency_n": 1768,
+      "median_min": 4.5,
+      "p90_min": 41.4,
+      "max_min": 4193.1
+    }
+  }
+}
