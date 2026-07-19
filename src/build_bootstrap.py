@@ -76,6 +76,12 @@ MODULE_ORDER = (
     # dry" claim can't be made falsely. Advisory-only, never exit-affecting.
     "checks/check_ungroomed_ideas.py",
     # After check_docs.py (its only engine reference is check_docs.Finding): the
+    # Next-2 baton path/anchor resolver advisory (wave-2 groom S4) — warns when a
+    # `## Next-2 baton` entry in control/status*.md cites a repo-relative
+    # path/anchor that no longer resolves on disk. Advisory-only, never
+    # exit-affecting; wired on the posture="advisory" seam in cli.py.
+    "checks/check_baton_resolves.py",
+    # After check_docs.py (its only engine reference is check_docs.Finding): the
     # fast-lane prefix symmetry advisory (groom R8) — warns when a host's ci.yml
     # claims-only fast-lane guard cards a prefix its auto-merge-enabler never
     # arms (enabler⇄guard drift). Advisory-only, never exit-affecting, like its
