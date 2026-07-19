@@ -45,4 +45,4 @@ subsection as a template field, so an optional-but-unrun measurement is structur
 for on every future window run rather than depending on a reviewer remembering to log it —
 enforce-don't-exhort applied to the report itself.
 
-## 📊 Model: Opus 4.8 · high · planning / needs-planning-recipes
+## 📊 Model: Opus 4.8 · high · idea/planning
