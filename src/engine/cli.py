@@ -56,6 +56,9 @@ from engine.checks.check_fastlane_symmetry import check_fastlane_symmetry
 from engine.checks.check_stale_walls import check_stale_walls
 from engine.checks.check_wall_ledger_agreement import check_wall_ledger_agreement
 from engine.checks.check_recipe_applies_when import check_recipe_applies_when
+from engine.checks.check_recipe_signature_honesty import (
+    check_recipe_signature_honesty,
+)
 from engine.checks.check_ungroomed_ideas import check_ungroomed_ideas
 from engine.checks.check_baton_resolves import check_baton_resolves
 from engine.checks.check_engagement import (
@@ -1454,6 +1457,14 @@ def cmd_check(
     # posture="advisory" seam below (NOT _extra_check_findings) and stays off
     # STRICT_SUBCHECKS.
     recipe_applies_when_advisories = check_recipe_applies_when(target, config)
+    # Recipe applies-when signature HONESTY (wave-2 groom S8): the complement to
+    # R11 above — cross-checks each well-formed `applies-when:` token against the
+    # recipe's own body so a token that names a `content:` marker / `path:` glob
+    # the prose never mentions (a drifted/dishonest signature that would mislead
+    # the future S17 discovery check) surfaces. A reconcile nudge, not a defect,
+    # so it rides the same posture="advisory" seam below (NOT _extra_check_findings)
+    # and stays off STRICT_SUBCHECKS.
+    recipe_signature_honesty_advisories = check_recipe_signature_honesty(target, config)
     # Un-groomed-idea counter (wave-2 groom S3): counts 💡 session-idea lines on
     # cards newer than the newest docs/planning/*groom*.md, so a "backlog dry"
     # claim can't be made while un-groomed ideas still sit on cards. A nudge to
@@ -2094,6 +2105,28 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=recipe_applies_when_advisories,
+        )
+    if recipe_signature_honesty_advisories and not status_only:
+        # Same warn-only contract as the advisories above (wave-2 groom S8): a
+        # well-formed `applies-when:` token that names a `content:` marker /
+        # `path:` glob the recipe body never mentions is a "reconcile the
+        # signature with the prose" nudge — the drifted token would mislead the
+        # future discovery check, but it is not a defect that should fail an
+        # adopter. Surfaced + telemetry-recorded, NEVER counted toward the exit
+        # code (deliberately off STRICT_SUBCHECKS).
+        _emit(
+            f"check: {len(recipe_signature_honesty_advisories)} recipe "
+            "signature-honesty advisory warning(s) (never exit-affecting):",
+        )
+        for finding in recipe_signature_honesty_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=recipe_signature_honesty_advisories,
         )
     if ungroomed_ideas_advisories and not status_only:
         # Same warn-only contract as the advisories above (wave-2 groom S3): 💡

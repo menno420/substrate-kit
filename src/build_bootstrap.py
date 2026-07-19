@@ -70,6 +70,12 @@ MODULE_ORDER = (
     # recipe applies-when tag advisory (groom R11) — warns when a docs/recipes/
     # graduation lacks a well-formed `applies-when:` badge; advisory-only.
     "checks/check_recipe_applies_when.py",
+    # After check_recipe_applies_when.py (it imports that module's badge-grammar
+    # regexes as the single source of truth): the recipe applies-when signature-
+    # HONESTY advisory (wave-2 groom S8) — cross-checks each well-formed token
+    # against the recipe body so a `content:`/`path:` token the prose never
+    # mentions (a drifted signature) surfaces. Advisory-only, never exit-affecting.
+    "checks/check_recipe_signature_honesty.py",
     # After check_docs.py (its only engine reference is check_docs.Finding): the
     # un-groomed-idea counter advisory (wave-2 groom S3) — counts 💡 session-idea
     # lines on cards newer than the newest docs/planning/*groom*.md so a "backlog
