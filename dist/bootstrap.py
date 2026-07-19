@@ -1492,6 +1492,21 @@ MODEL_TASK_CLASSES = (
 # harness's own effort levels. Off-list values are an ADVISORY nudge only —
 # the lint never rejects, and the harvest records verbatim either way.
 MODEL_EFFORT_VALUES = ("low", "medium", "high")
+# The sanctioned TERMINAL effort value for retroactive payload repairs (idea
+# model-line-unrecorded-effort-marker-2026-07-15, from the PR #390 sweep): when
+# a repairing session is not the card's author and the author never
+# self-reported an effort tier, backfilling ``low|medium|high`` would be
+# invented telemetry — ``unrecorded`` is the honest marker. It is NOT part of
+# :data:`MODEL_EFFORT_VALUES` (the real taxonomy a live session must report — a
+# live card filing it off-taxonomy still nags with the taught values); it is
+# only EXEMPT from the effort findings (the advisory ``model-line-effort`` and
+# the exit-affecting added-card effort gate, R15), and the telemetry harvest
+# records it verbatim like any value. Home is here — the ONE grammar module —
+# so both the advisory lint (``checks.check_model_line``) and the exit-affecting
+# added-card gate (``checks.check_session_log``) import the same constant and
+# cannot drift apart (EAP §6.8; the dist namespace guard forbids a duplicate
+# top-level definition, so it lives in exactly one place).
+MODEL_EFFORT_UNRECORDED = "unrecorded"
 # Exact model-ID token detector for the 📊 model segment (fleet reporting
 # bar, ORDER 012 widened 2026-07-12): repo artifacts carry FAMILY-LEVEL model
 # names only (`fable-5`, `opus-4.8`), never an exact model-ID token — and
@@ -4273,6 +4288,52 @@ def _exact_model_id_findings_for_card(text: str) -> list[str]:
     ]
 
 
+def _effort_findings_for_card(text: str) -> list[str]:
+    """The EXIT-AFFECTING effort-tier check for a single ADDED card (R15).
+
+    The third sibling of :func:`_task_class_findings_for_card` (R13) and
+    :func:`_exact_model_id_findings_for_card` (R14), one segment over: the
+    fleet-wide payload lint (:func:`engine.checks.check_model_line.
+    check_model_line`) enforces the same rule — segment-2 of the ``📊 Model:``
+    line is one of the :data:`engine.grammar.MODEL_EFFORT_VALUES` taxonomy tiers
+    (``low`` / ``medium`` / ``high``) — but it is **advisory-only** and
+    **windowed to the newest cards**, so an off-taxonomy effort on a NEW card
+    merges green. This helper is the exit-affecting half: the born-red
+    added-card lane grades the PR's OWN card, so an off-taxonomy PRESENT effort
+    reds at CI exactly like an unflipped born-red badge. Scope stays the single
+    added card (never a historical/merged one), so it can never retroactively
+    redden an existing card.
+
+    **The ``unrecorded`` carve-out** (:data:`engine.grammar.
+    MODEL_EFFORT_UNRECORDED`) is exempt exactly as it is in the advisory lint: a
+    retroactive repair of a card whose author never self-reported a tier records
+    ``unrecorded`` honestly instead of inventing telemetry, and reddening it
+    would invite exactly that invention. A live session filing any OTHER
+    off-taxonomy value still reds.
+
+    **Fail-open on absence:** a card with no parseable ``📊 Model:`` line (or a
+    line malformed such that no effort parses) yields nothing — that case is
+    already owned by the marker checks (:func:`check_log` / ``missing_markers``);
+    double-reddening it here would be noise. Only an off-taxonomy PRESENT effort
+    (that is not the sanctioned ``unrecorded`` marker) reds. Reuses the shared
+    parser + effort tuple; does not duplicate either.
+    """
+    payload = _last_model_payload(text)
+    if payload is None:
+        return []
+    effort = payload["effort"]
+    if effort in MODEL_EFFORT_VALUES or effort == MODEL_EFFORT_UNRECORDED:
+        return []
+    known = " | ".join(MODEL_EFFORT_VALUES)
+    return [
+        f"an off-taxonomy `{MODEL_LINE_NEEDLE}` effort {effort!r} on this added "
+        f"card — it is not one of the taxonomy tiers ({known}); fix this card's "
+        f"line to the taught form `{MODEL_LINE_TAUGHT_FORMAT}` (family-level "
+        "model \N{MIDDLE DOT} effort \N{MIDDLE DOT} PL-004 task class; see "
+        ".sessions/README.md)"
+    ]
+
+
 def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
     """Grade a card newly ADDED by a PR (the gate's added-card lane).
 
@@ -4309,11 +4370,13 @@ def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[s
       :func:`check_log` completeness check — missing markers and unresolved
       ``[[fill:]]`` slots red exactly as they would on a MODIFIED card — PLUS
       the exit-affecting PL-004 task-class check (R13,
-      :func:`_task_class_findings_for_card`) AND the exit-affecting
-      exact-model-ID check (R14, :func:`_exact_model_id_findings_for_card`): an
-      off-taxonomy ``📊 Model:`` task-class OR an exact-model-ID model segment
-      on the PR's OWN card reds here, each scoped to this single added card so
-      no historical card is retroactively reddened. (The fleet-wide
+      :func:`_task_class_findings_for_card`), the exit-affecting exact-model-ID
+      check (R14, :func:`_exact_model_id_findings_for_card`), AND the
+      exit-affecting effort-tier check (R15, :func:`_effort_findings_for_card`):
+      an off-taxonomy ``📊 Model:`` task-class, an exact-model-ID model segment,
+      OR an off-taxonomy effort tier (the sanctioned ``unrecorded`` marker
+      exempt) on the PR's OWN card reds here, each scoped to this single added
+      card so no historical card is retroactively reddened. (The fleet-wide
       :func:`engine.checks.check_model_line.check_model_line` window stays
       advisory-only and windowed — this is its exit-affecting, own-card half.)
     """
@@ -4332,15 +4395,17 @@ def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[s
     if _value_declares(value, IN_PROGRESS_TOKENS):
         return [BORN_RED_HOLD_MESSAGE]
     # Complete-branch: the card claims a finished close-out. Full completeness
-    # check PLUS the exit-affecting PL-004 task-class check (R13) AND the
-    # exit-affecting exact-model-ID check (R14) — all scoped to this single
-    # added card. An off-taxonomy `📊 Model:` class OR an exact-model-ID model
-    # segment reds here exactly like an unflipped born-red badge; a
-    # missing/malformed line stays silent (fail-open — the marker checks own
-    # that case).
+    # check PLUS the exit-affecting PL-004 task-class check (R13), the
+    # exit-affecting exact-model-ID check (R14), AND the exit-affecting
+    # effort-tier check (R15) — all scoped to this single added card. An
+    # off-taxonomy `📊 Model:` class, an exact-model-ID model segment, OR an
+    # off-taxonomy effort tier (the `unrecorded` marker exempt) reds here
+    # exactly like an unflipped born-red badge; a missing/malformed line stays
+    # silent (fail-open — the marker checks own that case).
     findings = check_log(path, markers)
     findings.extend(_task_class_findings_for_card(text))
     findings.extend(_exact_model_id_findings_for_card(text))
+    findings.extend(_effort_findings_for_card(text))
     return findings
 
 
@@ -4462,15 +4527,12 @@ advisory-only by contract either way. Stdlib only; unreadable files fail open.
 MODEL_LINE_LINT_WINDOW = 10
 
 # The sanctioned TERMINAL effort value for retroactive payload repairs
-# (idea model-line-unrecorded-effort-marker-2026-07-15, from the PR #390
-# sweep): when a repairing session is not the card's author and the author
-# never self-reported an effort tier, backfilling ``low|medium|high`` would
-# be invented telemetry — ``unrecorded`` is the honest marker. It is NOT
-# part of :data:`engine.grammar.MODEL_EFFORT_VALUES` (the real taxonomy live
-# sessions must report — a live card filing it off-taxonomy still nags with
-# the taught values); it is only exempt from the ``model-line-effort``
-# advisory, and the telemetry harvest records it verbatim like any value.
-MODEL_EFFORT_UNRECORDED = "unrecorded"
+# (``MODEL_EFFORT_UNRECORDED``, imported from ``engine.grammar``) is the honest
+# marker for a card whose author never self-reported a tier — exempt from the
+# ``model-line-effort`` advisory below and from the exit-affecting added-card
+# effort gate (R15), recorded verbatim by the harvest. It lives in grammar (the
+# ONE home) so this lint and the added-card gate cannot drift apart; see the
+# constant's own note there.
 
 # The loud fix-path tail every finding carries — quotes the taught byte-form
 # verbatim so the fix is a copy-edit, never a re-derivation.

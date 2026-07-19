@@ -76,6 +76,7 @@ from engine.checks.check_session_log import (
 )
 from engine.grammar import (
     EXACT_MODEL_ID_RE,
+    MODEL_EFFORT_UNRECORDED,
     MODEL_EFFORT_VALUES,
     MODEL_LINE_NEEDLE,
     MODEL_LINE_TAUGHT_FORMAT,
@@ -102,15 +103,12 @@ from engine.grammar import (
 MODEL_LINE_LINT_WINDOW = 10
 
 # The sanctioned TERMINAL effort value for retroactive payload repairs
-# (idea model-line-unrecorded-effort-marker-2026-07-15, from the PR #390
-# sweep): when a repairing session is not the card's author and the author
-# never self-reported an effort tier, backfilling ``low|medium|high`` would
-# be invented telemetry — ``unrecorded`` is the honest marker. It is NOT
-# part of :data:`engine.grammar.MODEL_EFFORT_VALUES` (the real taxonomy live
-# sessions must report — a live card filing it off-taxonomy still nags with
-# the taught values); it is only exempt from the ``model-line-effort``
-# advisory, and the telemetry harvest records it verbatim like any value.
-MODEL_EFFORT_UNRECORDED = "unrecorded"
+# (``MODEL_EFFORT_UNRECORDED``, imported from ``engine.grammar``) is the honest
+# marker for a card whose author never self-reported a tier — exempt from the
+# ``model-line-effort`` advisory below and from the exit-affecting added-card
+# effort gate (R15), recorded verbatim by the harvest. It lives in grammar (the
+# ONE home) so this lint and the added-card gate cannot drift apart; see the
+# constant's own note there.
 
 # The loud fix-path tail every finding carries — quotes the taught byte-form
 # verbatim so the fix is a copy-edit, never a re-derivation.

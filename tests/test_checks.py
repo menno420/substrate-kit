@@ -177,7 +177,7 @@ def test_clean_tree_has_no_findings(tmp_path):
 def test_missing_markers_complete_vs_incomplete():
     full = (
         "> **Status:** `reference`\n\n💡 idea\n\n"
-        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n"
+        "previous-session review: ok\n\n📊 Model: m · high · docs-only\n"
     )
     assert missing_markers(full, _MARKERS) == []
     bare = "nothing here\n"
@@ -248,7 +248,7 @@ def test_in_progress_status_keeps_the_card_incomplete(tmp_path):
     _write(
         card,
         "# x\n\n> **Status:** `in-progress`\n\n💡 idea\n\n"
-        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n",
+        "previous-session review: ok\n\n📊 Model: m · high · docs-only\n",
     )
     missing = check_log(card, _MARKERS)
     assert missing == ["a completed Status (badge still says in-progress)"]
@@ -256,7 +256,7 @@ def test_in_progress_status_keeps_the_card_incomplete(tmp_path):
     _write(
         card,
         "# x\n\n> **Status:** `complete`\n\n💡 idea\n\n"
-        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n",
+        "previous-session review: ok\n\n📊 Model: m · high · docs-only\n",
     )
     assert check_log(card, _MARKERS) == []
 
@@ -272,7 +272,7 @@ def test_check_log_valueless_badge_is_a_grammar_finding_not_a_release(tmp_path):
     _write(
         card,
         "# vl\n\n> **Status:**\n\n💡 idea\n\n"
-        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n",
+        "previous-session review: ok\n\n📊 Model: m · high · docs-only\n",
     )
     missing = check_log(card, _MARKERS)
     assert VALUELESS_BADGE_MESSAGE in missing
@@ -282,7 +282,7 @@ def test_check_log_valueless_badge_is_a_grammar_finding_not_a_release(tmp_path):
     _write(
         card,
         "# vl\n\n> **Status:**   \n\n💡 idea\n\n"
-        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n",
+        "previous-session review: ok\n\n📊 Model: m · high · docs-only\n",
     )
     missing = check_log(card, _MARKERS)
     assert VALUELESS_BADGE_MESSAGE in missing
@@ -297,7 +297,7 @@ def test_check_log_valueless_branch_leaves_real_values_alone(tmp_path):
     _write(
         card,
         "# vr\n\n> **Status:** `in-progress`\n\n💡 idea\n\n"
-        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n",
+        "previous-session review: ok\n\n📊 Model: m · high · docs-only\n",
     )
     assert check_log(card, _MARKERS) == [
         "a completed Status (badge still says in-progress)"
@@ -305,7 +305,7 @@ def test_check_log_valueless_branch_leaves_real_values_alone(tmp_path):
     _write(
         card,
         "# vr\n\n> **Status:** `complete`\n\n💡 idea\n\n"
-        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n",
+        "previous-session review: ok\n\n📊 Model: m · high · docs-only\n",
     )
     assert check_log(card, _MARKERS) == []
 
@@ -376,7 +376,7 @@ def test_added_card_with_auto_draft_prose_releases_on_complete(tmp_path):
     _write(
         card,
         _AUTO_DRAFT_BADGE.format(value="complete")
-        + "💡 idea\n\nprevious-session review: ok\n\n📊 Model: m · e · docs-only\n",
+        + "💡 idea\n\nprevious-session review: ok\n\n📊 Model: m · high · docs-only\n",
     )
     assert check_added_card(card, _MARKERS) == []
     # Same prose, value still in-progress: the designed HOLD stands.
@@ -428,7 +428,7 @@ def test_added_card_valueless_badge_is_a_grammar_finding_not_a_release(tmp_path)
     _write(
         card,
         "# v\n\n> **Status:**\n\n💡 idea\n\n"
-        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n",
+        "previous-session review: ok\n\n📊 Model: m · high · docs-only\n",
     )
     misses = check_added_card(card, _MARKERS)
     assert len(misses) == 1
@@ -450,7 +450,7 @@ def test_added_card_valueless_branch_leaves_real_values_alone(tmp_path):
     _write(
         card,
         "# w\n\n> **Status:** `complete`\n\n💡 idea\n\n"
-        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n",
+        "previous-session review: ok\n\n📊 Model: m · high · docs-only\n",
     )
     assert check_added_card(card, _MARKERS) == []
 
@@ -477,7 +477,7 @@ def test_added_card_complete_and_well_formed_is_clean(tmp_path):
     _write(
         card,
         "# d\n\n> **Status:** `complete`\n\n💡 idea\n\n"
-        "previous-session review: ok\n\n📊 Model: m · e · docs-only\n",
+        "previous-session review: ok\n\n📊 Model: m · high · docs-only\n",
     )
     assert check_added_card(card, _MARKERS) == []
 
@@ -627,6 +627,78 @@ def test_added_card_dated_suffix_model_id_reds(tmp_path):
     assert len(misses) == 1
     assert "exact-model-ID" in misses[0]
     assert "'opus-4-8-20260101'" in misses[0]
+
+
+# ── R15: exit-affecting effort-tier gate on the PR's OWN added card ──────────
+# The fleet-wide `check_model_line` advisory is windowed + never exit-affecting,
+# so an off-taxonomy effort segment-2 on a NEW card merges green. `check_added_
+# card` folds the same rule in EXIT-AFFECTING, scoped to the single added card:
+# an off-taxonomy effort on the PR's own complete card reds like an unflipped
+# badge, a taxonomy tier passes, the sanctioned `unrecorded` marker is exempt,
+# and a card with NO `📊 Model:` line is fail-open.
+
+
+def test_added_card_valid_effort_yields_no_effort_finding(tmp_path):
+    # Direction 1 (passes): an otherwise-complete card whose `📊 Model:` effort
+    # segment IS a taxonomy tier (`high`) gets no effort finding.
+    card = tmp_path / "2026-07-19-eff-ok.md"
+    _write(
+        card,
+        "# ok\n\n> **Status:** `complete`\n\n💡 idea\n\n"
+        "previous-session review: ok\n\n"
+        "- **📊 Model:** opus-4.8 · high · feature build\n",
+    )
+    assert check_added_card(card, _MARKERS) == []
+
+
+def test_added_card_off_taxonomy_effort_reds(tmp_path):
+    # Direction 2 (reds): the SAME card with only the effort changed to an
+    # off-taxonomy value (`extreme`) gains exactly one effort finding (and
+    # nothing else — every marker is present).
+    card = tmp_path / "2026-07-19-eff-bad.md"
+    _write(
+        card,
+        "# bad\n\n> **Status:** `complete`\n\n💡 idea\n\n"
+        "previous-session review: ok\n\n"
+        "- **📊 Model:** opus-4.8 · extreme · feature build\n",
+    )
+    misses = check_added_card(card, _MARKERS)
+    assert len(misses) == 1
+    assert "off-taxonomy" in misses[0]
+    assert "'extreme'" in misses[0]
+    assert "low | medium | high" in misses[0]  # the taxonomy tiers are listed
+
+
+def test_added_card_unrecorded_effort_is_exempt(tmp_path):
+    # The `unrecorded` carve-out (the whole point of R15's exemption): a
+    # retroactive repair marker `unrecorded` in segment-2 is honest telemetry,
+    # NOT drift — it must pass with no effort finding even though it is not a
+    # taxonomy tier.
+    card = tmp_path / "2026-07-19-eff-unrecorded.md"
+    _write(
+        card,
+        "# unrec\n\n> **Status:** `complete`\n\n💡 idea\n\n"
+        "previous-session review: ok\n\n"
+        "- **📊 Model:** opus-4.8 · unrecorded · feature build\n",
+    )
+    assert check_added_card(card, _MARKERS) == []
+
+
+def test_added_card_missing_model_line_is_fail_open_for_effort(tmp_path):
+    # Fail-open: a complete card with NO `📊 Model:` needle gains no NEW
+    # effort finding — the missing-line case is the marker checks' job
+    # (`check_log`), never a double-red here. The card still reds on the
+    # missing Model-line MARKER, so `check_added_card` == `check_log` exactly.
+    card = tmp_path / "2026-07-19-eff-none.md"
+    _write(
+        card,
+        "# none\n\n> **Status:** `complete`\n\n💡 idea\n\n"
+        "previous-session review: ok\n",  # no 📊 Model: line at all
+    )
+    misses = check_added_card(card, _MARKERS)
+    assert misses == check_log(card, _MARKERS)  # no extra effort finding
+    assert not any("off-taxonomy" in m and "effort" in m for m in misses)
+    assert any("Model line" in m for m in misses)  # marker miss still reds
 
 
 # ---------------------------------------------------------------------------

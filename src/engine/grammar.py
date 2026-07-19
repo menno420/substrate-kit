@@ -439,6 +439,21 @@ MODEL_TASK_CLASSES = (
 # harness's own effort levels. Off-list values are an ADVISORY nudge only —
 # the lint never rejects, and the harvest records verbatim either way.
 MODEL_EFFORT_VALUES = ("low", "medium", "high")
+# The sanctioned TERMINAL effort value for retroactive payload repairs (idea
+# model-line-unrecorded-effort-marker-2026-07-15, from the PR #390 sweep): when
+# a repairing session is not the card's author and the author never
+# self-reported an effort tier, backfilling ``low|medium|high`` would be
+# invented telemetry — ``unrecorded`` is the honest marker. It is NOT part of
+# :data:`MODEL_EFFORT_VALUES` (the real taxonomy a live session must report — a
+# live card filing it off-taxonomy still nags with the taught values); it is
+# only EXEMPT from the effort findings (the advisory ``model-line-effort`` and
+# the exit-affecting added-card effort gate, R15), and the telemetry harvest
+# records it verbatim like any value. Home is here — the ONE grammar module —
+# so both the advisory lint (``checks.check_model_line``) and the exit-affecting
+# added-card gate (``checks.check_session_log``) import the same constant and
+# cannot drift apart (EAP §6.8; the dist namespace guard forbids a duplicate
+# top-level definition, so it lives in exactly one place).
+MODEL_EFFORT_UNRECORDED = "unrecorded"
 # Exact model-ID token detector for the 📊 model segment (fleet reporting
 # bar, ORDER 012 widened 2026-07-12): repo artifacts carry FAMILY-LEVEL model
 # names only (`fable-5`, `opus-4.8`), never an exact model-ID token — and
