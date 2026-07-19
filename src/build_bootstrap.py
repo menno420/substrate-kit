@@ -58,6 +58,11 @@ MODULE_ORDER = (
     # newest-by-mtime card picker. Advisory-only, never exit-affecting.
     "checks/check_folded_gate.py",
     # After check_docs.py (its only engine reference is check_docs.Finding):
+    # the capability stale-wall advisory (night-run groom R5) — warns when a
+    # `wall` row in docs/CAPABILITIES.md has aged past cadence.staleness_days.
+    # Advisory-only, never exit-affecting.
+    "checks/check_stale_walls.py",
+    # After check_docs.py (its only engine reference is check_docs.Finding):
     # the no-false-walls leg — propagated from tools/check_no_false_walls.py so
     # every adopter's `check --strict` reds on a documented false capability
     # wall, not just substrate-kit's own CI.

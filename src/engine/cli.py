@@ -52,6 +52,7 @@ from engine.checks.check_capability_xref import check_capability_xref
 from engine.checks.check_claims import check_claims, claim_scan_dirs
 from engine.checks.check_docs import Finding, run_doc_checks
 from engine.checks.check_folded_gate import check_folded_gate
+from engine.checks.check_stale_walls import check_stale_walls
 from engine.checks.check_engagement import (
     check_engagement,
     check_engagement_control,
@@ -1355,6 +1356,14 @@ def cmd_check(
     # precisely on "require-session-log present AND session-log absent" so the
     # kit's own diff-aware ci.yml and the planted gate stay silent.
     folded_gate_advisories = check_folded_gate(target)
+    # Capability stale-wall advisory (night-run groom R5): surfaces any `wall`
+    # row in docs/CAPABILITIES.md whose verification date has aged past the
+    # staleness window (cadence.staleness_days, default 14) — the enforcement
+    # analogue of the DISCOVERY RULE. Advisory-only, NEVER exit-affecting: a
+    # wall aging out is a re-verify nudge, not a defect, so it is wired on the
+    # posture="advisory" seam below (NOT _extra_check_findings, which counts
+    # toward the exit code) and stays off STRICT_SUBCHECKS.
+    stale_walls_advisories = check_stale_walls(target, config)
     if status_only:
         # --status-only: the fast lane's scoped gate (see docstring). Only the
         # control-lane checkers run — the heartbeat gate, the control-scoped
@@ -1897,6 +1906,27 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=folded_gate_advisories,
+        )
+    if stale_walls_advisories and not status_only:
+        # Same warn-only contract as the advisories above (night-run groom R5):
+        # a documented wall whose LAST-VERIFIED date has aged past the window is
+        # a re-verify-per-the-DISCOVERY-RULE nudge — a platform classifier can
+        # loosen and a stale wall may already be false, but a still-real wall
+        # aging out is not a defect. Surfaced + telemetry-recorded, NEVER
+        # counted toward the exit code (deliberately off STRICT_SUBCHECKS).
+        _emit(
+            f"check: {len(stale_walls_advisories)} stale-wall advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in stale_walls_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=stale_walls_advisories,
         )
 
     log_missing: list[str] = []
