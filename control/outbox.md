@@ -199,3 +199,42 @@ session card `.sessions/2026-07-16-archive-advisory-s4.md`).
 ## 2026-07-16 · Sibling-lane duplicate failsafe pairs — coordinator-reported (lane→manager)
 
 Sibling-lane duplicate failsafe pairs (coordinator-reported, snapshot 2026-07-16T14:16:39Z): Ideas Lab, SuperBot 2.0, SuperBot World, Venture Lab, Websites each reported to have two ENABLED failsafe copies bound to different sessions. Not this seat's to delete — flagging for manager arbitration.
+
+## 2026-07-19 · Folded-gate diff-aware advisory — host ports into superbot-next + websites (lane→manager)
+
+The kit-landable half of the folded-gate diff-aware advisory shipped this
+seat: substrate-kit PR #484 (folded-gate diff-aware advisory sub-check,
+landed and released at HEAD f020012 via #485). Scope + remaining cross-repo
+work are recorded in `docs/planning/2026-07-19-needs-planning-recipes.md`
+§2 (folded-gate, rank 2) and `control/status.md` (Q-0261.3, kit-distribution-only).
+
+**Ask (cross-seat, Q-0264 — this lane writes only substrate-kit):** port the
+diff-aware folded-gate advisory block into (a) superbot-next's `gate` job and
+(b) websites' `quality.yml`. Reference source block: substrate-kit
+`.github/workflows/ci.yml` diff-aware gate block (~lines 302–353). It must
+stay **ADVISORY (non-blocking)** in both hosts, matching the kit's own
+posture — a hard failure would redden every adopter with a legitimately
+folded gate.
+
+**Why routed here:** the kit half is shipped in #484; the host ports live in
+adopter repos this seat does not write (Q-0261.3 kit-distribution-only +
+Q-0264 cross-seat routing via the manager). No action taken by this lane
+beyond routing.
+
+## 2026-07-19 · Control-board kit-readiness cell — websites review/ render feature (lane→manager)
+
+The kit half of the control-board kit-readiness cell is DONE: fm ORDER 003
+landed `docs/adopters.md` + the `kit:` readiness line
+(`control/README.md` L139, adopter-visibility band). Classification and the
+websites-side recipe are recorded in
+`docs/planning/2026-07-19-needs-planning-recipes.md` §3 (readiness cell, rank
+3) — kit-side COMPLETE, remaining work is a cross-repo websites feature.
+
+**Ask (cross-seat):** render the kit-readiness cell in the websites `review/`
+control-board service, consuming the kit-side `docs/adopters.md` + `kit:`
+readiness line this seat already ships. Recipe detail: planning doc §3 step 1
+(the websites `review/` status-card parser).
+
+**Why routed here:** the kit half is complete (ORDER 003); the render feature
+is a websites `review/` service change, outside this seat's write scope. No
+action taken by this lane beyond routing.
