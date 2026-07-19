@@ -1,1 +1,0 @@
-- `claude/s9-freeze-verify` · **S9 — measure_grounded_skills.py --verify companion: re-hash a --freeze'd artifact against its .freeze sidecar, non-zero exit on mismatch** · scripts/measure_grounded_skills.py + tests/test_measure_grounded_skills.py · 2026-07-19
