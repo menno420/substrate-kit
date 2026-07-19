@@ -1,0 +1,4 @@
+- branch: claude/backlog-recipes
+- scope: planning-only — turn the 4 needs-planning backlog items (folded-gate-diff-aware-card, pinned-feed-contract, t5-headless-guard, control-board-kit-readiness-cell) into turnkey recipes; park as a docs/planning/ file; retarget the heartbeat baton.
+- files: docs/planning/2026-07-19-needs-planning-recipes.md, control/status.md, .sessions/2026-07-19-backlog-recipes.md
+- date: 2026-07-19
