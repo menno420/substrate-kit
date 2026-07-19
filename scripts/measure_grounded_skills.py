@@ -45,6 +45,11 @@ Usage (the turnkey window run)::
     python3 scripts/measure_grounded_skills.py --clone --workdir /tmp/gsm \
         --json gsm.json --out report-skeleton.md
 
+``--json`` writes the machine-readable results to a (typically ephemeral) path;
+``--commit-results PATH`` writes the same payload to a durable, committed-into-repo
+path (parent dirs created) so a measure→verify→publish chain's raw ``results.json``
+survives an ephemeral-container split — the chain does the ``git add`` step.
+
 Tests: ``tests/test_measure_grounded_skills.py`` (fixture trees, no network).
 """
 
@@ -696,6 +701,19 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--boundary", type=date.fromisoformat, default=DEFAULT_BOUNDARY)
     ap.add_argument("--end", type=date.fromisoformat, default=datetime.now(timezone.utc).date())
     ap.add_argument("--json", type=Path, help="write machine-readable results here")
+    ap.add_argument(
+        "--commit-results",
+        type=Path,
+        metavar="PATH",
+        help=(
+            "persist the machine-readable results to a durable (committed-into-repo) "
+            "PATH — the same JSON as --json, but its parent dirs are created and it "
+            "is meant for a git-tracked location a later measure→verify→publish step "
+            "re-reads, so a raw results.json survives ephemeral-container splits "
+            "(the chain does the git step). Subject to the same shallow-clone "
+            "refuse-to-publish guard as --json"
+        ),
+    )
     ap.add_argument("--out", type=Path, help="write the markdown report here (default: stdout)")
     ap.add_argument(
         "--api-latency",
@@ -757,13 +775,19 @@ def main(argv: list[str] | None = None) -> int:
         args.out.write_text(report, encoding="utf-8")
     else:
         print(report)
-    if args.json:
+    # Both --json and --commit-results emit the same machine-readable payload;
+    # --commit-results only differs in that it writes to a durable, committed
+    # location (parent dirs created) so the raw results survive an ephemeral-
+    # container split for a later measure→verify→publish step to re-read.
+    if args.json or args.commit_results:
         # Refuse to publish machine-readable JSON off a shallow clone: its M4
         # git-history metrics are silently zeroed by the truncated history, so
         # a written-but-zeroed JSON reads clean while being wrong. The markdown
         # path above only soft-nulls the shallow rows; the JSON seam is promoted
-        # to an enforced refuse-to-publish. Reuse the per-repo ``shallow`` flag
-        # already carried on ``RepoResult.merged`` (no recomputation).
+        # to an enforced refuse-to-publish — and a durable, git-tracked
+        # --commit-results artifact off a shallow clone is worse still. Reuse
+        # the per-repo ``shallow`` flag already carried on ``RepoResult.merged``
+        # (no recomputation).
         shallow_repos = [
             r.name for r in results if r.merged is not None and r.merged.get("shallow")
         ]
@@ -772,14 +796,20 @@ def main(argv: list[str] | None = None) -> int:
                 "REFUSE: shallow clone detected for "
                 + ", ".join(shallow_repos)
                 + " — M4 git-history metrics would be zeroed. Re-clone with full"
-                " history (git fetch --unshallow) before generating --json.",
+                " history (git fetch --unshallow) before generating --json /"
+                " --commit-results.",
                 file=sys.stderr,
             )
             return 2
         payload = results_json(results, start=args.start, boundary=args.boundary, end=args.end)
         if api_latency_result is not None:
             payload["api_latency"] = api_latency_result
-        args.json.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        blob = json.dumps(payload, indent=2) + "\n"
+        if args.json:
+            args.json.write_text(blob, encoding="utf-8")
+        if args.commit_results:
+            args.commit_results.parent.mkdir(parents=True, exist_ok=True)
+            args.commit_results.write_text(blob, encoding="utf-8")
     return 0
 
 

@@ -310,6 +310,78 @@ def test_json_writes_on_full_clone(git_fixture_tree: Path, tmp_path: Path, monke
     assert payload["repos"][0]["merged"]["shallow"] is False
 
 
+# ── --commit-results durable-artifact flag (R9) ───────────────────────────────
+
+
+def test_commit_results_writes_durable_artifact(git_fixture_tree: Path, tmp_path: Path, monkeypatch):
+    # --commit-results writes the machine-readable results to a durable PATH,
+    # with the same shape --json emits (valid results JSON the chain re-reads).
+    monkeypatch.setattr(mgs, "_is_shallow", lambda repo_dir: False)
+    durable = tmp_path / "results.json"
+    code = mgs.main(["--local", f"fixture={git_fixture_tree}", "--commit-results", str(durable)])
+    assert code == 0
+    assert durable.exists()
+    import json as _json
+
+    payload = _json.loads(durable.read_text(encoding="utf-8"))
+    assert payload["repos"][0]["name"] == "fixture"
+    assert payload["window"]["boundary"] == "2026-07-12"
+
+
+def test_commit_results_creates_parent_dirs(git_fixture_tree: Path, tmp_path: Path, monkeypatch):
+    # a durable location may not exist yet (e.g. docs/reports/data/): the flag
+    # creates its parent dirs so the artifact lands rather than crashing.
+    monkeypatch.setattr(mgs, "_is_shallow", lambda repo_dir: False)
+    durable = tmp_path / "docs" / "reports" / "data" / "results.json"
+    assert not durable.parent.exists()
+    code = mgs.main(["--local", f"fixture={git_fixture_tree}", "--commit-results", str(durable)])
+    assert code == 0
+    assert durable.exists()
+
+
+def test_commit_results_and_json_are_byte_identical(git_fixture_tree: Path, tmp_path: Path, monkeypatch):
+    # passing both flags writes the exact same bytes to each target — one
+    # payload build, so the durable artifact and the ephemeral --json agree.
+    monkeypatch.setattr(mgs, "_is_shallow", lambda repo_dir: False)
+    js = tmp_path / "ephemeral.json"
+    durable = tmp_path / "durable.json"
+    code = mgs.main(
+        [
+            "--local",
+            f"fixture={git_fixture_tree}",
+            "--json",
+            str(js),
+            "--commit-results",
+            str(durable),
+        ]
+    )
+    assert code == 0
+    assert js.read_bytes() == durable.read_bytes()
+
+
+def test_commit_results_refuses_on_shallow_clone(git_fixture_tree: Path, tmp_path: Path, capsys, monkeypatch):
+    # the durable artifact honors the same shallow-clone refuse-to-publish guard
+    # as --json — a committed-but-zeroed M4 artifact would be worse than an
+    # ephemeral one, so nothing is written and the exit is non-zero.
+    monkeypatch.setattr(mgs, "_is_shallow", lambda repo_dir: True)
+    durable = tmp_path / "results.json"
+    code = mgs.main(["--local", f"fixture={git_fixture_tree}", "--commit-results", str(durable)])
+    assert code == 2
+    assert not durable.exists()
+    err = capsys.readouterr().err
+    assert err.startswith("REFUSE: shallow clone detected")
+    assert "--commit-results" in err
+
+
+def test_commit_results_default_off(fixture_tree: Path, tmp_path: Path):
+    # without the flag: no stray durable artifact is written (backward-compat).
+    out = tmp_path / "report.md"
+    stray = tmp_path / "results.json"
+    code = mgs.main(["--local", f"fixture={fixture_tree}", "--out", str(out)])
+    assert code == 0
+    assert not stray.exists()
+
+
 # ── rendering ────────────────────────────────────────────────────────────────
 
 
