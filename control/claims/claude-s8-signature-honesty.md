@@ -1,1 +1,0 @@
-- `claude/s8-signature-honesty` · wave-2 groom rank S8: signature-honesty lint cross-checking `applies-when:` tokens against recipe body · area: `src/engine/checks/` + `src/engine/cli.py` + dist · 2026-07-19
