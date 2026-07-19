@@ -14811,6 +14811,128 @@ def census_notes() -> list[str]:
     return [note for _kind, note in WORKFLOW_JOB_CENSUS.values()]
 
 
+# ── Fourth-surface guard #2: the lifecycle-hook census ───────────────────────
+# WORKFLOW_JOB_CENSUS above pins the SET of workflow-job surfaces. The SECOND
+# fourth-surface vector is the kit's Claude Code LIFECYCLE HOOKS: the four hook
+# entry points the kit plants into a host ``.claude/settings.json`` and
+# dispatches through ``cli.cmd_hook`` (``cli._HOOK_EVENTS`` keys
+# ``pretooluse`` / ``sessionstart`` / ``postedit`` / ``stopcheck``, wired by
+# ``src/engine/hooks/settings.py`` ``_SET_EVENTS``). A NEW hook can be added to
+# that dispatch — and even wired into the settings template — WITHOUT appearing
+# in any parity registry: it can ship unregistered (no census entry) or
+# unclassified (guard-shaped but never confirmed fail-open). Nothing red-flags
+# that.
+#
+# NOTE ON THE NAME: the groom recipe called this "enumerate repo git-hooks",
+# but the kit ships ZERO git-hooks (no ``.git/hooks`` planting, no
+# pre-commit/pre-push shell). Its real fourth hook surface is these four
+# CLAUDE CODE lifecycle hooks, so the census pins THOSE — faithful to the
+# baton's intent ("a new hook can't ship unregistered/unclassified"), just
+# corrected for the misnomer.
+#
+# The census closes the vector by classifying EVERY dispatched hook as one of
+# three kinds — a fail-open ADVISORY guard, a non-guard ORIENTATION context
+# injector, or a would-be ENFORCING hook (none today; a hook that can
+# block/deny must reference a pin, exactly like a GATE_PINNED workflow job).
+# Pure data + tiny accessors; the meta-test
+# (``tests/test_guard_surface_census.py``) asserts bidirectional set-equality
+# against ``cli._HOOK_EVENTS`` and pins the ADVISORY set to
+# ``cli._HOOK_GUARD_KINDS`` — a hook added to dispatch, or a census entry with
+# no live hook, turns it red.
+
+# The three hook KINDS.
+HOOK_ENFORCING = "ENFORCING"  # a hook that can block/deny — must reference a pin
+HOOK_ADVISORY = "ADVISORY"  # fail-open guard: always exits 0, surfaces guidance only
+HOOK_ORIENTATION = "ORIENTATION"  # non-guard context injector (SessionStart), never gates
+
+HOOK_KINDS = (HOOK_ENFORCING, HOOK_ADVISORY, HOOK_ORIENTATION)
+
+# One entry per REAL lifecycle hook, keyed by its ``cli._HOOK_EVENTS`` dispatch
+# name. Read from ground truth (the live dispatch + guard-kind maps), never
+# guessed. Value is ``(kind, note)``; every note is a descriptive (>15-char)
+# reason, exactly like the WORKFLOW_JOB_CENSUS / STRICT_SUBCHECKS reasons above.
+# The three ADVISORY entries are exactly ``cli._HOOK_GUARD_KINDS``; the lone
+# ORIENTATION entry (``sessionstart``) is deliberately absent from that map — it
+# injects context and records no guard fire.
+HOOK_CENSUS: dict[str, tuple[str, str]] = {
+    # ── fail-open advisory guards (exactly cli._HOOK_GUARD_KINDS) ──
+    "pretooluse": (
+        HOOK_ADVISORY,
+        "PreToolUse stance guard (cli._hook_pretooluse, guard-kind 'stance'); "
+        "warns on an out-of-stance tool but is fail-open — always exits 0, "
+        "never blocks the tool call",
+    ),
+    "postedit": (
+        HOOK_ADVISORY,
+        "PostToolUse edit advisor (cli._hook_postedit, guard-kind "
+        "'edit-advisor'); surfaces generated-artifact / unbadged-doc warnings "
+        "on stderr, fail-open — always exits 0",
+    ),
+    "stopcheck": (
+        HOOK_ADVISORY,
+        "Stop-check advisor (cli._hook_stopcheck, guard-kind 'stop-advisory'); "
+        "surfaces session-close hygiene on stderr, fail-open — always exits 0",
+    ),
+    # ── non-guard orientation injector (absent from cli._HOOK_GUARD_KINDS) ──
+    "sessionstart": (
+        HOOK_ORIENTATION,
+        "SessionStart orientation (cli._hook_sessionstart); prints the "
+        "mode-aware orientation composition to stdout, injecting context — it "
+        "is not a guard and records no guard fire",
+    ),
+}
+
+# Anchor floor: exactly THREE fail-open advisory guards today (stance, edit,
+# stop). A shrinkage guard mirroring EXPECTED_CENSUS_GATES / EXPECTED_MIRRORS
+# above — so the census can't be gutted to a vacuously-green empty advisory set;
+# bump deliberately when a genuinely new advisory hook is added.
+EXPECTED_HOOK_ADVISORY = 3
+
+
+# ── pure accessors (mirroring the WORKFLOW_JOB_CENSUS accessor style) ─────────
+def hook_census() -> dict[str, tuple[str, str]]:
+    """The full lifecycle-hook census: ``"<dispatch_name>"`` -> ``(kind, note)``.
+
+    Returns a copy so a consumer can't mutate the canonical registry.
+    """
+    return dict(HOOK_CENSUS)
+
+
+def hook_census_kinds() -> list[str]:
+    """The kind value of every hook census entry, in registry order."""
+    return [kind for kind, _note in HOOK_CENSUS.values()]
+
+
+def hook_advisory_keys() -> list[str]:
+    """The keys of every ``HOOK_ADVISORY`` entry — the fail-open guard hooks."""
+    return [
+        key for key, (kind, _note) in HOOK_CENSUS.items() if kind == HOOK_ADVISORY
+    ]
+
+
+def hook_orientation_keys() -> list[str]:
+    """The keys of every ``HOOK_ORIENTATION`` entry — the non-guard injectors."""
+    return [
+        key for key, (kind, _note) in HOOK_CENSUS.items() if kind == HOOK_ORIENTATION
+    ]
+
+
+def hook_enforcing_keys() -> list[str]:
+    """The keys of every ``HOOK_ENFORCING`` entry — hooks that can block/deny.
+
+    Empty today (every planted hook is fail-open); the accessor exists so the
+    meta-test can assert a future enforcing hook references a pin.
+    """
+    return [
+        key for key, (kind, _note) in HOOK_CENSUS.items() if kind == HOOK_ENFORCING
+    ]
+
+
+def hook_census_notes() -> list[str]:
+    """The note string of every hook census entry."""
+    return [note for _kind, note in HOOK_CENSUS.values()]
+
+
 # ---------------------------------------------------------------------------
 # Fast-lane branch-prefix symmetry (B-3)
 # ---------------------------------------------------------------------------
