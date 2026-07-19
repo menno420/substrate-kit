@@ -5,7 +5,7 @@
 **Session:** 2026-07-19 · Self Improvement work-loop · substrate-kit
 **Baton:** R6 (check --explain-wall / --why) from docs/planning/2026-07-19-night-run-idea-groom.md
 
-- **📊 Model:** Opus 4.8 · high · kit-feature (CLI lookup + per-rule corrections)
+- **📊 Model:** Opus 4.8 · high · feature build (CLI lookup + per-rule corrections)
 - **⚑ Self-initiated:** R6 is baton work (backlog rung from the night-run groom
   R6 entry), but note the self-initiated expansion: added per-rule `WALL_CORRECTIONS`
   beyond the recipe's literal "the correction" (the checker had only a shared one),

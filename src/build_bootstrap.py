@@ -62,6 +62,10 @@ MODULE_ORDER = (
     # `wall` row in docs/CAPABILITIES.md has aged past cadence.staleness_days.
     # Advisory-only, never exit-affecting.
     "checks/check_stale_walls.py",
+    # After check_stale_walls.py (its only engine reference is check_docs.Finding):
+    # the append-log ⇄ Walls-correction disagreement advisory (groom R7) — warns
+    # when the two disagree on a capability; advisory-only, never exit-affecting.
+    "checks/check_wall_ledger_agreement.py",
     # After check_docs.py (its only engine reference is check_docs.Finding):
     # the no-false-walls leg — propagated from tools/check_no_false_walls.py so
     # every adopter's `check --strict` reds on a documented false capability

@@ -53,6 +53,7 @@ from engine.checks.check_claims import check_claims, claim_scan_dirs
 from engine.checks.check_docs import Finding, run_doc_checks
 from engine.checks.check_folded_gate import check_folded_gate
 from engine.checks.check_stale_walls import check_stale_walls
+from engine.checks.check_wall_ledger_agreement import check_wall_ledger_agreement
 from engine.checks.check_engagement import (
     check_engagement,
     check_engagement_control,
@@ -1400,6 +1401,7 @@ def cmd_check(
     # posture="advisory" seam below (NOT _extra_check_findings, which counts
     # toward the exit code) and stays off STRICT_SUBCHECKS.
     stale_walls_advisories = check_stale_walls(target, config)
+    wall_ledger_advisories = check_wall_ledger_agreement(target, config)
     if status_only:
         # --status-only: the fast lane's scoped gate (see docstring). Only the
         # control-lane checkers run — the heartbeat gate, the control-scoped
@@ -1963,6 +1965,27 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=stale_walls_advisories,
+        )
+    if wall_ledger_advisories and not status_only:
+        # Same warn-only contract as the advisories above (night-run groom R7):
+        # a ## Walls correction and the newest same-capability ## Append log
+        # entry disagreeing on a capability's status is a "reconcile the two"
+        # nudge — a correction that landed in one place but not the other makes
+        # the ledger contradict itself. Surfaced + telemetry-recorded, NEVER
+        # counted toward the exit code (deliberately off STRICT_SUBCHECKS).
+        _emit(
+            f"check: {len(wall_ledger_advisories)} wall-ledger-disagreement "
+            "advisory warning(s) (never exit-affecting):",
+        )
+        for finding in wall_ledger_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=wall_ledger_advisories,
         )
 
     log_missing: list[str] = []
