@@ -1,1 +1,0 @@
-- `claude/s6-inline-wall-corrections` · scope: S6 — inline per-rule WALL_CORRECTIONS into the `check_no_false_walls` engine Finding message · area: `src/engine/checks/check_no_false_walls.py` + `tests/test_check_no_false_walls_leg.py` + rebuilt `dist/bootstrap.py` · 2026-07-19
