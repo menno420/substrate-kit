@@ -1,1 +1,0 @@
-- `claude/s5-require-full-history` · S5 shared `require_full_history()` helper (extract in `scripts/_git_truth.py`, harden the full-history refuse guard in `scripts/measure_grounded_skills.py`) · area: `scripts/_git_truth.py` + `scripts/measure_grounded_skills.py` + tests · 2026-07-19
