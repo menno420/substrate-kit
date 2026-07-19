@@ -1,13 +1,14 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-19T08:37:55Z · phase: IDLE — R2 SHIPPED (`/scope-backlog-item` skill, PR #490 merging on green); buildable-now backlog REFILLED (docs/planning/2026-07-19-night-run-idea-groom.md, R1–R12); R1+R2 consumed, baton retargeted → R3 (shallow-clone REFUSE marker).
+updated: 2026-07-19T09:40:00Z · phase: IDLE — R3 SHIPPED (shallow-clone REFUSE marker, PR #492 merging on green); buildable-now backlog REFILLED (docs/planning/2026-07-19-night-run-idea-groom.md, R1–R12); R1+R2+R3 consumed, baton retargeted → R4 (HOOK_CENSUS second fourth-surface vector).
 
 > **Orders done-truth (read this first):** orders **001–024 are ALL DONE** — the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and flipped `new→done` manager-side only after the manager reads this report (control/README.md:86), so an inbox order reading `status: new` while this file's `done=` covers it means **DONE-and-awaiting-manager-flip, not open**. No ORDER >024 exists in control/inbox.md at HEAD; "ORDER 025" is the `>`-quoted fm relay inside ORDER 019 item 5 (highest bound = 024) — its WORK is complete (both cfgdiff writeups on main, linked from bench/README.md, merged via PR #340).
 
-## This wake — R2: `/scope-backlog-item` skill
-Built R2 from the night-run groom (docs/planning/2026-07-19-night-run-idea-groom.md). Added the `/scope-backlog-item` skill to `src/engine/skills/skills.py` — a registry-dict entry (`name: scope-backlog-item`, `capabilities: []`, `grounds: []`, inserted after `intake`) plus `_SCOPE_BACKLOG_ITEM_BODY`. The skill scaffolds the planning-recipe arc turnkey: chase the item's origin → Q-0254 fuller picture → classify (buildable-now sized recipe with traps / owner-gated six-field ⚑ / dead) → step 5 retarget the coordinator's `## Next-2 baton` in control/status.md onto real cold-startable work — making the standing "when no exec work is left, plan" order a one-command procedure. Updated the ordered test list in `tests/test_skills.py`; rebuilt dist via `python3 src/build_bootstrap.py` (byte-pin clean); adopter `docs/SKILLS.md` index auto-regenerates from the registry. Full suite 1822 passed; 43 skills tests pass. PR #490 OPEN + BORN-RED until this card flip; flips complete as the last step. No routines armed; the failsafe dead-man bridge remains armed under the coordinator session (F-1 below).
+## This wake — R3: shallow-clone REFUSE marker
+Built R3 from the night-run groom (docs/planning/2026-07-19-night-run-idea-groom.md, R3 entry) under ORDER 048. Turned the shallow-clone prose trap in `scripts/measure_grounded_skills.py` into an enforced refuse-to-publish: when `--json` is requested and any measured repo is a shallow clone (whose M4 git-history metrics would be silently zeroed), the script refuses to write the JSON, prints a loud machine-greppable `REFUSE:` marker to stderr, and exits non-zero (2). The markdown/stdout path is unchanged (it already soft-nulls shallow rows). Added a shallow-refuse test plus a positive full-clone-writes-JSON test to `tests/test_measure_grounded_skills.py`. Full suite 1824 passed. PR #492 OPEN + BORN-RED until this card flip; flips complete as the last step. No routines armed; the failsafe dead-man bridge remains armed under the coordinator session (F-1 below).
 
 ## Recently shipped (terminal MERGED / merging)
-- **#490 (this wake) — R2 `/scope-backlog-item` skill** (`src/engine/skills/skills.py` + `tests/test_skills.py` + rebuilt `dist/bootstrap.py`): merging on green after this flip.
+- **#492 (this wake) — R3 shallow-clone REFUSE marker** (`scripts/measure_grounded_skills.py` + `tests/test_measure_grounded_skills.py`): merging on green after this flip.
+- **#490 — R2 `/scope-backlog-item` skill** (`src/engine/skills/skills.py` + `tests/test_skills.py` + rebuilt `dist/bootstrap.py`): MERGED.
 - **#488 — R1 cut_release self-row non-DRIFT** (`scripts/cut_release.py` + `tests/test_cut_release.py`): MERGED.
 - **#487 — night-run idea groom + heartbeat refresh**: swept ~25 night session-card `💡` ideas + docs/ideas/, ranked into the groom doc (R1–R12), refreshed this heartbeat.
 
@@ -19,12 +20,12 @@ Built R2 from the night-run groom (docs/planning/2026-07-19-night-run-idea-groom
 - Recipes #480 backlog-recipes planning arc; pinned-feed-contract doctrine graduated (#482); folded-gate diff-aware advisory sub-check (#484); folded-gate host ports + readiness cell routed to fm outbox (#486).
 
 ## PR state
-All seat-session PRs terminal MERGED through #488. IN-FLIGHT: `claude/scope-backlog-item-skill` (R2, PR #490) — skill registry entry + ordered-test update + rebuilt dist; born-red hold until the session card flips complete, then auto-merges on green.
+All seat-session PRs terminal MERGED through #490. IN-FLIGHT: `claude/r3-shallow-refuse` (R3, PR #492) — measure_grounded_skills `--json` shallow-refuse + 2 tests; born-red hold until the session card flips complete, then auto-merges (armed, squash) on green.
 
-## Backlog — REFILLED (R1+R2 consumed, R3 next)
-The buildable-now backlog is groomed + ranked in `docs/planning/2026-07-19-night-run-idea-groom.md`. R1 (#488) and R2 (#490) are now shipped. Top remaining buildable-now slices:
-- **R3 (S) — shallow-clone REFUSE marker:** `scripts/measure_grounded_skills.py` emits a loud REFUSE marker / exits non-zero when `--json` is requested on a shallow clone (M4 would be zeroed); + test. Turns a prose trap into an enforced refuse-to-publish. (from plan-grounded-skills-window card)
-- R4–R12: HOOK_CENSUS · stale-wall advisory · check --explain-wall · append-log⇄Walls disagreement lint · fast-lane symmetry runtime advisory · harness --commit-results · harness --freeze self-cite · recipes applies-when tag · check_folded_gate remediation snippet (see the groom doc).
+## Backlog — REFILLED (R1+R2+R3 consumed, R4 next)
+The buildable-now backlog is groomed + ranked in `docs/planning/2026-07-19-night-run-idea-groom.md`. R1 (#488), R2 (#490), and R3 (#492) are now shipped. Top remaining buildable-now slices:
+- **R4 (S/M) — HOOK_CENSUS second fourth-surface vector:** mirror `WORKFLOW_JOB_CENSUS` (#470) with a `HOOK_CENSUS` in `src/engine/guards.py` + `tests/test_guard_surface_census.py` enumerating repo git-hooks and classifying each (enforcing-and-pinned / advisory / dev-convenience). (from guard-surface-census card)
+- R5–R12: capability stale-wall advisory · check --explain-wall · append-log⇄Walls disagreement lint · fast-lane symmetry runtime advisory · harness --commit-results · harness --freeze self-cite · recipes applies-when tag · check_folded_gate remediation snippet (see the groom doc).
 Cross-repo / owner-gated (not kit-landable): folded-gate host ports (superbot-next `gate`, websites `quality.yml`, routed via fm #486); v1.19.0 adopter wave; the 23-proposal veto menu.
 
 ## Held decision
@@ -41,14 +42,15 @@ kit: v1.19.0
 - Claims-only fast-lane guard on both surfaces + guard-parity meta-test fails CI on kit↔adopter guard drift.
 - cut_release now stamps the bump self-row from the release target (R1, #488) — committed adopters.md self-row is non-DRIFT for the mergeable state; the FOLLOWUP dist rebuild is still a manual step guarded by the byte-pin.
 - `/scope-backlog-item` skill (R2, #490) makes the standing "when no exec work is left, plan" order turnkey: chase origin → fuller picture → classify + sized recipe/⚑ → retarget the Next-2 baton; indexed in docs/SKILLS.md via the registry.
+- `measure_grounded_skills.py --json` (R3, #492) refuses to publish on a shallow clone — REFUSE marker + exit 2 — turning the prose trap into an enforced refuse-to-publish; markdown/stdout still soft-nulls shallow rows.
 - Registry (docs/adopters.md): CURRENT per currency --check (12 repos); adopter rows read stale until each repo's own upgrade wave (owner-gated).
 - adopters-version-lag + adopters-stale + adopters-self-row-stale advisories cover the staleness axes.
 - Revival boot reading: CONSTITUTION.md → control/inbox.md → this file → docs/eap-closeout-walkthrough-2026-07-14.md §E → docs/audits/eap-project-audit-2026-07-14.md.
 
 ## Next-2 baton
-1. **R3 — shallow-clone REFUSE marker (S).** Buildable now; recipe scoped in `docs/planning/2026-07-19-night-run-idea-groom.md` (R3 entry): `scripts/measure_grounded_skills.py` emits a loud REFUSE marker / exits non-zero when `--json` is requested on a shallow clone (M4 would be zeroed) + a test — turns a prose trap into an enforced refuse-to-publish.
-2. **R4 — HOOK_CENSUS second fourth-surface vector (S/M).** Buildable now; recipe in the groom doc (R4 entry): mirror `WORKFLOW_JOB_CENSUS` (#470) with a `HOOK_CENSUS` in `src/engine/guards.py` + `tests/test_guard_surface_census.py` enumerating repo git-hooks and classifying each (enforcing-and-pinned / advisory / dev-convenience).
-**Baton: R2 (`/scope-backlog-item` skill) SHIPPED (#490) — baton retargeted to R3 (shallow-clone REFUSE marker); full ranked list R3–R12 in docs/planning/2026-07-19-night-run-idea-groom.md.** (This retarget is the R2 skill's own step-5 output — dogfooded.)
+1. **R4 — HOOK_CENSUS second fourth-surface vector (S/M).** Buildable now; recipe in the groom doc (R4 entry): mirror `WORKFLOW_JOB_CENSUS` (#470) with a `HOOK_CENSUS` in `src/engine/guards.py` + `tests/test_guard_surface_census.py` enumerating repo git-hooks and classifying each (enforcing-and-pinned / advisory / dev-convenience).
+2. **R5 — capability stale-wall advisory (M).** Buildable now; recipe in the groom doc (R5 entry): `src/engine/checks/check_stale_walls.py` (advisory, not red) surfaces any `wall` ledger row in CAPABILITIES.md whose LAST-VERIFIED date is > N days old — the enforcement analogue of the DISCOVERY RULE; wired into `_extra_check_findings`.
+**Baton: R3 (shallow-clone REFUSE marker) SHIPPED via PR #492 — baton retargeted to R4 (HOOK_CENSUS second fourth-surface vector); full ranked list R4–R12 in docs/planning/2026-07-19-night-run-idea-groom.md.**
 
 ## ⚑ FOR OWNER (standing set carried forward)
 
