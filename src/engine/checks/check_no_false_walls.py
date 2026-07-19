@@ -516,16 +516,22 @@ def check_no_false_walls(target: Path, config) -> list[Finding]:  # noqa: ANN001
         except (OSError, UnicodeDecodeError):
             continue
         for hit in scan_text(text):
+            # S6: inline the rule's per-rule ground-truth correction (the same
+            # WALL_CORRECTIONS the R6 `check --explain-wall` lookup returns) so
+            # the red gate names the SPECIFIC capability truth for this rule,
+            # not just the generic blurb. Detection is unchanged — same
+            # `false-wall:<rule>` kind, same paths, same exit-affecting loop;
+            # only the human-readable message gains the per-rule sentence.
+            correction = WALL_CORRECTIONS.get(hit.rule, _UNKNOWN_RULE_CORRECTION)
             findings.append(
                 Finding(
                     rel,
                     f"false-wall:{hit.rule}",
                     (
                         f"line {hit.line}: false agent-capability wall "
-                        f"{hit.phrase!r} — agents have no owner-imposed "
-                        "limitations; merging/deploying/pushing is normal agent "
-                        "work. Correct the line, or date-stamp/repudiate it if "
-                        "it records a genuine momentary refusal."
+                        f"{hit.phrase!r} [{hit.rule}] — {correction} "
+                        "Correct the line, or date-stamp/repudiate it if it "
+                        "records a genuine momentary refusal."
                     ),
                 )
             )
