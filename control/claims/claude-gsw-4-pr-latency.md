@@ -1,1 +1,0 @@
-- `claude/gsw-4-pr-latency` · **GSW-4: GitHub-API PR open->merge latency pass — new scripts/measure_pr_latency.py + test, latency data JSON, latency section in docs/reports/2026-07-19-grounded-skills-measurement.md, planning-doc GSW-4 mark-done, reachability link** · scripts/, tests/, docs/reports/, docs/planning/, docs/operations/README.md · 2026-07-19
