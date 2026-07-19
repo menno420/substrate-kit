@@ -64,7 +64,7 @@ from engine.checks.check_engagement import (
 from engine.checks.check_inbox_append import INBOX_RELPATH, check_inbox_append
 from engine.checks.check_model_line import check_model_line
 from engine.checks.check_namespace import check_namespace
-from engine.checks.check_no_false_walls import check_no_false_walls
+from engine.checks.check_no_false_walls import check_no_false_walls, explain_wall
 from engine.checks.check_owner_actions import check_owner_actions
 from engine.checks.check_status_current import (
     CONTROL_README_RELPATH,
@@ -1016,6 +1016,39 @@ def _run_preflight_scripts(
     return findings, notes
 
 
+def _cmd_explain_wall(phrase: str) -> int:
+    """R6: `check --explain-wall <phrase>` / `--why`. Explain whether a phrase
+    reads as a false agent-capability wall — which blocklist rule matched, the
+    one-line ground-truth correction, and how to record a genuine momentary
+    refusal. A lookup, never a gate: always returns 0."""
+    result = explain_wall(phrase)
+    _emit(f"explain-wall: {phrase!r}")
+    if result is None:
+        _emit(
+            "  no false-wall rule matched — this phrase does not read as a "
+            "false agent-capability wall."
+        )
+        _emit(
+            "  (check_no_false_walls flags only agent-can't / owner-only / "
+            "classifier-denied framings.)"
+        )
+        return 0
+    rule, matched, correction = result
+    _emit(f"  matched rule:   false-wall:{rule}")
+    _emit(f"  matched phrase: {matched.strip()!r}")
+    _emit(f"  ground truth:   {correction}")
+    _emit(
+        "  record it right: if the line records a genuine momentary refusal, "
+        "keep it as a dated row in docs/CAPABILITIES.md '## Append log':"
+    )
+    _emit("      - YYYY-MM-DD · wall · <venue> · finding · evidence · workaround")
+    _emit(
+        "    otherwise correct or delete the line — a false wall is not a "
+        "standing limit."
+    )
+    return 0
+
+
 def cmd_check(
     target: Path,
     strict: bool,
@@ -1026,6 +1059,7 @@ def cmd_check(
     simulate_added_card: Path | None = None,
     status_only: bool = False,
     inbox_base: Path | None = None,
+    explain_wall: str | None = None,
 ) -> int:
     """Run every hygiene checker against ``target``.
 
@@ -1121,6 +1155,8 @@ def cmd_check(
       into an existing install; the ``ci`` surface + ``did_not_run`` rows are
       derived by readers from the Checks API, never written in CI.
     """
+    if explain_wall is not None:
+        return _cmd_explain_wall(explain_wall)
     config = load_config(target)
     posture = "blocking" if strict else "advisory"
     # The control-protocol heartbeat (KL-8): static gate findings (missing /
@@ -3798,6 +3834,19 @@ def build_parser() -> argparse.ArgumentParser:
             "when no git context is derivable"
         ),
     )
+    check.add_argument(
+        "--explain-wall",
+        "--why",
+        dest="explain_wall",
+        metavar="PHRASE",
+        default=None,
+        help=(
+            "explain whether PHRASE reads as a false agent-capability wall: "
+            "which blocklist rule matched, the ground-truth correction, and "
+            "how to record a genuine refusal in docs/CAPABILITIES.md "
+            "(a lookup, always exits 0)"
+        ),
+    )
     return parser
 
 
@@ -3882,6 +3931,7 @@ def main(argv: list[str] | None = None) -> int:
                 simulate_added_card=args.simulate_added_card,
                 status_only=args.status_only,
                 inbox_base=args.inbox_base,
+                explain_wall=args.explain_wall,
             )
         if args.command == "answer":
             return cmd_answer(args.target, args.slot, " ".join(args.value))
