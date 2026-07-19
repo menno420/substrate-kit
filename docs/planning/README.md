@@ -11,6 +11,7 @@
 ## Plans
 
 - [2026-07-19-grounded-skills-window-run.md](2026-07-19-grounded-skills-window-run.md) — `plan` — grounded-skills window run plan + 2026-07-18 backlog groom into sized slices.
+- [2026-07-19-needs-planning-recipes.md](2026-07-19-needs-planning-recipes.md) — `plan` — turnkey recipes for the four needs-planning backlog items (folded-gate-diff-aware-card, pinned-feed-contract, t5-headless-guard, control-board-kit-readiness-cell).
 - [2026-07-15-archive-ready-close-out-plan.md](2026-07-15-archive-ready-close-out-plan.md) — `plan` — archive-ready close-out as a kit surface (loop + templates + checker); plan only.
 - [2026-07-12-grounded-skills-program.md](2026-07-12-grounded-skills-program.md) — `plan` — grounded skills program: kit-owned skills, capability self-knowledge, owner-assist standard.
 - [kit-lab-founding-plan-2026-07-07.md](kit-lab-founding-plan-2026-07-07.md) — `plan` — kit-lab founding plan: the extracted substrate-kit repo + self-improvement lab (program session 2 of 4).
