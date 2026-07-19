@@ -17,6 +17,10 @@ if str(_SCRIPTS) not in sys.path:
 import check_changelog_structure as ccs  # noqa: E402
 import cut_release as cr  # noqa: E402
 
+# cut_release inserts src/ onto sys.path at import, so the engine package is
+# importable here for the self-row DRIFT-check assertions below.
+from engine import currency as cur  # noqa: E402
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 FIXTURE_CONFIG = """\
@@ -270,6 +274,98 @@ class TestWrite:
         assert rc == 0
         text = (root / cr.CHANGELOG_RELPATH).read_text(encoding="utf-8")
         assert "<!-- release: breaking=true" in text
+
+
+class TestSelfRowStamp:
+    """R1 pin: the committed ``docs/adopters.md`` self-row a version-bump cut
+    stamps must be **non-DRIFT**, tied to the real ``currency`` DRIFT check.
+
+    Regression guard for kit #472: at ``--write`` time ``substrate.config.json``
+    is already bumped to the target but ``dist/bootstrap.py``'s header is still
+    the OLD version (the dist rebuild is a manual follow-up step), so a naive
+    local scan would stamp a self-row whose tree (old) disagrees with its pin
+    (target) — a false tree-internal DRIFT committed into the bump PR. The fix
+    stamps the self-row from the release's tree truth (target), which is what
+    every mergeable PR carries (``test_committed_bootstrap_is_current`` byte-pins
+    committed dist == build(src)).
+    """
+
+    # A single-file bootstrap header at v0.1.0 — dist_version parses this back
+    # out (the OLD tree_version that, unbumped, would collide with the pin).
+    FIXTURE_DIST = (
+        '"""substrate-kit bootstrap v0.1.0 — GENERATED, DO NOT EDIT.\n'
+        '\n'
+        'Single-file, stdlib-only.\n'
+        '"""\n'
+    )
+
+    FIXTURE_ADOPTERS = (
+        "# Fleet adopter registry\n"
+        "\n"
+        "> Generated: 2026-07-01T00:00:00Z · kit release: v0.1.0\n"
+        "\n"
+        "| repo | tree (vendored dist) | config pin | self-report (`kit:` line)"
+        " | engaged | verdict vs kit v0.1.0 |\n"
+        "|---|---|---|---|---|---|\n"
+        f"| {cur.SELF_REPO} | v0.1.0 (dist/bootstrap.py) | v0.1.0 | no heartbeat"
+        " file | — | current |\n"
+    )
+
+    def _make_fixture(self, tmp_path: Path) -> Path:
+        root = make_fixture(tmp_path)
+        (root / "dist").mkdir()
+        (root / "dist/bootstrap.py").write_text(self.FIXTURE_DIST, encoding="utf-8")
+        (root / "docs").mkdir()
+        (root / cur.ADOPTERS_RELPATH).write_text(
+            self.FIXTURE_ADOPTERS, encoding="utf-8"
+        )
+        _git(root, "init", "-q")
+        _git(root, "add", "-A")
+        _git(root, "commit", "-q", "-m", "fixture")
+        return root
+
+    def test_committed_self_row_is_non_drift(self, tmp_path, capsys):
+        root = self._make_fixture(tmp_path)
+        rc = cr.main(
+            ["0.2.0", "--root", str(root), "--date", "2026-07-14", "--write"]
+        )
+        assert rc == 0
+
+        committed = (root / cur.ADOPTERS_RELPATH).read_text(encoding="utf-8")
+        row = cur._self_row_line(committed)
+        assert row is not None, "cut_release dropped the self-row"
+        verdict_cell = [c.strip() for c in row.strip().strip("|").split("|")][-1]
+
+        # Tie to the REAL DRIFT check: the pre-fix stamped state (tree=old vs
+        # pin=target) genuinely IS drift per currency.RepoCurrency, and its
+        # verdict renders the exact "⚠️ DRIFT" sentinel this row must not carry.
+        stale = cur.RepoCurrency(
+            repo=cur.SELF_REPO,
+            tree_version="0.1.0",
+            tree_source="dist/bootstrap.py",
+            config_pin="0.2.0",
+        )
+        assert stale.drifts(), "reproduction invalid: stale state is not drift"
+        assert "⚠️ DRIFT" in stale.verdict("0.2.0")
+
+        # The committed self-row must carry NO drift sentinel and read current.
+        assert "⚠️ DRIFT" not in verdict_cell, (
+            f"cut_release stamped a DRIFT self-row: {verdict_cell!r}"
+        )
+        assert "current" in verdict_cell, (
+            f"self-row not stamped current: {verdict_cell!r}"
+        )
+        # And the `kit release:` token advanced with the cut.
+        assert "kit release: v0.2.0" in committed
+
+    def test_self_row_stamp_skipped_when_no_adopters_file(self, tmp_path, capsys):
+        """No docs/adopters.md -> the stamp is a no-op, never a crash."""
+        root = make_git_fixture(tmp_path)
+        rc = cr.main(
+            ["0.2.0", "--root", str(root), "--date", "2026-07-14", "--write"]
+        )
+        assert rc == 0
+        assert not (root / cur.ADOPTERS_RELPATH).exists()
 
 
 class TestRefusals:
