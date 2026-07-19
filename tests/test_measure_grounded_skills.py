@@ -250,6 +250,66 @@ def test_render_marks_shallow_clone_m4_null(fixture_tree: Path):
     assert "null (shallow clone" in report
 
 
+# ── shallow-clone --json refuse-to-publish (M4 would be zeroed) ────────────────
+
+
+@pytest.fixture()
+def git_fixture_tree(fixture_tree: Path) -> Path:
+    """The fixture tree, made a real (full, non-shallow) git repo.
+
+    Reuses ``fixture_tree`` so the measured metrics are non-trivial, then adds
+    one committed PR-suffixed merge so M4 has real history to (correctly)
+    count on the full-clone path.
+    """
+    def git(*args: str) -> None:
+        subprocess.run(
+            ["git", "-C", str(fixture_tree), *args],
+            check=True,
+            capture_output=True,
+        )
+
+    git("init", "--quiet")
+    git("config", "user.email", "t@example.com")
+    git("config", "user.name", "t")
+    git("add", "-A")
+    subprocess.run(
+        ["git", "-C", str(fixture_tree), "commit", "-q", "-m", "Seed fixture (#1)"],
+        check=True,
+        capture_output=True,
+    )
+    return fixture_tree
+
+
+def test_json_refuses_on_shallow_clone(git_fixture_tree: Path, tmp_path: Path, capsys, monkeypatch):
+    # force the shallow verdict (mirror how the harness detects it, via the
+    # already-present ``_is_shallow`` flag) instead of building a real shallow
+    # clone — the refuse condition reads only that flag.
+    monkeypatch.setattr(mgs, "_is_shallow", lambda repo_dir: True)
+    js = tmp_path / "results.json"
+    code = mgs.main(["--local", f"fixture={git_fixture_tree}", "--json", str(js)])
+    # refuses: non-zero exit, no JSON written, loud REFUSE marker on stderr
+    assert code == 2
+    assert not js.exists()
+    err = capsys.readouterr().err
+    assert err.startswith("REFUSE: shallow clone detected")
+    assert "fixture" in err
+    assert "git fetch --unshallow" in err
+
+
+def test_json_writes_on_full_clone(git_fixture_tree: Path, tmp_path: Path, monkeypatch):
+    # a full (non-shallow) clone still writes JSON and returns 0
+    monkeypatch.setattr(mgs, "_is_shallow", lambda repo_dir: False)
+    js = tmp_path / "results.json"
+    code = mgs.main(["--local", f"fixture={git_fixture_tree}", "--json", str(js)])
+    assert code == 0
+    assert js.exists()
+    import json as _json
+
+    payload = _json.loads(js.read_text(encoding="utf-8"))
+    assert payload["repos"][0]["name"] == "fixture"
+    assert payload["repos"][0]["merged"]["shallow"] is False
+
+
 # ── rendering ────────────────────────────────────────────────────────────────
 
 

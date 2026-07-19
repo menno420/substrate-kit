@@ -758,6 +758,24 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(report)
     if args.json:
+        # Refuse to publish machine-readable JSON off a shallow clone: its M4
+        # git-history metrics are silently zeroed by the truncated history, so
+        # a written-but-zeroed JSON reads clean while being wrong. The markdown
+        # path above only soft-nulls the shallow rows; the JSON seam is promoted
+        # to an enforced refuse-to-publish. Reuse the per-repo ``shallow`` flag
+        # already carried on ``RepoResult.merged`` (no recomputation).
+        shallow_repos = [
+            r.name for r in results if r.merged is not None and r.merged.get("shallow")
+        ]
+        if shallow_repos:
+            print(
+                "REFUSE: shallow clone detected for "
+                + ", ".join(shallow_repos)
+                + " — M4 git-history metrics would be zeroed. Re-clone with full"
+                " history (git fetch --unshallow) before generating --json.",
+                file=sys.stderr,
+            )
+            return 2
         payload = results_json(results, start=args.start, boundary=args.boundary, end=args.end)
         if api_latency_result is not None:
             payload["api_latency"] = api_latency_result
