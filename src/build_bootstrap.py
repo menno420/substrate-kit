@@ -66,6 +66,12 @@ MODULE_ORDER = (
     # the append-log ⇄ Walls-correction disagreement advisory (groom R7) — warns
     # when the two disagree on a capability; advisory-only, never exit-affecting.
     "checks/check_wall_ledger_agreement.py",
+    # After check_docs.py (its only engine reference is check_docs.Finding): the
+    # fast-lane prefix symmetry advisory (groom R8) — warns when a host's ci.yml
+    # claims-only fast-lane guard cards a prefix its auto-merge-enabler never
+    # arms (enabler⇄guard drift). Advisory-only, never exit-affecting, like its
+    # R5/R7 siblings; wired on the posture="advisory" seam in cli.py.
+    "checks/check_fastlane_symmetry.py",
     # After check_docs.py (its only engine reference is check_docs.Finding):
     # the no-false-walls leg — propagated from tools/check_no_false_walls.py so
     # every adopter's `check --strict` reds on a documented false capability
