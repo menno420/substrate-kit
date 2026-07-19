@@ -53,6 +53,14 @@ survives an ephemeral-container split — the chain does the ``git add`` step.
 the sha256 of the exact output bytes plus a paste-ready reproduce command, so every
 window run is self-citing and tamper-evident.
 
+``--verify PATH`` is the automated inverse of ``--freeze``: point it at a
+previously frozen artifact (or its ``<artifact>.freeze`` sidecar) and it
+re-hashes the artifact's exact bytes and compares to the digest the sidecar
+pinned — exit 0 on match, non-zero on mismatch (tamper/drift) or a missing /
+malformed artifact-or-sidecar. It is a standalone check (no measurement), so it
+needs none of the ``--clone``/``--local``/``--json`` measurement flags; it is
+the scripted form of the ``sha256sum <artifact>`` line the freeze block prints.
+
 Tests: ``tests/test_measure_grounded_skills.py`` (fixture trees, no network).
 """
 
@@ -715,6 +723,72 @@ def _render_freeze_block(record: dict, targets: list[Path]) -> str:
     return "\n".join(lines)
 
 
+def _verify_frozen(path: Path, ap: argparse.ArgumentParser) -> int:
+    """Re-hash a ``--freeze``'d artifact against its ``.freeze`` sidecar.
+
+    ``path`` may be the artifact or its ``<artifact>.freeze`` sidecar — either
+    resolves to the same (artifact, sidecar) pair. The digest is taken over the
+    artifact's exact on-disk bytes (the same bytes ``--freeze`` hashed and the
+    same bytes a plain ``sha256sum <artifact>`` sees), so a match here means the
+    committed artifact is byte-for-byte what the freeze record pinned.
+
+    Exit codes: **0** when the live sha256 matches the sidecar's; **1** on a
+    genuine hash mismatch (tamper/drift); **2** (via ``ap.error``) when the
+    artifact or sidecar is missing, or the sidecar is unreadable / malformed /
+    carries no ``sha256`` field — a can't-verify structural error, distinct from
+    a verified-and-failed mismatch (both are non-zero).
+    """
+    suffix = ".freeze"
+    if path.name.endswith(suffix):
+        sidecar = path
+        artifact = path.with_name(path.name[: -len(suffix)])
+    else:
+        artifact = path
+        sidecar = path.with_name(path.name + suffix)
+    if not sidecar.is_file():
+        ap.error(f"--verify: no freeze sidecar at {sidecar}")
+    if not artifact.is_file():
+        ap.error(f"--verify: no artifact at {artifact}")
+    try:
+        record = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        ap.error(f"--verify: unreadable/malformed freeze sidecar {sidecar}: {exc}")
+    expected = record.get("sha256") if isinstance(record, dict) else None
+    if not isinstance(expected, str) or not expected:
+        ap.error(f"--verify: freeze sidecar {sidecar} carries no 'sha256' field")
+    actual = hashlib.sha256(artifact.read_bytes()).hexdigest()
+    rule = "─" * 57
+    if actual == expected:
+        print(
+            "\n".join(
+                [
+                    rule,
+                    "freeze verify: OK — artifact matches its sidecar",
+                    rule,
+                    "artifact: " + str(artifact),
+                    "sha256:   " + actual,
+                    rule,
+                ]
+            )
+        )
+        return 0
+    print(
+        "\n".join(
+            [
+                rule,
+                "freeze verify: MISMATCH — artifact does NOT match its sidecar",
+                rule,
+                "artifact: " + str(artifact),
+                "expected: " + expected,
+                "actual:   " + actual,
+                rule,
+            ]
+        ),
+        file=sys.stderr,
+    )
+    return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     effective_argv = list(sys.argv[1:] if argv is None else argv)
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -768,7 +842,26 @@ def main(argv: list[str] | None = None) -> int:
             "--json (a frozen artifact can't ship off a shallow clone)."
         ),
     )
+    ap.add_argument(
+        "--verify",
+        type=Path,
+        metavar="PATH",
+        help=(
+            "verify a previously --freeze'd artifact against its "
+            "<artifact>.freeze sidecar: re-hash the artifact's exact bytes and "
+            "compare to the sha256 the sidecar pinned. PATH is the artifact (or "
+            "its .freeze sidecar). Exit 0 on match, 1 on mismatch (tamper/"
+            "drift), 2 on a missing artifact/sidecar or a malformed sidecar — "
+            "the automated form of the 'sha256sum <artifact>' line the freeze "
+            "block prints. Standalone: performs no measurement, so it needs no "
+            "--clone/--local/--json."
+        ),
+    )
     args = ap.parse_args(argv)
+    if args.verify is not None:
+        # Standalone verification mode: check an already-frozen artifact and
+        # return, before any measurement/target resolution (it measures nothing).
+        return _verify_frozen(args.verify, ap)
     if args.freeze and not (args.json or args.commit_results):
         ap.error("--freeze requires --json or --commit-results")
 

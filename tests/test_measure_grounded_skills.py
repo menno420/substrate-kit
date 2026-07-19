@@ -575,3 +575,106 @@ def test_freeze_both_sinks_share_digest(
     b = _json.loads((tmp_path / "durable.json.freeze").read_text(encoding="utf-8"))
     assert a["sha256"] == b["sha256"]
     assert js.read_bytes() == durable.read_bytes()
+
+
+# ── --verify companion (S9): re-hash a --freeze'd artifact vs its sidecar ──────
+
+
+def test_verify_roundtrip_passes(git_fixture_tree: Path, tmp_path: Path, monkeypatch, capsys):
+    # round-trip: --freeze writes the artifact + sidecar, then --verify re-hashes
+    # the artifact and matches the pinned digest → exit 0.
+    monkeypatch.setattr(mgs, "_is_shallow", lambda repo_dir: False)
+    js = tmp_path / "results.json"
+    assert mgs.main(["--local", f"fixture={git_fixture_tree}", "--json", str(js), "--freeze"]) == 0
+    capsys.readouterr()  # drain the freeze block
+    code = mgs.main(["--verify", str(js)])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "freeze verify: OK" in out
+    assert str(js) in out
+
+
+def test_verify_accepts_sidecar_path(git_fixture_tree: Path, tmp_path: Path, monkeypatch):
+    # --verify accepts the .freeze sidecar path directly (resolves to the same pair).
+    monkeypatch.setattr(mgs, "_is_shallow", lambda repo_dir: False)
+    js = tmp_path / "results.json"
+    assert mgs.main(["--local", f"fixture={git_fixture_tree}", "--json", str(js), "--freeze"]) == 0
+    assert mgs.main(["--verify", str(js) + ".freeze"]) == 0
+
+
+def test_verify_tampered_artifact_fails(
+    git_fixture_tree: Path, tmp_path: Path, monkeypatch, capsys
+):
+    # a tampered (post-freeze edited) artifact no longer matches its sidecar → exit 1
+    # (non-zero), and the sidecar itself is untouched by verify.
+    monkeypatch.setattr(mgs, "_is_shallow", lambda repo_dir: False)
+    js = tmp_path / "results.json"
+    assert mgs.main(["--local", f"fixture={git_fixture_tree}", "--json", str(js), "--freeze"]) == 0
+    capsys.readouterr()
+    original_sidecar = (tmp_path / "results.json.freeze").read_bytes()
+    js.write_text(js.read_text(encoding="utf-8") + "\n// tampered\n", encoding="utf-8")
+    code = mgs.main(["--verify", str(js)])
+    assert code == 1
+    err = capsys.readouterr().err
+    assert "freeze verify: MISMATCH" in err
+    assert "expected:" in err and "actual:" in err
+    # verify never rewrites the sidecar
+    assert (tmp_path / "results.json.freeze").read_bytes() == original_sidecar
+
+
+def test_verify_missing_sidecar_is_usage_error(tmp_path: Path):
+    # an artifact with no .freeze sidecar can't be verified → exit 2 (structural),
+    # distinct from a genuine mismatch (exit 1).
+    js = tmp_path / "results.json"
+    js.write_text("{}\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        mgs.main(["--verify", str(js)])
+    assert exc.value.code == 2
+
+
+def test_verify_missing_artifact_is_usage_error(tmp_path: Path):
+    # a sidecar whose artifact is gone can't be verified → exit 2.
+    sidecar = tmp_path / "results.json.freeze"
+    sidecar.write_text('{"algo": "sha256", "sha256": "deadbeef"}\n', encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        mgs.main(["--verify", str(sidecar)])
+    assert exc.value.code == 2
+
+
+def test_verify_malformed_sidecar_is_usage_error(tmp_path: Path):
+    # a sidecar that isn't valid JSON (or carries no sha256) is a structural
+    # error, not a silent pass → exit 2.
+    js = tmp_path / "results.json"
+    js.write_text("{}\n", encoding="utf-8")
+    (tmp_path / "results.json.freeze").write_text("not json at all", encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        mgs.main(["--verify", str(js)])
+    assert exc.value.code == 2
+
+
+def test_verify_sidecar_without_sha256_field_is_usage_error(tmp_path: Path):
+    # well-formed JSON but no 'sha256' key → can't verify → exit 2.
+    js = tmp_path / "results.json"
+    js.write_text("{}\n", encoding="utf-8")
+    (tmp_path / "results.json.freeze").write_text('{"algo": "sha256"}\n', encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        mgs.main(["--verify", str(js)])
+    assert exc.value.code == 2
+
+
+def test_verify_is_standalone_no_measurement_flags(tmp_path: Path, monkeypatch):
+    # --verify short-circuits before target resolution: it needs no
+    # --clone/--local/--json and never touches the clone/measure path.
+    def _boom(*a, **k):  # pragma: no cover - must never be reached
+        raise AssertionError("measure path ran under --verify")
+
+    monkeypatch.setattr(mgs, "measure_repo", _boom)
+    js = tmp_path / "results.json"
+    js.write_text("{}\n", encoding="utf-8")
+    import hashlib
+
+    digest = hashlib.sha256(js.read_bytes()).hexdigest()
+    (tmp_path / "results.json.freeze").write_text(
+        '{"algo": "sha256", "sha256": "' + digest + '"}\n', encoding="utf-8"
+    )
+    assert mgs.main(["--verify", str(js)]) == 0
