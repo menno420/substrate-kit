@@ -1,0 +1,610 @@
+{
+  "generated": "2026-07-19T00:15:24Z",
+  "window": {
+    "start": "2026-07-01",
+    "boundary": "2026-07-12",
+    "end": "2026-07-19"
+  },
+  "repos": [
+    {
+      "name": "menno420/substrate-kit",
+      "ok": true,
+      "skip_reason": "",
+      "cards": {
+        "before": {
+          "cards": 125,
+          "skill_cards": 21,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "boundary-day": {
+          "cards": 33,
+          "skill_cards": 15,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "after": {
+          "cards": 111,
+          "skill_cards": 18,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        }
+      },
+      "capability": {
+        "before": {
+          "lines": 10,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "boundary-day": {
+          "lines": 0,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "after": {
+          "lines": 5,
+          "venue_judged": 0,
+          "venue_ok": 0
+        }
+      },
+      "status_oa_blocks": 5,
+      "status_oa_compliant": 0,
+      "merged": {
+        "before": 192,
+        "boundary-day": 67,
+        "after": 158,
+        "shallow": false
+      }
+    },
+    {
+      "name": "menno420/superbot-next",
+      "ok": true,
+      "skip_reason": "",
+      "cards": {
+        "before": {
+          "cards": 70,
+          "skill_cards": 3,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "boundary-day": {
+          "cards": 69,
+          "skill_cards": 12,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "after": {
+          "cards": 168,
+          "skill_cards": 26,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        }
+      },
+      "capability": {
+        "before": {
+          "lines": 1,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "boundary-day": {
+          "lines": 2,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "after": {
+          "lines": 16,
+          "venue_judged": 0,
+          "venue_ok": 0
+        }
+      },
+      "status_oa_blocks": 0,
+      "status_oa_compliant": 0,
+      "merged": {
+        "before": 207,
+        "boundary-day": 88,
+        "after": 252,
+        "shallow": false
+      }
+    },
+    {
+      "name": "menno420/websites",
+      "ok": true,
+      "skip_reason": "",
+      "cards": {
+        "before": {
+          "cards": 86,
+          "skill_cards": 10,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "boundary-day": {
+          "cards": 38,
+          "skill_cards": 7,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "after": {
+          "cards": 139,
+          "skill_cards": 36,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        }
+      },
+      "capability": {
+        "before": {
+          "lines": 10,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "boundary-day": {
+          "lines": 3,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "after": {
+          "lines": 9,
+          "venue_judged": 0,
+          "venue_ok": 0
+        }
+      },
+      "status_oa_blocks": 0,
+      "status_oa_compliant": 0,
+      "merged": {
+        "before": 145,
+        "boundary-day": 53,
+        "after": 200,
+        "shallow": false
+      }
+    },
+    {
+      "name": "menno420/superbot",
+      "ok": true,
+      "skip_reason": "",
+      "cards": {
+        "before": {
+          "cards": 226,
+          "skill_cards": 39,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "boundary-day": {
+          "cards": 8,
+          "skill_cards": 5,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "after": {
+          "cards": 25,
+          "skill_cards": 4,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        }
+      },
+      "capability": {
+        "before": {
+          "lines": 0,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "boundary-day": {
+          "lines": 0,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "after": {
+          "lines": 0,
+          "venue_judged": 0,
+          "venue_ok": 0
+        }
+      },
+      "status_oa_blocks": 0,
+      "status_oa_compliant": 0,
+      "merged": {
+        "before": 71,
+        "boundary-day": 3,
+        "after": 13,
+        "shallow": false
+      }
+    },
+    {
+      "name": "menno420/superbot-games",
+      "ok": true,
+      "skip_reason": "",
+      "cards": {
+        "before": {
+          "cards": 44,
+          "skill_cards": 0,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "boundary-day": {
+          "cards": 8,
+          "skill_cards": 3,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "after": {
+          "cards": 69,
+          "skill_cards": 1,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        }
+      },
+      "capability": {
+        "before": {
+          "lines": 0,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "boundary-day": {
+          "lines": 0,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "after": {
+          "lines": 0,
+          "venue_judged": 0,
+          "venue_ok": 0
+        }
+      },
+      "status_oa_blocks": 1,
+      "status_oa_compliant": 0,
+      "merged": {
+        "before": 50,
+        "boundary-day": 7,
+        "after": 104,
+        "shallow": false
+      }
+    },
+    {
+      "name": "menno420/trading-strategy",
+      "ok": true,
+      "skip_reason": "",
+      "cards": {
+        "before": {
+          "cards": 27,
+          "skill_cards": 1,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "boundary-day": {
+          "cards": 12,
+          "skill_cards": 3,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "after": {
+          "cards": 53,
+          "skill_cards": 6,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        }
+      },
+      "capability": {
+        "before": {
+          "lines": 0,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "boundary-day": {
+          "lines": 1,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "after": {
+          "lines": 1,
+          "venue_judged": 0,
+          "venue_ok": 0
+        }
+      },
+      "status_oa_blocks": 0,
+      "status_oa_compliant": 0,
+      "merged": {
+        "before": 59,
+        "boundary-day": 16,
+        "after": 71,
+        "shallow": false
+      }
+    },
+    {
+      "name": "menno420/gba-homebrew",
+      "ok": true,
+      "skip_reason": "",
+      "cards": {
+        "before": {
+          "cards": 27,
+          "skill_cards": 1,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "boundary-day": {
+          "cards": 18,
+          "skill_cards": 2,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "after": {
+          "cards": 97,
+          "skill_cards": 5,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        }
+      },
+      "capability": {
+        "before": {
+          "lines": 0,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "boundary-day": {
+          "lines": 0,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "after": {
+          "lines": 0,
+          "venue_judged": 0,
+          "venue_ok": 0
+        }
+      },
+      "status_oa_blocks": 0,
+      "status_oa_compliant": 0,
+      "merged": {
+        "before": 18,
+        "boundary-day": 8,
+        "after": 93,
+        "shallow": false
+      }
+    },
+    {
+      "name": "menno420/pokemon-mod-lab",
+      "ok": true,
+      "skip_reason": "",
+      "cards": {
+        "before": {
+          "cards": 33,
+          "skill_cards": 10,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "boundary-day": {
+          "cards": 4,
+          "skill_cards": 3,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "after": {
+          "cards": 29,
+          "skill_cards": 9,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        }
+      },
+      "capability": {
+        "before": {
+          "lines": 1,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "boundary-day": {
+          "lines": 0,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "after": {
+          "lines": 1,
+          "venue_judged": 0,
+          "venue_ok": 0
+        }
+      },
+      "status_oa_blocks": 0,
+      "status_oa_compliant": 0,
+      "merged": {
+        "before": 31,
+        "boundary-day": 5,
+        "after": 43,
+        "shallow": false
+      }
+    },
+    {
+      "name": "menno420/venture-lab",
+      "ok": true,
+      "skip_reason": "",
+      "cards": {
+        "before": {
+          "cards": 48,
+          "skill_cards": 4,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "boundary-day": {
+          "cards": 38,
+          "skill_cards": 6,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "after": {
+          "cards": 113,
+          "skill_cards": 2,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        }
+      },
+      "capability": {
+        "before": {
+          "lines": 1,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "boundary-day": {
+          "lines": 0,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "after": {
+          "lines": 8,
+          "venue_judged": 8,
+          "venue_ok": 8
+        }
+      },
+      "status_oa_blocks": 0,
+      "status_oa_compliant": 0,
+      "merged": {
+        "before": 44,
+        "boundary-day": 35,
+        "after": 160,
+        "shallow": false
+      }
+    },
+    {
+      "name": "menno420/fleet-manager",
+      "ok": true,
+      "skip_reason": "",
+      "cards": {
+        "before": {
+          "cards": 79,
+          "skill_cards": 11,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "boundary-day": {
+          "cards": 32,
+          "skill_cards": 6,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "after": {
+          "cards": 112,
+          "skill_cards": 7,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        }
+      },
+      "capability": {
+        "before": {
+          "lines": 0,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "boundary-day": {
+          "lines": 1,
+          "venue_judged": 1,
+          "venue_ok": 1
+        },
+        "after": {
+          "lines": 31,
+          "venue_judged": 30,
+          "venue_ok": 30
+        }
+      },
+      "status_oa_blocks": 0,
+      "status_oa_compliant": 0,
+      "merged": {
+        "before": 83,
+        "boundary-day": 54,
+        "after": 193,
+        "shallow": false
+      }
+    },
+    {
+      "name": "menno420/idea-engine",
+      "ok": true,
+      "skip_reason": "",
+      "cards": {
+        "before": {
+          "cards": 124,
+          "skill_cards": 8,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "boundary-day": {
+          "cards": 35,
+          "skill_cards": 0,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "after": {
+          "cards": 210,
+          "skill_cards": 3,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        }
+      },
+      "capability": {
+        "before": {
+          "lines": 4,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "boundary-day": {
+          "lines": 0,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "after": {
+          "lines": 1,
+          "venue_judged": 0,
+          "venue_ok": 0
+        }
+      },
+      "status_oa_blocks": 0,
+      "status_oa_compliant": 0,
+      "merged": {
+        "before": 163,
+        "boundary-day": 55,
+        "after": 323,
+        "shallow": false
+      }
+    },
+    {
+      "name": "menno420/superbot-mineverse",
+      "ok": true,
+      "skip_reason": "",
+      "cards": {
+        "before": {
+          "cards": 22,
+          "skill_cards": 0,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "boundary-day": {
+          "cards": 9,
+          "skill_cards": 0,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        },
+        "after": {
+          "cards": 48,
+          "skill_cards": 2,
+          "oa_blocks": 0,
+          "oa_compliant": 0
+        }
+      },
+      "capability": {
+        "before": {
+          "lines": 6,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "boundary-day": {
+          "lines": 0,
+          "venue_judged": 0,
+          "venue_ok": 0
+        },
+        "after": {
+          "lines": 1,
+          "venue_judged": 0,
+          "venue_ok": 0
+        }
+      },
+      "status_oa_blocks": 0,
+      "status_oa_compliant": 0,
+      "merged": {
+        "before": 40,
+        "boundary-day": 7,
+        "after": 85,
+        "shallow": false
+      }
+    }
+  ]
+}

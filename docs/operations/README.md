@@ -46,6 +46,7 @@
   (lane-owed · owner asks · backlog candidates · the unmeasured-effect gap +
   a #247-methodology measurement proposal), and the ORDER 015 rider
   disposition.
+- [../reports/2026-07-19-grounded-skills-measurement.md](../reports/2026-07-19-grounded-skills-measurement.md) — before/after grounded-skills window measurement (M1–M4), spot-checked; frozen results.json.
 - [../reports/2026-07-09-cfgdiff-differential-testing-method.md](../reports/2026-07-09-cfgdiff-differential-testing-method.md)
   — differential-oracle testing method (bench-practice reference, ported from
   `menno420/codetool-lab-sonnet5` per fm ORDER 025 / inbox ORDER 019 item 5):
