@@ -1,1 +1,0 @@
-- `claude/gsw-1-grounded-skills` · **GSW-1..3 grounded-skills measurement window run** · docs/reports/, docs/operations/README.md, control/status.md, .sessions/ · 2026-07-19
