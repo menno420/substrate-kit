@@ -1,6 +1,6 @@
 # Session card — GSW-4 PR open->merge latency pass (GitHub-API)
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 > **📊 Model:** Opus 4.8 · high · feature build
 
 ## Scope
