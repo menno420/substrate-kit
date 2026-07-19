@@ -61,6 +61,7 @@ from engine.checks.check_recipe_signature_honesty import (
 )
 from engine.checks.check_ungroomed_ideas import check_ungroomed_ideas
 from engine.checks.check_baton_resolves import check_baton_resolves
+from engine.checks.check_surface_census import surface_census_note
 from engine.checks.check_engagement import (
     check_engagement,
     check_engagement_control,
@@ -1517,6 +1518,16 @@ def cmd_check(
         required_note = required_unverified_note(target, config)
         if required_note:
             _emit(f"check: NOTE — {required_note}")
+        # Guard-surface census visibility (wave-2 groom S10): surface the
+        # guards/jobs/hooks census guards.py pins (REGISTRY / WORKFLOW_JOB_CENSUS
+        # / STRICT_SUBCHECKS / HOOK_CENSUS) — otherwise enforced only by the
+        # kit-only meta-test tests/test_guard_surface_census.py and invisible at
+        # check time. NOTE-only by contract, like the acceptance / required-ness
+        # NOTEs above: always-emitted information on a green path, never a finding
+        # and never exit-affecting (deliberately not on STRICT_SUBCHECKS).
+        census_note = surface_census_note(target, config)
+        if census_note:
+            _emit(f"check: NOTE — {census_note}")
         doc_findings += inbox_findings
         doc_findings += adopters_gate
         # Local preflight scripts (ORDER 018): the config-declared check

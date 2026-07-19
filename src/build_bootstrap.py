@@ -200,6 +200,13 @@ MODULE_ORDER = (
     # tiny pure accessors, no engine references — so anywhere before adopt.py
     # works; kept beside adopt.py, its only consumer.
     "guards.py",
+    # After guards.py (imports its census accessors — counts / workflow_job_census
+    # / hook_census / STRICT_SUBCHECKS + the kind constants): the guard-surface
+    # census NOTE (wave-2 groom S10). Surfaces the guards/jobs/hooks census in
+    # `check` output. NOTE-only, never a Finding, never exit-affecting; wired on
+    # cli.py's NOTE seam beside native_gate_note. Placed after guards.py so the
+    # bare accessor names resolve in the concatenated dist namespace.
+    "checks/check_surface_census.py",
     "adopt.py",
     # After adopt.py on purpose: the engagement gate scans the ADOPT_PLAN
     # destinations and keys off adopt's UNRENDERED banner marker.
