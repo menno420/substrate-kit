@@ -1,13 +1,14 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-19T09:40:00Z · phase: IDLE — R3 SHIPPED (shallow-clone REFUSE marker, PR #492 merging on green); buildable-now backlog REFILLED (docs/planning/2026-07-19-night-run-idea-groom.md, R1–R12); R1+R2+R3 consumed, baton retargeted → R4 (HOOK_CENSUS second fourth-surface vector).
+updated: 2026-07-19T09:16:21Z · phase: IDLE — R4 SHIPPED (HOOK_CENSUS second fourth-surface vector, PR #493 merging on green); buildable-now backlog groomed (docs/planning/2026-07-19-night-run-idea-groom.md, R1–R12); R1+R2+R3+R4 consumed, baton retargeted → R5 (capability stale-wall advisory).
 
 > **Orders done-truth (read this first):** orders **001–024 are ALL DONE** — the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and flipped `new→done` manager-side only after the manager reads this report (control/README.md:86), so an inbox order reading `status: new` while this file's `done=` covers it means **DONE-and-awaiting-manager-flip, not open**. No ORDER >024 exists in control/inbox.md at HEAD; "ORDER 025" is the `>`-quoted fm relay inside ORDER 019 item 5 (highest bound = 024) — its WORK is complete (both cfgdiff writeups on main, linked from bench/README.md, merged via PR #340).
 
-## This wake — R3: shallow-clone REFUSE marker
-Built R3 from the night-run groom (docs/planning/2026-07-19-night-run-idea-groom.md, R3 entry) under ORDER 048. Turned the shallow-clone prose trap in `scripts/measure_grounded_skills.py` into an enforced refuse-to-publish: when `--json` is requested and any measured repo is a shallow clone (whose M4 git-history metrics would be silently zeroed), the script refuses to write the JSON, prints a loud machine-greppable `REFUSE:` marker to stderr, and exits non-zero (2). The markdown/stdout path is unchanged (it already soft-nulls shallow rows). Added a shallow-refuse test plus a positive full-clone-writes-JSON test to `tests/test_measure_grounded_skills.py`. Full suite 1824 passed. PR #492 OPEN + BORN-RED until this card flip; flips complete as the last step. No routines armed; the failsafe dead-man bridge remains armed under the coordinator session (F-1 below).
+## This wake — R4: HOOK_CENSUS (second fourth-surface vector)
+Built R4 from the night-run groom (docs/planning/2026-07-19-night-run-idea-groom.md, R4 entry). Added a `HOOK_CENSUS` to `src/engine/guards.py` that enumerates and classifies all four planted Claude Code lifecycle hooks (3 fail-open `ADVISORY` guards = exactly `cli._HOOK_GUARD_KINDS`, + 1 `ORIENTATION` injector), keyed by their `cli._HOOK_EVENTS` dispatch events — mirroring `WORKFLOW_JOB_CENSUS` (#470). New kind constants (`HOOK_ENFORCING`/`HOOK_ADVISORY`/`HOOK_ORIENTATION`) + copy-returning accessors. Added 8 meta-tests to `tests/test_guard_surface_census.py` asserting bidirectional set-equality against `cli._HOOK_EVENTS` / `cli._HOOK_GUARD_KINDS`, so adding/removing a hook without censusing it reds the kit's own suite. Dist rebuilt via `src/build_bootstrap.py` (byte-pin clean). Full suite 1832 passed (+8). Decide-and-flag: the recipe said "git-hooks" but the kit ships zero git-hooks — the real fourth hook surface is the four lifecycle hooks (flagged in PR #493 body). PR #493 OPEN + BORN-RED until this card flip; flips complete as the last step. No routines armed; the failsafe dead-man bridge remains armed under the coordinator session (F-1 below).
 
 ## Recently shipped (terminal MERGED / merging)
-- **#492 (this wake) — R3 shallow-clone REFUSE marker** (`scripts/measure_grounded_skills.py` + `tests/test_measure_grounded_skills.py`): merging on green after this flip.
+- **#493 (this wake) — R4 HOOK_CENSUS second fourth-surface vector** (`src/engine/guards.py` + `tests/test_guard_surface_census.py` + rebuilt `dist/bootstrap.py`): merging on green after this flip.
+- **#492 — R3 shallow-clone REFUSE marker** (`scripts/measure_grounded_skills.py` + `tests/test_measure_grounded_skills.py`): MERGED.
 - **#490 — R2 `/scope-backlog-item` skill** (`src/engine/skills/skills.py` + `tests/test_skills.py` + rebuilt `dist/bootstrap.py`): MERGED.
 - **#488 — R1 cut_release self-row non-DRIFT** (`scripts/cut_release.py` + `tests/test_cut_release.py`): MERGED.
 - **#487 — night-run idea groom + heartbeat refresh**: swept ~25 night session-card `💡` ideas + docs/ideas/, ranked into the groom doc (R1–R12), refreshed this heartbeat.
@@ -20,12 +21,12 @@ Built R3 from the night-run groom (docs/planning/2026-07-19-night-run-idea-groom
 - Recipes #480 backlog-recipes planning arc; pinned-feed-contract doctrine graduated (#482); folded-gate diff-aware advisory sub-check (#484); folded-gate host ports + readiness cell routed to fm outbox (#486).
 
 ## PR state
-All seat-session PRs terminal MERGED through #490. IN-FLIGHT: `claude/r3-shallow-refuse` (R3, PR #492) — measure_grounded_skills `--json` shallow-refuse + 2 tests; born-red hold until the session card flips complete, then auto-merges (armed, squash) on green.
+All seat-session PRs terminal MERGED through #492. IN-FLIGHT: `claude/r4-hook-census` (R4, PR #493) — HOOK_CENSUS in guards.py + 8 census meta-tests + rebuilt dist; born-red hold until the session card flips complete, then auto-merges (armed, squash) on green.
 
-## Backlog — REFILLED (R1+R2+R3 consumed, R4 next)
-The buildable-now backlog is groomed + ranked in `docs/planning/2026-07-19-night-run-idea-groom.md`. R1 (#488), R2 (#490), and R3 (#492) are now shipped. Top remaining buildable-now slices:
-- **R4 (S/M) — HOOK_CENSUS second fourth-surface vector:** mirror `WORKFLOW_JOB_CENSUS` (#470) with a `HOOK_CENSUS` in `src/engine/guards.py` + `tests/test_guard_surface_census.py` enumerating repo git-hooks and classifying each (enforcing-and-pinned / advisory / dev-convenience). (from guard-surface-census card)
-- R5–R12: capability stale-wall advisory · check --explain-wall · append-log⇄Walls disagreement lint · fast-lane symmetry runtime advisory · harness --commit-results · harness --freeze self-cite · recipes applies-when tag · check_folded_gate remediation snippet (see the groom doc).
+## Backlog — groomed (R1+R2+R3+R4 consumed, R5 next)
+The buildable-now backlog is groomed + ranked in `docs/planning/2026-07-19-night-run-idea-groom.md`. R1 (#488), R2 (#490), R3 (#492), and R4 (#493) are now shipped. Top remaining buildable-now slices:
+- **R5 (M) — capability stale-wall advisory:** `src/engine/checks/check_stale_walls.py` (advisory, not red) surfaces any `wall` ledger row in CAPABILITIES.md whose LAST-VERIFIED date is > N days old — the enforcement analogue of the DISCOVERY RULE; wired into `_extra_check_findings`. (from generalize-wall-guard card)
+- R6–R12: check --explain-wall · append-log⇄Walls disagreement lint · fast-lane symmetry runtime advisory · harness --commit-results · harness --freeze self-cite · recipes applies-when tag · check_folded_gate remediation snippet (see the groom doc).
 Cross-repo / owner-gated (not kit-landable): folded-gate host ports (superbot-next `gate`, websites `quality.yml`, routed via fm #486); v1.19.0 adopter wave; the 23-proposal veto menu.
 
 ## Held decision
@@ -43,14 +44,15 @@ kit: v1.19.0
 - cut_release now stamps the bump self-row from the release target (R1, #488) — committed adopters.md self-row is non-DRIFT for the mergeable state; the FOLLOWUP dist rebuild is still a manual step guarded by the byte-pin.
 - `/scope-backlog-item` skill (R2, #490) makes the standing "when no exec work is left, plan" order turnkey: chase origin → fuller picture → classify + sized recipe/⚑ → retarget the Next-2 baton; indexed in docs/SKILLS.md via the registry.
 - `measure_grounded_skills.py --json` (R3, #492) refuses to publish on a shallow clone — REFUSE marker + exit 2 — turning the prose trap into an enforced refuse-to-publish; markdown/stdout still soft-nulls shallow rows.
+- `HOOK_CENSUS` (R4, #493) in `src/engine/guards.py` pins the fourth guard surface — all four Claude Code lifecycle hooks (3 advisory + 1 orientation) censused + kind-classified, bidirectional set-equality vs `cli._HOOK_EVENTS`/`cli._HOOK_GUARD_KINDS` in `tests/test_guard_surface_census.py`; a hook added/removed without a census entry reds the kit's own suite. Kit-only pytest meta-test (like `WORKFLOW_JOB_CENSUS`), not a STRICT_SUBCHECK.
 - Registry (docs/adopters.md): CURRENT per currency --check (12 repos); adopter rows read stale until each repo's own upgrade wave (owner-gated).
 - adopters-version-lag + adopters-stale + adopters-self-row-stale advisories cover the staleness axes.
 - Revival boot reading: CONSTITUTION.md → control/inbox.md → this file → docs/eap-closeout-walkthrough-2026-07-14.md §E → docs/audits/eap-project-audit-2026-07-14.md.
 
 ## Next-2 baton
-1. **R4 — HOOK_CENSUS second fourth-surface vector (S/M).** Buildable now; recipe in the groom doc (R4 entry): mirror `WORKFLOW_JOB_CENSUS` (#470) with a `HOOK_CENSUS` in `src/engine/guards.py` + `tests/test_guard_surface_census.py` enumerating repo git-hooks and classifying each (enforcing-and-pinned / advisory / dev-convenience).
-2. **R5 — capability stale-wall advisory (M).** Buildable now; recipe in the groom doc (R5 entry): `src/engine/checks/check_stale_walls.py` (advisory, not red) surfaces any `wall` ledger row in CAPABILITIES.md whose LAST-VERIFIED date is > N days old — the enforcement analogue of the DISCOVERY RULE; wired into `_extra_check_findings`.
-**Baton: R3 (shallow-clone REFUSE marker) SHIPPED via PR #492 — baton retargeted to R4 (HOOK_CENSUS second fourth-surface vector); full ranked list R4–R12 in docs/planning/2026-07-19-night-run-idea-groom.md.**
+1. **R5 — capability stale-wall advisory (M).** Buildable now; recipe in the groom doc (R5 entry): `src/engine/checks/check_stale_walls.py` (advisory, not red) surfaces any `wall` ledger row in CAPABILITIES.md whose LAST-VERIFIED date is > N days old — the enforcement analogue of the DISCOVERY RULE; wired into `_extra_check_findings`.
+2. **R6 — check --explain-wall / --why (S/M).** Buildable now; recipe in the groom doc (R6 entry): `bootstrap.py check --explain-wall <phrase>` (or `--why` on a false-wall finding) prints which blocklist rule matched + the one-line ground-truth correction + a pointer to the capabilities-ledger dated-row form.
+**Baton: R4 (HOOK_CENSUS second fourth-surface vector) SHIPPED via PR #493 — baton retargeted to R5 (capability stale-wall advisory); full ranked list R5–R12 in docs/planning/2026-07-19-night-run-idea-groom.md.**
 
 ## ⚑ FOR OWNER (standing set carried forward)
 
