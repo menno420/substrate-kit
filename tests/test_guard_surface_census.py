@@ -50,18 +50,27 @@ _SRC = Path(__file__).resolve().parents[1] / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
+from engine import cli  # noqa: E402  (ground-truth hook registries, after sys.path insert)
 from engine.guards import (  # noqa: E402  (after the sys.path insert, like test_guard_parity)
     CENSUS_ALIAS,
     CENSUS_AUTOMATION,
     CENSUS_GATE_PINNED,
     CENSUS_KINDS,
     EXPECTED_CENSUS_GATES,
+    EXPECTED_HOOK_ADVISORY,
+    HOOK_CENSUS,
+    HOOK_KINDS,
     PINNING_MECHANISMS,
     REGISTRY,
     STRICT_SUBCHECKS,
     WORKFLOW_JOB_CENSUS,
     census_gate_keys,
     census_kinds,
+    hook_advisory_keys,
+    hook_census,
+    hook_census_kinds,
+    hook_enforcing_keys,
+    hook_orientation_keys,
     mirror_adopter_step_names,
     workflow_job_census,
 )
@@ -223,3 +232,111 @@ def test_workflow_job_census_accessor_returns_a_copy():
     assert snapshot == WORKFLOW_JOB_CENSUS
     snapshot.clear()
     assert WORKFLOW_JOB_CENSUS, "the canonical census must be unaffected by a mutated copy."
+
+
+# ── HOOK_CENSUS — the second fourth-surface vector (lifecycle hooks) ──────────
+# Ground truth is the engine's own dispatch registries, imported the same way
+# guards is: cli._HOOK_EVENTS (every dispatched hook) and cli._HOOK_GUARD_KINDS
+# (the guard-shaped subset). A hook added to dispatch, or a census entry with no
+# live hook, must turn these red — both directions.
+def test_every_hook_is_censused():
+    """Bidirectional set-equality between the live hook dispatch
+    (``cli._HOOK_EVENTS``) and ``HOOK_CENSUS``. A new dispatch hook that is not
+    censused, or a censused key with no live dispatch entry, turns it red."""
+    dispatched = set(cli._HOOK_EVENTS)
+    censused = set(HOOK_CENSUS)
+    unclassified = dispatched - censused
+    stale = censused - dispatched
+    assert not unclassified and not stale, (
+        "hook-dispatch ⇄ HOOK_CENSUS drift in src/engine/guards.py.\n"
+        f"  NEW, un-censused dispatch hook(s): {sorted(unclassified)}\n"
+        "    → classify each in HOOK_CENSUS as HOOK_ADVISORY (a fail-open "
+        "guard), HOOK_ORIENTATION (a non-guard context injector), or "
+        "HOOK_ENFORCING (a blocking hook — and reference a pin like a gate).\n"
+        f"  REMOVED hook(s) still in the census: {sorted(stale)}\n"
+        "    → drop each from HOOK_CENSUS."
+    )
+
+
+def test_advisory_hooks_match_guard_kinds():
+    """The set of HOOK_ADVISORY census keys equals ``cli._HOOK_GUARD_KINDS`` —
+    the guard-shaped hooks that record a fire. Pins the ADVISORY classification
+    directly to source: a hook that becomes (or stops being) a guard-kind, or is
+    misclassified, turns it red."""
+    assert set(hook_advisory_keys()) == set(cli._HOOK_GUARD_KINDS), (
+        "HOOK_ADVISORY census keys must equal cli._HOOK_GUARD_KINDS.\n"
+        f"  advisory census: {sorted(hook_advisory_keys())}\n"
+        f"  guard kinds:     {sorted(cli._HOOK_GUARD_KINDS)}"
+    )
+
+
+def test_orientation_hooks_are_not_guards():
+    """Every HOOK_ORIENTATION key is absent from ``cli._HOOK_GUARD_KINDS`` — an
+    orientation injector is not a guard and records no guard fire."""
+    for key in hook_orientation_keys():
+        assert key not in cli._HOOK_GUARD_KINDS, (
+            f"{key}: classified ORIENTATION but present in cli._HOOK_GUARD_KINDS "
+            "— an orientation hook must not be a guard-kind."
+        )
+
+
+def test_enforcing_hooks_reference_a_pin():
+    """Every HOOK_ENFORCING entry carries a descriptive (>15-char) note that
+    references a pin — a blocking hook can never be a bare unbacked claim. The
+    set is empty today (every planted hook is fail-open), so this asserts
+    vacuously but guards the future: a new enforcing hook must name its pin."""
+    for key in hook_enforcing_keys():
+        _kind, note = HOOK_CENSUS[key]
+        assert len(note.strip()) > 15, (
+            f"{key}: an ENFORCING note must describe WHERE its block is pinned; "
+            f"too-thin: {note!r}"
+        )
+        assert "pin" in note.lower(), (
+            f"{key}: an ENFORCING hook must reference a pin in its note; "
+            f"got: {note!r}"
+        )
+
+
+def test_hook_census_kinds_are_known():
+    """Every hook census kind value is one of the three defined constants — the
+    classification stays legible instead of degrading to arbitrary strings."""
+    for key, (kind, _note) in HOOK_CENSUS.items():
+        assert kind in HOOK_KINDS, (
+            f"{key}: unknown hook census kind {kind!r}; must be one of {HOOK_KINDS}"
+        )
+    assert set(hook_census_kinds()) <= set(HOOK_KINDS)
+
+
+def test_hook_notes_carry_a_reason():
+    """Every hook census note is a descriptive (>15-char) reason — no bare
+    escape-hatch entries (the same bar as the workflow-job census notes)."""
+    thin = {
+        key: note
+        for key, (_kind, note) in HOOK_CENSUS.items()
+        if len(note.strip()) <= 15
+    }
+    assert not thin, (
+        f"hook census entries must carry a descriptive (>15 char) reason; "
+        f"too-thin: {thin}"
+    )
+
+
+def test_hook_advisory_floor():
+    """Anchor floor: at least EXPECTED_HOOK_ADVISORY fail-open advisory guards
+    today. A shrinkage guard (like EXPECTED_CENSUS_GATES) so the census can't be
+    gutted to a vacuously-green empty advisory set; bump the anchor deliberately
+    when the advisory hook set legitimately shrinks."""
+    assert len(hook_advisory_keys()) >= EXPECTED_HOOK_ADVISORY, (
+        f"expected at least {EXPECTED_HOOK_ADVISORY} HOOK_ADVISORY hook(s), "
+        f"found {len(hook_advisory_keys())} — if the advisory hook set shrank, "
+        "update EXPECTED_HOOK_ADVISORY deliberately."
+    )
+
+
+def test_hook_census_accessor_returns_a_copy():
+    """``hook_census()`` returns a COPY — a consumer mutating it can't corrupt
+    the canonical registry."""
+    snapshot = hook_census()
+    assert snapshot == HOOK_CENSUS
+    snapshot.clear()
+    assert HOOK_CENSUS, "the canonical hook census must be unaffected by a mutated copy."
