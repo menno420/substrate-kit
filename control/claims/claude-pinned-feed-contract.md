@@ -1,0 +1,1 @@
+- branch: claude/pinned-feed-contract · scope: docs/recipes/pinned-feed-contract.md + docs/recipes/README.md (new) + CONSTITUTION.md.tmpl rider + test + idea flip + dist rebuild · date: 2026-07-19
