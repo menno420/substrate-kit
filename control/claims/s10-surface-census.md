@@ -1,0 +1,1 @@
+- `claude/s10-surface-census` · **S10 — check_surface_census advisory (NOTE-form)** — surface the guards/jobs/hooks census (guards.py registries) in `check` output · src/engine/checks/check_surface_census.py + cli.py wiring + build_bootstrap MODULE_ORDER + tests + dist rebuild · 2026-07-19
