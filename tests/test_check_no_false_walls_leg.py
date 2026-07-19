@@ -19,7 +19,12 @@ import pytest
 
 pytest.importorskip("engine.hooks.settings")
 
-from engine.checks.check_no_false_walls import check_no_false_walls, scan_text
+from engine.checks.check_no_false_walls import (
+    _UNKNOWN_RULE_CORRECTION,
+    WALL_CORRECTIONS,
+    check_no_false_walls,
+    scan_text,
+)
 from engine.cli import cmd_check
 from engine.lib.config import Config, save_config
 
@@ -153,6 +158,41 @@ class TestSelfGating:
         _plant(tmp_path, ".sessions/2026-07-18-x.md", _MUST_FAIL[0])
         _plant(tmp_path, ".substrate/claude/CLAUDE.md", _MUST_FAIL[0])
         assert check_no_false_walls(tmp_path, Config()) == []
+
+
+# ── S6: the finding message inlines the rule's per-rule ground-truth correction ─
+
+
+class TestFindingCarriesCorrection:
+    def test_message_inlines_the_rule_specific_correction(self, tmp_path: Path) -> None:
+        # Every must-fail line's finding message names its rule AND carries the
+        # rule's WALL_CORRECTIONS sentence (or the unknown-rule fallback) inline —
+        # not just the generic blurb — so the red gate states the specific truth.
+        for text in _MUST_FAIL:
+            _plant(tmp_path, "docs/d.md", text)
+            findings = check_no_false_walls(tmp_path, Config())
+            assert findings, f"expected a finding for: {text!r}"
+            for f in findings:
+                rule = f.kind.split("false-wall:", 1)[1]
+                expected = WALL_CORRECTIONS.get(rule, _UNKNOWN_RULE_CORRECTION)
+                assert expected in f.message, (
+                    f"finding for rule {rule!r} must inline its correction; "
+                    f"got: {f.message!r}"
+                )
+                # The rule name is still surfaced in the message for the reader.
+                assert f"[{rule}]" in f.message
+        # Belt-and-braces: no must-fail carries a stale generic-only message.
+        assert "agents have no owner-imposed" not in "".join(
+            f.message for f in check_no_false_walls(tmp_path, Config())
+        )
+
+    def test_every_rule_has_a_correction_so_no_fallback_ships(self) -> None:
+        # The fallback is a safety net; every real blocklist rule should carry a
+        # dedicated correction (mirrors tests/test_explain_wall.py coverage).
+        from engine.checks.check_no_false_walls import all_rule_names
+
+        missing = sorted(all_rule_names() - WALL_CORRECTIONS.keys())
+        assert not missing, f"rules missing a WALL_CORRECTIONS entry: {missing}"
 
 
 # ── Exit-affecting wiring through cmd_check (the propagation goal) ─────────────
