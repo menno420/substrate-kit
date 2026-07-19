@@ -2849,7 +2849,7 @@ well-formedness readout so every graduation carries a usable signature from the
 start. Discovery, not enforcement — advisory only.
 
 What it does: for each recipe file under docs/recipes/ (excluding README.md),
-require a well-formed `> **applies-when:** \`<signature>\`` badge in the doc's
+require a well-formed `> **applies-when:** `<signature>`` badge in the doc's
 header (first 12 lines). The signature is a comma-separated list of tokens, each
 `path:<glob>` (a file-path glob a future check greps an adopter tree for) or
 `content:<marker>` (a content substring marker). A recipe with no badge, an
@@ -2873,7 +2873,7 @@ nothing. Stdlib only.
 
 _RECIPES_RELDIR = "docs/recipes"
 
-# The badge line: `> **applies-when:** \`<signature>\``. Group 1 = the raw
+# The badge line: `> **applies-when:** `<signature>``. Group 1 = the raw
 # signature inside the backticks.
 _RE_APPLIES_WHEN = re.compile(r"\*\*applies-when:\*\*\s*`([^`]*)`", re.IGNORECASE)
 
@@ -2920,7 +2920,7 @@ def check_recipe_applies_when(target: Path, config=None) -> list[Finding]:
                     RECIPE_APPLIES_WHEN_KIND,
                     "recipe graduation is missing an `applies-when:` badge in its "
                     f"header (first {_HEADER_LINES} lines) — add "
-                    "`> **applies-when:** \`<signature>\`` (a comma-separated list "
+                    "`> **applies-when:** `<signature>`` (a comma-separated list "
                     "of `path:<glob>` / `content:<marker>` tokens) so a future "
                     "discovery check can match an adopter's seam to this recipe.",
                 ),
