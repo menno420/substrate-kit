@@ -1,0 +1,1 @@
+- branch claude/cut-release-dist-before-restamp · scope: scripts/cut_release.py dist-before-self-restamp reorder (R1) + pinning test · 2026-07-19
