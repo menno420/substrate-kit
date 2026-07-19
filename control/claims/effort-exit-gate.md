@@ -1,0 +1,1 @@
+- claude/effort-exit-gate · segment-2 (effort) exit-gate on born-red added card + grammar MODEL_EFFORT_UNRECORDED relocation · 2026-07-19
