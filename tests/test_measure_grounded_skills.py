@@ -452,3 +452,126 @@ def test_api_latency_default_off(fixture_tree: Path, tmp_path: Path):
     payload = _json.loads(js.read_text(encoding="utf-8"))
     assert "api_latency" not in payload
     assert "API latency" not in out.read_text(encoding="utf-8")
+
+
+def test_freeze_writes_sidecar_and_prints_block(
+    git_fixture_tree: Path, tmp_path: Path, capsys, monkeypatch
+):
+    # --freeze emits a self-citing sidecar next to the JSON and a paste-ready
+    # block on stderr, whose sha256 is the hash of the exact bytes written.
+    import hashlib
+    import json as _json
+
+    monkeypatch.setattr(mgs, "_is_shallow", lambda repo_dir: False)
+    js = tmp_path / "results.json"
+    code = mgs.main(["--local", f"fixture={git_fixture_tree}", "--json", str(js), "--freeze"])
+    assert code == 0
+    sidecar = tmp_path / "results.json.freeze"
+    assert sidecar.exists()
+    record = _json.loads(sidecar.read_text(encoding="utf-8"))
+    assert record["algo"] == "sha256"
+    assert record["sha256"] == hashlib.sha256(js.read_bytes()).hexdigest()
+    assert record["bytes"] == len(js.read_bytes())
+    err = capsys.readouterr().err
+    assert "frozen run" in err
+    assert record["sha256"] in err
+    assert "sha256sum" in err
+
+
+def test_freeze_reproduce_command_is_exact(
+    git_fixture_tree: Path, tmp_path: Path, monkeypatch
+):
+    # the reproduce field is the exact command (paste-ready): interpreter,
+    # repo-relative script path, and every flag actually passed, incl. --freeze.
+    import json as _json
+
+    monkeypatch.setattr(mgs, "_is_shallow", lambda repo_dir: False)
+    js = tmp_path / "out.json"
+    argv = ["--local", f"fixture={git_fixture_tree}", "--json", str(js), "--freeze"]
+    code = mgs.main(argv)
+    assert code == 0
+    record = _json.loads((tmp_path / "out.json.freeze").read_text(encoding="utf-8"))
+    repro = record["reproduce"]
+    assert repro.startswith("python3 scripts/measure_grounded_skills.py ")
+    assert "--freeze" in repro
+    assert "--json" in repro
+    assert str(js) in repro
+
+
+def test_freeze_requires_json_or_commit(fixture_tree: Path, tmp_path: Path):
+    # --freeze without a JSON sink is a usage error (exit 2), not a silent no-op.
+    with pytest.raises(SystemExit) as exc:
+        mgs.main(
+            ["--local", f"fixture={fixture_tree}", "--out", str(tmp_path / "r.md"), "--freeze"]
+        )
+    assert exc.value.code == 2
+
+
+def test_freeze_default_off(git_fixture_tree: Path, tmp_path: Path, monkeypatch):
+    # without --freeze: JSON is written but no .freeze sidecar appears.
+    monkeypatch.setattr(mgs, "_is_shallow", lambda repo_dir: False)
+    js = tmp_path / "results.json"
+    code = mgs.main(["--local", f"fixture={git_fixture_tree}", "--json", str(js)])
+    assert code == 0
+    assert js.exists()
+    assert not (tmp_path / "results.json.freeze").exists()
+
+
+def test_freeze_refuses_on_shallow_clone(
+    git_fixture_tree: Path, tmp_path: Path, capsys, monkeypatch
+):
+    # the shallow-clone refuse guard runs before freeze: no JSON, no sidecar.
+    monkeypatch.setattr(mgs, "_is_shallow", lambda repo_dir: True)
+    js = tmp_path / "results.json"
+    code = mgs.main(["--local", f"fixture={git_fixture_tree}", "--json", str(js), "--freeze"])
+    assert code == 2
+    assert not js.exists()
+    assert not (tmp_path / "results.json.freeze").exists()
+    assert capsys.readouterr().err.startswith("REFUSE: shallow clone detected")
+
+
+def test_freeze_commit_results_sidecar(
+    git_fixture_tree: Path, tmp_path: Path, monkeypatch
+):
+    # --freeze with --commit-results writes a durable sidecar next to the
+    # durable artifact, citing the same bytes.
+    import hashlib
+    import json as _json
+
+    monkeypatch.setattr(mgs, "_is_shallow", lambda repo_dir: False)
+    durable = tmp_path / "data" / "results.json"
+    code = mgs.main(
+        ["--local", f"fixture={git_fixture_tree}", "--commit-results", str(durable), "--freeze"]
+    )
+    assert code == 0
+    sidecar = tmp_path / "data" / "results.json.freeze"
+    assert sidecar.exists()
+    record = _json.loads(sidecar.read_text(encoding="utf-8"))
+    assert record["sha256"] == hashlib.sha256(durable.read_bytes()).hexdigest()
+
+
+def test_freeze_both_sinks_share_digest(
+    git_fixture_tree: Path, tmp_path: Path, monkeypatch
+):
+    # both sinks are byte-identical, so both sidecars cite the same sha256.
+    import json as _json
+
+    monkeypatch.setattr(mgs, "_is_shallow", lambda repo_dir: False)
+    js = tmp_path / "ephemeral.json"
+    durable = tmp_path / "durable.json"
+    code = mgs.main(
+        [
+            "--local",
+            f"fixture={git_fixture_tree}",
+            "--json",
+            str(js),
+            "--commit-results",
+            str(durable),
+            "--freeze",
+        ]
+    )
+    assert code == 0
+    a = _json.loads((tmp_path / "ephemeral.json.freeze").read_text(encoding="utf-8"))
+    b = _json.loads((tmp_path / "durable.json.freeze").read_text(encoding="utf-8"))
+    assert a["sha256"] == b["sha256"]
+    assert js.read_bytes() == durable.read_bytes()
