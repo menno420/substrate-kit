@@ -1,0 +1,1 @@
+- `claude/night-run-idea-groom` · **scope** — groom the night run's session-card ideas into docs/planning/ + refresh control/status.md heartbeat · expected: docs/planning/, control/status.md, .sessions/ · 2026-07-19
