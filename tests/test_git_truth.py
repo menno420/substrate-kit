@@ -188,6 +188,58 @@ class TestDegradedSeams:
         assert gt.is_shallow(run) is None
 
 
+# ------------------------------------------------- require_full_history (S5)
+
+
+def _shallow_runner(value: str, rc: int = 0):
+    """A fake ``GitCommand`` that answers the shallow probe with ``value``/``rc``."""
+
+    def run(args):
+        if list(args) == ["rev-parse", "--is-shallow-repository"]:
+            return rc, value, ""
+        return 128, "", "unexpected git call"
+
+    return run
+
+
+class TestRequireFullHistory:
+    """The shared shallow -> refuse/degrade decision (wave-2 rank S5).
+
+    Built on ``is_shallow``, so its three verdicts map 1:1 onto that
+    primitive's False / True / None: FULL / SHALLOW / UNKNOWN.
+    """
+
+    def test_full_clone_is_full_with_no_reason(self):
+        v = gt.require_full_history(_shallow_runner("false"))
+        assert v.verdict == gt.FULL
+        assert v.reason == ""
+
+    def test_shallow_clone_is_shallow_with_unshallow_hint(self):
+        v = gt.require_full_history(_shallow_runner("true"))
+        assert v.verdict == gt.SHALLOW
+        assert "git fetch --unshallow" in v.reason
+
+    def test_undeterminable_depth_is_unknown_not_full(self):
+        # git errored on the probe (is_shallow -> None): "couldn't ask" must
+        # never silently read as a provably-full clone.
+        v = gt.require_full_history(_shallow_runner("", rc=127))
+        assert v.verdict == gt.UNKNOWN
+        assert v.reason
+
+    def test_full_verdict_on_a_real_full_clone(self, tmp_path):
+        _make_history(tmp_path, ["seed"])
+        v = gt.require_full_history(gt.make_runner(tmp_path))
+        assert v.verdict == gt.FULL
+
+    def test_shallow_verdict_on_a_real_shallow_clone(self, tmp_path):
+        upstream = tmp_path / "up"
+        _make_history(upstream, ["a", "b", "c"])
+        dest = tmp_path / "shallow"
+        _make_shallow_clone(upstream, dest, tmp_path)
+        v = gt.require_full_history(gt.make_runner(dest))
+        assert v.verdict == gt.SHALLOW
+
+
 # ---------------------------------------------- engine port parity (ORDER 022)
 
 
