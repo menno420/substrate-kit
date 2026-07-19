@@ -4233,6 +4233,46 @@ def _task_class_findings_for_card(text: str) -> list[str]:
     ]
 
 
+def _exact_model_id_findings_for_card(text: str) -> list[str]:
+    """The EXIT-AFFECTING exact-model-ID check for a single ADDED card (R14).
+
+    The sibling of :func:`_task_class_findings_for_card`, one segment over: the
+    fleet-wide payload lint (:func:`engine.checks.check_model_line.
+    check_model_line`) enforces the same rule — segment-1 of the ``📊 Model:``
+    line is a FAMILY-LEVEL model name (``opus-4.8``, ``fable-5``), never an
+    exact model-ID token (``claude-opus-4-8`` and co. — the ORDER 012
+    fleet-reporting bar) — but it is **advisory-only** and **windowed to the
+    newest cards**, so an exact-ID segment-1 on a NEW card merges green. This
+    helper is the exit-affecting half: the born-red added-card lane grades the
+    PR's OWN card, so an exact-ID PRESENT model segment reds at CI exactly like
+    an unflipped born-red badge. Scope stays the single added card (never a
+    historical/merged one), so it can never retroactively redden an existing
+    card.
+
+    **Fail-open on absence:** a card with no parseable ``📊 Model:`` line (or a
+    ``[[fill:]]`` / code-span / family-level model segment) yields nothing —
+    the missing-line case is already owned by the marker checks
+    (:func:`check_log` / ``missing_markers``), and a family-level name is
+    exactly what the rule wants. Only an exact-model-ID PRESENT segment reds.
+    Reuses the shared parser + :data:`engine.grammar.EXACT_MODEL_ID_RE`; does
+    not duplicate either.
+    """
+    payload = _last_model_payload(text)
+    if payload is None:
+        return []
+    model = payload["model"]
+    if not EXACT_MODEL_ID_RE.search(model):
+        return []
+    return [
+        f"an exact-model-ID `{MODEL_LINE_NEEDLE}` model segment {model!r} on "
+        "this added card — record the family-level model name only (e.g. "
+        "`fable-5`, `opus-4.8`), never an exact model ID, dated or not (fleet "
+        f"reporting bar, ORDER 012); fix this card's line to the taught form "
+        f"`{MODEL_LINE_TAUGHT_FORMAT}` (family-level model \N{MIDDLE DOT} "
+        "effort \N{MIDDLE DOT} PL-004 task class; see .sessions/README.md)"
+    ]
+
+
 def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
     """Grade a card newly ADDED by a PR (the gate's added-card lane).
 
@@ -4269,9 +4309,11 @@ def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[s
       :func:`check_log` completeness check — missing markers and unresolved
       ``[[fill:]]`` slots red exactly as they would on a MODIFIED card — PLUS
       the exit-affecting PL-004 task-class check (R13,
-      :func:`_task_class_findings_for_card`): an off-taxonomy ``📊 Model:``
-      task-class on the PR's OWN card reds here, scoped to this single added
-      card so no historical card is retroactively reddened. (The fleet-wide
+      :func:`_task_class_findings_for_card`) AND the exit-affecting
+      exact-model-ID check (R14, :func:`_exact_model_id_findings_for_card`): an
+      off-taxonomy ``📊 Model:`` task-class OR an exact-model-ID model segment
+      on the PR's OWN card reds here, each scoped to this single added card so
+      no historical card is retroactively reddened. (The fleet-wide
       :func:`engine.checks.check_model_line.check_model_line` window stays
       advisory-only and windowed — this is its exit-affecting, own-card half.)
     """
@@ -4290,12 +4332,15 @@ def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[s
     if _value_declares(value, IN_PROGRESS_TOKENS):
         return [BORN_RED_HOLD_MESSAGE]
     # Complete-branch: the card claims a finished close-out. Full completeness
-    # check PLUS the exit-affecting PL-004 task-class check (R13) — both scoped
-    # to this single added card. An off-taxonomy `📊 Model:` class reds here
-    # exactly like an unflipped born-red badge; a missing/malformed line stays
-    # silent (fail-open — the marker checks own that case).
+    # check PLUS the exit-affecting PL-004 task-class check (R13) AND the
+    # exit-affecting exact-model-ID check (R14) — all scoped to this single
+    # added card. An off-taxonomy `📊 Model:` class OR an exact-model-ID model
+    # segment reds here exactly like an unflipped born-red badge; a
+    # missing/malformed line stays silent (fail-open — the marker checks own
+    # that case).
     findings = check_log(path, markers)
     findings.extend(_task_class_findings_for_card(text))
+    findings.extend(_exact_model_id_findings_for_card(text))
     return findings
 
 
