@@ -487,6 +487,75 @@ def test_added_card_unreadable_is_named_honestly(tmp_path):
     assert misses == ["an unreadable added card (cannot grammar-check)"]
 
 
+# ── R13: exit-affecting PL-004 task-class gate on the PR's OWN added card ────
+# The fleet-wide `check_model_line` advisory is windowed + never exit-affecting,
+# so an off-taxonomy class on a NEW card merges green. `check_added_card` folds
+# the same rule in EXIT-AFFECTING, scoped to the single added card: an
+# off-taxonomy class on the PR's own complete card reds like an unflipped badge,
+# a VALID class passes, and a card with NO `📊 Model:` line is fail-open.
+
+
+def test_added_card_valid_task_class_yields_no_task_class_finding(tmp_path):
+    # Direction 1 (passes): an otherwise-complete card whose `📊 Model:`
+    # task-class IS one of the 9 PL-004 classes gets no task-class finding.
+    card = tmp_path / "2026-07-19-tc-ok.md"
+    _write(
+        card,
+        "# ok\n\n> **Status:** `complete`\n\n💡 idea\n\n"
+        "previous-session review: ok\n\n"
+        "- **📊 Model:** opus-4.8 · high · feature build\n",
+    )
+    assert check_added_card(card, _MARKERS) == []
+
+
+def test_added_card_off_taxonomy_task_class_reds(tmp_path):
+    # Direction 2 (reds): the SAME card with only the task-class changed to an
+    # off-taxonomy value (`kit-feature`) gains exactly one task-class finding
+    # (and nothing else — every marker is present).
+    card = tmp_path / "2026-07-19-tc-bad.md"
+    _write(
+        card,
+        "# bad\n\n> **Status:** `complete`\n\n💡 idea\n\n"
+        "previous-session review: ok\n\n"
+        "- **📊 Model:** opus-4.8 · high · kit-feature\n",
+    )
+    misses = check_added_card(card, _MARKERS)
+    assert len(misses) == 1
+    assert "off-taxonomy" in misses[0]
+    assert "'kit-feature'" in misses[0]
+    assert "feature build" in misses[0]  # the 9 valid classes are listed
+
+
+def test_added_card_missing_model_line_is_fail_open_for_task_class(tmp_path):
+    # Fail-open: a complete card with NO `📊 Model:` needle gains no NEW
+    # task-class finding — the missing-line case is the marker checks' job
+    # (`check_log`), never a double-red here. The card still reds on the
+    # missing Model-line MARKER, so `check_added_card` == `check_log` exactly.
+    card = tmp_path / "2026-07-19-tc-none.md"
+    _write(
+        card,
+        "# none\n\n> **Status:** `complete`\n\n💡 idea\n\n"
+        "previous-session review: ok\n",  # no 📊 Model: line at all
+    )
+    misses = check_added_card(card, _MARKERS)
+    assert misses == check_log(card, _MARKERS)  # no extra task-class finding
+    assert not any("off-taxonomy" in m for m in misses)
+    assert any("Model line" in m for m in misses)  # marker miss still reds
+
+
+def test_added_card_decorated_valid_task_class_passes(tmp_path):
+    # Prefix-match on purpose: a decorated valid class (`feature build (...)`)
+    # is a valid report — the same tail the repo's real cards carry — not drift.
+    card = tmp_path / "2026-07-19-tc-decorated.md"
+    _write(
+        card,
+        "# dec\n\n> **Status:** `complete`\n\n💡 idea\n\n"
+        "previous-session review: ok\n\n"
+        "- **📊 Model:** Opus 4.8 · high · feature build (the gate + tests)\n",
+    )
+    assert check_added_card(card, _MARKERS) == []
+
+
 # ---------------------------------------------------------------------------
 # Integration — the kit's own rendered templates pass its own check_docs
 # ---------------------------------------------------------------------------

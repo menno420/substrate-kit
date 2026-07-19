@@ -3940,6 +3940,7 @@ markers rather than printing.
 
 
 
+
 def _marker_miss(marker: Mapping[str, str]) -> str:
     """Name one missed marker: its label AND the exact byte-form expected.
 
@@ -4172,6 +4173,66 @@ def _status_grammar_findings(text: str) -> list[str]:
     return []
 
 
+def _last_model_payload(text: str) -> dict | None:
+    """Last-valid ``📊 Model:`` payload on a card, or ``None`` when none parses.
+
+    Mirrors :func:`engine.checks.check_model_line.model_line_findings`'
+    last-valid-wins candidate scan — but reused HERE (this module sits below
+    ``check_model_line`` in the dist module order, so the reverse edge would be
+    circular), sharing only the grammar leaf ``engine.grammar.parse_model_payload``
+    + the needle constant. Code spans / fenced blocks and ``[[fill:]]`` stand-in
+    lines are not reports (a card whose prose mentions the needle, or a draft's
+    stand-in line, is skipped). **Fail-open:** a card with no parseable needle
+    line returns ``None`` and the caller stays silent — marker PRESENCE is the
+    session-log gate's job (:func:`missing_markers`), never this helper's.
+    """
+    stripped = _CODE_SPAN_RE.sub("", _FENCE_RE.sub("", text))
+    last_valid: dict | None = None
+    for line in stripped.splitlines():
+        if MODEL_LINE_NEEDLE not in line or DRAFT_FILL_TOKEN in line:
+            continue
+        parsed = parse_model_payload(line.split(MODEL_LINE_NEEDLE, 1)[1])
+        if parsed is not None:
+            last_valid = parsed
+    return last_valid
+
+
+def _task_class_findings_for_card(text: str) -> list[str]:
+    """The EXIT-AFFECTING PL-004 task-class check for a single ADDED card (R13).
+
+    The fleet-wide payload lint (:func:`engine.checks.check_model_line.
+    check_model_line`) enforces the same rule — segment-3 of the ``📊 Model:``
+    line must prefix-match one of the 9 :data:`engine.grammar.MODEL_TASK_CLASSES`
+    — but it is **advisory-only** and **windowed to the newest cards**, so an
+    off-taxonomy class on a NEW card merges green. This helper is the
+    exit-affecting half: the born-red added-card lane grades the PR's OWN card,
+    so an off-taxonomy PRESENT class reds at CI exactly like an unflipped
+    born-red badge. Scope stays the single added card (never a historical/merged
+    one), so it can never retroactively redden an existing card.
+
+    **Fail-open on absence:** a card with no parseable ``📊 Model:`` line (or a
+    line malformed such that no task-class parses) yields nothing — that case is
+    already owned by the marker checks (:func:`check_log` / ``missing_markers``);
+    double-reddening it here would be noise. Only an off-taxonomy PRESENT class
+    reds. Reuses the shared parser + class tuple; does not duplicate either.
+    """
+    payload = _last_model_payload(text)
+    if payload is None:
+        return []
+    task_class = payload["task_class"]
+    if any(task_class.startswith(known) for known in MODEL_TASK_CLASSES):
+        return []
+    known = " | ".join(MODEL_TASK_CLASSES)
+    return [
+        f"an off-taxonomy `{MODEL_LINE_NEEDLE}` task-class {task_class!r} on "
+        f"this added card — it does not prefix-match any of the "
+        f"{len(MODEL_TASK_CLASSES)} PL-004 classes ({known}); fix this card's "
+        f"line to the taught form `{MODEL_LINE_TAUGHT_FORMAT}` (family-level "
+        "model \N{MIDDLE DOT} effort \N{MIDDLE DOT} PL-004 task class; see "
+        ".sessions/README.md)"
+    ]
+
+
 def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
     """Grade a card newly ADDED by a PR (the gate's added-card lane).
 
@@ -4206,7 +4267,13 @@ def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[s
     - **badge declares anything else** (``complete`` & co.) → the card
       claims to be a finished close-out, so it gets the full
       :func:`check_log` completeness check — missing markers and unresolved
-      ``[[fill:]]`` slots red exactly as they would on a MODIFIED card.
+      ``[[fill:]]`` slots red exactly as they would on a MODIFIED card — PLUS
+      the exit-affecting PL-004 task-class check (R13,
+      :func:`_task_class_findings_for_card`): an off-taxonomy ``📊 Model:``
+      task-class on the PR's OWN card reds here, scoped to this single added
+      card so no historical card is retroactively reddened. (The fleet-wide
+      :func:`engine.checks.check_model_line.check_model_line` window stays
+      advisory-only and windowed — this is its exit-affecting, own-card half.)
     """
     try:
         text = path.read_text(encoding="utf-8")
@@ -4222,7 +4289,14 @@ def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[s
     value = _status_badge_value(text)
     if _value_declares(value, IN_PROGRESS_TOKENS):
         return [BORN_RED_HOLD_MESSAGE]
-    return check_log(path, markers)
+    # Complete-branch: the card claims a finished close-out. Full completeness
+    # check PLUS the exit-affecting PL-004 task-class check (R13) — both scoped
+    # to this single added card. An off-taxonomy `📊 Model:` class reds here
+    # exactly like an unflipped born-red badge; a missing/malformed line stays
+    # silent (fail-open — the marker checks own that case).
+    findings = check_log(path, markers)
+    findings.extend(_task_class_findings_for_card(text))
+    return findings
 
 
 def check_log(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
