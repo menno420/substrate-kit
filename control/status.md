@@ -1,5 +1,5 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-19T01:49:27Z · phase: GSW-5 shipped this wake — the opt-in `--api-latency` harness mode graduated (PR #479, `claude/api-latency-harness-mode`): `scripts/measure_grounded_skills.py` now folds in the GSW-4 open→merge latency pass as a default-off `--api-latency` flag reusing `scripts/measure_pr_latency.py`'s pure logic (no duplication), cleanly SKIPPED offline/credential-less; +3 tests, docs updated; no engine files → byte-pin clean; default output byte-identical. Prior: GSW-4 shipped the prior wake — the optional GitHub-API PR open→merge latency pass (`scripts/measure_pr_latency.py` + 12 pure tests) landed in PR #477, adding report §7 + the frozen latency JSON (`docs/reports/data/2026-07-19-grounded-skills-latency.json`, linked from `docs/operations/README.md`) to the grounded-skills report; GSW-1..4 are now ALL complete (the grounded-skills window run is fully done). Headline: fleet median open→merge latency 3.5→4.5 min (before n=1630 / after n=1768) — flat, confound-heavy, descriptive-only; all 12 roster repos returned data, zero nulls. 1808 pytest pass / 1 skipped. PR #477 born-red (session-card in-progress hold); flips complete as the last step.
+updated: 2026-07-19T02:22:56Z · phase: pinned-feed-contract graduation shipped (#482) — the cross-repo feed-desync doctrine graduated into the kit (docs/recipes/pinned-feed-contract.md + a CONSTITUTION.md.tmpl rider + the docs/recipes/README.md index); control-only fast-lane close-out after the code merge; ships to adopters via the next release. Prior: GSW-5 shipped the prior wake — the opt-in `--api-latency` harness mode graduated (PR #479): `scripts/measure_grounded_skills.py` folds in the GSW-4 open→merge latency pass as a default-off `--api-latency` flag reusing `scripts/measure_pr_latency.py`'s pure logic, cleanly SKIPPED offline/credential-less; +3 tests, docs; no engine files → byte-pin clean, default output byte-identical.
 
 > **Orders done-truth (read this first):** orders **001–024 are ALL DONE** — the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and is flipped `new→done` manager-side only after the manager reads this status report (control/README.md:86), so an inbox order reading `status: new` while this file's `done=` covers it means **DONE-and-awaiting-manager-flip, not open**. No ORDER >024 exists in control/inbox.md at HEAD; "ORDER 025" is not a standalone bound order — it is the `>`-quoted fm relay inside ORDER 019 item 5 (highest bound order = 024). Its WORK is nonetheless COMPLETE: both cfgdiff writeups are on main (docs/reports/2026-07-09-cfgdiff-differential-testing-method.md + …-v0.1.1-release-decision.md), linked from bench/README.md, merged via PR #340 (2026-07-13). The redundant standalone ORDER-025-block append that hit the classifier wall is therefore MOOT.
 
@@ -18,6 +18,7 @@ IN-FLIGHT: `claude/gsw-4-pr-latency` (PR #477) — GSW-4 open→merge latency pa
 
 ## Recently shipped (neutral pointer)
 
+- pinned-feed-contract doctrine graduated: docs/recipes/pinned-feed-contract.md + CONSTITUTION.md.tmpl rider + docs/recipes/README.md index, PR #482 (2026-07-19); ships to adopters via the next release.
 - PR #479 (this wake): GSW-5 — opt-in `--api-latency` harness mode graduated the GSW-4 latency pass into `scripts/measure_grounded_skills.py` (reuses `measure_pr_latency.py` pure logic, honest SKIP offline, default-off byte-identical); +3 tests, docs. No engine files → no dist rebuild, byte-pin clean. Rung-4 self-initiated (ORDER 048 grant).
 - PR #476 (prior wake): GSW-1..3 grounded-skills measurement — harness ran over full/non-shallow clones of the 12-repo roster (M4 valid), 4/4 PL-008 spot-checks MATCH, before/after report published + frozen M1–M4 data + reachability link. Merged 2026-07-19.
 - PR #474 (prior wake): B-3 fast-lane head-prefix ⇄ enabler branch_patterns symmetry lint (advisory). Merged 2026-07-18.
@@ -55,15 +56,15 @@ kit: v1.19.0
 ## Next-2 baton
 
 1. **GSW-1..4 · grounded-skills window run — DONE.** GSW-1..3 (harness ran, 4/4 spot-checks MATCH, M1–M4 report published — PR #476) → GSW-4 (optional GitHub-API open→merge latency pass, report §7 + frozen latency JSON — PR #477, this wake). The grounded-skills window run is fully complete; all traps cleared (non-shallow clones, PL-008 spot-checks, reachability links, frozen+sha256-cited data).
-2. **Needs-planning items now SCOPED** into turnkey recipes —
-   `docs/planning/2026-07-19-needs-planning-recipes.md`. Baton, ranked:
-   (1) pinned-feed-contract doctrine (buildable-now, M — graduate into docs/recipes/ + a
-   CONSTITUTION.md.tmpl rider); (2) folded-gate advisory checker (buildable-now, S —
-   second-occurrence trigger met); (3) readiness-cell (kit half DONE via ORDER 003 — route
-   the websites board-render recipe to the websites lane); (4) t5-headless-guard
-   (owner-gated pin-path + cross-tree kit-lab — six-field ⚑ in the recipe doc).
+2. **Needs-planning items SCOPED** into turnkey recipes —
+   `docs/planning/2026-07-19-needs-planning-recipes.md`. pinned-feed-contract (rank-1) is
+   SHIPPED via PR #482 (2026-07-19). Baton, ranked next:
+   (1) folded-gate advisory checker (buildable-now, S — second-occurrence trigger met);
+   (2) readiness-cell (kit half DONE via ORDER 003 — route the websites board-render recipe
+   to the websites lane); (3) t5-headless-guard (owner-gated pin-path + cross-tree kit-lab —
+   six-field ⚑ in the recipe doc).
 
-**Baton: 4 needs-planning items scoped → 2 buildable-now (pinned-feed-contract, folded-gate advisory), 1 kit-half-done/cross-repo (readiness-cell), 1 owner-gated+cross-tree (t5-headless-guard); see docs/planning/2026-07-19-needs-planning-recipes.md.** The seat idles on the 2h failsafe trigger between wakes.
+**Baton: pinned-feed-contract SHIPPED (#482, 2026-07-19); next-3 scoped → (1) folded-gate advisory checker (buildable-now, S), (2) readiness-cell (kit-half-done/cross-repo), (3) t5-headless-guard (owner-gated+cross-tree); see docs/planning/2026-07-19-needs-planning-recipes.md.** The seat idles on the 2h failsafe trigger between wakes.
 
 ## ⚑ FOR OWNER (standing set carried forward)
 
