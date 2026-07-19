@@ -2,6 +2,11 @@
 
 > **Status:** `plan` · 2026-07-19
 >
+> **Succeeded by** `docs/planning/2026-07-19-night-run-idea-groom-wave2.md` — the
+> R1–R13 ladder below is exhausted (all shipped) and R14/#513 + R15/#514 closed the
+> two coordinator-directed born-red exit-gates; the wave-2 groom ranks the next
+> buildable-now ladder (S2–S16).
+>
 > Swept: all `.sessions/2026-07-18-*.md` + `2026-07-19-*.md` `💡` lines + friction
 > flags, and `docs/ideas/`. Deduped against what shipped in the night run (#455–#486).
 > Classified: buildable-now (S/M + one-line recipe) · needs-planning · owner-gated /
