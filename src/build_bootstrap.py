@@ -71,6 +71,11 @@ MODULE_ORDER = (
     # graduation lacks a well-formed `applies-when:` badge; advisory-only.
     "checks/check_recipe_applies_when.py",
     # After check_docs.py (its only engine reference is check_docs.Finding): the
+    # un-groomed-idea counter advisory (wave-2 groom S3) — counts 💡 session-idea
+    # lines on cards newer than the newest docs/planning/*groom*.md so a "backlog
+    # dry" claim can't be made falsely. Advisory-only, never exit-affecting.
+    "checks/check_ungroomed_ideas.py",
+    # After check_docs.py (its only engine reference is check_docs.Finding): the
     # fast-lane prefix symmetry advisory (groom R8) — warns when a host's ci.yml
     # claims-only fast-lane guard cards a prefix its auto-merge-enabler never
     # arms (enabler⇄guard drift). Advisory-only, never exit-affecting, like its

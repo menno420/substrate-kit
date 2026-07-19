@@ -56,6 +56,7 @@ from engine.checks.check_fastlane_symmetry import check_fastlane_symmetry
 from engine.checks.check_stale_walls import check_stale_walls
 from engine.checks.check_wall_ledger_agreement import check_wall_ledger_agreement
 from engine.checks.check_recipe_applies_when import check_recipe_applies_when
+from engine.checks.check_ungroomed_ideas import check_ungroomed_ideas
 from engine.checks.check_engagement import (
     check_engagement,
     check_engagement_control,
@@ -1421,6 +1422,12 @@ def cmd_check(
     # posture="advisory" seam below (NOT _extra_check_findings) and stays off
     # STRICT_SUBCHECKS.
     recipe_applies_when_advisories = check_recipe_applies_when(target, config)
+    # Un-groomed-idea counter (wave-2 groom S3): counts 💡 session-idea lines on
+    # cards newer than the newest docs/planning/*groom*.md, so a "backlog dry"
+    # claim can't be made while un-groomed ideas still sit on cards. A nudge to
+    # run a groom pass, not a defect, so it rides the same posture="advisory"
+    # seam below (NOT _extra_check_findings) and stays off STRICT_SUBCHECKS.
+    ungroomed_ideas_advisories = check_ungroomed_ideas(target, config)
     if status_only:
         # --status-only: the fast lane's scoped gate (see docstring). Only the
         # control-lane checkers run — the heartbeat gate, the control-scoped
@@ -2048,6 +2055,26 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=recipe_applies_when_advisories,
+        )
+    if ungroomed_ideas_advisories and not status_only:
+        # Same warn-only contract as the advisories above (wave-2 groom S3): 💡
+        # session ideas on cards newer than the newest groom doc are un-groomed —
+        # counting them is a "run a groom pass before claiming backlog dry" nudge,
+        # not a defect that should fail an adopter. Surfaced + telemetry-recorded,
+        # NEVER counted toward the exit code (deliberately off STRICT_SUBCHECKS).
+        _emit(
+            f"check: {len(ungroomed_ideas_advisories)} un-groomed-idea "
+            "advisory warning(s) (never exit-affecting):",
+        )
+        for finding in ungroomed_ideas_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=ungroomed_ideas_advisories,
         )
 
     log_missing: list[str] = []

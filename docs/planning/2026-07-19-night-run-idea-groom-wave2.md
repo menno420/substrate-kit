@@ -22,7 +22,7 @@ buildable work again, and retargets the baton forward at them.
 
 - **S1 — segment-2 effort exit-gate** — completed the 📊 Model line exit-gate trilogy (model-ID #513, task-class #512, effort). → **SHIPPED as PR #514.**
 - **S2 — advisory→born-red-gate graduation recipe** (docs/recipes/, carrying R11's applies-when: badge) — documents the exact pattern #512/#513/#514 followed.
-- **S3 — un-groomed-idea counter advisory** — counts 💡 lines on cards newer than the newest groom doc; blocks a false "backlog DRY."
+- **S3 — un-groomed-idea counter advisory** — counts 💡 lines on cards newer than the newest groom doc; blocks a false "backlog DRY." → **IN FLIGHT as PR #517** (not yet merged).
 - **S4 — check_baton_resolves advisory** — verify every `## Next-2 baton` entry names a real resolvable path/anchor.
 - **S5 — shared require_full_history() helper** — extract in git_truth.py, harden measure_pr_latency.py.
 - **S6 — inline WALL_CORRECTIONS into check_no_false_walls message** — wire per-rule corrections into the Finding.
@@ -36,6 +36,7 @@ buildable work again, and retargets the baton forward at them.
 - **S14 — dateless-wall advisory** — flag wall rows with no parseable date.
 - **S15 — cut_release --rebuild-dist** — fold FOLLOWUP dist rebuild into the cut.
 - **S16 — --api-latency harness mode** (opt-in, env-gated on GITHUB_PAT) — larger, needs live GH.
+- **S17 — applies-when discovery nudge** — OPEN — deferred-nudge threshold now MET (>=2 signed recipes carry `applies-when:` signatures, per docs/recipes/README.md); build a warn-only `check_recipe_discovery` advisory that, for an adopter tree matching a recipe's `applies-when:` signature, nudges toward that recipe (discovery, not enforcement). Distinct from S8 (signature-HONESTY lint: tokens-vs-body cross-check) — this is DISCOVERY: match a recipe's signature against the adopter's own tree. Recipe: docs/recipes/README.md deferred-nudge rule.
 
 ## Needs-planning
 - **Config-driven stale-doctrine guard** (carried from wave-1): generalize
