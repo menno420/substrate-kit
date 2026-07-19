@@ -1,0 +1,1 @@
+- `claude/r12-folded-gate-remediation` · **R12 check_folded_gate remediation snippet** — extend the folded-gate advisory to emit a paste-ready diff-aware card-derivation block + rebuild dist byte-pin + tests · expected files: src/engine/checks/check_folded_gate.py, dist/bootstrap.py, tests/test_check_folded_gate.py, control/status.md, .sessions/ · 2026-07-19
