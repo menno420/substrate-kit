@@ -43,7 +43,42 @@ turnkey: clone, run one command, interpret, publish.
    harness's skeleton tables plus the interpretation sections below.
 4. Optional API pass (only if latency claims are wanted): PR open→merge
    latency per #247 §2 via the GitHub API — the harness deliberately does
-   not fake this from git data.
+   not fake this from git data. This is available two ways: the standalone
+   `scripts/measure_pr_latency.py` (the frozen GSW-4 run, report §7), or the
+   harness's opt-in `--api-latency` mode below (same pure logic, re-runnable
+   alongside M1–M4).
+
+## Opt-in `--api-latency` mode (graduated from GSW-4)
+
+The harness's default path is local/git-only (M1–M4, no network). Passing
+`--api-latency` **also** measures open→merge PR latency via the GitHub API, so
+latency is a first-class, re-runnable metric alongside M1–M4 instead of a
+one-off script:
+
+```
+python3 scripts/measure_grounded_skills.py --clone --workdir /tmp/gsm \
+    --json /tmp/gsm/results.json --out /tmp/gsm/report.md --api-latency
+```
+
+- **Reuses `scripts/measure_pr_latency.py`'s pure logic — no duplication.**
+  The mode loads that script by path (there is no package under `scripts/`)
+  and calls its pure bucketing / percentile / aggregation functions plus its
+  isolated direct-egress GitHub-API fetch. The frozen GSW-4 artifacts (report
+  §7, `docs/reports/data/2026-07-19-grounded-skills-latency.json`) are the
+  authoritative run; the `--api-latency` section is the modest re-runnable
+  readout (per-repo before/after medians + the pooled fleet aggregate).
+- **Token.** Requires a GitHub token in `GITHUB_PAT` / `GH_TOKEN` /
+  `GITHUB_TOKEN` (direct egress — the proxied REST path 403s).
+- **Cleanly SKIPPED, never errored, offline.** With no token the mode returns
+  `status: skipped` **without touching the network** (the token is resolved
+  before any session opens); a network / rate-limit failure is likewise an
+  honest SKIP, not a crash. The report prints an
+  `API latency: SKIPPED — <reason>` line and the harness still exits 0. The
+  standalone `scripts/measure_pr_latency.py` keeps its own `BLOCKER:` / exit-2
+  behavior — the graceful SKIP lives only in this harness mode.
+- **Default-off is byte-identical to today.** Without the flag there is no
+  latency section and no `api_latency` JSON key, and `requests` stays a lazy
+  import inside the network path only.
 
 ## Window and buckets (frozen)
 

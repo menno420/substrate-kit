@@ -31,8 +31,11 @@ The four §3d metrics (definitions canonical in
   field (old-format lines fail open, per the grammar's doctrine).
 - **M4 merge-throughput proxy** — merged/squashed PRs per day on the default
   branch, counted from ``(#N)`` subject suffixes in ``git log``. Open→merge
-  latency needs the GitHub API and is deliberately NOT harness scope — the
-  protocol doc marks it as the run session's optional API pass.
+  latency needs the GitHub API, so it is not in the default (local/git-only)
+  path — it is available as the **opt-in ``--api-latency`` mode** (graduated
+  from the GSW-4 pass), which reuses ``scripts/measure_pr_latency.py``'s pure
+  logic and is cleanly SKIPPED (not errored) when no token is present or the
+  network fails.
 
 Read-only everywhere: the harness clones (or reads pre-cloned/local trees)
 and never writes to any adopter repo (KF-2).
@@ -48,6 +51,7 @@ Tests: ``tests/test_measure_grounded_skills.py`` (fixture trees, no network).
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import re
 import subprocess
@@ -553,6 +557,126 @@ def results_json(
     }
 
 
+# ── opt-in API-latency mode (graduated from GSW-4) ───────────────────────────
+
+
+def _load_latency_module():
+    """Load ``scripts/measure_pr_latency.py`` as a module (sibling path).
+
+    There is no package under ``scripts/`` — matching the importlib-load
+    convention the tests already use — so this loads the standalone latency
+    script by path and returns the executed module. Loading it does NOT touch
+    the network or import ``requests`` (that stays lazy inside its network
+    path), so the harness's default/offline path stays stdlib-only.
+    """
+    path = Path(__file__).with_name("measure_pr_latency.py")
+    spec = importlib.util.spec_from_file_location("measure_pr_latency", path)
+    if spec is None or spec.loader is None:  # pragma: no cover — path is fixed
+        raise ImportError(f"cannot load latency module from {path}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def run_api_latency(
+    repos: list[str], *, start: date, boundary: date, end: date, verbose: bool = False
+) -> dict:
+    """Opt-in GitHub-API open→merge latency pass, reusing measure_pr_latency.
+
+    Returns one of:
+    - ``{"status": "skipped", "reason": ...}`` — no token (checked WITHOUT
+      touching the network) or a network/rate-limit failure (honest null).
+    - ``{"status": "ok", "payload": ...}`` — the measure_pr_latency payload.
+
+    Never crashes the harness: a credential-less env or a network failure SKIPS.
+    """
+    mod = _load_latency_module()
+
+    # Resolve the token WITHOUT touching the network. When absent, return the
+    # same message text ``make_session`` would raise — but never open a session.
+    if mod._resolve_token() is None:
+        reason = (
+            "no GitHub token in env (tried " + ", ".join(mod._TOKEN_ENV_VARS) + ")"
+        )
+        return {"status": "skipped", "reason": reason}
+
+    # Network path — any failure (RuntimeError from make_session, requests
+    # errors, unexpected exceptions) becomes an honest SKIP, not a crash.
+    try:
+        session = mod.make_session()
+        repo_results: list[dict] = [
+            mod.measure_repo(
+                repo, session, start=start, boundary=boundary, end=end, verbose=verbose
+            )
+            for repo in repos
+        ]
+        payload = mod.build_payload(
+            repo_results,
+            start=start,
+            boundary=boundary,
+            end=end,
+            generated=mod._now_iso(),
+        )
+    except Exception as exc:  # noqa: BLE001 — any failure is an honest null SKIP
+        return {"status": "skipped", "reason": str(exc)}
+    return {"status": "ok", "payload": payload}
+
+
+def render_api_latency(result: dict) -> str:
+    """A modest latency section mirroring the frozen report §7 shape.
+
+    The authoritative latency report is the frozen doc (report §7); this is the
+    harness's re-runnable readout, kept deliberately high-level.
+    """
+    lines = [
+        "## Open→merge latency (--api-latency · GitHub-API pass)",
+        "",
+    ]
+    if result.get("status") != "ok":
+        lines.append(f"API latency: SKIPPED — {result.get('reason', 'unknown')}")
+        lines.append("")
+        return "\n".join(lines)
+
+    payload = result["payload"]
+    lines += [
+        "Opt-in GitHub-API pass, reusing scripts/measure_pr_latency.py's pure",
+        "logic (no duplication). latency = merged_at − created_at (minutes);",
+        "numpy-style linear-interpolation percentiles; PRs bucketed by merged_at",
+        "UTC date. The authoritative frozen run is report §7.",
+        "",
+        "### Per-repo latency (minutes) — before · after (n·median)",
+        "",
+        "| repo | before (n·med) | after (n·med) |",
+        "|---|---|---|",
+    ]
+    for r in payload.get("repos", []):
+        if not r.get("ok"):
+            lines.append(f"| {r.get('name', '?')} | null ({r.get('skip_reason', 'error')}) | — |")
+            continue
+        al = r["api_latency"]
+        b, a = al["before"], al["after"]
+        lines.append(
+            f"| {r['name']} | {b['latency_n']}·{b['median_min']} "
+            f"| {a['latency_n']}·{a['median_min']} |"
+        )
+    agg = payload.get("fleet_aggregate", {})
+    lines += [
+        "",
+        "### Fleet aggregate (pooled, minutes)",
+        "",
+        "| bucket | n | median | p90 | max |",
+        "|---|---|---|---|---|",
+    ]
+    for b in ("before", "boundary-day", "after"):
+        c = agg.get(b, {})
+        lines.append(
+            f"| {b} | {c.get('latency_n', 0)} | {c.get('median_min')} "
+            f"| {c.get('p90_min')} | {c.get('max_min')} |"
+        )
+    lines.append("")
+    return "\n".join(lines)
+
+
 # ── CLI ──────────────────────────────────────────────────────────────────────
 
 
@@ -573,6 +697,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--end", type=date.fromisoformat, default=datetime.now(timezone.utc).date())
     ap.add_argument("--json", type=Path, help="write machine-readable results here")
     ap.add_argument("--out", type=Path, help="write the markdown report here (default: stdout)")
+    ap.add_argument(
+        "--api-latency",
+        action="store_true",
+        help=(
+            "opt-in; also measures open→merge PR latency via the GitHub API; "
+            "requires a token in GITHUB_PAT/GH_TOKEN/GITHUB_TOKEN; cleanly "
+            "SKIPPED (not errored) when the token is absent or the network fails"
+        ),
+    )
     args = ap.parse_args(argv)
 
     targets: list[tuple[str, Path | None, str]] = []
@@ -611,19 +744,24 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     report = render_report(results, start=args.start, boundary=args.boundary, end=args.end)
+
+    api_latency_result: dict | None = None
+    if args.api_latency:
+        repos = parse_roster(args.roster.read_text(encoding="utf-8"))
+        api_latency_result = run_api_latency(
+            repos, start=args.start, boundary=args.boundary, end=args.end
+        )
+        report = report + "\n" + render_api_latency(api_latency_result)
+
     if args.out:
         args.out.write_text(report, encoding="utf-8")
     else:
         print(report)
     if args.json:
-        args.json.write_text(
-            json.dumps(
-                results_json(results, start=args.start, boundary=args.boundary, end=args.end),
-                indent=2,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+        payload = results_json(results, start=args.start, boundary=args.boundary, end=args.end)
+        if api_latency_result is not None:
+            payload["api_latency"] = api_latency_result
+        args.json.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return 0
 
 
