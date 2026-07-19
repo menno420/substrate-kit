@@ -49,6 +49,9 @@ Usage (the turnkey window run)::
 ``--commit-results PATH`` writes the same payload to a durable, committed-into-repo
 path (parent dirs created) so a measure→verify→publish chain's raw ``results.json``
 survives an ephemeral-container split — the chain does the ``git add`` step.
+``--freeze`` (with either sink) also writes a ``<output>.freeze`` sidecar carrying
+the sha256 of the exact output bytes plus a paste-ready reproduce command, so every
+window run is self-citing and tamper-evident.
 
 Tests: ``tests/test_measure_grounded_skills.py`` (fixture trees, no network).
 """
@@ -56,9 +59,11 @@ Tests: ``tests/test_measure_grounded_skills.py`` (fixture trees, no network).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import json
 import re
+import shlex
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -66,6 +71,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
+_SCRIPT_REL = Path(__file__).resolve().relative_to(_REPO_ROOT)
 _SRC = _REPO_ROOT / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
@@ -685,7 +691,26 @@ def render_api_latency(result: dict) -> str:
 # ── CLI ──────────────────────────────────────────────────────────────────────
 
 
+def _render_freeze_block(record: dict, targets: list[Path]) -> str:
+    """A paste-ready, human-facing citation block for a frozen run."""
+    rule = "─" * 57
+    lines = [
+        rule,
+        "frozen run — self-citing (sha256 of the exact output bytes)",
+        rule,
+        "sha256: " + record["sha256"],
+        "targets: " + ", ".join(t.name for t in targets),
+        "reproduce:",
+        "  " + record["reproduce"],
+        "verify:",
+        *("  sha256sum " + str(t) + "   # == sha256 above" for t in targets),
+        rule,
+    ]
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
+    effective_argv = list(sys.argv[1:] if argv is None else argv)
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--roster", type=Path, default=_REPO_ROOT / "docs" / "fleet-repos.txt")
     ap.add_argument("--clone", action="store_true", help="clone roster repos into --workdir")
@@ -724,7 +749,22 @@ def main(argv: list[str] | None = None) -> int:
             "SKIPPED (not errored) when the token is absent or the network fails"
         ),
     )
+    ap.add_argument(
+        "--freeze",
+        action="store_true",
+        help=(
+            "given --json/--commit-results, also emit a self-citing freeze "
+            "record: the sha256 of the exact output bytes plus a ready-to-paste "
+            "reproduce block (the exact command that produced it). Writes a "
+            "<output>.freeze sidecar next to each JSON artifact and prints the "
+            "paste block to stderr — every window run becomes tamper-evident "
+            "and self-citing. Honors the same shallow-clone refuse guard as "
+            "--json (a frozen artifact can't ship off a shallow clone)."
+        ),
+    )
     args = ap.parse_args(argv)
+    if args.freeze and not (args.json or args.commit_results):
+        ap.error("--freeze requires --json or --commit-results")
 
     targets: list[tuple[str, Path | None, str]] = []
     for spec in args.local:
@@ -810,6 +850,37 @@ def main(argv: list[str] | None = None) -> int:
         if args.commit_results:
             args.commit_results.parent.mkdir(parents=True, exist_ok=True)
             args.commit_results.write_text(blob, encoding="utf-8")
+        if args.freeze:
+            # Self-cite: pin the exact output bytes with a sha256 and emit the
+            # exact command that produced them. The hash is over ``blob`` (the
+            # bytes actually written), so a plain ``sha256sum <output>`` verifies
+            # it — the freeze record lives in a sidecar, never inside the hashed
+            # payload, so there is no self-referential hash. This runs INSIDE the
+            # shallow-clone guard above, so a frozen artifact can never ship off a
+            # shallow clone whose M4 metrics are zeroed.
+            digest = hashlib.sha256(blob.encode("utf-8")).hexdigest()
+            reproduce = "python3 " + " ".join(
+                shlex.quote(a) for a in [str(_SCRIPT_REL), *effective_argv]
+            )
+            written = [p for p in (args.json, args.commit_results) if p is not None]
+            record = {
+                "tool": _SCRIPT_REL.name,
+                "algo": "sha256",
+                "sha256": digest,
+                "bytes": len(blob.encode("utf-8")),
+                "reproduce": reproduce,
+                "note": (
+                    "sha256 pins the exact output bytes for tamper-evidence; the "
+                    "reproduce command regenerates the measurement (the payload's "
+                    "'generated' timestamp differs run-to-run, the metrics do not)."
+                ),
+            }
+            freeze_blob = json.dumps(record, indent=2) + "\n"
+            for target in written:
+                target.with_name(target.name + ".freeze").write_text(
+                    freeze_blob, encoding="utf-8"
+                )
+            print(_render_freeze_block(record, written), file=sys.stderr)
     return 0
 
 
