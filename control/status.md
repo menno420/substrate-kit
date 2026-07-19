@@ -1,10 +1,14 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-19T07:36:42Z · phase: IDLE — night run #455–#486 all merged; buildable-now backlog REFILLED by the night-run idea groom (docs/planning/2026-07-19-night-run-idea-groom.md). The prior wake asserted "backlog DRY"; that was a sweep gap (the baton read only the recipe doc, not the night's ~14 ungroomed 💡 card ideas) — corrected this wake.
+updated: 2026-07-19T08:08:25Z · phase: IDLE — R1 SHIPPED (cut_release self-row non-DRIFT, PR #488); buildable-now backlog still REFILLED (docs/planning/2026-07-19-night-run-idea-groom.md, R1–R12); baton retargeted → R2 (`/scope-backlog-item` skill).
 
 > **Orders done-truth (read this first):** orders **001–024 are ALL DONE** — the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and flipped `new→done` manager-side only after the manager reads this report (control/README.md:86), so an inbox order reading `status: new` while this file's `done=` covers it means **DONE-and-awaiting-manager-flip, not open**. No ORDER >024 exists in control/inbox.md at HEAD; "ORDER 025" is the `>`-quoted fm relay inside ORDER 019 item 5 (highest bound = 024) — its WORK is complete (both cfgdiff writeups on main, linked from bench/README.md, merged via PR #340).
 
-## This wake — night-run idea groom + heartbeat refresh
-Swept the night run's ~25 session-card `💡` ideas + docs/ideas/, deduped against what shipped (#455–#486), classified + ranked into `docs/planning/2026-07-19-night-run-idea-groom.md` (12 buildable-now R1–R12 · 1 needs-planning · 2 dead/dup · owner-gated/cross-repo noted), and refreshed this heartbeat wholesale. Baton retargeted at the top buildable slices for the next wakes. PR OPEN + BORN-RED (session-card in-progress hold); flips complete as the last step. No routines armed; the failsafe dead-man bridge remains armed under the coordinator session (F-1 below).
+## This wake — R1: cut_release dist-before-self-restamp fix
+Built R1 from the night-run groom (docs/planning/2026-07-19-night-run-idea-groom.md). Root cause: `scripts/cut_release.py` stamped the bump self-row from `local_self_scan`, which reads `config_pin` from the just-bumped `substrate.config.json` (= target) but `tree_version` from `dist/bootstrap.py`'s still-OLD header (the dist rebuild is a manual FOLLOWUP step) — rendering tree(old) != pin(target), a false tree-internal DRIFT committed into the version-bump PR (kit #472 regression). Fix: stamp the self-row from the release's tree truth (target); every mergeable PR carries `dist == target` by the byte-pin (`test_committed_bootstrap_is_current`), so the committed self-row is honest. Added a pinning test tied to the real `currency.drifts()`/`verdict()`. Full suite 1822 passed. PR #488 OPEN + BORN-RED until this card flip; flips complete as the last step. No routines armed; the failsafe dead-man bridge remains armed under the coordinator session (F-1 below).
+
+## Recently shipped (terminal MERGED / merging)
+- **#488 (this wake) — R1 cut_release self-row non-DRIFT** (`scripts/cut_release.py` + `tests/test_cut_release.py`): merging on green after this flip.
+- **#487 — night-run idea groom + heartbeat refresh**: swept ~25 night session-card `💡` ideas + docs/ideas/, ranked into the groom doc (R1–R12), refreshed this heartbeat.
 
 ## Night run — merged #455–#486 (all terminal MERGED)
 - Guard stack: claims-only fast-lane guard on both surfaces (#455/#457) + guard-parity meta-test (#459); no-false-walls guard fleet-wide (#444–#450); declarative guard-manifest (#463); guard-parity 3rd surface (#466); B-1 guard-surface census (#470).
@@ -14,11 +18,10 @@ Swept the night run's ~25 session-card `💡` ideas + docs/ideas/, deduped again
 - Recipes #480 backlog-recipes planning arc; pinned-feed-contract doctrine graduated (#482); folded-gate diff-aware advisory sub-check (#484); folded-gate host ports + readiness cell routed to fm outbox (#486).
 
 ## PR state
-All seat-session PRs terminal MERGED through #486. IN-FLIGHT: `claude/night-run-idea-groom` (this wake) — groom + heartbeat; born-red hold until the session card flips complete.
+All seat-session PRs terminal MERGED through #487. IN-FLIGHT: `claude/cut-release-dist-before-restamp` (R1, PR #488) — one-file fix + pinning test; born-red hold until the session card flips complete, then auto-merges on green.
 
-## Backlog — REFILLED (was falsely "DRY")
-The buildable-now backlog is **not** dry — the night's session cards carried ~14 unbuilt buildable ideas never groomed into the baton. Groomed + ranked in `docs/planning/2026-07-19-night-run-idea-groom.md`. Top buildable-now slices:
-- **R1 (S) — cut_release dist-before-self-restamp reorder:** `scripts/cut_release.py` restamps the self-row before the aftermath dist rebuild, so a version-bump PR momentarily commits a `docs/adopters.md` whose own self-row shows DRIFT against the kit. Reorder (rebuild dist first) or write a `pending-rebuild` tree-cell marker; +test. (from #472 card)
+## Backlog — REFILLED (R1 consumed, R2 next)
+The buildable-now backlog is groomed + ranked in `docs/planning/2026-07-19-night-run-idea-groom.md`. R1 is now shipped (#488). Top remaining buildable-now slices:
 - **R2 (S) — `/scope-backlog-item` skill:** scaffold the planning-recipe arc as a `docs/SKILLS.md` skill, making the standing "when no exec work is left, plan" order turnkey. (from #480 card)
 - R3–R12: shallow-clone REFUSE marker · HOOK_CENSUS · stale-wall advisory · check --explain-wall · append-log⇄Walls disagreement lint · fast-lane symmetry runtime advisory · harness --commit-results · harness --freeze self-cite · recipes applies-when tag · check_folded_gate remediation snippet (see the groom doc).
 Cross-repo / owner-gated (not kit-landable): folded-gate host ports (superbot-next `gate`, websites `quality.yml`, routed via fm #486); v1.19.0 adopter wave; the 23-proposal veto menu.
@@ -35,14 +38,15 @@ Cross-repo / owner-gated (not kit-landable): folded-gate host ports (superbot-ne
 kit: v1.19.0
 - No-false-walls guard enforced fleet-wide (kit ci.yml + every adopter's check --strict); folds into the next release.
 - Claims-only fast-lane guard on both surfaces + guard-parity meta-test fails CI on kit↔adopter guard drift.
+- cut_release now stamps the bump self-row from the release target (R1, #488) — committed adopters.md self-row is non-DRIFT for the mergeable state; the FOLLOWUP dist rebuild is still a manual step guarded by the byte-pin.
 - Registry (docs/adopters.md): CURRENT per currency --check (12 repos); adopter rows read stale until each repo's own upgrade wave (owner-gated).
 - adopters-version-lag + adopters-stale + adopters-self-row-stale advisories cover the staleness axes.
 - Revival boot reading: CONSTITUTION.md → control/inbox.md → this file → docs/eap-closeout-walkthrough-2026-07-14.md §E → docs/audits/eap-project-audit-2026-07-14.md.
 
 ## Next-2 baton
-1. **R1 — cut_release dist-before-self-restamp reorder (S).** Buildable now; one-file fix + test in `scripts/cut_release.py`. Recipe in the groom doc.
-2. **R2 — `/scope-backlog-item` skill (S).** Buildable now; add the skill + index it in docs/SKILLS.md. Recipe in the groom doc.
-**Baton: buildable-now backlog REFILLED — R1 (cut_release dist-order fix) and R2 (`/scope-backlog-item` skill) are the top slices; full ranked list R1–R12 in docs/planning/2026-07-19-night-run-idea-groom.md.**
+1. **R2 — `/scope-backlog-item` skill (S).** Buildable now; add the skill + index it in docs/SKILLS.md, scaffolding the planning-recipe arc turnkey. Recipe in the groom doc.
+2. **R3 — shallow-clone REFUSE marker (S).** Buildable now; next slice in the groom doc's ranked list.
+**Baton: R1 (cut_release dist-order fix) SHIPPED (#488) — baton retargeted to R2 (`/scope-backlog-item` skill); full ranked list R2–R12 in docs/planning/2026-07-19-night-run-idea-groom.md.**
 
 ## ⚑ FOR OWNER (standing set carried forward)
 
