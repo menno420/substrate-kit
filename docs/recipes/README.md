@@ -14,6 +14,13 @@
   versioned shape contract, producer-side fail-closed CI parity, consumer-side
   render-time verification. Kills the cross-repo feed-desync bug class.
 
+- [Advisory → born-red gate](advisory-to-born-red-gate.md) — when and how to
+  promote a warn-only advisory check into an exit-affecting merge gate: graduate
+  on a repeat real leak, scope the red to the PR's own added artifact, fail open
+  on everything else, keep the strict-subcheck floor untouched with a
+  leading-underscore helper, and mutation-test both directions. Graduated from the
+  `📊 Model:` line exit-gate trilogy (#512 / #513 / #514).
+
 ## Recipe frontmatter — `applies-when:`
 
 Every graduated recipe (every file here except this README) carries an
