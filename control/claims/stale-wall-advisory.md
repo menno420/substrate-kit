@@ -1,1 +1,0 @@
-- branch `claude/stale-wall-advisory` · scope: `src/engine/checks/check_stale_walls.py` R5 advisory (stale `wall` ledger rows in CAPABILITIES.md) + cli.py advisory-seam wiring + MODULE_ORDER + dist rebuild + test · date 2026-07-19
