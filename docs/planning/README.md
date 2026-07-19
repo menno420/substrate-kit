@@ -10,6 +10,7 @@
 
 ## Plans
 
+- [2026-07-19-night-run-idea-groom.md](2026-07-19-night-run-idea-groom.md) — `plan` — night-run (#455–#486) session-card idea groom: 12 buildable-now slices (R1–R12) ranked, deduped against what shipped, baton retargeted.
 - [2026-07-19-grounded-skills-window-run.md](2026-07-19-grounded-skills-window-run.md) — `plan` — grounded-skills window run plan + 2026-07-18 backlog groom into sized slices.
 - [2026-07-19-needs-planning-recipes.md](2026-07-19-needs-planning-recipes.md) — `plan` — turnkey recipes for the four needs-planning backlog items (folded-gate-diff-aware-card, pinned-feed-contract, t5-headless-guard, control-board-kit-readiness-cell).
 - [2026-07-15-archive-ready-close-out-plan.md](2026-07-15-archive-ready-close-out-plan.md) — `plan` — archive-ready close-out as a kit surface (loop + templates + checker); plan only.
