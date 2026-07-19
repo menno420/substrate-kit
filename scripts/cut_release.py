@@ -403,9 +403,22 @@ def run(root: Path, target: str, write: bool, date: str) -> int:
         adopters_path = root / ADOPTERS_RELPATH
         if adopters_path.is_file():
             old_adopters = adopters_path.read_text(encoding="utf-8")
-            new_adopters = restamp_self_row(
-                old_adopters, target, local_self_scan(root)
-            )
+            # local_self_scan reads config_pin from the just-bumped
+            # substrate.config.json (= target) BUT tree_version from
+            # dist/bootstrap.py's header, which is still the OLD version here:
+            # the dist rebuild is FOLLOWUP step 2, not done by --write. Left as
+            # is, the scan renders tree(old) != pin(target) -> a false
+            # tree-internal DRIFT in the committed self-row (kit #472). Stamp
+            # the self-row from the release's tree truth (target) instead: the
+            # bump PR can only merge once dist/bootstrap.py is rebuilt to target
+            # (test_committed_bootstrap_is_current byte-pins committed dist ==
+            # build(src)), so every mergeable PR carries dist == target and the
+            # `current` self-row is honest for the committed state — restoring
+            # the B-2 intent ("renders a current self-row").
+            self_scan = local_self_scan(root)
+            if self_scan.tree_version is not None:
+                self_scan.tree_version = target
+            new_adopters = restamp_self_row(old_adopters, target, self_scan)
             if new_adopters != old_adopters:
                 adopters_path.write_text(new_adopters, encoding="utf-8")
                 print(

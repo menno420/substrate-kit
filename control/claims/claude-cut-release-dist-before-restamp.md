@@ -1,1 +1,1 @@
-- branch claude/cut-release-dist-before-restamp · scope: scripts/cut_release.py dist-before-self-restamp reorder (R1) + pinning test · 2026-07-19
+- `claude/cut-release-dist-before-restamp` · **scope** — cut_release dist-before-self-restamp reorder (R1) so the committed adopters.md self-row is non-DRIFT; + pinning test · `scripts/cut_release.py` `tests/test_cut_release.py` · 2026-07-19
