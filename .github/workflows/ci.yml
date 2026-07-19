@@ -109,6 +109,18 @@ jobs:
         # (its real work + its .sessions/ card) is on the FULL lane, not this
         # one, so it never reaches this step — by construction this fires only
         # on the pure-claim `claude/*` diff it exists to reject.
+        #
+        # fastlane-cardless: claim/
+        # ^ Self-declared card-less fast-lane prefixes: `claim/*` standalone-claim
+        # PRs ride the fast lane card-LESS by design (control/claims/README.md
+        # § "Land the claim on main FAST") — the guard's `case` above cards
+        # `claude/*` ONLY and lets `claim/*` fall through the bare `*)` arm.
+        # This machine-readable declaration is the host-local ground truth the
+        # REVERSE fast-lane-symmetry advisory (engine.checks.check_fastlane_symmetry)
+        # reads to tell an INTENTIONAL card-less prefix apart from an ACCIDENTAL
+        # card-less merge hole — a prefix the auto-merge-enabler ARMS (so it rides
+        # the fast lane) that the guard never CARDS and this line never declares.
+        # Keep it in sync with the enabler's armed prefixes + guards.FASTLANE_*.
         run: |
           head_ref="${{ github.head_ref }}"
           case "$head_ref" in

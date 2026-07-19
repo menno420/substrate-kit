@@ -36,11 +36,16 @@ def _enabler_yaml(prefixes) -> str:
     return f"name: auto-merge-enabler\non: pull_request\njobs:\n  arm:\n    if: {terms}\n"
 
 
-def _ci_yaml(carded_prefixes) -> str:
+def _ci_yaml(carded_prefixes, cardless_prefixes=None) -> str:
     arms = "\n".join(f"          {p}*) need_card=1 ;;" for p in carded_prefixes)
+    decl = ""
+    if cardless_prefixes:
+        decl = f"        # fastlane-cardless: {' '.join(cardless_prefixes)}\n"
     return (
         "name: ci\njobs:\n  kit-quality:\n    steps:\n"
-        "      - name: fast-lane guard\n        run: |\n"
+        "      - name: fast-lane guard\n"
+        f"{decl}"
+        "        run: |\n"
         '          case "$head_ref" in\n'
         f"{arms}\n"
         "          *) need_card=0 ;;\n"
@@ -108,6 +113,83 @@ def test_unreadable_fails_open(tmp_path):
     _write(tmp_path, _CI_REL, _ci_yaml(["claude/"]))
     # enabler.is_file() is False for a directory → silent, not a crash
     assert check_fastlane_symmetry(tmp_path) == []
+
+
+# ── reverse leg (S11): armed − carded − declared_cardless → card-less hole ───
+def test_reverse_silent_without_declaration(tmp_path):
+    """No `# fastlane-cardless:` line → the reverse leg cannot tell an
+    intentional card-less prefix (claim/) from a hole, so it stays silent even
+    though claim/ is armed-but-uncarded (the pre-S11 behavior is preserved)."""
+    _write(tmp_path, _ENABLER_REL, _enabler_yaml(["claude/", "claim/"]))
+    _write(tmp_path, _CI_REL, _ci_yaml(["claude/"]))  # no declaration
+    assert check_fastlane_symmetry(tmp_path) == []
+
+
+def test_reverse_declared_cardless_is_green(tmp_path):
+    """claim/ is armed, not carded, but self-declared card-less → no hole."""
+    _write(tmp_path, _ENABLER_REL, _enabler_yaml(["claude/", "claim/"]))
+    _write(tmp_path, _CI_REL, _ci_yaml(["claude/"], cardless_prefixes=["claim/"]))
+    assert check_fastlane_symmetry(tmp_path) == []
+
+
+def test_reverse_undeclared_armed_prefix_warns(tmp_path):
+    """bot/ is armed (rides the fast lane) but neither carded nor declared
+    card-less → an accidental card-less merge hole."""
+    _write(tmp_path, _ENABLER_REL, _enabler_yaml(["claude/", "claim/", "bot/"]))
+    _write(tmp_path, _CI_REL, _ci_yaml(["claude/"], cardless_prefixes=["claim/"]))
+    findings = check_fastlane_symmetry(tmp_path)
+    assert len(findings) == 1
+    f = findings[0]
+    assert f.path == _CI_REL and f.kind == "fastlane-cardless-drift"
+    assert "bot/" in f.message and "card" in f.message.lower()
+    # claim/ (declared) and claude/ (carded) must NOT be flagged
+    assert "claim/" not in f.message and "claude/" not in f.message
+
+
+def test_reverse_multiple_declared_cardless_prefixes(tmp_path):
+    """A declaration listing several prefixes clears all of them."""
+    _write(tmp_path, _ENABLER_REL, _enabler_yaml(["claude/", "claim/", "release/"]))
+    _write(
+        tmp_path,
+        _CI_REL,
+        _ci_yaml(["claude/"], cardless_prefixes=["claim/", "release/"]),
+    )
+    assert check_fastlane_symmetry(tmp_path) == []
+
+
+def test_both_legs_can_fire_together(tmp_path):
+    """A guard cards an unarmed prefix (forward) AND the enabler arms an
+    undeclared prefix (reverse) → two findings, one per leg."""
+    _write(tmp_path, _ENABLER_REL, _enabler_yaml(["claude/", "claim/", "bot/"]))
+    _write(
+        tmp_path,
+        _CI_REL,
+        _ci_yaml(["claude/", "ghost/"], cardless_prefixes=["claim/"]),
+    )
+    findings = check_fastlane_symmetry(tmp_path)
+    kinds = {f.kind for f in findings}
+    assert kinds == {"fastlane-symmetry", "fastlane-cardless-drift"}
+    messages = " ".join(f.message for f in findings)
+    assert "ghost/" in messages and "bot/" in messages
+
+
+def test_declared_cardless_parser():
+    """The `# fastlane-cardless:` parser collects whitespace/comma-separated
+    prefix tokens across one or more declaration lines."""
+    from engine.checks.check_fastlane_symmetry import _declared_cardless_prefixes
+
+    text = (
+        "        # fastlane-cardless: claim/ release/\n"
+        "        # fastlane-cardless: hotfix/, docs/\n"
+        "        # unrelated comment: not a declaration\n"
+    )
+    assert _declared_cardless_prefixes(text) == {
+        "claim/",
+        "release/",
+        "hotfix/",
+        "docs/",
+    }
+    assert _declared_cardless_prefixes("no declaration here") == set()
 
 
 # ── posture pins ─────────────────────────────────────────────────────────────
