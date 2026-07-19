@@ -21,7 +21,11 @@ import pytest
 
 pytest.importorskip("engine.checks.check_folded_gate")
 
-from engine.checks.check_folded_gate import FINDING_KIND, check_folded_gate
+from engine.checks.check_folded_gate import (
+    FINDING_KIND,
+    REMEDIATION_SNIPPET,
+    check_folded_gate,
+)
 
 # A folded gate that froze at the pre-#19 mtime picker: it invokes the
 # locked-door gate but passes no diff-aware selection flag.
@@ -139,6 +143,26 @@ def test_mixed_workflows_flag_only_the_folded_one(tmp_path: Path):
     findings = check_folded_gate(tmp_path)
     assert len(findings) == 1
     assert findings[0].path == ".github/workflows/folded.yml"
+
+
+def test_folded_gate_emits_paste_ready_remediation(tmp_path: Path):
+    # R12: the advisory must carry a paste-ready diff-aware card-derivation
+    # block, not just name the fix in prose — a host fixes the fold in one paste.
+    _write_workflow(tmp_path, "ci.yml", _FOLDED_GATE)
+    message = check_folded_gate(tmp_path)[0].message
+    assert REMEDIATION_SNIPPET in message
+    # The snippet is a real diff-aware gate: it derives cards from the PR diff
+    # and grades THIS PR's own card via --session-log.
+    assert "git diff --name-only --diff-filter=d" in message
+    assert "--require-session-log --session-log" in message
+
+
+def test_remediation_snippet_is_itself_diff_aware(tmp_path: Path):
+    # The embedded port target must itself be a CORRECT diff-aware gate: if a
+    # host pasted it verbatim into a workflow, the checker would stay silent (it
+    # is not a folded gate). Guards against shipping a broken snippet.
+    _write_workflow(tmp_path, "pasted.yml", REMEDIATION_SNIPPET)
+    assert check_folded_gate(tmp_path) == []
 
 
 def test_not_in_strict_subchecks():
