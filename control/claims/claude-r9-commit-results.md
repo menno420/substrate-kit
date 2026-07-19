@@ -1,0 +1,1 @@
+- branch: `claude/r9-commit-results` · scope: R9 — `--commit-results PATH` flag on scripts/measure_grounded_skills.py to persist raw results.json as a durable artifact (+ test) · date: 2026-07-19
