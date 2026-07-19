@@ -60,6 +60,12 @@ YES = "yes"
 NO = "no"
 UNPROVABLE = "unprovable"
 
+# Clone-depth verdicts for ``require_full_history`` (distinct namespace from the
+# ancestry YES/NO/UNPROVABLE above): can a git-log-derived metric be trusted?
+FULL = "full"
+SHALLOW = "shallow"
+UNKNOWN = "unknown"
+
 
 @dataclass(frozen=True)
 class AncestryAnswer:
@@ -108,6 +114,52 @@ def is_shallow(run: GitCommand) -> bool | None:
     if rc != 0:
         return None
     return out.strip() == "true"
+
+
+@dataclass(frozen=True)
+class HistoryVerdict:
+    """Whether a clone carries the full history git-log truth needs.
+
+    ``verdict`` — FULL / SHALLOW / UNKNOWN (module constants).
+    ``reason``  — a one-line, paste-ready explanation for a non-FULL verdict
+                  (empty string for FULL).
+    """
+
+    verdict: str
+    reason: str = ""
+
+
+def require_full_history(run: GitCommand) -> HistoryVerdict:
+    """Answer "does this clone have the full history git-log truth needs?"
+
+    The single home of the "a shallow (grafted) clone silently truncates
+    history, so any git-log-derived count/metric off it is unreliable" rule
+    that the fleet-measurement passes kept re-deriving independently (the
+    ``measure_grounded_skills`` M4 merge-throughput proxy re-implemented its
+    own shallow probe; the same class the wave-2 groom rank S5 named). Built
+    directly on :func:`is_shallow`, so the shallow-probe policy stays in one
+    place:
+
+    - provably NOT shallow  → ``FULL``    — safe to trust git-log history.
+    - provably shallow      → ``SHALLOW`` — history truncated; the caller
+      refuses/degrades (``git fetch --unshallow`` first).
+    - undeterminable        → ``UNKNOWN`` — git unavailable / could not ask;
+      the caller applies its own policy. "Couldn't ask" is deliberately NOT
+      read as "provably full", mirroring :func:`is_shallow` returning ``None``.
+    """
+    shallow = is_shallow(run)
+    if shallow is False:
+        return HistoryVerdict(FULL)
+    if shallow is True:
+        return HistoryVerdict(
+            SHALLOW,
+            "shallow (grafted) clone — history truncated; run "
+            "`git fetch --unshallow` before trusting git-log history",
+        )
+    return HistoryVerdict(
+        UNKNOWN,
+        "could not determine clone depth (git unavailable)",
+    )
 
 
 def provable_ancestry(

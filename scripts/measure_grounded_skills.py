@@ -72,9 +72,14 @@ from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _SCRIPT_REL = Path(__file__).resolve().relative_to(_REPO_ROOT)
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
 _SRC = _REPO_ROOT / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
+
+import _git_truth  # noqa: E402
 
 from engine.grammar import (  # noqa: E402
     CAPABILITY_LOG_LINE_RE,
@@ -246,16 +251,17 @@ def capability_lines(text: str) -> list[CapabilityLine]:
 
 
 def _is_shallow(repo_dir: Path) -> bool:
-    try:
-        proc = subprocess.run(
-            ["git", "-C", str(repo_dir), "rev-parse", "--is-shallow-repository"],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return proc.stdout.strip() == "true"
+    """True if ``repo_dir`` is a shallow (grafted) clone — its git-log history
+    is then truncated and the M4 merge counts unreliable.
+
+    Thin adapter over the shared ``_git_truth.require_full_history`` rule (the
+    single home of the shallow -> degrade decision that this harness used to
+    re-implement with its own ``rev-parse --is-shallow-repository`` probe). An
+    UNKNOWN verdict (git unavailable) is reported as not-shallow, preserving
+    this guard's original fail-open-to-proceed behavior.
+    """
+    verdict = _git_truth.require_full_history(_git_truth.make_runner(repo_dir))
+    return verdict.verdict == _git_truth.SHALLOW
 
 
 def merged_counts(repo_dir: Path, *, start: date, boundary: date, end: date) -> dict | None:
