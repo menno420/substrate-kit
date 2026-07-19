@@ -1,1 +1,0 @@
-- `claude/folded-gate-check` · **folded-gate diff-aware advisory sub-check** — new src/engine/checks/check_folded_gate.py (advisory, never exit-affecting) + cli.py wiring + tests + dist rebuild · 2026-07-19
