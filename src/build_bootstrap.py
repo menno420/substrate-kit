@@ -67,6 +67,10 @@ MODULE_ORDER = (
     # when the two disagree on a capability; advisory-only, never exit-affecting.
     "checks/check_wall_ledger_agreement.py",
     # After check_docs.py (its only engine reference is check_docs.Finding): the
+    # recipe applies-when tag advisory (groom R11) — warns when a docs/recipes/
+    # graduation lacks a well-formed `applies-when:` badge; advisory-only.
+    "checks/check_recipe_applies_when.py",
+    # After check_docs.py (its only engine reference is check_docs.Finding): the
     # fast-lane prefix symmetry advisory (groom R8) — warns when a host's ci.yml
     # claims-only fast-lane guard cards a prefix its auto-merge-enabler never
     # arms (enabler⇄guard drift). Advisory-only, never exit-affecting, like its

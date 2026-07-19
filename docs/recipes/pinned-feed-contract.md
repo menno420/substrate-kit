@@ -2,6 +2,8 @@
 
 > **Status:** `reference`
 >
+> **applies-when:** `content:raw.githubusercontent.com, path:*.json`
+>
 > A recipe: the proven discipline for a **committed artifact one repo generates
 > and another repo consumes over a raw URL**. Graduated from the estate pattern
 > shipped 2026-07-09 (superbot PR #1884 producer + websites PR #11 consumer).
