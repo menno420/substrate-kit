@@ -270,3 +270,53 @@ def test_results_json_shape(fixture_tree: Path):
     assert payload["window"]["boundary"] == "2026-07-12"
     assert payload["repos"][0]["name"] == "fixture"
     assert payload["repos"][0]["cards"]["after"]["cards"] == 2
+
+
+# ── opt-in --api-latency mode (graduated from GSW-4) ──────────────────────────
+
+
+def test_load_latency_module():
+    mod = mgs._load_latency_module()
+    # exposes the pure (network-free) logic the harness mode reuses
+    assert hasattr(mod, "parse_roster")
+    assert hasattr(mod, "build_payload")
+    assert hasattr(mod, "summarize")
+
+
+def test_api_latency_skips_without_token(monkeypatch, tmp_path: Path):
+    # delete every token env var → the credential-less/offline SKIP guarantee
+    for var in ("GITHUB_PAT", "GH_TOKEN", "GITHUB_TOKEN"):
+        monkeypatch.delenv(var, raising=False)
+    # guard: if the network path is ever reached without a token, this fails
+    real = mgs._load_latency_module()
+
+    def boom(*args, **kwargs):
+        raise AssertionError("network attempted despite no token")
+
+    monkeypatch.setattr(real, "make_session", boom)
+    monkeypatch.setattr(mgs, "_load_latency_module", lambda: real)
+
+    result = mgs.run_api_latency(["menno420/substrate-kit"], **WINDOW)
+    assert result["status"] == "skipped"
+    assert "no GitHub token" in result["reason"]
+
+    # end-to-end through main(): SKIPPED line rendered, exit 0, no exception
+    out = tmp_path / "report.md"
+    code = mgs.main(["--local", f"self={tmp_path}", "--api-latency", "--out", str(out)])
+    assert code == 0
+    assert "API latency: SKIPPED" in out.read_text(encoding="utf-8")
+
+
+def test_api_latency_default_off(fixture_tree: Path, tmp_path: Path):
+    # without the flag: no api_latency JSON key, no latency section in the report
+    out = tmp_path / "report.md"
+    js = tmp_path / "results.json"
+    code = mgs.main(
+        ["--local", f"fixture={fixture_tree}", "--out", str(out), "--json", str(js)]
+    )
+    assert code == 0
+    import json as _json
+
+    payload = _json.loads(js.read_text(encoding="utf-8"))
+    assert "api_latency" not in payload
+    assert "API latency" not in out.read_text(encoding="utf-8")
