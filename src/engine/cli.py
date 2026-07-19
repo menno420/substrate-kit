@@ -71,6 +71,10 @@ from engine.checks.check_model_line import check_model_line
 from engine.checks.check_namespace import check_namespace
 from engine.checks.check_no_false_walls import check_no_false_walls, explain_wall
 from engine.checks.check_owner_actions import check_owner_actions
+from engine.checks.check_remediate import (
+    available_remediation_kinds,
+    remediate,
+)
 from engine.checks.check_status_current import (
     CONTROL_README_RELPATH,
     check_status_current,
@@ -1054,6 +1058,30 @@ def _cmd_explain_wall(phrase: str) -> int:
     return 0
 
 
+def _cmd_remediate(kind: str) -> int:
+    """S7: `check --remediate <finding-kind>`. Print the paste-ready remediation
+    block for a `check` finding kind. A lookup, never a gate: prints and always
+    returns 0, touches no files. An unknown/empty kind lists the covered kinds so
+    a host discovers the vocabulary instead of guessing."""
+    block = remediate(kind)
+    if block is None:
+        wanted = kind.strip()
+        if wanted:
+            _emit(f"remediate: no remediation registered for {wanted!r}.")
+        else:
+            _emit("remediate: name a finding kind to get its remediation block.")
+        _emit("  covered finding kinds (from the `[<kind>]` tag in check output):")
+        for known in available_remediation_kinds():
+            _emit(f"    - {known}")
+        return 0
+    _emit(f"remediate: {kind.strip()}")
+    _emit("  paste-ready remediation (apply it yourself — this only prints):")
+    _emit("")
+    for line in block.rstrip("\n").splitlines():
+        _emit(f"  {line}" if line else "")
+    return 0
+
+
 def cmd_check(
     target: Path,
     strict: bool,
@@ -1065,6 +1093,7 @@ def cmd_check(
     status_only: bool = False,
     inbox_base: Path | None = None,
     explain_wall: str | None = None,
+    remediate: str | None = None,
 ) -> int:
     """Run every hygiene checker against ``target``.
 
@@ -1162,6 +1191,8 @@ def cmd_check(
     """
     if explain_wall is not None:
         return _cmd_explain_wall(explain_wall)
+    if remediate is not None:
+        return _cmd_remediate(remediate)
     config = load_config(target)
     posture = "blocking" if strict else "advisory"
     # The control-protocol heartbeat (KL-8): static gate findings (missing /
@@ -3987,6 +4018,18 @@ def build_parser() -> argparse.ArgumentParser:
             "(a lookup, always exits 0)"
         ),
     )
+    check.add_argument(
+        "--remediate",
+        dest="remediate",
+        metavar="FINDING-KIND",
+        default=None,
+        help=(
+            "print the paste-ready remediation block for a `check` finding "
+            "kind (the `[<kind>]` tag in check output, e.g. "
+            "folded-gate-mtime-picker) — a print-only lookup that touches no "
+            "files and always exits 0; an unknown kind lists the covered kinds"
+        ),
+    )
     return parser
 
 
@@ -4072,6 +4115,7 @@ def main(argv: list[str] | None = None) -> int:
                 status_only=args.status_only,
                 inbox_base=args.inbox_base,
                 explain_wall=args.explain_wall,
+                remediate=args.remediate,
             )
         if args.command == "answer":
             return cmd_answer(args.target, args.slot, " ".join(args.value))
