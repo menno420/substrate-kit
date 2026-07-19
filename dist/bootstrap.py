@@ -2340,6 +2340,41 @@ _WORKFLOWS_RELDIR = ".github/workflows"
 
 FINDING_KIND = "folded-gate-mtime-picker"
 
+# R12: a paste-ready diff-aware card-derivation block a host can drop into its
+# folded gate to fix the fold in one paste — the prior advisory named the fix in
+# prose only. This is the kit's own diff-aware `ci.yml` gate (PR #19) in the
+# adopter-interpreter form (`bootstrap.py`, not the kit's built `dist/`): derive
+# the PR's changed cards from `git diff` and grade THIS PR's own card via
+# `--session-log` instead of the newest-by-mtime picker. The literal `${{ ... }}`
+# are GitHub Actions expressions, kept verbatim so the block pastes as-is.
+REMEDIATION_SNIPPET = """\
+```yaml
+- name: session gate (diff-aware — grade THIS PR's own card, not a sibling's)
+  run: |
+    if [ -n "${{ github.base_ref }}" ]; then
+      range="origin/${{ github.base_ref }}...HEAD"
+    else
+      range="${{ github.event.before }}..${{ github.sha }}"
+    fi
+    cards="$(git diff --name-only --diff-filter=d "$range" -- '.sessions/*.md' ':!.sessions/README.md' 2>/dev/null)"
+    deleted="$(git diff --name-only --diff-filter=D "$range" -- '.sessions/*.md' ':!.sessions/README.md' 2>/dev/null)"
+    fail=0
+    if [ -n "$deleted" ]; then
+      echo "session card DELETED by this PR (append-only — hard red): $deleted"; fail=1
+    fi
+    if [ -z "$cards" ]; then
+      python3 bootstrap.py check --strict --require-session-log || fail=1
+    else
+      while IFS= read -r card; do
+        [ -z "$card" ] && continue
+        echo "grading session card: $card"
+        python3 bootstrap.py check --strict --require-session-log --session-log "$card" || fail=1
+      done <<< "$cards"
+    fi
+    exit "$fail"
+```
+"""
+
 
 def _folds_gate_without_diff_awareness(text: str) -> bool:
     """True when ``text`` invokes the session-gate locked door but passes no
@@ -2377,22 +2412,21 @@ def check_folded_gate(target: Path) -> list[Finding]:
         if not _folds_gate_without_diff_awareness(text):
             continue
         relpath = f"{_WORKFLOWS_RELDIR}/{path.name}"
-        findings.append(
-            Finding(
-                relpath,
-                FINDING_KIND,
-                f"{relpath} folds the session gate (`--require-session-log`) "
-                "without the diff-aware `--session-log`/`--added-card` "
-                "selection, so it still grades the newest-by-mtime card — in a "
-                "flat-mtime CI checkout that can misgrade a SIBLING session's "
-                "`complete` card instead of this PR's own in-progress one (the "
-                "loosening misgrade kit PR #19 fixed). Port the diff-aware "
-                "card-derivation block from the planted substrate-gate / the "
-                "kit's own `.github/workflows/ci.yml` (grade every "
-                "`git diff` card via `--session-log`, added cards via "
-                "`--added-card`).",
-            ),
+        message = (
+            f"{relpath} folds the session gate (`--require-session-log`) "
+            "without the diff-aware `--session-log`/`--added-card` "
+            "selection, so it still grades the newest-by-mtime card — in a "
+            "flat-mtime CI checkout that can misgrade a SIBLING session's "
+            "`complete` card instead of this PR's own in-progress one (the "
+            "loosening misgrade kit PR #19 fixed). Port the diff-aware "
+            "card-derivation block from the planted substrate-gate / the "
+            "kit's own `.github/workflows/ci.yml` (grade every "
+            "`git diff` card via `--session-log`, added cards via "
+            "`--added-card`). Paste-ready port (the kit's own diff-aware gate — "
+            "swap `bootstrap.py` for your gate's interpreter/path):\n\n"
+            + REMEDIATION_SNIPPET
         )
+        findings.append(Finding(relpath, FINDING_KIND, message))
     return findings
 
 # --- engine/checks/check_stale_walls.py ---
