@@ -1,5 +1,5 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-18T22:14:38Z · phase: B-3 fast-lane branch-prefix symmetry lint shipped this wake — PR #474 (born-red): `FASTLANE_PREFIX_REGISTRY` in `src/engine/guards.py` pins the fast-lane branch-prefix set (`claude/`→carded, `claim/`→card-less) across the three surfaces that duplicate it — the auto-merge-enabler workflow, the claims-only fast-lane guard in `ci.yml`, and the engine defaults — with `tests/test_fastlane_prefix_symmetry.py` (10 stdlib-only tests, bidirectional set-equality) reddening CI on drift in either direction. 1796 pytest pass, dist byte-pin clean. B-1 (PR #470) + B-2 (PR #472) + B-3 (PR #474) now all DONE; baton advances to the grounded-skills window (GSW-1..3), which opens 2026-07-19
+updated: 2026-07-19T00:28:53Z · phase: grounded-skills window GSW-1..3 ran this wake — the frozen harness `scripts/measure_grounded_skills.py --clone` ran once over full/non-shallow clones of the 12-repo roster (M4 `shallow:false` on every repo), and 4/4 spot-checks MATCH against git/source ground truth. The before/after report is published at `docs/reports/2026-07-19-grounded-skills-measurement.md` (frozen raw data `docs/reports/data/2026-07-19-grounded-skills-results.json`, linked from `docs/operations/README.md`), PR #476 (born-red, auto-merge armed). GSW-1..3 all DONE; baton advances to GSW-4 (optional API-latency pass) or the next Part-B backlog item per `docs/planning/2026-07-19-grounded-skills-window-run.md`. 1796 pytest pass, dist byte-pin clean
 
 > **Orders done-truth (read this first):** orders **001–024 are ALL DONE** — the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and is flipped `new→done` manager-side only after the manager reads this status report (control/README.md:86), so an inbox order reading `status: new` while this file's `done=` covers it means **DONE-and-awaiting-manager-flip, not open**. No ORDER >024 exists in control/inbox.md at HEAD; "ORDER 025" is not a standalone bound order — it is the `>`-quoted fm relay inside ORDER 019 item 5 (highest bound order = 024). Its WORK is nonetheless COMPLETE: both cfgdiff writeups are on main (docs/reports/2026-07-09-cfgdiff-differential-testing-method.md + …-v0.1.1-release-decision.md), linked from bench/README.md, merged via PR #340 (2026-07-13). The redundant standalone ORDER-025-block append that hit the classifier wall is therefore MOOT.
 
@@ -55,10 +55,10 @@ kit: v1.19.0
 
 ## Next-2 baton
 
-1. **GSW-1 · run the grounded-skills measurement harness (executable 2026-07-19)** — the first slice of the grounded-skills window (GSW-1..3; target 2026-07-19..26; owner silence accepts). Turnkey run plan: `docs/planning/2026-07-19-grounded-skills-window-run.md` — **GSW-1** (run the harness) → **GSW-2** (spot-check + interpret) → **GSW-3** (publish the `audit` report). Mind the three traps: shallow-clone zeroes M4 (re-clone full), the harness is PL-008 UNVERIFIED (spot-check ≥3 numbers), and the report must be linked from `docs/operations/README.md` (docs-gate reachability). **Not executable until 2026-07-19** (today is 2026-07-18).
-2. **B-3 · fast-lane branch-prefix symmetry lint — SHIPPED** (PR #474, born-red, 2026-07-18). B-1 (PR #470), B-2 (PR #472), and B-3 (PR #474) are now all DONE. Full groom (needs-planning / owner-gated / dead classification) in docs/planning/2026-07-19-grounded-skills-window-run.md, Part B.
+1. **GSW-1..3 · grounded-skills measurement — DONE** (this wake, 2026-07-19; PR #476, born-red). GSW-1 (harness ran over full/non-shallow clones of the 12-repo roster) → GSW-2 (4/4 spot-checks MATCH) → GSW-3 (`audit` report published at `docs/reports/2026-07-19-grounded-skills-measurement.md`, frozen results.json at `docs/reports/data/`, linked from `docs/operations/README.md`, window ⚑ closed). All three traps cleared: clones verified non-shallow (M4 valid), the PL-008-unverified harness was spot-checked, and the report is reachability-linked.
+2. **GSW-4 (optional API-latency pass) OR the next Part-B backlog item** per `docs/planning/2026-07-19-grounded-skills-window-run.md` Part B (needs-planning / owner-gated / dead classification). B-1 (PR #470), B-2 (PR #472), B-3 (PR #474) all DONE.
 
-**Backlog dry until GSW-1 (2026-07-19) — honesty-guard idle, not missing work:** with B-1/B-2/B-3 all shipped, the buildable non-gated backlog is empty; everything beyond is owner-gated or date-parked, and GSW-1 does not open until 2026-07-19. The seat idles on the 2h failsafe trigger until the window opens.
+**Baton to GSW-4 / next Part-B item; buildable non-gated backlog otherwise thin — everything beyond is owner-gated or date-parked.** The seat idles on the 2h failsafe trigger between wakes.
 
 ## ⚑ FOR OWNER (standing set carried forward)
 
@@ -111,7 +111,7 @@ RISK: ⚠️ P11 effectively irreversible (history exposed once public) · ↩�
 Standing (full paste-ready blocks verbatim in git history of this file @ 86d2a57):
 - fm #122 v3.4 restamp — owner reviews/merges PERSONALLY.
 - UNIVERSAL wake fetch-list vN bump (+ docs/seat-digest.md, docs/SKILLS.md).
-- Grounded-skills measurement window ~2026-07-19..26 — silence accepts.
+- Grounded-skills measurement window ~2026-07-19..26 — CLOSED (measurement published 2026-07-19, PR #476).
 
 ## 💡 Session idea (Q-0089)
 
