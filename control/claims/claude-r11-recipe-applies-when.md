@@ -1,1 +1,0 @@
-- branch: `claude/r11-recipe-applies-when` · scope: R11 — recipe `applies-when:` structural-signature badge on docs/recipes/ graduations + docs/recipes/README.md schema + advisory check_recipe_applies_when.py (+ wiring, dist, test) · date: 2026-07-19
