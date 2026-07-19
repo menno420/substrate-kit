@@ -55,6 +55,7 @@ from engine.checks.check_folded_gate import check_folded_gate
 from engine.checks.check_fastlane_symmetry import check_fastlane_symmetry
 from engine.checks.check_stale_walls import check_stale_walls
 from engine.checks.check_wall_ledger_agreement import check_wall_ledger_agreement
+from engine.checks.check_recipe_applies_when import check_recipe_applies_when
 from engine.checks.check_engagement import (
     check_engagement,
     check_engagement_control,
@@ -1412,6 +1413,14 @@ def cmd_check(
     # enabler⇄guard half rides the same posture="advisory" seam below (NOT
     # _extra_check_findings) and stays off STRICT_SUBCHECKS.
     fastlane_symmetry_advisories = check_fastlane_symmetry(target)
+    # Recipe applies-when tag presence (night-run groom R11): warns when a
+    # docs/recipes/ graduation is missing a well-formed `applies-when:`
+    # structural-signature badge (or has an empty / malformed one). The tag lets
+    # a FUTURE discovery check match an adopter's seam to a recipe; keeping every
+    # graduation tagged is a nudge, not a defect, so it rides the same
+    # posture="advisory" seam below (NOT _extra_check_findings) and stays off
+    # STRICT_SUBCHECKS.
+    recipe_applies_when_advisories = check_recipe_applies_when(target, config)
     if status_only:
         # --status-only: the fast lane's scoped gate (see docstring). Only the
         # control-lane checkers run — the heartbeat gate, the control-scoped
@@ -2018,6 +2027,27 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=fastlane_symmetry_advisories,
+        )
+    if recipe_applies_when_advisories and not status_only:
+        # Same warn-only contract as the advisories above (night-run groom R11):
+        # a docs/recipes/ graduation missing a well-formed `applies-when:` badge
+        # is a "add the structural signature" nudge — the tag feeds a future
+        # discovery check that matches an adopter's seam to a recipe, not a defect
+        # that should fail an adopter. Surfaced + telemetry-recorded, NEVER
+        # counted toward the exit code (deliberately off STRICT_SUBCHECKS).
+        _emit(
+            f"check: {len(recipe_applies_when_advisories)} recipe applies-when "
+            "advisory warning(s) (never exit-affecting):",
+        )
+        for finding in recipe_applies_when_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=recipe_applies_when_advisories,
         )
 
     log_missing: list[str] = []
