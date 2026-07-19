@@ -1,25 +1,26 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-19T02:22:56Z · phase: pinned-feed-contract graduation shipped (#482) — the cross-repo feed-desync doctrine graduated into the kit (docs/recipes/pinned-feed-contract.md + a CONSTITUTION.md.tmpl rider + the docs/recipes/README.md index); control-only fast-lane close-out after the code merge; ships to adopters via the next release. Prior: GSW-5 shipped the prior wake — the opt-in `--api-latency` harness mode graduated (PR #479): `scripts/measure_grounded_skills.py` folds in the GSW-4 open→merge latency pass as a default-off `--api-latency` flag reusing `scripts/measure_pr_latency.py`'s pure logic, cleanly SKIPPED offline/credential-less; +3 tests, docs; no engine files → byte-pin clean, default output byte-identical.
+updated: 2026-07-19T02:42:21Z · phase: rank-2 folded-gate diff-aware advisory sub-check shipped (PR #484, branch claude/folded-gate-check) — engine sub-check + tests + dist rebuild; born-red session-card hold, flips complete as the last step. Prior: rank-1 pinned-feed-contract graduation merged (#482) — the cross-repo feed-desync doctrine graduated into the kit (docs/recipes/pinned-feed-contract.md + a CONSTITUTION.md.tmpl rider + the docs/recipes/README.md index); ships to adopters via the next release.
 
 > **Orders done-truth (read this first):** orders **001–024 are ALL DONE** — the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and is flipped `new→done` manager-side only after the manager reads this status report (control/README.md:86), so an inbox order reading `status: new` while this file's `done=` covers it means **DONE-and-awaiting-manager-flip, not open**. No ORDER >024 exists in control/inbox.md at HEAD; "ORDER 025" is not a standalone bound order — it is the `>`-quoted fm relay inside ORDER 019 item 5 (highest bound order = 024). Its WORK is nonetheless COMPLETE: both cfgdiff writeups are on main (docs/reports/2026-07-09-cfgdiff-differential-testing-method.md + …-v0.1.1-release-decision.md), linked from bench/README.md, merged via PR #340 (2026-07-13). The redundant standalone ORDER-025-block append that hit the classifier wall is therefore MOOT.
 
-## This wake — GSW-4 open→merge latency pass
+## This wake — rank-2 folded-gate diff-aware advisory sub-check
 
-Shipped GSW-4, the optional GitHub-API PR open→merge latency pass (the #247 §2 method the harness deliberately does not fake from git data). From-scratch `scripts/measure_pr_latency.py` (pure bucketing/percentile/aggregation logic separated from an isolated direct-egress GitHub-API fetch) + `tests/test_measure_pr_latency.py` (12 pure tests). Added report §7 (metric, reproduce command, two flagged method decisions, per-repo + fleet tables, descriptive-only interpretation) and a §4 note recording that the optional latency pass WAS run (previously an unrecorded, undeferred gap). Froze the data as `docs/reports/data/2026-07-19-grounded-skills-latency.json` (sha256 `c0fb65ba…8ebf59d`); marked GSW-4 SHIPPED in `docs/planning/2026-07-19-grounded-skills-window-run.md`; kept the `docs/operations/README.md` reachability link. Evidence: 1808 pytest pass / 1 skipped; all 12 roster repos returned data, zero nulls. PR #477 OPEN + BORN-RED (session-card in-progress hold); flips complete as the last step. No new routines armed; the failsafe dead-man bridge remains armed under the coordinator session (F-1 below).
+Shipped the rank-2 buildable-now recipe from `docs/planning/2026-07-19-needs-planning-recipes.md`: a folded-gate diff-aware advisory sub-check in the engine (guards sub-check) + tests + dist rebuild. Advisory-only — it names the offending workflow when a host folds the planted diff-aware card-derivation gate. PR #484 OPEN + BORN-RED (session-card in-progress hold); flips complete as the last step. No new routines armed; the failsafe dead-man bridge remains armed under the coordinator session (F-1 below).
 
 **Prior wake (PR #476):** GSW-1..3 — the frozen harness `scripts/measure_grounded_skills.py --clone` ran once over full/non-shallow clones of the 12-repo roster, 4/4 spot-checks MATCH, before/after report published at `docs/reports/2026-07-19-grounded-skills-measurement.md` (frozen M1–M4 data `docs/reports/data/2026-07-19-grounded-skills-results.json`, linked from `docs/operations/README.md`). Merged 2026-07-19.
 **Prior wake (PR #472):** B-2 — self-row registry-stamp automation (`adopters-self-row-stale` born-red gate + network-free `local_self_scan`/`restamp_self_row` wired into `scripts/cut_release.py`). Merged 2026-07-18.
 
 ## PR state
 
-All seat-session PRs terminal MERGED through #476: #438–#443, #445, #451, #452, #455, #457, #459, #463, #464, #465, #466, #470, #471, #472 (B-2), #474 (B-3), #476 (GSW-1..3). Sibling lanes merged: #444, #446–#450, #453.
+All seat-session PRs terminal MERGED through #482: #438–#443, #445, #451, #452, #455, #457, #459, #463, #464, #465, #466, #470, #471, #472 (B-2), #474 (B-3), #476 (GSW-1..3), #477 (GSW-4), #479 (GSW-5), #482 (pinned-feed-contract). Sibling lanes merged: #444, #446–#450, #453, #483.
 
-IN-FLIGHT: `claude/gsw-4-pr-latency` (PR #477) — GSW-4 open→merge latency pass. Adds `scripts/measure_pr_latency.py` + `tests/test_measure_pr_latency.py` (12 pure tests), report §7 + §4 note, frozen `docs/reports/data/2026-07-19-grounded-skills-latency.json`, GSW-4 marked SHIPPED in the planning doc. Full suite 1808 passed / 1 skipped. Landing path: **born-red session-card hold** — `kit-quality` stays red until `.sessions/2026-07-19-gsw-4-pr-latency.md` flips complete.
+IN-FLIGHT: `claude/folded-gate-check` (PR #484) — rank-2 folded-gate diff-aware advisory sub-check + tests + dist rebuild. Advisory-only sub-check that names a workflow folding the planted diff-aware card-derivation gate. Landing path: **born-red session-card hold** — `kit-quality` stays red until `.sessions/2026-07-19-folded-gate-check.md` flips complete.
 
 ## Recently shipped (neutral pointer)
 
-- pinned-feed-contract doctrine graduated: docs/recipes/pinned-feed-contract.md + CONSTITUTION.md.tmpl rider + docs/recipes/README.md index, PR #482 (2026-07-19); ships to adopters via the next release.
-- PR #479 (this wake): GSW-5 — opt-in `--api-latency` harness mode graduated the GSW-4 latency pass into `scripts/measure_grounded_skills.py` (reuses `measure_pr_latency.py` pure logic, honest SKIP offline, default-off byte-identical); +3 tests, docs. No engine files → no dist rebuild, byte-pin clean. Rung-4 self-initiated (ORDER 048 grant).
+- rank-2 folded-gate diff-aware advisory sub-check (this wake): engine sub-check + tests + dist rebuild, PR #484 (2026-07-19, branch claude/folded-gate-check); advisory-only, ships to adopters via the next release.
+- pinned-feed-contract doctrine graduated (rank-1): docs/recipes/pinned-feed-contract.md + CONSTITUTION.md.tmpl rider + docs/recipes/README.md index, PR #482 (2026-07-19); ships to adopters via the next release.
+- PR #479: GSW-5 — opt-in `--api-latency` harness mode graduated the GSW-4 latency pass into `scripts/measure_grounded_skills.py` (reuses `measure_pr_latency.py` pure logic, honest SKIP offline, default-off byte-identical); +3 tests, docs. No engine files → no dist rebuild, byte-pin clean. Rung-4 self-initiated (ORDER 048 grant).
 - PR #476 (prior wake): GSW-1..3 grounded-skills measurement — harness ran over full/non-shallow clones of the 12-repo roster (M4 valid), 4/4 PL-008 spot-checks MATCH, before/after report published + frozen M1–M4 data + reachability link. Merged 2026-07-19.
 - PR #474 (prior wake): B-3 fast-lane head-prefix ⇄ enabler branch_patterns symmetry lint (advisory). Merged 2026-07-18.
 - PR #472 (prior wake): B-2 self-row registry-stamp automation — `adopters-self-row-stale` born-red gate + network-free self-restamp wired into `scripts/cut_release.py`. Merged 2026-07-18.
@@ -28,10 +29,12 @@ IN-FLIGHT: `claude/gsw-4-pr-latency` (PR #477) — GSW-4 open→merge latency pa
 
 ## Backlog — HONEST readout (carried)
 
-**Buildable non-gated backlog is DRY.** GSW-1..4 + B-1/B-2/B-3 are all consumed. The remaining Part-B work is either **owner-gated** or **needs-planning** — no turnkey slice remains:
-- Owner-gated: the 5 ⚑ FOR OWNER blocks below; the v1.19.0 adopter wave; the 23-proposal veto menu (`docs/planning/2026-07-16-overnight-veto-menu.md`).
-- Needs-planning (no turnkey recipe): folded-gate-diff-aware-card · pinned-feed-contract · t5-headless-guard · control-board-kit-readiness-cell.
-The next wake with owner-gated items cleared should scope one needs-planning item. This "buildable non-gated backlog dry; remaining work owner-gated or needs-planning" state is the honest, expected readout — not a stall. The seat idles on the 2h failsafe trigger between wakes.
+**Buildable-now kit backlog is DRY.** Both buildable-now recipes from `docs/planning/2026-07-19-needs-planning-recipes.md` are now built: rank-1 pinned-feed-contract (#482, merged) and rank-2 folded-gate advisory sub-check (#484, this wake). GSW-1..5 + B-1/B-2/B-3 are all consumed. What genuinely remains is **not landable from the kit**:
+- Cross-repo host ports (fleet-manager inbox, Q-0261.3): the diff-aware block's actual host ports — superbot-next's `gate` job and websites' `quality.yml` — are cross-repo follow-ons, not kit-landable.
+- Next release carries the accumulated template/doctrine changes from #482 (and sibling doctrine PRs).
+- Owner-gated: the ⚑ FOR OWNER blocks below; the v1.19.0 adopter wave; the 23-proposal veto menu (`docs/planning/2026-07-16-overnight-veto-menu.md`).
+- Remaining scoped recipes (not buildable-now): readiness-cell (kit half DONE via ORDER 003 → websites lane) · t5-headless-guard (owner-gated pin-path + cross-tree kit-lab).
+This "buildable-now kit backlog dry; remaining work cross-repo or owner-gated" state is the honest, expected readout — not a stall. The seat idles on the 2h failsafe trigger between wakes.
 
 ## Routine / trigger state — corrected at the 2026-07-18 coordinator cutover
 
@@ -55,16 +58,18 @@ kit: v1.19.0
 
 ## Next-2 baton
 
-1. **GSW-1..4 · grounded-skills window run — DONE.** GSW-1..3 (harness ran, 4/4 spot-checks MATCH, M1–M4 report published — PR #476) → GSW-4 (optional GitHub-API open→merge latency pass, report §7 + frozen latency JSON — PR #477, this wake). The grounded-skills window run is fully complete; all traps cleared (non-shallow clones, PL-008 spot-checks, reachability links, frozen+sha256-cited data).
-2. **Needs-planning items SCOPED** into turnkey recipes —
-   `docs/planning/2026-07-19-needs-planning-recipes.md`. pinned-feed-contract (rank-1) is
-   SHIPPED via PR #482 (2026-07-19). Baton, ranked next:
-   (1) folded-gate advisory checker (buildable-now, S — second-occurrence trigger met);
-   (2) readiness-cell (kit half DONE via ORDER 003 — route the websites board-render recipe
-   to the websites lane); (3) t5-headless-guard (owner-gated pin-path + cross-tree kit-lab —
-   six-field ⚑ in the recipe doc).
+1. **Buildable-now recipes DONE.** Both buildable-now recipes from
+   `docs/planning/2026-07-19-needs-planning-recipes.md` are built: rank-1 pinned-feed-contract
+   (#482, merged) and rank-2 folded-gate advisory sub-check (#484, this wake). The buildable-now
+   kit backlog from that doc is DRY.
+2. **What remains is cross-repo or owner-gated — not kit-landable.** The diff-aware block's actual
+   host ports (superbot-next `gate` job, websites `quality.yml`) are cross-repo follow-ons routed
+   via the fleet-manager inbox (Q-0261.3); the next kit release carries the accumulated
+   template/doctrine changes from #482; readiness-cell (kit half DONE via ORDER 003 → websites
+   lane) and t5-headless-guard (owner-gated pin-path + cross-tree kit-lab) remain scoped in the
+   recipe doc.
 
-**Baton: pinned-feed-contract SHIPPED (#482, 2026-07-19); next-3 scoped → (1) folded-gate advisory checker (buildable-now, S), (2) readiness-cell (kit-half-done/cross-repo), (3) t5-headless-guard (owner-gated+cross-tree); see docs/planning/2026-07-19-needs-planning-recipes.md.** The seat idles on the 2h failsafe trigger between wakes.
+**Baton: buildable-now kit backlog DRY — rank-1 pinned-feed-contract (#482, merged) and rank-2 folded-gate advisory (#484, this wake) are both built; what remains is cross-repo host ports (superbot-next `gate` / websites `quality.yml`, routed via fleet-manager inbox, Q-0261.3) or owner-gated — see docs/planning/2026-07-19-needs-planning-recipes.md.** The seat idles on the 2h failsafe trigger between wakes.
 
 ## ⚑ FOR OWNER (standing set carried forward)
 

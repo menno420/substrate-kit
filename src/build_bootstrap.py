@@ -53,6 +53,11 @@ MODULE_ORDER = (
     "interview/interview.py",
     "checks/check_docs.py",
     # After check_docs.py (its only engine reference is check_docs.Finding):
+    # the folded-gate diff-aware advisory (needs-planning §2 / folded-gate idea
+    # 2026-07-11) — warns when a host-folded session gate froze at the pre-#19
+    # newest-by-mtime card picker. Advisory-only, never exit-affecting.
+    "checks/check_folded_gate.py",
+    # After check_docs.py (its only engine reference is check_docs.Finding):
     # the no-false-walls leg — propagated from tools/check_no_false_walls.py so
     # every adopter's `check --strict` reds on a documented false capability
     # wall, not just substrate-kit's own CI.

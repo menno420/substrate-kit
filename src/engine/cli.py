@@ -51,6 +51,7 @@ from engine.checks.check_adopters_current import check_adopters_current
 from engine.checks.check_capability_xref import check_capability_xref
 from engine.checks.check_claims import check_claims, claim_scan_dirs
 from engine.checks.check_docs import Finding, run_doc_checks
+from engine.checks.check_folded_gate import check_folded_gate
 from engine.checks.check_engagement import (
     check_engagement,
     check_engagement_control,
@@ -1343,6 +1344,17 @@ def cmd_check(
     # never reds on wall-clock time alone). Engages only when the registry
     # exists — adopter repos add nothing here.
     adopters_gate, adopters_advisories = check_adopters_current(target)
+    # Folded-gate diff-aware advisory (needs-planning §2 / folded-gate idea
+    # 2026-07-11): a host that hand-FOLDED the session gate into its own CI
+    # (superbot-next's `gate` job, websites' `quality.yml`) can freeze at the
+    # pre-#19 newest-by-mtime card picker, misgrading a sibling's `complete`
+    # card in a flat-mtime CI checkout. The kit never regenerates host-authored
+    # workflows, so `check` is the only kit surface that runs in adopter repos.
+    # Advisory-only, never exit-affecting (a hard red would break every adopter
+    # that legitimately folds its gate before they can react) — and matched
+    # precisely on "require-session-log present AND session-log absent" so the
+    # kit's own diff-aware ci.yml and the planted gate stay silent.
+    folded_gate_advisories = check_folded_gate(target)
     if status_only:
         # --status-only: the fast lane's scoped gate (see docstring). Only the
         # control-lane checkers run — the heartbeat gate, the control-scoped
@@ -1864,6 +1876,27 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=adopters_advisories,
+        )
+    if folded_gate_advisories and not status_only:
+        # Same warn-only contract as the advisories above (needs-planning §2):
+        # a host-folded session gate that froze at the pre-#19 mtime picker is
+        # a port-the-diff-aware-block nudge — the kit cannot regenerate a
+        # host-authored workflow, so this is surfaced + telemetry-recorded but
+        # NEVER counted toward the exit code (a hard red would break adopters
+        # that legitimately fold their gate). Deliberately off STRICT_SUBCHECKS.
+        _emit(
+            f"check: {len(folded_gate_advisories)} folded-gate advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in folded_gate_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=folded_gate_advisories,
         )
 
     log_missing: list[str] = []
