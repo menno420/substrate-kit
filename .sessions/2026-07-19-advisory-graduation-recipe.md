@@ -1,6 +1,6 @@
 # S2 — advisory→born-red-gate graduation recipe
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 **Session:** 2026-07-19 · Self Improvement work-loop · substrate-kit
 **Baton:** wave-2 groom rank S2 (docs/planning/2026-07-19-night-run-idea-groom-wave2.md, #515) — graduate the advisory→born-red-gate pattern that #512/#513/#514 followed into a docs/recipes/ recipe. Provenance: fm ORDER 048 standing grant + coordinator dispatch.
