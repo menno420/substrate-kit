@@ -146,3 +146,11 @@ def test_find_placeholders_outside_code_strips_spans_and_fences():
     # A fully-clean doc and a code-only doc both scan empty.
     assert find_placeholders_outside_code("plain prose") == set()
     assert find_placeholders_outside_code("`${only_span}`") == set()
+
+
+def test_constitution_carries_pinned_feed_doctrine():
+    """The CONSTITUTION rider must survive rendering (pinned-feed-contract graduation)."""
+    context = {q["slot"]: f"v-{q['slot']}" for q in QUESTIONS}
+    context.update({key: f"v-{key}" for key in ENGINE_CONTEXT_KEYS})
+    rendered = render(load_templates()["CONSTITUTION.md.tmpl"], context)
+    assert "committed, versioned shape contract" in rendered

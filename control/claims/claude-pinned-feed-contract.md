@@ -1,1 +1,1 @@
-- branch: claude/pinned-feed-contract · scope: docs/recipes/pinned-feed-contract.md + docs/recipes/README.md (new) + CONSTITUTION.md.tmpl rider + test + idea flip + dist rebuild · date: 2026-07-19
+- `claude/pinned-feed-contract` · **pinned-feed-contract graduation** — docs/recipes/pinned-feed-contract.md + docs/recipes/README.md (new) + CONSTITUTION.md.tmpl rider + tests/test_render.py + idea flip + dist rebuild · 2026-07-19
