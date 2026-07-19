@@ -86,11 +86,6 @@ red preflight round rediscovering it via checker error.)
   seed; runner deviated to 424243 by rule, manifest `runner_notes`);
   next: fix + prepare-runs-the-seed-suite smoke (guard recipe in the
   file); ⚑ `bench/seeds/` is a PIN PATH → the fix rides `do-not-automerge`.
-- [Pinned feed contract — doctrine for cross-repo committed-artifact seams](pinned-feed-contract-doctrine-2026-07-09.md)
-  — state: captured; origin: consumer:menno420/superbot (pattern proven
-  end-to-end in superbot PR #1884 + websites PR #11 — the first consumer-side
-  pass caught a live shape defect); next: a groomed-ideas increment ships the
-  doctrine note (template rider / recipe), scaffolding only if instances repeat.
 - [T5 protocol: headless arms never engage the hook layer](t5-headless-guard-surface-2026-07-09.md)
   — state: captured; origin: lab (B1 run 2026-07-09-run01 — the guard probe
   produced zero evidence, judge §5.5 item 2; **run `2026-07-09-run02`
@@ -112,6 +107,10 @@ red preflight round rediscovering it via checker error.)
 (Promoted ideas whose PR merged; the B4 revert-scan flips them `survived`
 after the 30-day window, `reverted` otherwise.)
 
+- [Pinned feed contract — doctrine for cross-repo committed-artifact seams](pinned-feed-contract-doctrine-2026-07-09.md)
+  — **shipped** kit PR #482 (2026-07-19): graduates the cross-repo
+  pinned-feed-contract discipline into docs/recipes/ + a CONSTITUTION rider.
+  Window closes 2026-08-18.
 - [Answer-time gate-safety advisory for `verify_command`](answer-time-gate-safety-advisory-2026-07-15.md)
   — **shipped** kit PR #407 (2026-07-15, anticipated in-PR date; the #405
   card's 💡, captured with the increment): `bootstrap answer`/`confirm`

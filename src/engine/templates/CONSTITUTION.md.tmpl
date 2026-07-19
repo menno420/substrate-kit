@@ -58,6 +58,15 @@
   check that contradicts visible evidence is **a bug in the CHECK, not a
   clearance** (PL-006). Every load-bearing claim cites a commit / PR / tag /
   run.
+- **Cross-repo feeds carry a pinned contract.** When this repo commits a
+  generated artifact another repo consumes over a raw URL, the seam carries a
+  committed, versioned shape contract: the producer stamps the version into the
+  artifact and enforces fail-closed parity in CI; the consumer pins the version
+  it built against and verifies at render time, surfacing drift as an honest
+  banner — never faked data. It kills the cross-repo feed-desync bug class
+  before it can silently blank a consumer page. Full pattern + skeleton: the kit
+  recipe
+  (https://github.com/menno420/substrate-kit/blob/main/docs/recipes/pinned-feed-contract.md).
 - When a doc and a source file disagree: ${drift_resolution}
 
 ## Autonomy rails — act vs. ask

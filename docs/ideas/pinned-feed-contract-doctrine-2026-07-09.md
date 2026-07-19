@@ -1,19 +1,21 @@
 ---
-state: captured
+state: promoted
 origin: consumer:menno420/superbot
-shipped_pr: null
-shipped_repo: null
-merged_date: null
-outcome: open
+shipped_pr: 482
+shipped_repo: menno420/substrate-kit
+merged_date: 2026-07-19
+outcome: shipped
 ---
 
 # Pinned feed contract — doctrine for cross-repo committed-artifact seams (2026-07-09)
 
 > **Status:** `ideas`
 >
-> **State:** captured (consumer-proven pattern, superbot PR #1884 + websites
-> PR #11, 2026-07-09). **Origin:** consumer — the pattern was built and proven
-> estate-side first; this capture is the promotion path into kit doctrine.
+> **State:** captured → promoted → shipped (kit PR #482, 2026-07-19 — the
+> doctrine note landed as `docs/recipes/pinned-feed-contract.md` + a
+> CONSTITUTION rider). **Origin:** consumer — the pattern was built and proven
+> estate-side first (superbot PR #1884 + websites PR #11, 2026-07-09); this
+> capture is the promotion path into kit doctrine.
 
 ## The seam class
 
@@ -59,7 +61,20 @@ Later, if instances repeat: a template contract file + parity-test scaffold
 in the planted docs, and/or an engine check that a declared cross-repo feed
 names its contract. Not built in the capture session by design.
 
+## Shipped
+
+kit PR #482 (2026-07-19) graduated the smallest useful form: the recipe
+`docs/recipes/pinned-feed-contract.md` (full pattern + copy-paste contract
+skeleton + estate proof + escalation boundary), its `docs/recipes/README.md`
+index, and a one-bullet `CONSTITUTION.md.tmpl` rider ("Cross-repo feeds carry
+a pinned contract") so every adopter's rendered constitution points at it. The
+heavier escalation (planted template contract file, parity-test scaffold, an
+engine check that a declared feed names its contract) is deliberately **not**
+built — doctrine first, scaffolding only if instances actually repeat across
+adopters. Ships to adopters via the next kit release.
+
 ## Lands with
 
-A groomed-ideas increment (post-#17), or the first kit-lab consumer that
-grows a committed-artifact feed of its own.
+Shipped as a groomed-ideas increment (kit PR #482). A future kit-lab consumer
+that grows a committed-artifact feed of its own is the natural first proving
+ground for the recipe.
