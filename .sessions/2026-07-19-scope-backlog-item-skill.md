@@ -1,6 +1,6 @@
 # Session — R2 /scope-backlog-item skill
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 📊 Model: Opus 4.8 · high · feature build
 🌿 Branch: `claude/scope-backlog-item-skill`
