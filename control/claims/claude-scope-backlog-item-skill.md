@@ -1,0 +1,1 @@
+- `claude/scope-backlog-item-skill` · **R2 /scope-backlog-item skill** · src/engine/skills/skills.py + tests/test_skills.py + dist/bootstrap.py · 2026-07-19
