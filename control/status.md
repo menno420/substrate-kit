@@ -1,75 +1,48 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-19T02:42:21Z · phase: rank-2 folded-gate diff-aware advisory sub-check shipped (PR #484, branch claude/folded-gate-check) — engine sub-check + tests + dist rebuild; born-red session-card hold, flips complete as the last step. Prior: rank-1 pinned-feed-contract graduation merged (#482) — the cross-repo feed-desync doctrine graduated into the kit (docs/recipes/pinned-feed-contract.md + a CONSTITUTION.md.tmpl rider + the docs/recipes/README.md index); ships to adopters via the next release.
+updated: 2026-07-19T07:36:42Z · phase: IDLE — night run #455–#486 all merged; buildable-now backlog REFILLED by the night-run idea groom (docs/planning/2026-07-19-night-run-idea-groom.md). The prior wake asserted "backlog DRY"; that was a sweep gap (the baton read only the recipe doc, not the night's ~14 ungroomed 💡 card ideas) — corrected this wake.
 
-> **Orders done-truth (read this first):** orders **001–024 are ALL DONE** — the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and is flipped `new→done` manager-side only after the manager reads this status report (control/README.md:86), so an inbox order reading `status: new` while this file's `done=` covers it means **DONE-and-awaiting-manager-flip, not open**. No ORDER >024 exists in control/inbox.md at HEAD; "ORDER 025" is not a standalone bound order — it is the `>`-quoted fm relay inside ORDER 019 item 5 (highest bound order = 024). Its WORK is nonetheless COMPLETE: both cfgdiff writeups are on main (docs/reports/2026-07-09-cfgdiff-differential-testing-method.md + …-v0.1.1-release-decision.md), linked from bench/README.md, merged via PR #340 (2026-07-13). The redundant standalone ORDER-025-block append that hit the classifier wall is therefore MOOT.
+> **Orders done-truth (read this first):** orders **001–024 are ALL DONE** — the `done=` line at the end of this file is the seat's completion signal. The inbox `status:` field is **manager-owned** and flipped `new→done` manager-side only after the manager reads this report (control/README.md:86), so an inbox order reading `status: new` while this file's `done=` covers it means **DONE-and-awaiting-manager-flip, not open**. No ORDER >024 exists in control/inbox.md at HEAD; "ORDER 025" is the `>`-quoted fm relay inside ORDER 019 item 5 (highest bound = 024) — its WORK is complete (both cfgdiff writeups on main, linked from bench/README.md, merged via PR #340).
 
-## This wake — rank-2 folded-gate diff-aware advisory sub-check
+## This wake — night-run idea groom + heartbeat refresh
+Swept the night run's ~25 session-card `💡` ideas + docs/ideas/, deduped against what shipped (#455–#486), classified + ranked into `docs/planning/2026-07-19-night-run-idea-groom.md` (12 buildable-now R1–R12 · 1 needs-planning · 2 dead/dup · owner-gated/cross-repo noted), and refreshed this heartbeat wholesale. Baton retargeted at the top buildable slices for the next wakes. PR OPEN + BORN-RED (session-card in-progress hold); flips complete as the last step. No routines armed; the failsafe dead-man bridge remains armed under the coordinator session (F-1 below).
 
-Shipped the rank-2 buildable-now recipe from `docs/planning/2026-07-19-needs-planning-recipes.md`: a folded-gate diff-aware advisory sub-check in the engine (guards sub-check) + tests + dist rebuild. Advisory-only — it names the offending workflow when a host folds the planted diff-aware card-derivation gate. PR #484 OPEN + BORN-RED (session-card in-progress hold); flips complete as the last step. No new routines armed; the failsafe dead-man bridge remains armed under the coordinator session (F-1 below).
-
-**Prior wake (PR #476):** GSW-1..3 — the frozen harness `scripts/measure_grounded_skills.py --clone` ran once over full/non-shallow clones of the 12-repo roster, 4/4 spot-checks MATCH, before/after report published at `docs/reports/2026-07-19-grounded-skills-measurement.md` (frozen M1–M4 data `docs/reports/data/2026-07-19-grounded-skills-results.json`, linked from `docs/operations/README.md`). Merged 2026-07-19.
-**Prior wake (PR #472):** B-2 — self-row registry-stamp automation (`adopters-self-row-stale` born-red gate + network-free `local_self_scan`/`restamp_self_row` wired into `scripts/cut_release.py`). Merged 2026-07-18.
+## Night run — merged #455–#486 (all terminal MERGED)
+- Guard stack: claims-only fast-lane guard on both surfaces (#455/#457) + guard-parity meta-test (#459); no-false-walls guard fleet-wide (#444–#450); declarative guard-manifest (#463); guard-parity 3rd surface (#466); B-1 guard-surface census (#470).
+- v1.19.0 RELEASED + verified (tag v1.19.0, run 29656601475 success, sha256 three-way PASS).
+- GSW measurement COMPLETE: GSW-1..3 harness run + before/after report (#476), GSW-4 latency pass (#477), GSW-5 opt-in --api-latency mode (#479); report docs/reports/2026-07-19-grounded-skills-measurement.md.
+- B-2 self-row registry-stamp automation (#472); B-3 fast-lane prefix symmetry lint (#474).
+- Recipes #480 backlog-recipes planning arc; pinned-feed-contract doctrine graduated (#482); folded-gate diff-aware advisory sub-check (#484); folded-gate host ports + readiness cell routed to fm outbox (#486).
 
 ## PR state
+All seat-session PRs terminal MERGED through #486. IN-FLIGHT: `claude/night-run-idea-groom` (this wake) — groom + heartbeat; born-red hold until the session card flips complete.
 
-All seat-session PRs terminal MERGED through #482: #438–#443, #445, #451, #452, #455, #457, #459, #463, #464, #465, #466, #470, #471, #472 (B-2), #474 (B-3), #476 (GSW-1..3), #477 (GSW-4), #479 (GSW-5), #482 (pinned-feed-contract). Sibling lanes merged: #444, #446–#450, #453, #483.
+## Backlog — REFILLED (was falsely "DRY")
+The buildable-now backlog is **not** dry — the night's session cards carried ~14 unbuilt buildable ideas never groomed into the baton. Groomed + ranked in `docs/planning/2026-07-19-night-run-idea-groom.md`. Top buildable-now slices:
+- **R1 (S) — cut_release dist-before-self-restamp reorder:** `scripts/cut_release.py` restamps the self-row before the aftermath dist rebuild, so a version-bump PR momentarily commits a `docs/adopters.md` whose own self-row shows DRIFT against the kit. Reorder (rebuild dist first) or write a `pending-rebuild` tree-cell marker; +test. (from #472 card)
+- **R2 (S) — `/scope-backlog-item` skill:** scaffold the planning-recipe arc as a `docs/SKILLS.md` skill, making the standing "when no exec work is left, plan" order turnkey. (from #480 card)
+- R3–R12: shallow-clone REFUSE marker · HOOK_CENSUS · stale-wall advisory · check --explain-wall · append-log⇄Walls disagreement lint · fast-lane symmetry runtime advisory · harness --commit-results · harness --freeze self-cite · recipes applies-when tag · check_folded_gate remediation snippet (see the groom doc).
+Cross-repo / owner-gated (not kit-landable): folded-gate host ports (superbot-next `gate`, websites `quality.yml`, routed via fm #486); v1.19.0 adopter wave; the 23-proposal veto menu.
 
-IN-FLIGHT: `claude/folded-gate-check` (PR #484) — rank-2 folded-gate diff-aware advisory sub-check + tests + dist rebuild. Advisory-only sub-check that names a workflow folding the planted diff-aware card-derivation gate. Landing path: **born-red session-card hold** — `kit-quality` stays red until `.sessions/2026-07-19-folded-gate-check.md` flips complete.
+## Held decision
+**v1.20.0 cut DEFERRED** pending adopter-wave authorization — the next release carries the #482 pinned-feed template rider + the #484 folded-gate checker to adopters; cutting before the wave is authorized ships doctrine no adopter consumes. Unblocks on the ⚑ v1.19.0 adopter-wave authorization below.
 
-## Recently shipped (neutral pointer)
-
-- rank-2 folded-gate diff-aware advisory sub-check (this wake): engine sub-check + tests + dist rebuild, PR #484 (2026-07-19, branch claude/folded-gate-check); advisory-only, ships to adopters via the next release.
-- pinned-feed-contract doctrine graduated (rank-1): docs/recipes/pinned-feed-contract.md + CONSTITUTION.md.tmpl rider + docs/recipes/README.md index, PR #482 (2026-07-19); ships to adopters via the next release.
-- PR #479: GSW-5 — opt-in `--api-latency` harness mode graduated the GSW-4 latency pass into `scripts/measure_grounded_skills.py` (reuses `measure_pr_latency.py` pure logic, honest SKIP offline, default-off byte-identical); +3 tests, docs. No engine files → no dist rebuild, byte-pin clean. Rung-4 self-initiated (ORDER 048 grant).
-- PR #476 (prior wake): GSW-1..3 grounded-skills measurement — harness ran over full/non-shallow clones of the 12-repo roster (M4 valid), 4/4 PL-008 spot-checks MATCH, before/after report published + frozen M1–M4 data + reachability link. Merged 2026-07-19.
-- PR #474 (prior wake): B-3 fast-lane head-prefix ⇄ enabler branch_patterns symmetry lint (advisory). Merged 2026-07-18.
-- PR #472 (prior wake): B-2 self-row registry-stamp automation — `adopters-self-row-stale` born-red gate + network-free self-restamp wired into `scripts/cut_release.py`. Merged 2026-07-18.
-- PR #470 (prior wake): B-1 guard-surface census — `src/engine/guards.py::WORKFLOW_JOB_CENSUS` (6 jobs) + `tests/test_guard_surface_census.py` pin the SET of enforcing guard surfaces. Merged 2026-07-18.
-- v1.19.0 RELEASED + verified — tag v1.19.0, run 29656601475 success, sha256 three-way PASS, https://github.com/menno420/substrate-kit/releases/tag/v1.19.0
-
-## Backlog — HONEST readout (carried)
-
-**Buildable-now kit backlog is DRY.** Both buildable-now recipes from `docs/planning/2026-07-19-needs-planning-recipes.md` are now built: rank-1 pinned-feed-contract (#482, merged) and rank-2 folded-gate advisory sub-check (#484, this wake). GSW-1..5 + B-1/B-2/B-3 are all consumed. What genuinely remains is **not landable from the kit**:
-- Cross-repo host ports (fleet-manager inbox, Q-0261.3): the diff-aware block's actual host ports — superbot-next's `gate` job and websites' `quality.yml` — are cross-repo follow-ons, not kit-landable.
-- Next release carries the accumulated template/doctrine changes from #482 (and sibling doctrine PRs).
-- Owner-gated: the ⚑ FOR OWNER blocks below; the v1.19.0 adopter wave; the 23-proposal veto menu (`docs/planning/2026-07-16-overnight-veto-menu.md`).
-- Remaining scoped recipes (not buildable-now): readiness-cell (kit half DONE via ORDER 003 → websites lane) · t5-headless-guard (owner-gated pin-path + cross-tree kit-lab).
-This "buildable-now kit backlog dry; remaining work cross-repo or owner-gated" state is the honest, expected readout — not a stall. The seat idles on the 2h failsafe trigger between wakes.
-
-## Routine / trigger state — corrected at the 2026-07-18 coordinator cutover
-
-- CLOSED — 8 spent send_later pacemakers, deleted + verified absent:
-  trig_01DSh245ykS6on7WJSyKKQVF · trig_01YSUJ5DAdJEqRrmjN1Lyqpz · trig_01EDx9xMNKeZJrKbeRDkPkPS · trig_01XehM57jw86FT171dT6bc45 · trig_01TwthJQVz8XcvBb3X5wqJsE · trig_019q5TcJj3fPQ4MooUYJpsFW · trig_01WyizzoLMAWg7HmooXQzVzX · trig_013zy1tRdjdYpRQZndRpdrBa
-- ARMED (active failsafe, F-1): trig_01194PdaWChtHGNKASURxdLx "Self Improvement failsafe wake", cron `2 */2 * * *`, bound to the coordinator session. This is the current dead-man bridge.
-- DELETED at the 2026-07-18 coordinator cutover: trig_01BcfHTVwmwogjDycfmWBtt7 (the prior "Self Improvement failsafe wake", cron `21 */2 * * *`) — superseded by trig_01194PdaWChtHGNKASURxdLx above; do not expect to find or rebind it.
-- Business cron: NO trigger named kit-lab exists in this account's trigger list (verified same pagination). The 06:00Z kit-lab daily runs owner-side; the successor should not expect to find or rebind it here.
+## Routine / trigger state (no writes this wake)
+- ARMED (active failsafe, F-1): `trig_01194PdaWChtHGNKASURxdLx` "Self Improvement failsafe wake", cron `2 */2 * * *`, bound to the coordinator session — the current dead-man bridge.
+- No new routines armed; no trigger APIs called this wake.
+- Business cron: no kit-lab-named trigger in the account list; the 06:00Z kit-lab daily runs owner-side (see the ⚑ kit-lab block).
 
 ## State
-
 kit: v1.19.0
-- **No-false-walls guard now enforced fleet-wide** (campaign #444–#450): the false "agents cannot merge" doctrine was removed from templates / rendered docs / the session-close skill, then re-defended by `tools/check_no_false_walls.py` (kit CI, full lane) + `src/engine/checks/check_no_false_walls.py` (runs in every adopter's `check --strict`). Sits under CHANGELOG `[Unreleased]` — folds into the next release.
-- **Claims-only fast-lane guard now on BOTH surfaces**: kit's own `ci.yml` (PR #455) + generated adopter CI via `live_ci_workflow()` (PR #457). The guard-parity meta-test (`tests/test_guard_parity.py`, PR #459) fails CI on kit-vs-adopter guard drift.
-- Registry (docs/adopters.md): CURRENT per `currency --check` (12 repos); the superbot-games row DRIFT is adopter-side self-report lag (owner-gated, no kit-only fix — folded into the v1.19.0 wave ask). Every adopter row reads stale until its own upgrade wave.
-- `adopters-version-lag` (#441) + `adopters-stale` (calendar-age) advisories cover both staleness axes; `adopters-self-row-stale` (#472) reds CI when the kit's own self-row lags its version home.
-- Session gate judges the badge VALUE not line prose (#422); no-badge + modified-lane parity landed (#428/#429).
-- Wake currency scan turnkey (#392): `python3 dist/bootstrap.py currency --check`.
-- Grounded-skills measurement: harness MERGED (#386); protocol docs/operations/grounded-skills-measurement.md; window RUN + published (GSW-1..4, PRs #476/#477).
+- No-false-walls guard enforced fleet-wide (kit ci.yml + every adopter's check --strict); folds into the next release.
+- Claims-only fast-lane guard on both surfaces + guard-parity meta-test fails CI on kit↔adopter guard drift.
+- Registry (docs/adopters.md): CURRENT per currency --check (12 repos); adopter rows read stale until each repo's own upgrade wave (owner-gated).
+- adopters-version-lag + adopters-stale + adopters-self-row-stale advisories cover the staleness axes.
 - Revival boot reading: CONSTITUTION.md → control/inbox.md → this file → docs/eap-closeout-walkthrough-2026-07-14.md §E → docs/audits/eap-project-audit-2026-07-14.md.
 
 ## Next-2 baton
-
-1. **Buildable-now recipes DONE.** Both buildable-now recipes from
-   `docs/planning/2026-07-19-needs-planning-recipes.md` are built: rank-1 pinned-feed-contract
-   (#482, merged) and rank-2 folded-gate advisory sub-check (#484, this wake). The buildable-now
-   kit backlog from that doc is DRY.
-2. **What remains is cross-repo or owner-gated — not kit-landable.** The diff-aware block's actual
-   host ports (superbot-next `gate` job, websites `quality.yml`) are cross-repo follow-ons routed
-   via the fleet-manager inbox (Q-0261.3); the next kit release carries the accumulated
-   template/doctrine changes from #482; readiness-cell (kit half DONE via ORDER 003 → websites
-   lane) and t5-headless-guard (owner-gated pin-path + cross-tree kit-lab) remain scoped in the
-   recipe doc.
-
-**Baton: buildable-now kit backlog DRY — rank-1 pinned-feed-contract (#482, merged) and rank-2 folded-gate advisory (#484, this wake) are both built; what remains is cross-repo host ports (superbot-next `gate` / websites `quality.yml`, routed via fleet-manager inbox, Q-0261.3) or owner-gated — see docs/planning/2026-07-19-needs-planning-recipes.md.** The seat idles on the 2h failsafe trigger between wakes.
+1. **R1 — cut_release dist-before-self-restamp reorder (S).** Buildable now; one-file fix + test in `scripts/cut_release.py`. Recipe in the groom doc.
+2. **R2 — `/scope-backlog-item` skill (S).** Buildable now; add the skill + index it in docs/SKILLS.md. Recipe in the groom doc.
+**Baton: buildable-now backlog REFILLED — R1 (cut_release dist-order fix) and R2 (`/scope-backlog-item` skill) are the top slices; full ranked list R1–R12 in docs/planning/2026-07-19-night-run-idea-groom.md.**
 
 ## ⚑ FOR OWNER (standing set carried forward)
 
@@ -101,14 +74,7 @@ UNBLOCKS: the can/cannot ledger stays complete for the successor.
 VERIFY: a dated docs/CAPABILITIES.md entry pointing at PR #420.
 RISK: ↩️ reversible, docs-only.
 
-⚑ P10 required-check swap
-WHAT: Swap which CI check main requires, from the two legacy names to the current one.
-WHERE: repo Settings → Rules → the `main` ruleset → required status checks.
-HOW: in the ruleset panel, remove the two legacy-alias check names, add `kit-quality`.
-WHY: the two legacy-alias jobs are permanently-absent required checks that stall every PR's merge until the enabler/lander path clears them; kit-quality is the real check.
-UNBLOCKS: deleting the two legacy-alias jobs; ends the queue-stall class.
-VERIFY: next kit PR shows kit-quality as the only required check; agent then removes the alias jobs.
-RISK: ↩️ reversible — re-add the old required checks in the same ruleset panel.
+P10 required-check swap — DONE/moot: ruleset "main-branch-protection" (id 18694708) already requires kit-quality as the sole check; no owner action.
 
 ⚑ public-flip-or-PAT (pick one)
 WHAT: Let the other fleet repos read this one — either make it public or mint a read-only token.
@@ -119,10 +85,19 @@ UNBLOCKS: B2–B4 cross-repo sweeps + kit data in the merged console.
 VERIFY: a sibling-seat session fetches a kit file read-only without "Access denied: repository … is not configured for this session".
 RISK: ⚠️ P11 effectively irreversible (history exposed once public) · ↩️ P13 reversible — revoke anytime.
 
-Standing (full paste-ready blocks verbatim in git history of this file @ 86d2a57):
+⚑ t5-headless-guard fix (owner-gated: pin-path + cross-tree kit-lab)
+WHAT: fix the T5 bench probe so it produces a real in-session guard fire in the ON arm. Recommend shape 2 (check-driven guards) — needs no hook-honoring harness rebuild and the enforcement surface exists headless.
+WHERE: kit-lab repo, `bench/tasks/T5.md` (PIN PATH) + `bench/README.md` / `run_ab.py`; optional engine sliver `src/engine/checks/` (substrate-kit) for the last-card freshness anchor — verify it is not already covered by #19's `--require-session-log`.
+HOW: shape 2 — the arm's protocol runs `check --strict` inside the session flow (or a wrapper fails the task on red) so the guard's fire/obey/repair arc is observable without the hook layer.
+WHY: without it, T5 scores all guard items n/a — the ON arm demonstrates nothing over the unguarded baseline; the guard-probe purpose of T5 is unmet.
+UNBLOCKS: a T5 run that scores guard fire/obey/repair met/not-met instead of n/a; closes judge report §5.5 item 2.
+VERIFY: a T5 run produces ≥1 real in-session guard fire (or a recorded deliberate violation) in the ON arm.
+RISK: ⚠️ pin-path change → must land via a `do-not-automerge` owner-review PR in kit-lab; not landable from substrate-kit. Detail home: docs/planning/2026-07-19-needs-planning-recipes.md §4.
+
+Standing (full paste-ready blocks verbatim in git history of this file):
 - fm #122 v3.4 restamp — owner reviews/merges PERSONALLY.
 - UNIVERSAL wake fetch-list vN bump (+ docs/seat-digest.md, docs/SKILLS.md).
-- Grounded-skills measurement window ~2026-07-19..26 — CLOSED (measurement published 2026-07-19, PRs #476/#477).
+- Grounded-skills measurement window — CLOSED (measurement published 2026-07-19, PRs #476/#477).
 
 orders: acked=001–024 · done=001–024
 note: "ORDER 025" is the `>`-quoted fm relay inside ORDER 019 item 5, not a standalone bound order (highest bound = 024). Its WORK is DONE — both cfgdiff writeups on main + linked from bench/README.md, merged via PR #340 (2026-07-13); the redundant standalone-block append that hit the classifier wall is MOOT.
