@@ -1,1 +1,0 @@
-- `claude/s12-derive-ledger-families` · S12 auto-derive lint families from ledger bold titles · `src/engine/checks/check_wall_ledger_agreement.py` + tests + dist · 2026-07-19
