@@ -76,10 +76,14 @@ standing baton; the published report stands unless the owner objects.
   skeleton tables + interpretation, link from `docs/operations/README.md`, and
   flip the baton + the standing ⚑ "silence accepts" block to CLOSED. This is the
   slice that closes the window.
-- **GSW-4 · (optional) API latency pass (M).** Only if PR open->merge latency is
-  wanted: the #247 §2 GitHub-API pass. The harness deliberately does not fake
-  this from git data. Skip unless a wake has spare capacity — it is not required
-  for the headline.
+- **GSW-4 · (optional) API latency pass (M). — SHIPPED (PR #477).** The #247 §2
+  GitHub-API pass ran from-scratch over all 12 roster repos; no repo nulled.
+  Landed as report **§7** (`docs/reports/2026-07-19-grounded-skills-measurement.md`)
+  + frozen data `docs/reports/data/2026-07-19-grounded-skills-latency.json` +
+  script `scripts/measure_pr_latency.py` (tests `tests/test_measure_pr_latency.py`).
+  Headline: fleet median open→merge latency 3.5 min (before) → 4.5 min (after) —
+  flat/slightly-slower, confound-heavy (auto-merge-on-green predates the program
+  fleet-wide), reported descriptive-only.
 
 GSW-1..3 are the required chain; a single unhurried wake can do all three, or
 they split cleanly across wakes. GSW-4 is genuinely optional.
