@@ -1,0 +1,1 @@
+- `claude/r10-harness-freeze` · **R10 — harness --freeze self-citing reproduce block: sha256 of exact output bytes + paste-ready reproduce command + .freeze sidecar** · scripts/measure_grounded_skills.py + tests/test_measure_grounded_skills.py · 2026-07-19
