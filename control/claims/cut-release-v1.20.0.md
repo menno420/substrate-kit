@@ -1,0 +1,1 @@
+- branch `claude/cut-release-v1.20.0` · scope: release cut v1.20.0 (reconcile CHANGELOG for R5–S17 + baton advisory, `cut_release.py --write --rebuild-dist`, dispatch release.yml, verify three-way sha256, CAPABILITIES append, adopters regen) · 2026-07-20
