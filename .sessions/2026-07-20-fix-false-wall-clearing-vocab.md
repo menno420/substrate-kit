@@ -25,10 +25,21 @@ vocabulary and checks strictly line-by-line. On adopter idea-engine
   "…never self-merge." with NO repudiation/date. → GENUINE stale wall, MUST STAY RED.
 
 Fix the ENGINE SOURCE (`src/engine/checks/check_no_false_walls.py`, not the
-generated dist), rebuild `dist/bootstrap.py`, add a mutation test asserting
-the 5 FP shapes clear and the bare wall stays flagged, validate against the
-real idea-engine tree (exactly 1 finding = SKILLS.md:22 remains), and keep
-every existing `_MUST_FAIL` caught / `_MUST_PASS` cleared.
+generated dist), rebuild `dist/bootstrap.py`, add a mutation test, keep every
+existing `_MUST_FAIL` caught / `_MUST_PASS` cleared.
+
+**Adversarial-review revision (fm ORDER 048):** the first cut used section-based
+(dated-heading) + cross-line-block clearing, which BLINDED the gate — a genuine
+standing wall under a dated heading or beside an unrelated repudiation went
+green. Retightened to ATTACHMENT-BASED clearing: a wall clears only when a
+repudiation/date is attached to the wall claim itself (same clause of the same
+line, a `false "…"` quote naming the wall, or a tight one-line wrapped-sentence
+lookback that a "but…"/dated neighbour can't trigger). Consequence, SAFETY WINS:
+`CAPABILITIES.md:91/133` and `seat-digest.md:46` clear; but `CAPABILITIES.md:139`
+and `:149` are section-dated incident records with NO inline date, so they stay
+RED rather than weaken the gate — they need a light inline-date rewording in the
+adopter doc (resident/upgrade-PR note). Real-tree net: 3 findings (139, 149,
+SKILLS.md:22).
 
 - **📊 Model:** opus-4.8 · high · engine-bugfix
 

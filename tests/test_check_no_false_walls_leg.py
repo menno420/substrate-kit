@@ -220,22 +220,26 @@ class TestCmdCheckWiring:
         assert "false-wall" not in out
 
 
-# ── Clearing-vocabulary regression: the exact idea-engine v1.20.0 false
-#    positives clear, while a bare wall stays red (fm ORDER 048) ───────────────
+# ── Clearing-vocabulary regression: ATTACHMENT-BASED clearing (fm ORDER 048) ──
 #
 # v1.20.0 shipped the engine leg with too-narrow clearing vocabulary + a strict
 # line-by-line scan, so on adopter idea-engine (branch claude/kit-upgrade-v1.20.0,
-# sha 039b75b) it red-flagged 5 lines that CORRECTLY repudiate or date-record a
-# past false capability wall. Each fixture below is a faithful reproduction of
-# one of those exact line-shapes; the genuine bare wall (docs/SKILLS.md:22,
-# "never self-merge" with no repudiation/date) MUST still be caught — clearing
-# the false positives may never blind the gate to a real re-seed.
+# sha 039b75b) it red-flagged lines that CORRECTLY repudiate a past false wall.
+# The FIRST fix over-corrected: section-based (dated-heading) sheltering and a
+# cross-line bullet window BLINDED the gate — a genuine STANDING wall under a
+# dated heading, or beside an unrelated repudiation, went green. The tightened
+# rule is ATTACHMENT-BASED: a wall clears ONLY when a repudiation/date is
+# attached to the wall claim itself (same clause of the same physical line, or a
+# `false "…"` quote whose content IS the wall), NEVER because it shares a dated
+# section or sits near an unrelated cue. Safety wins over clearing a stray FP.
 
-# The 5 idea-engine FALSE POSITIVES — each must clear (scan_text -> []).
+# The idea-engine false positives that clear SAFELY (repudiation attached to the
+# wall on the wall's own physical line).
 _FP_CLEAR = {
-    # docs/CAPABILITIES.md:90-91 — a repudiation that WRAPS across a bullet: the
-    # "NOT walled (corrects a prior" lands on the first line, the wall phrase
-    # ('self-merge classifier') on the indented continuation line.
+    # docs/CAPABILITIES.md:90-91 — the wall phrase ('self-merge classifier')
+    # lands on the continuation line INSIDE a `false "self-merge classifier"`
+    # quote, so it clears on its own line (quote names the wall). The bullet's
+    # first line repudiates the SAME capability.
     "wrapped_repudiation_bullet": (
         "- `any` · **Merging own / sibling green PRs is NOT walled** "
         "(corrects a prior\n"
@@ -244,31 +248,14 @@ _FP_CLEAR = {
         "  arming auto-merge, and draft→ready flips are verified working "
         "agent-side.\n"
     ),
-    # docs/CAPABILITIES.md:133 — a bolded "do **not** establish that agents
-    # cannot merge" repudiation (emphasis must not defeat the cue).
+    # docs/CAPABILITIES.md:133 — "do **not** establish that agents cannot merge":
+    # the cue is in the SAME clause as the wall (emphasis stripped).
     "do_not_establish_bolded": (
         "> window — they do **not** establish that agents cannot merge or "
         "cannot arm\n> routines.\n"
     ),
-    # docs/CAPABILITIES.md:139 — a paragraph under a dated incident-record
-    # SECTION heading ("classifier denied … this window").
-    "dated_incident_classifier_denied": (
-        "### 2026-07-16 — auto-mode-classifier denials (Ideas Lab seat, "
-        "since 2026-07-15)\n\n"
-        "The Claude Code auto-mode permission classifier denied several "
-        "actions this window; recorded here per the discovery rule.\n"
-    ),
-    # docs/CAPABILITIES.md:149 — a dated incident record naming the "[Merge
-    # Without Review]" label that was DENIED (under the same dated heading).
-    "dated_incident_review_label": (
-        "### 2026-07-16 — auto-mode-classifier denials (since 2026-07-15)\n\n"
-        "5. **First sim-lab worker dispatch** — **DENIED**, reported label "
-        '"[Merge Without Review]", over merge-on-green wording in the '
-        "dispatch prompt; re-dispatched with the worker taking zero merge "
-        "actions.\n"
-    ),
-    # docs/seat-digest.md:46 — a single-line "is NOT walled (corrects a prior
-    # false …)" render (lowercase "false" + "NOT walled").
+    # docs/seat-digest.md:46 — single-line "is NOT walled (corrects a prior
+    # false 'self-merge classifier' entry)": the false-quote names the wall.
     "single_line_not_walled": (
         "- `any` · **Merging own / sibling green PRs is NOT walled** "
         '(corrects a prior false "self-merge classifier" entry): direct '
@@ -276,27 +263,83 @@ _FP_CLEAR = {
     ),
 }
 
-# The GENUINE stale wall (docs/SKILLS.md:22) and precision guards that must
-# STILL be caught — the fix may not over-broaden into silence.
-_GENUINE_STAYS_RED = {
-    # The exact SKILLS.md:22 skill-table row: a bare "never self-merge" with no
-    # repudiation and no date.
-    "bare_skill_table_row": (
+# The adversarial-review MUST-RED set (fm ORDER 048): every genuine STANDING
+# wall — even under a dated heading, even beside an unrelated repudiation — must
+# stay flagged. Clearing a stray FP may NEVER blind the gate to one of these.
+_MUST_STAY_RED = {
+    # (a) KEY: a bare standing wall under a dated heading (no reset heading
+    # after — the whole remainder must NOT be blinded).
+    "a_bare_wall_under_dated_heading": (
+        "### 2026-07-16 — notes\n\n"
+        "Agents cannot delete branches — this is a hard wall.\n"
+    ),
+    # (a2) "never self-merge" under a dated heading.
+    "a2_never_self_merge_under_dated_heading": (
+        "## 2026-07-15 — session notes\n\n"
+        "Sessions must not merge their own PRs; never self-merge.\n"
+    ),
+    # (a3) a classifier-denied STANDING wall under a dated heading.
+    "a3_classifier_denied_standing_under_dated_heading": (
+        "### 2026-07-16 — log\n\n"
+        "Merging is classifier-denied for agent seats and stays owner-only.\n"
+    ),
+    # (b) a genuine wall as a CONTINUATION of a DATED bullet about a different
+    # capability — the bullet's date must not bleed onto the continuation.
+    "b_neighbor_bleed_dated_bullet_continuation": (
+        "- 2026-07-16 · deploys work agent-side (verified)\n"
+        "  but agents cannot merge their own PRs.\n"
+    ),
+    # (b2) first bullet line repudiates a DIFFERENT capability; the continuation
+    # is a distinct merge wall — the block window must not clear it.
+    "b2_neighbor_bleed_different_capability": (
+        '- Pushing is NOT walled (corrects a prior false "push classifier" '
+        "entry):\n"
+        "  but agents cannot merge their own PRs and never self-merge.\n"
+    ),
+    # (c2) an unrelated `false "weather"` quote plus a bare wall on one line —
+    # the false-quote must name the wall to clear it.
+    "c2_unrelated_false_quote": (
+        'A prior false "weather" note aside, sessions may not self-merge.\n'
+    ),
+    # (d) "not walled" used in a different clause than the real wall.
+    "d_not_walled_different_clause": (
+        'Nothing here is "not walled"; in truth agents cannot merge their own '
+        "PRs.\n"
+    ),
+    # docs/SKILLS.md:22 — the genuine stale wall: bare "never self-merge", no
+    # repudiation, no date.
+    "skills_bare_never_self_merge": (
         "| `session-close` | Land the session — claim, born-red card first, "
         "READY PR, batched work, close-out docs, flip complete last; never "
         "self-merge. | `read`, `edit`, `run` | `python3 bootstrap.py check` |\n"
     ),
-    # A bare "self-merge classifier" wall with NO repudiation context — the
-    # false-quoted-label clearing must not fire without the repudiation words.
+    # docs/CAPABILITIES.md:139 — a section-dated incident record with NO inline
+    # date: SAFETY WINS, it stays red (needs a light inline-date rewording in
+    # the adopter doc rather than a weakened gate).
+    "cap139_dated_incident_no_inline_date": (
+        "### 2026-07-16 — auto-mode-classifier denials (since 2026-07-15)\n\n"
+        "The Claude Code auto-mode permission classifier denied several "
+        "actions this window; recorded here per the discovery rule.\n"
+    ),
+    # docs/CAPABILITIES.md:149 — likewise, no inline date → stays red.
+    "cap149_dated_incident_review_label_no_inline_date": (
+        "### 2026-07-16 — auto-mode-classifier denials (since 2026-07-15)\n\n"
+        "5. **First sim-lab worker dispatch** — **DENIED**, reported label "
+        '"[Merge Without Review]", over merge-on-green wording in the '
+        "dispatch prompt; re-dispatched with the worker taking zero merge "
+        "actions.\n"
+    ),
+    # A bare "self-merge classifier" wall with NO repudiation — the false-quote
+    # clearing must not fire without a quote that names this wall.
     "bare_self_merge_classifier": (
         "Every session hits the self-merge classifier and must route the PR "
         "to the owner.\n"
     ),
-    # A false wall AFTER a non-dated heading resets the dated-record section, so
-    # it is NOT sheltered by an earlier dated incident heading.
-    "wall_after_dated_section_resets": (
+    # A wall AFTER a non-dated heading (the earlier dated heading must not
+    # shelter it — belt-and-braces since sections never shelter now).
+    "wall_after_reset_heading": (
         "### 2026-07-16 — auto-mode-classifier denials\n\n"
-        "classifier denied one action this window.\n\n"
+        "recorded a denial this window.\n\n"
         "## Standing policy\n\n"
         "agents cannot merge their own PRs.\n"
     ),
@@ -311,29 +354,44 @@ class TestClearingVocabulary:
                 f"{[(h.line, h.rule, h.phrase) for h in scan_text(text)]}"
             )
 
-    def test_genuine_bare_wall_stays_flagged(self) -> None:
-        for name, text in _GENUINE_STAYS_RED.items():
+    def test_every_genuine_standing_wall_stays_flagged(self) -> None:
+        # The whole adversarial MUST-RED matrix: no section/neighbour/unrelated
+        # cue may clear a genuine standing wall.
+        for name, text in _MUST_STAY_RED.items():
             assert scan_text(text), f"genuine wall {name!r} must STAY red"
 
     def test_bare_skill_row_still_reds_via_the_engine_leg(self, tmp_path: Path) -> None:
         # The exact genuine finding, on a real adopter surface.
-        _plant(tmp_path, "docs/SKILLS.md", _GENUINE_STAYS_RED["bare_skill_table_row"])
+        _plant(tmp_path, "docs/SKILLS.md", _MUST_STAY_RED["skills_bare_never_self_merge"])
         findings = check_no_false_walls(tmp_path, Config())
         assert [f.path for f in findings] == ["docs/SKILLS.md"]
         assert findings[0].kind == "false-wall:never-agent-side"
 
-    def test_full_idea_engine_capabilities_doc_is_now_silent(self, tmp_path: Path) -> None:
-        # The whole CAPABILITIES.md shape (all four FP contexts stacked) must
-        # produce ZERO findings once assembled into one adopter doc.
+    def test_dated_heading_does_not_shelter_a_standing_wall(self, tmp_path: Path) -> None:
+        # The blocker the first fix introduced: a standing wall under an
+        # ISO-dated heading must red on the engine leg, not be section-cleared.
+        _plant(
+            tmp_path,
+            "docs/current-state.md",
+            _MUST_STAY_RED["a_bare_wall_under_dated_heading"],
+        )
+        assert check_no_false_walls(tmp_path, Config()), "dated heading blinded the gate"
+
+    def test_safe_false_positives_clear_but_incident_records_stay_red(
+        self, tmp_path: Path
+    ) -> None:
+        # The assembled CAPABILITIES.md shape: the two attach-clearable FPs go
+        # silent; the two section-dated incident records (no inline date) stay
+        # red by the safety-wins rule (they need an inline-date rewording).
         doc = (
             "## Append log — newest first\n\n"
             + _FP_CLEAR["wrapped_repudiation_bullet"]
             + "\n"
-            + _FP_CLEAR["dated_incident_classifier_denied"]
-            + "\n"
             + _FP_CLEAR["do_not_establish_bolded"]
             + "\n"
-            + _FP_CLEAR["dated_incident_review_label"]
+            + _MUST_STAY_RED["cap139_dated_incident_no_inline_date"]
         )
         _plant(tmp_path, "docs/CAPABILITIES.md", doc)
-        assert check_no_false_walls(tmp_path, Config()) == []
+        findings = check_no_false_walls(tmp_path, Config())
+        # Exactly the one incident-record line stays red.
+        assert [f.kind for f in findings] == ["false-wall:classifier-denied-standing"]
