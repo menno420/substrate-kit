@@ -1,0 +1,1 @@
+- `claude/p2-p3-detector-hardenings` · **check_no_false_walls P2+P3 detector hardenings** — P2 wrapped-lookback punctuation-gated bleed (same-capability gate) + P3 match_blocklist one-hit-per-line masking (per-match, position-aware clearing); engine source + dist rebuild + test invariants · 2026-07-20
