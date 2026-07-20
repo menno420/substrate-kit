@@ -57,7 +57,8 @@ historical snapshot and are superseded where they disagree. Live ledgers
   harness, and `cut_release.py --rebuild-dist` (#541, used to cut this). Cut
   under fm ORDER 048 standing grant + coordinator dispatch (the wave
   authorization `control/status.md` recorded as held). The GitHub Release is
-  published via `release.yml` workflow_dispatch (tag-push 403-walled). v1.19.0
+  published via `release.yml` workflow_dispatch (the repo's standard release
+  path — the dispatch input creates the annotated tag in-Actions). v1.19.0
   remains released + verified (tag `v1.19.0`, three-way PASS,
   release <https://github.com/menno420/substrate-kit/releases/tag/v1.19.0>).
   **No adopter tree has been upgraded** — every one of the ~15 adopter repos is
