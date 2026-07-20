@@ -46,15 +46,27 @@ historical snapshot and are superseded where they disagree. Live ledgers
   one-off merge refusal, if it ever occurs, is venue-specific — report it
   verbatim, not as a standing wall. The merge doctrine ships in
   `src/engine/templates/CONSTITUTION.md.tmpl` (see "Review rhythm" below).
-- **v1.19.0 is released + verified but NOT yet distributed.** The kit tree is
-  v1.19.0 (`dist/bootstrap.py`; tag `v1.19.0`, sha256 three-way PASS,
-  release <https://github.com/menno420/substrate-kit/releases/tag/v1.19.0>) and
-  the **registry** [`docs/adopters.md`](adopters.md) now reads v1.19.0 (self-row
-  regenerated in the release aftermath), but **no adopter tree has been
-  upgraded** — every one of the ~15 adopter repos is still on v1.17.0-or-older.
-  The earlier "distribution COMPLETE" line below is **wrong**. **Running the
-  v1.19.0 adopter-distribution wave (owner-gated) is the TOP next task** →
-  [`docs/NEXT-TASKS.md`](NEXT-TASKS.md) #1.
+- **v1.20.0 is CUT (2026-07-20) — supersedes v1.19.0.** The kit tree is now
+  v1.20.0 (`dist/bootstrap.py` rebuilt + byte-pinned at 1320533 bytes; both
+  version homes `src/engine/lib/config.py` + `pyproject.toml` bumped;
+  `substrate.config.json` bumped; self-row re-stamped). The v1.20.0 CHANGELOG
+  section reconciles every feature PR since v1.19.0 (R5–R15, S2–S17, baton
+  advisory #545) — the completed capability-ledger guard stack, the
+  doctrine-recipe discovery/honesty/graduation checks, the `📊 Model:`
+  exit-gate trilogy (#512/#513/#514), the tamper-evident grounded-skills
+  harness, and `cut_release.py --rebuild-dist` (#541, used to cut this). Cut
+  under fm ORDER 048 standing grant + coordinator dispatch (the wave
+  authorization `control/status.md` recorded as held). The GitHub Release is
+  published via `release.yml` workflow_dispatch (the repo's standard release
+  path — the dispatch input creates the annotated tag in-Actions). v1.19.0
+  remains released + verified (tag `v1.19.0`, three-way PASS,
+  release <https://github.com/menno420/substrate-kit/releases/tag/v1.19.0>).
+  **No adopter tree has been upgraded** — every one of the ~15 adopter repos is
+  still on v1.17.0-or-older; the **v1.20.0 adopter-distribution wave
+  (owner-gated) is the TOP next task** → [`docs/NEXT-TASKS.md`](NEXT-TASKS.md)
+  #1. The full sibling-row `docs/adopters.md` regen (`bootstrap currency`) runs
+  in the POST-merge aftermath, when origin/main reads v1.20.0 (running it
+  pre-merge would regress the self-row against a stale network read).
 - **Owner-gate stack (P4/P5/P10/P11/P13) is EAP-console-era.** Those gates
   presume the Projects console + autonomous routines that go read-only
   2026-07-21; treat them as historical, not live blockers, pending the
