@@ -218,3 +218,122 @@ class TestCmdCheckWiring:
         cmd_check(tmp_path, strict=True)
         out = capsys.readouterr().out
         assert "false-wall" not in out
+
+
+# ── Clearing-vocabulary regression: the exact idea-engine v1.20.0 false
+#    positives clear, while a bare wall stays red (fm ORDER 048) ───────────────
+#
+# v1.20.0 shipped the engine leg with too-narrow clearing vocabulary + a strict
+# line-by-line scan, so on adopter idea-engine (branch claude/kit-upgrade-v1.20.0,
+# sha 039b75b) it red-flagged 5 lines that CORRECTLY repudiate or date-record a
+# past false capability wall. Each fixture below is a faithful reproduction of
+# one of those exact line-shapes; the genuine bare wall (docs/SKILLS.md:22,
+# "never self-merge" with no repudiation/date) MUST still be caught — clearing
+# the false positives may never blind the gate to a real re-seed.
+
+# The 5 idea-engine FALSE POSITIVES — each must clear (scan_text -> []).
+_FP_CLEAR = {
+    # docs/CAPABILITIES.md:90-91 — a repudiation that WRAPS across a bullet: the
+    # "NOT walled (corrects a prior" lands on the first line, the wall phrase
+    # ('self-merge classifier') on the indented continuation line.
+    "wrapped_repudiation_bullet": (
+        "- `any` · **Merging own / sibling green PRs is NOT walled** "
+        "(corrects a prior\n"
+        '  false "self-merge classifier" entry): direct REST/MCP '
+        "squash-on-green,\n"
+        "  arming auto-merge, and draft→ready flips are verified working "
+        "agent-side.\n"
+    ),
+    # docs/CAPABILITIES.md:133 — a bolded "do **not** establish that agents
+    # cannot merge" repudiation (emphasis must not defeat the cue).
+    "do_not_establish_bolded": (
+        "> window — they do **not** establish that agents cannot merge or "
+        "cannot arm\n> routines.\n"
+    ),
+    # docs/CAPABILITIES.md:139 — a paragraph under a dated incident-record
+    # SECTION heading ("classifier denied … this window").
+    "dated_incident_classifier_denied": (
+        "### 2026-07-16 — auto-mode-classifier denials (Ideas Lab seat, "
+        "since 2026-07-15)\n\n"
+        "The Claude Code auto-mode permission classifier denied several "
+        "actions this window; recorded here per the discovery rule.\n"
+    ),
+    # docs/CAPABILITIES.md:149 — a dated incident record naming the "[Merge
+    # Without Review]" label that was DENIED (under the same dated heading).
+    "dated_incident_review_label": (
+        "### 2026-07-16 — auto-mode-classifier denials (since 2026-07-15)\n\n"
+        "5. **First sim-lab worker dispatch** — **DENIED**, reported label "
+        '"[Merge Without Review]", over merge-on-green wording in the '
+        "dispatch prompt; re-dispatched with the worker taking zero merge "
+        "actions.\n"
+    ),
+    # docs/seat-digest.md:46 — a single-line "is NOT walled (corrects a prior
+    # false …)" render (lowercase "false" + "NOT walled").
+    "single_line_not_walled": (
+        "- `any` · **Merging own / sibling green PRs is NOT walled** "
+        '(corrects a prior false "self-merge classifier" entry): direct '
+        "REST/MCP squash-on-green, arming auto-merge,…\n"
+    ),
+}
+
+# The GENUINE stale wall (docs/SKILLS.md:22) and precision guards that must
+# STILL be caught — the fix may not over-broaden into silence.
+_GENUINE_STAYS_RED = {
+    # The exact SKILLS.md:22 skill-table row: a bare "never self-merge" with no
+    # repudiation and no date.
+    "bare_skill_table_row": (
+        "| `session-close` | Land the session — claim, born-red card first, "
+        "READY PR, batched work, close-out docs, flip complete last; never "
+        "self-merge. | `read`, `edit`, `run` | `python3 bootstrap.py check` |\n"
+    ),
+    # A bare "self-merge classifier" wall with NO repudiation context — the
+    # false-quoted-label clearing must not fire without the repudiation words.
+    "bare_self_merge_classifier": (
+        "Every session hits the self-merge classifier and must route the PR "
+        "to the owner.\n"
+    ),
+    # A false wall AFTER a non-dated heading resets the dated-record section, so
+    # it is NOT sheltered by an earlier dated incident heading.
+    "wall_after_dated_section_resets": (
+        "### 2026-07-16 — auto-mode-classifier denials\n\n"
+        "classifier denied one action this window.\n\n"
+        "## Standing policy\n\n"
+        "agents cannot merge their own PRs.\n"
+    ),
+}
+
+
+class TestClearingVocabulary:
+    def test_each_idea_engine_false_positive_clears(self) -> None:
+        for name, text in _FP_CLEAR.items():
+            assert scan_text(text) == [], (
+                f"FALSE POSITIVE {name!r} must clear, got: "
+                f"{[(h.line, h.rule, h.phrase) for h in scan_text(text)]}"
+            )
+
+    def test_genuine_bare_wall_stays_flagged(self) -> None:
+        for name, text in _GENUINE_STAYS_RED.items():
+            assert scan_text(text), f"genuine wall {name!r} must STAY red"
+
+    def test_bare_skill_row_still_reds_via_the_engine_leg(self, tmp_path: Path) -> None:
+        # The exact genuine finding, on a real adopter surface.
+        _plant(tmp_path, "docs/SKILLS.md", _GENUINE_STAYS_RED["bare_skill_table_row"])
+        findings = check_no_false_walls(tmp_path, Config())
+        assert [f.path for f in findings] == ["docs/SKILLS.md"]
+        assert findings[0].kind == "false-wall:never-agent-side"
+
+    def test_full_idea_engine_capabilities_doc_is_now_silent(self, tmp_path: Path) -> None:
+        # The whole CAPABILITIES.md shape (all four FP contexts stacked) must
+        # produce ZERO findings once assembled into one adopter doc.
+        doc = (
+            "## Append log — newest first\n\n"
+            + _FP_CLEAR["wrapped_repudiation_bullet"]
+            + "\n"
+            + _FP_CLEAR["dated_incident_classifier_denied"]
+            + "\n"
+            + _FP_CLEAR["do_not_establish_bolded"]
+            + "\n"
+            + _FP_CLEAR["dated_incident_review_label"]
+        )
+        _plant(tmp_path, "docs/CAPABILITIES.md", doc)
+        assert check_no_false_walls(tmp_path, Config()) == []

@@ -4917,7 +4917,9 @@ _PROHIBITION_FRAME = re.compile(
 _REPUDIATION_CUES = re.compile(
     r"no\s+standing|"
     r"not\s+a\s+wall|"
-    r"do(?:es)?\s+not\s+(?:invent|record|apply|stand|hold)|"
+    r"not\s+walled|"  # "Merging … is NOT walled" — a direct repudiation.
+    r"corrects?\s+a\s+prior\s+false|"  # "corrects a prior false '…' entry".
+    r"do(?:es)?\s+not\s+(?:invent|record|apply|stand|hold|establish)|"  # "do not establish that agents cannot merge".
     r"don'?t\s+invent|"
     r"never\s+route\s+a\s+mergeable\s+green\s+pr\s+to\s+the\s+owner|"
     r"normal\s+agent\s+(?:action|work)|"
@@ -4930,8 +4932,16 @@ _REPUDIATION_CUES = re.compile(
     r"proven\s+(?:repeatedly|by\b|~?\d)",
     re.I,
 )
-# The repo's repudiation label: FALSE "…" (case-sensitive uppercase).
+# The repo's repudiation label: FALSE "…". The bare uppercase token is the
+# canonical form; a lowercase QUOTED use ("corrects a prior false 'self-merge
+# classifier' entry") carries the same repudiation intent, so it clears too.
 _FALSE_LABEL = re.compile(r"\bFALSE\b")
+_FALSE_LABEL_QUOTED = re.compile(r"\bfalse\s+[\"“'`]", re.I)
+
+# Markdown emphasis / code markers stripped before running the CLEARING cues so
+# a bolded repudiation ("they do **not** establish …") still matches. Only the
+# clearing pass strips them — the blocklist match is left untouched.
+_EMPHASIS = re.compile(r"[*`]")
 
 # Inline dated-record markers (this line is itself a dated record).
 _DATED_LINE = re.compile(
@@ -4941,9 +4951,16 @@ _DATED_LINE = re.compile(
 )
 # A bullet that STARTS a dated record block.
 _DATED_BULLET = re.compile(r"^\s*[-*]\s+\d{4}-\d{2}-\d{2}\b")
+# A bullet start (any list item) — used to bound the enclosing-bullet window so
+# a repudiation/date that wraps onto a continuation line clears the whole item.
+_BULLET_START = re.compile(r"^\s*[-*]\s+")
 # A markdown heading.
 _HEADING = re.compile(r"^\s*#{1,6}\s+(.*)$")
 _HISTORICAL_HEADING = re.compile(r"append\s+log|historical", re.I)
+# A bare ISO date token, used to detect a dated-record SECTION heading
+# ("### 2026-07-16 — auto-mode-classifier denials"): everything under such a
+# heading, until the next heading, is a dated incident record and clears.
+_DATE_TOKEN = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
 class RawHit(NamedTuple):
@@ -4954,15 +4971,73 @@ class RawHit(NamedTuple):
     rule: str
 
 
-def is_cleared(line: str, *, in_dated_block: bool, in_historical: bool) -> bool:
-    """True when a blocklist match on ``line`` must NOT count as a finding."""
-    if in_dated_block or in_historical:
+def _enclosing_block(lines: list[str], idx0: int) -> str:
+    """Return the text of the bullet ITEM enclosing 0-based ``idx0`` (a bullet
+    start plus its indented continuation lines), or just ``lines[idx0]`` when
+    the line is not inside a bullet.
+
+    This gives clearing a small, PRECISE window: a repudiation or dated marker
+    that wraps onto a continuation line (or sits on the item's first line while
+    the wall phrase lands on the second) clears the whole item — without ever
+    merging two separate list items, so a bare-wall bullet is never cleared by a
+    repudiation in a neighbouring item.
+    """
+    n = len(lines)
+    # Walk up to the bullet-start line. A left-margin (non-indented) line that
+    # is not itself a bullet start means idx0 is not a bullet continuation.
+    start = idx0
+    while not _BULLET_START.match(lines[start]):
+        if not lines[start][:1].isspace():
+            return lines[idx0]
+        if start == 0:
+            return lines[idx0]
+        start -= 1
+    # Walk down over indented continuation lines (stop at the next bullet start,
+    # a blank line, a heading, or a fresh left-margin line).
+    end = idx0
+    for j in range(start + 1, n):
+        line = lines[j]
+        if (
+            _BULLET_START.match(line)
+            or not line.strip()
+            or _HEADING.match(line)
+            or not line[:1].isspace()
+        ):
+            break
+        end = j
+    if end < idx0:
+        end = idx0
+    return "\n".join(lines[start : end + 1])
+
+
+def is_cleared(
+    line: str,
+    *,
+    in_dated_block: bool,
+    in_historical: bool,
+    in_dated_record: bool = False,
+    context: str | None = None,
+) -> bool:
+    """True when a blocklist match on ``line`` must NOT count as a finding.
+
+    ``context`` is the enclosing bullet item (from :func:`_enclosing_block`) so
+    a wrapped repudiation/date clears; it defaults to ``line`` for a bare call.
+    ``in_dated_record`` is set inside a dated-record SECTION (a heading carrying
+    an ISO date, e.g. an incident log), where every line is a dated record.
+    """
+    if in_dated_block or in_historical or in_dated_record:
         return True
-    if _DATED_LINE.search(line):
+    text = context if context is not None else line
+    # Strip markdown emphasis so a bolded repudiation ("do **not** establish")
+    # still matches the word-based clearing cues.
+    scrubbed = _EMPHASIS.sub("", text)
+    if _DATED_LINE.search(text):
         return True
-    if _REPUDIATION_CUES.search(line):
+    if _REPUDIATION_CUES.search(scrubbed):
         return True
-    if _FALSE_LABEL.search(line):
+    if _FALSE_LABEL.search(text):
+        return True
+    if _FALSE_LABEL_QUOTED.search(text):
         return True
     return False
 
@@ -4992,12 +5067,19 @@ def scan_text(text: str) -> list[RawHit]:
     grammar (no duplicate logic).
     """
     hits: list[RawHit] = []
+    lines = text.splitlines()
     in_dated_block = False
     in_historical = False
-    for i, line in enumerate(text.splitlines(), start=1):
+    in_dated_record = False
+    for idx0, line in enumerate(lines):
+        i = idx0 + 1
         heading = _HEADING.match(line)
         if heading:
             in_historical = bool(_HISTORICAL_HEADING.search(heading.group(1)))
+            # A heading carrying an ISO date opens a dated-record SECTION (an
+            # incident log like "### 2026-07-16 — classifier denials"): its
+            # lines are dated records until the next heading resets the state.
+            in_dated_record = bool(_DATE_TOKEN.search(heading.group(1)))
             in_dated_block = False
         elif _DATED_BULLET.match(line):
             in_dated_block = True
@@ -5008,7 +5090,13 @@ def scan_text(text: str) -> list[RawHit]:
         hit = match_blocklist(line)
         if hit is None:
             continue
-        if is_cleared(line, in_dated_block=in_dated_block, in_historical=in_historical):
+        if is_cleared(
+            line,
+            in_dated_block=in_dated_block,
+            in_historical=in_historical,
+            in_dated_record=in_dated_record,
+            context=_enclosing_block(lines, idx0),
+        ):
             continue
         rule, phrase = hit
         hits.append(RawHit(i, phrase.strip(), rule))
