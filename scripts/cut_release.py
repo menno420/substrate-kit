@@ -32,8 +32,18 @@ What it does (``--write``) or previews as a diff (default, DRY-RUN):
    ``workflow_dispatch``, and the three-way sha256 post-release verification
    (all copied from the runbook — the runbook stays canonical).
 
-What it NEVER does: dispatch a workflow, push, commit, or touch the
-network. It only edits the working tree, and only with ``--write``.
+``--rebuild-dist`` (opt-in, requires ``--write``): folds FOLLOWUP step 2
+(dist regen + byte-pin) into the cut. After the version bump lands, it runs
+the canonical ``python3 src/build_bootstrap.py`` under ``--root``,
+byte-pins the builder's reported count against ``dist/bootstrap.py`` on
+disk, and marks step 2 DONE in the printed checklist. Still network-free —
+the builder only reads ``src/engine`` and writes ``dist/`` — and NEVER
+dispatches a workflow, pushes, tags, commits, or touches ``release.json``.
+
+What it NEVER does: dispatch a workflow, push, commit, tag, publish a
+release, or touch the network. It only edits the working tree (version
+homes + CHANGELOG, plus ``dist/bootstrap.py`` when ``--rebuild-dist`` is
+given), and only with ``--write``.
 
 Refusals (exit non-zero, clear message): malformed version string; target
 not exactly one semver increment (major/minor/patch) of the current
@@ -96,6 +106,19 @@ _MACHINE_COMMENT = (
     "min_upgrade_from=1.0.0 -->"
 )
 
+# The dist-rebuild step (FOLLOWUP step 2) is the one follow-up that is a
+# deterministic, network-free text regeneration — `python3 src/build_bootstrap.py`
+# rebuilds dist/bootstrap.py from src/engine and prints its written BYTE count.
+# --rebuild-dist folds it into the --write cut: the same command the runbook
+# names, run against --root, with the printed count byte-pinned against the
+# file on disk (the manual "confirm the count equals wc -c" step). It stays a
+# separate opt-in flag (not implied by --write) because the byte-pin is only
+# meaningful once the version homes are bumped, and because a cut operator may
+# want to review the bump diff before regenerating the ~625 KB artifact.
+BUILD_BOOTSTRAP_RELPATH = "src/build_bootstrap.py"
+DIST_RELPATH = "dist/bootstrap.py"
+_WROTE_BYTES_RE = re.compile(r"\((\d+) bytes\)")
+
 FOLLOWUP_CHECKLIST = """\
 Follow-up checklist — steps cut_release.py deliberately does NOT do
 (canonical recipe: docs/operations/release-runbook.md):
@@ -104,8 +127,7 @@ Follow-up checklist — steps cut_release.py deliberately does NOT do
     (breaking= / state_migration= / min_upgrade_from=) and add the
     release-class prose summary to the section preamble if desired (the
     [Unreleased] preamble was kept verbatim).
- 2. Dist regen + byte-pin: python3 src/build_bootstrap.py, then confirm the
-    builder's printed byte count equals `wc -c dist/bootstrap.py`.
+{dist_step}
  3. Claim, then bump PR (born-red): work-claim
     control/claims/release-v{version}.md on main first (control fast-lane
     PR); cut the bump branch from post-claim main; born-red session card is
@@ -138,9 +160,89 @@ Follow-up checklist — steps cut_release.py deliberately does NOT do
     regen).\
 """
 
+# Step 2's two faces: the manual instruction (default), and the folded-in
+# confirmation printed after --rebuild-dist has done it. {bytes} is the
+# byte-pinned count the builder wrote and this run re-read off disk.
+_DIST_STEP_MANUAL = (
+    " 2. Dist regen + byte-pin: python3 src/build_bootstrap.py, then confirm "
+    "the\n    builder's printed byte count equals `wc -c dist/bootstrap.py`."
+)
+_DIST_STEP_DONE = (
+    " 2. Dist regen + byte-pin: DONE — folded in via --rebuild-dist "
+    "({bytes} bytes,\n    byte-pin verified against dist/bootstrap.py)."
+)
+
 
 class CutError(Exception):
     """A refusal — printed as the error message, exit 1."""
+
+
+def followup_checklist(version: str, rebuilt_bytes: int | None) -> str:
+    """The follow-up checklist, with step 2 reflecting --rebuild-dist state.
+
+    ``rebuilt_bytes`` is the byte count of the freshly-rebuilt dist when
+    ``--rebuild-dist`` folded step 2 in, else ``None`` (step 2 stays the
+    manual instruction).
+    """
+    if rebuilt_bytes is None:
+        dist_step = _DIST_STEP_MANUAL
+    else:
+        dist_step = _DIST_STEP_DONE.format(bytes=rebuilt_bytes)
+    return FOLLOWUP_CHECKLIST.format(version=version, dist_step=dist_step)
+
+
+def rebuild_dist(root: Path) -> int:
+    """Regenerate ``dist/bootstrap.py`` and byte-pin the result. Return bytes.
+
+    Runs the canonical ``python3 src/build_bootstrap.py`` (the same command
+    the runbook's FOLLOWUP step 2 names) as a subprocess under ``root``, then
+    verifies the count the builder printed equals the actual on-disk size —
+    the manual "confirm the printed byte count equals ``wc -c
+    dist/bootstrap.py``" step, mechanized. Network-free (the builder only
+    reads ``src/engine`` and writes ``dist/``). Refuses (``CutError``) if the
+    builder script is missing, the subprocess fails, its output is
+    unparseable, or the byte-pin disagrees.
+    """
+    builder = root / BUILD_BOOTSTRAP_RELPATH
+    if not builder.is_file():
+        raise CutError(
+            f"{BUILD_BOOTSTRAP_RELPATH} not found under {root} — cannot "
+            "--rebuild-dist"
+        )
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(builder)],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise CutError(f"dist rebuild failed to run: {exc}") from exc
+    if proc.returncode != 0:
+        raise CutError(
+            "dist rebuild exited "
+            f"{proc.returncode}:\n{(proc.stderr or proc.stdout).rstrip()}"
+        )
+    m = _WROTE_BYTES_RE.search(proc.stdout)
+    if not m:
+        raise CutError(
+            "dist rebuild produced no parseable byte count "
+            f"(expected `(N bytes)`):\n{proc.stdout.rstrip()}"
+        )
+    reported = int(m.group(1))
+    dist_path = root / DIST_RELPATH
+    if not dist_path.is_file():
+        raise CutError(
+            f"dist rebuild reported success but {DIST_RELPATH} is absent"
+        )
+    on_disk = dist_path.stat().st_size
+    if reported != on_disk:
+        raise CutError(
+            f"byte-pin mismatch: builder reported {reported} bytes but "
+            f"{DIST_RELPATH} is {on_disk} bytes on disk"
+        )
+    return reported
 
 
 def parse_semver(version: str) -> tuple[int, int, int]:
@@ -345,8 +447,16 @@ def _diff(old: str, new: str, relpath: str) -> str:
     )
 
 
-def run(root: Path, target: str, write: bool, date: str) -> int:
+def run(
+    root: Path, target: str, write: bool, date: str, rebuild: bool = False
+) -> int:
     parse_semver(target)
+    if rebuild and not write:
+        raise CutError(
+            "--rebuild-dist requires --write: the byte-pin is only meaningful "
+            "once the version homes are bumped (a dry-run changes nothing to "
+            "rebuild against)"
+        )
     (
         config_text,
         cfg_version,
@@ -431,8 +541,16 @@ def run(root: Path, target: str, write: bool, date: str) -> int:
         )
     else:
         print("DRY-RUN — no files changed. Re-run with --write to apply.")
+
+    rebuilt_bytes: int | None = None
+    if write and rebuild:
+        rebuilt_bytes = rebuild_dist(root)
+        print(
+            f"dist rebuilt: {DIST_RELPATH} ({rebuilt_bytes} bytes, byte-pin "
+            "verified) — FOLLOWUP step 2 folded in"
+        )
     print()
-    print(FOLLOWUP_CHECKLIST.format(version=target))
+    print(followup_checklist(target, rebuilt_bytes))
     return 0
 
 
@@ -455,13 +573,28 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="release date YYYY-MM-DD (default: today, UTC)",
     )
+    parser.add_argument(
+        "--rebuild-dist",
+        action="store_true",
+        help=(
+            "fold FOLLOWUP step 2 into the cut: after the --write bump, "
+            "regenerate dist/bootstrap.py (python3 src/build_bootstrap.py) "
+            "and byte-pin the result. Requires --write."
+        ),
+    )
     args = parser.parse_args(argv)
     date = args.date or _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d")
     if not re.match(r"^\d{4}-\d{2}-\d{2}$", date):
         print(f"cut_release: error: malformed --date {date!r} (want YYYY-MM-DD)")
         return 1
     try:
-        return run(args.root.resolve(), args.version, args.write, date)
+        return run(
+            args.root.resolve(),
+            args.version,
+            args.write,
+            date,
+            rebuild=args.rebuild_dist,
+        )
     except CutError as exc:
         print(f"cut_release: error: {exc}")
         return 1
