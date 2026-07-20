@@ -15,6 +15,84 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+Wave-2 hardening: the capability-ledger guard stack is completed, the
+doctrine-recipe machinery grows discovery/honesty/graduation checks, the
+`📊 Model:` run-report line gains an exit-affecting gate trilogy on the
+born-red added card, the grounded-skills harness becomes tamper-evident and
+self-verifying, and `cut_release.py` learns to fold the dist rebuild into the
+cut. All changes are adopter-facing (new checkers, new CLI surfaces, new
+templates) — a MINOR bump. Reconciled against `git log v1.19.0..main`.
+
+### Added
+
+- **Capability-ledger guard stack completed.** A family of `docs/CAPABILITIES.md`
+  integrity checks now surface ledger drift as machine findings instead of
+  relying on a human sweep: the capability **stale-wall advisory**
+  (`check_stale_walls`, R5/#495) flags a `wall` row past its review horizon;
+  the **dateless-wall advisory** (`check_dateless_walls`, S14/#539) is its
+  negative complement, flagging a `wall` row with no parseable date; the
+  **append-log ⇄ Walls-correction disagreement lint**
+  (`check_wall_ledger_agreement`, R7/#498) fires when a `## Walls` correction
+  row and the newest same-capability `## Append log` entry disagree on a
+  capability's status; and the blocklist lint now **auto-derives its
+  correction families from the ledger's own bold titles** (S12/#535) instead
+  of a hand-maintained seed list. `check --explain-wall` / `--why`
+  (R6/#497) prints the paste-ready correction for a named false-wall, and the
+  `check_no_false_walls` finding now **inlines the `WALL_CORRECTIONS` text**
+  (S6/#522) so the fix travels with the failure.
+- **Doctrine-recipe discovery, honesty, and graduation checks.** Recipes under
+  `docs/recipes/` now carry a well-formed `> **applies-when:** \`<signature>\``
+  structural-signature badge, enforced by an advisory
+  (`check_recipe_applies_when`, R11/#506); a **signature-honesty lint**
+  (`check_recipe_signature_honesty`, S8/#527) cross-checks each token against
+  the recipe's own body so a badge can't name a signal the recipe never
+  documents; and a **discovery nudge** (`check_recipe_discovery`, S17/#543)
+  points an adopter tree that grew a recipe's full signature but never
+  references it toward the recipe. New graduation recipe:
+  **advisory → born-red-gate** (S2/#516), with the **folded-gate remediation
+  snippet** (`check_folded_gate` remediation, R12/#510).
+- **`📊 Model:` run-report exit-gate trilogy** on the born-red added card
+  (`check_session_log`): a new PR that adds a session card must now file a
+  well-formed Model line or CI reds — the **PL-004 task-class gate** (R13/#512),
+  the **exact-model-ID gate** (R14/#513, family-level names only, ORDER 012),
+  and the **effort gate** (R15/#514, `low|medium|high`, with the sanctioned
+  `unrecorded` terminal marker exempt). The advisory `check_model_line`
+  continues to lint the newest completed cards without reddening.
+- **Grounded-skills harness: tamper-evident and self-verifying.**
+  `measure_grounded_skills.py` gains `--commit-results PATH` (R9/#501) to persist
+  a durable results payload across ephemeral containers, `--freeze` (R10/#505)
+  to emit a self-citing `<output>.freeze` sidecar (sha256 + paste-ready
+  reproduce command), `--verify PATH` (S9/#529) as the automated inverse that
+  re-hashes an artifact against its sidecar (exit 1 on tamper, 2 on
+  can't-verify), and **clone-depth provenance** (`clone_depth` + `git_sha`) on
+  the results payload (S13/#537).
+- **Fast-lane symmetry + surface census.** The claims-only fast-lane
+  enabler⇄guard symmetry is now a runtime `check --strict` sub-check
+  (`check_fastlane_symmetry` / preflight, R8/#500) plus its **reverse leg**
+  (a host's `ci.yml` self-declares the card-less prefixes it fast-lanes,
+  S11/#533); and `check` now prints a **surface census**
+  (`check_surface_census`, S10/#531) of the guards, jobs, and hooks in the tree.
+- **Baton-freshness guard family.** `check_baton_resolves` (S4/#518) verifies a
+  `## Next-2 baton`'s named deliverable paths resolve; the **inverse**
+  `check_baton_freshness` (#545) flags a stale "build X" baton whose deliverable
+  already resolves in the tree (the class that burned a real dispatch); and the
+  **un-groomed-idea counter** advisory (S3/#517) surfaces backlog pressure.
+  Supporting: a shared `require_full_history()` helper hardens the
+  shallow-clone guard (S5/#520), and `check --remediate <finding-kind>`
+  (S7/#524) is a paste-ready remediation lookup.
+- **`cut_release.py --rebuild-dist`** (S15/#541): an opt-in flag (requires
+  `--write`) that folds the FOLLOWUP dist regen + byte-pin into the release cut
+  — this v1.20.0 release was cut with it.
+
+### Changed
+
+- `check --strict` grows the fast-lane-symmetry sub-check (R8/#500); the strict
+  sub-check count and `MODULE_ORDER` reflect the new checkers above. Advisory
+  checks (recipe discovery/honesty, baton freshness, stale/dateless walls,
+  model-line payload) ride the `posture="advisory"` seam and never affect exit
+  status, so existing adopters carrying historical drift are not pre-reddened
+  on upgrade.
+
 ## [1.19.0] - 2026-07-18
 
 <!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
