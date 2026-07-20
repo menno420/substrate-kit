@@ -63,6 +63,7 @@ from engine.checks.check_recipe_signature_honesty import (
 from engine.checks.check_recipe_discovery import check_recipe_discovery
 from engine.checks.check_ungroomed_ideas import check_ungroomed_ideas
 from engine.checks.check_baton_resolves import check_baton_resolves
+from engine.checks.check_baton_freshness import check_baton_freshness
 from engine.checks.check_surface_census import surface_census_note
 from engine.checks.check_engagement import (
     check_engagement,
@@ -1500,6 +1501,15 @@ def cmd_check(
     # it rides the same posture="advisory" seam below (NOT _extra_check_findings)
     # and stays off STRICT_SUBCHECKS.
     baton_resolves_advisories = check_baton_resolves(target, config)
+    # Next-2 baton deliverable freshness (S17-card ⟲ note, the inverse of S4):
+    # warns when a `## Next-2 baton` entry names a `check_*` / `--flag`
+    # deliverable as work still to build that ALREADY resolves in the tree — the
+    # S16 `--api-latency` stale-baton class that burned a worker's session. A
+    # shipped-and-acknowledged rank (its line carries a PR # / "shipped" marker)
+    # is suppressed, so it stays silent on a healthy heartbeat. A handoff nudge,
+    # not a defect, so it rides the same posture="advisory" seam below (NOT
+    # _extra_check_findings) and stays off STRICT_SUBCHECKS.
+    baton_freshness_advisories = check_baton_freshness(target, config)
     if status_only:
         # --status-only: the fast lane's scoped gate (see docstring). Only the
         # control-lane checkers run — the heartbeat gate, the control-scoped
@@ -2242,6 +2252,27 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=baton_resolves_advisories,
+        )
+    if baton_freshness_advisories and not status_only:
+        # Same warn-only contract as the advisories above (S17-card ⟲ note, the
+        # inverse of S4): a `## Next-2 baton` entry naming a `check_*` / `--flag`
+        # deliverable as to-build that already resolves in the tree is a "this
+        # rank already shipped — advance the baton" nudge, not a defect that
+        # should fail an adopter. Surfaced + telemetry-recorded, NEVER counted
+        # toward the exit code (deliberately off STRICT_SUBCHECKS).
+        _emit(
+            f"check: {len(baton_freshness_advisories)} stale-baton-deliverable "
+            "advisory warning(s) (never exit-affecting):",
+        )
+        for finding in baton_freshness_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=baton_freshness_advisories,
         )
 
     log_missing: list[str] = []

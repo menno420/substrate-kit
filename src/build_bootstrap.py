@@ -101,6 +101,14 @@ MODULE_ORDER = (
     # path/anchor that no longer resolves on disk. Advisory-only, never
     # exit-affecting; wired on the posture="advisory" seam in cli.py.
     "checks/check_baton_resolves.py",
+    # After check_baton_resolves.py (it imports that module's section-boundary
+    # grammar + control-plane locators as the single source of truth): the Next-2
+    # baton deliverable-freshness advisory (S17-card ⟲ note) — the INVERSE of S4:
+    # warns when a `## Next-2 baton` entry names a `check_*` / `--flag`
+    # deliverable as to-build that ALREADY resolves in the tree (the S16
+    # `--api-latency` stale-baton class). Advisory-only, never exit-affecting;
+    # wired on the posture="advisory" seam in cli.py.
+    "checks/check_baton_freshness.py",
     # After check_folded_gate.py (it imports that module's REMEDIATION_SNIPPET +
     # FINDING_KIND as the single source of truth for the folded-gate block): the
     # `check --remediate <finding-kind>` paste-ready remediation lookup (wave-2

@@ -1,0 +1,1 @@
+- `claude/baton-freshness-advisory` · baton deliverable-freshness advisory (inverse of S4 — warn when a `## Next-2 baton` names a `check_*` / `--flag` deliverable as to-build that already resolves in the tree) · `src/engine/checks/check_baton_freshness.py` + `cli.py` + `build_bootstrap.py` + `check_remediate.py` + `dist/bootstrap.py` + `tests/` · 2026-07-20
