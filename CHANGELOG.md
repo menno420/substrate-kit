@@ -15,6 +15,25 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.20.1] - 2026-07-20
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+### Fixed
+
+- **`check_no_false_walls` clearing is now attachment-based (#549).** The v1.20.0
+  detector reddened adopters on lines that correctly repudiate or date-record a past
+  false capability wall, because the clearing logic scanned strictly line-by-line with
+  too-narrow vocabulary (5 false positives on adopter idea-engine). A wall now clears
+  **only** when a repudiation cue / inline date / uppercase `FALSE` label is attached to
+  the wall claim itself — the same clause, a `false "…"` quote whose content contains the
+  matched wall phrase, or one tight wrapped-sentence lookback gated against `but …`
+  contrasts and dated-bullet neighbours. The earlier dated-heading section sheltering and
+  cross-line block window were removed (they blinded the gate — a genuine standing wall
+  under any ISO-dated heading or beside an unrelated repudiation went green). Genuine
+  standing walls always stay red. Mutation test `TestClearingVocabulary` pins the full
+  MUST-RED / MUST-CLEAR matrix.
+
 ## [1.20.0] - 2026-07-20
 
 Wave-2 hardening: the capability-ledger guard stack is completed, the
