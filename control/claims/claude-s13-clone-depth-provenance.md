@@ -1,1 +1,0 @@
-- `claude/s13-clone-depth-provenance` · S13 clone-depth provenance on results.json · `scripts/measure_grounded_skills.py` + tests · 2026-07-20
