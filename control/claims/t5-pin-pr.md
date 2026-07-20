@@ -1,0 +1,1 @@
+- `t5-pin-pr` · **t5-headless-guard owner-review PR** — additive shape-2 (check-driven guard) edit to bench/tasks/T5.md; pin-path do-not-automerge owner-review PR · 2026-07-20
