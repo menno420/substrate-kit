@@ -15,6 +15,10 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.20.1] - 2026-07-20
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
 ### Fixed
 
 - **`check_no_false_walls` clearing is now attachment-based (#549).** The v1.20.0
