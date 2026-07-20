@@ -354,6 +354,51 @@ _FALSE_QUOTE = re.compile(r"\bfalse\s+[\"“'`]([^\"”'`]*)[\"”'`]", re.I)
 # clearing pass strips them — the blocklist match is left untouched.
 _EMPHASIS = re.compile(r"[*`]")
 
+# ── Capability families — P2 wrapped-lookback same-capability gate ─────────────
+#
+# The wrapped-sentence lookback (see :func:`is_cleared`) lets a repudiation on
+# the PREVIOUS line clear a wall that wraps onto the current line. Without a
+# gate, a prior-line clause that repudiates a DIFFERENT capability ("Pushing is
+# NOT walled …, and" ↑ "agents cannot merge …") would bleed onto — and wrongly
+# clear — the current wall (follow-up hardening (a) from PR #549's card). A
+# bridge is now allowed only when the prev-line trailing clause names the SAME
+# capability family as the current wall phrase, or names no capability at all (a
+# genuine sentence continuation). It can only ADD reds — never blind the gate.
+_CAP_FAMILY_PATTERNS: tuple[tuple[str, "re.Pattern[str]"], ...] = (
+    (
+        "merge",
+        re.compile(
+            r"self[-\s]?merge|auto[-\s]?merge|\bmerg(?:e|es|ed|ing)\b|"
+            r"ready[-\s]?flip|\barm(?:s|ed|ing)?\b|\bland(?:s|ed|ing)?\b",
+            re.I,
+        ),
+    ),
+    ("deploy", re.compile(r"\bre?deploy(?:s|ed|ing|ment)?\b", re.I)),
+    ("push", re.compile(r"\bpush(?:es|ed|ing)?\b", re.I)),
+    (
+        "branch",
+        re.compile(r"branch\s+deletion|delete[sd]?\s+(?:a\s+|the\s+)?branch(?:es)?", re.I),
+    ),
+    (
+        "infra",
+        re.compile(
+            r"\brailway\b|\benv(?:ironment)?\b|\binfra(?:structure)?\b|"
+            r"\bvariables?\b|\bsecrets?\b",
+            re.I,
+        ),
+    ),
+)
+
+
+def _capability_families(text: str) -> frozenset[str]:
+    """The capability families named in ``text`` (merge/deploy/push/branch/infra).
+
+    Used only by the P2 wrapped-lookback gate to compare the previous line's
+    trailing-clause repudiation against the current wall's capability so a
+    repudiation of an UNRELATED capability can't bridge across the wrap.
+    """
+    return frozenset(name for name, pat in _CAP_FAMILY_PATTERNS if pat.search(text))
+
 # Strong clause separators. A wall clears only via a cue in the SAME clause, so
 # "Nothing here is 'not walled'; agents cannot merge" does NOT clear (the cue
 # and the wall are in different clauses). Comma is NOT a separator — too weak.
@@ -393,37 +438,60 @@ class RawHit(NamedTuple):
     rule: str
 
 
-def _clause_containing(line: str, phrase: str) -> str:
-    """Return the CLAUSE of ``line`` that contains ``phrase``.
+def _clause_at(line: str, idx: int) -> str:
+    """Return the CLAUSE of ``line`` that spans character offset ``idx``.
 
     Clauses are split on strong separators (:data:`_CLAUSE_SEP`). A cue only
     clears a wall when it lands in the SAME clause as the wall phrase, so a
     repudiation in a different clause of the same line ("Nothing here is 'not
-    walled'; agents cannot merge …") does not bleed onto the wall. Falls back to
-    the whole line when the phrase is not found verbatim.
+    walled'; agents cannot merge …") does not bleed onto the wall. Offset-based
+    (not phrase-find-based) so a SECOND occurrence of a repeated phrase is graded
+    in its OWN clause, not the first occurrence's (P3 position-awareness).
     """
-    idx = line.find(phrase)
-    if idx < 0:
-        return line
     lo, hi = 0, len(line)
     for m in _CLAUSE_SEP.finditer(line):
         if m.start() <= idx:
-            lo = m.end()  # a separator ends the clause before the phrase
+            lo = m.end()  # a separator ends the clause before the offset
         else:
-            hi = m.start()  # …and the next separator ends the phrase's clause
+            hi = m.start()  # …and the next separator ends the offset's clause
             break
     return line[lo:hi]
+
+
+def _clause_containing(line: str, phrase: str) -> str:
+    """The clause of ``line`` containing the FIRST occurrence of ``phrase``.
+
+    Falls back to the whole line when the phrase is not found verbatim (e.g. the
+    synthetic wrapped-lookback ``combined`` string).
+    """
+    idx = line.find(phrase)
+    return line if idx < 0 else _clause_at(line, idx)
 
 
 def _false_quote_attached(line: str, phrase: str) -> bool:
     """True when a ``false "…"`` label on ``line`` names THIS wall — the matched
     wall ``phrase`` is contained in the quoted content. An unrelated false-quote
     ('a prior false "weather" note aside, sessions may not self-merge') does not
-    clear, because "weather" does not contain the wall phrase."""
+    clear, because "weather" does not contain the wall phrase. Line-wide by
+    phrase (used only on the synthetic wrapped-lookback string, where character
+    offsets are meaningless)."""
     p = phrase.lower().strip()
     if not p:
         return False
     return any(p in m.group(1).lower() for m in _FALSE_QUOTE.finditer(line))
+
+
+def _false_quote_covers(line: str, start: int, end: int) -> bool:
+    """True when the match span ``[start, end)`` lies INSIDE a ``false "…"``
+    quote's content. Position-aware (P3): a genuine wall OUTSIDE the quote on the
+    same physical line ('false "self-merge classifier" aside — the real
+    self-merge classifier still blocks') is NOT cleared, because only the quoted
+    occurrence's span is covered."""
+    for m in _FALSE_QUOTE.finditer(line):
+        qs, qe = m.span(1)
+        if qs <= start and end <= qe:
+            return True
+    return False
 
 
 def _last_clause(line: str) -> str:
@@ -439,8 +507,18 @@ def _wall_starts_line(line: str, phrase: str) -> bool:
     return idx >= 0 and not _CLAUSE_SEP.search(line[:idx])
 
 
-def _clause_cleared(clause: str, line: str, phrase: str) -> bool:
-    """Run the attachment cues over one ``clause`` (+ the whole-line false-quote)."""
+def _clause_cleared(
+    clause: str,
+    line: str,
+    phrase: str,
+    *,
+    match_span: tuple[int, int] | None = None,
+) -> bool:
+    """Run the attachment cues over one ``clause``.
+
+    The ``false "…"`` label clears position-aware when ``match_span`` is given
+    (the quote must SPAN this match — P3), and line-wide by ``phrase`` otherwise
+    (the synthetic wrapped-lookback string, where offsets are meaningless)."""
     scrubbed = _EMPHASIS.sub("", clause)
     if _DATED_LINE.search(clause):
         return True
@@ -448,6 +526,8 @@ def _clause_cleared(clause: str, line: str, phrase: str) -> bool:
         return True
     if _FALSE_LABEL.search(clause):
         return True
+    if match_span is not None:
+        return _false_quote_covers(line, match_span[0], match_span[1])
     return _false_quote_attached(line, phrase)
 
 
@@ -458,6 +538,7 @@ def is_cleared(
     in_dated_block: bool,
     in_historical: bool,
     prev_line: str | None = None,
+    match_span: tuple[int, int] | None = None,
 ) -> bool:
     """True when the matched wall ``phrase`` on ``line`` must NOT count.
 
@@ -468,16 +549,25 @@ def is_cleared(
     headings) is the one sanctioned non-clause path and is genuinely attached: a
     ``- YYYY-MM-DD`` bullet carries its date on its own first line.
 
+    ``match_span`` (P3) makes clearing position-aware: the wall's clause is the
+    clause spanning that offset (so a SECOND occurrence of a repeated phrase is
+    graded in its own clause), and a ``false "…"`` quote clears the match only
+    when it SPANS it — a genuine wall sharing a line with a repudiated false
+    quote is no longer masked.
+
     One tight cross-line allowance: when the wall opens ``line`` (its sentence
     wrapped from above) and the line is NOT a contrasting neighbour, the
     previous line's trailing clause is prepended so a wrapped repudiation ("…no
     standing\\n 'classifier-denied' merge wall") still clears. A "but …" / dated
-    neighbour never qualifies, so it can't bleed onto a distinct wall.
+    neighbour never qualifies, and (P2) a prev-line clause that repudiates a
+    DIFFERENT capability family than this wall never bridges either.
     """
     if in_dated_block or in_historical:
         return True
-    clause = _clause_containing(line, phrase)
-    if _clause_cleared(clause, line, phrase):
+    clause = (
+        _clause_at(line, match_span[0]) if match_span is not None else _clause_containing(line, phrase)
+    )
+    if _clause_cleared(clause, line, phrase, match_span=match_span):
         return True
     # Tight one-line lookback for a wrapped repudiation.
     if (
@@ -489,25 +579,62 @@ def is_cleared(
         and not _CONTRAST_START.match(line)
         and _wall_starts_line(line, phrase)
     ):
-        combined = _last_clause(prev_line) + " " + clause
-        if _clause_cleared(combined, line, phrase):
-            return True
+        prev_clause = _last_clause(prev_line)
+        # P2 same-capability gate: only bridge when the prev-line clause's
+        # repudiation is about the SAME capability as this wall (or names no
+        # capability at all — a genuine sentence continuation). A prev clause
+        # naming a DIFFERENT family repudiates an unrelated capability and must
+        # not clear this wall.
+        wall_fams = _capability_families(phrase)
+        prev_fams = _capability_families(prev_clause)
+        different_capability = bool(wall_fams and prev_fams and prev_fams.isdisjoint(wall_fams))
+        if not different_capability:
+            combined = prev_clause + " " + clause
+            if _clause_cleared(combined, line, phrase):
+                return True
     return False
 
 
 def match_blocklist(line: str) -> tuple[str, str] | None:
-    """Return (rule_name, matched_phrase) if ``line`` asserts a false wall."""
+    """Return (rule_name, matched_phrase) for the FIRST false-wall match on
+    ``line`` (blocklist order), or ``None``. Retained for :func:`explain_wall`,
+    which grades a bare phrase; the line scanner uses
+    :func:`match_blocklist_all`."""
+    matches = match_blocklist_all(line)
+    if matches:
+        rule, phrase, _s, _e = matches[0]
+        return rule, phrase
+    return None
+
+
+def match_blocklist_all(line: str) -> list[tuple[str, str, int, int]]:
+    """Every false-wall match on ``line`` as ``(rule, phrase, start, end)``.
+
+    In blocklist (rule) order, and within a rule in position order, so the FIRST
+    entry reproduces the legacy :func:`match_blocklist` result. Returning ALL
+    matches (P3) lets the scanner grade each independently and un-mask a genuine
+    wall that shares a line with a repudiated ``false "…"`` quote — the cleared
+    quote-hit no longer ends the line."""
+    out: list[tuple[str, str, int, int]] = []
     for name, pat in _BLOCKLIST:
-        m = pat.search(line)
-        if m:
-            return name, m.group(0)
+        for m in pat.finditer(line):
+            out.append((name, m.group(0), m.start(), m.end()))
     owner_gated = _OWNER_GATED.search(line)
     if owner_gated and _OWNER_GATED_DIRECTIVE.search(line):
-        return "owner-gated-rule", owner_gated.group(0)
+        out.append(
+            ("owner-gated-rule", owner_gated.group(0), owner_gated.start(), owner_gated.end())
+        )
     review_label = _REVIEW_LABEL.search(line)
     if review_label and _PROHIBITION_FRAME.search(line):
-        return "review-label-prohibition", review_label.group(0)
-    return None
+        out.append(
+            (
+                "review-label-prohibition",
+                review_label.group(0),
+                review_label.start(),
+                review_label.end(),
+            )
+        )
+    return out
 
 
 def scan_text(text: str) -> list[RawHit]:
@@ -518,6 +645,11 @@ def scan_text(text: str) -> list[RawHit]:
     ``historical``) so a match inside a history section clears. Shared by the
     engine leg and the standalone ``tools/`` wrapper — the single home for the
     grammar (no duplicate logic).
+
+    Every wall match on a line is graded independently (P3), reporting the FIRST
+    UNCLEARED one — so a genuine wall sharing a line with a repudiated
+    ``false "…"`` quote still reds, while the line still yields at most one hit
+    (the legacy count contract).
     """
     hits: list[RawHit] = []
     in_historical = False
@@ -527,21 +659,21 @@ def scan_text(text: str) -> list[RawHit]:
         if heading:
             in_historical = bool(_HISTORICAL_HEADING.search(heading.group(1)))
 
-        hit = match_blocklist(line)
-        if hit is not None:
-            rule, phrase = hit
-            # A dated append-log bullet ("- 2026-07-16 · …") clears ONLY its own
-            # physical line — the date attaches to the row it heads, never to a
-            # continuation line that carries a distinct wall (neighbour-bleed).
-            in_dated_block = bool(_DATED_BULLET.match(line))
+        # A dated append-log bullet ("- 2026-07-16 · …") clears ONLY its own
+        # physical line — the date attaches to the row it heads, never to a
+        # continuation line that carries a distinct wall (neighbour-bleed).
+        in_dated_block = bool(_DATED_BULLET.match(line))
+        for rule, phrase, start, end in match_blocklist_all(line):
             if not is_cleared(
                 line,
                 phrase,
                 in_dated_block=in_dated_block,
                 in_historical=in_historical,
                 prev_line=prev_line,
+                match_span=(start, end),
             ):
                 hits.append(RawHit(i, phrase.strip(), rule))
+                break  # ≤1 finding per line (legacy count contract)
         prev_line = line
     return hits
 

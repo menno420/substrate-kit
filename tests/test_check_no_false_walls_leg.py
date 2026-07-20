@@ -261,6 +261,22 @@ _FP_CLEAR = {
         '(corrects a prior false "self-merge classifier" entry): direct '
         "REST/MCP squash-on-green, arming auto-merge,…\n"
     ),
+    # P2 — SAME-capability wrapped repudiation still clears: the prev line's
+    # trailing clause repudiates the SAME capability (self-merge) that the wall
+    # on the continuation line names, so the tight lookback still bridges. (The
+    # continuation line carries no clearing cue of its own, so this genuinely
+    # exercises the wrap, not same-line clearing.)
+    "p2_same_capability_wrap_clears": (
+        "The self-merge claim no longer applies and\n"
+        "self-merge classifier remains a worry for some readers.\n"
+    ),
+    # P3 — a LONE wall named by a repudiated `false "…"` quote still clears: the
+    # quote spans the only wall match on the line, so position-aware clearing
+    # fires (guards against the per-match change over-redding a genuine FP).
+    "p3_lone_false_quote_wall_clears": (
+        'This corrects a prior false "self-merge classifier" entry — nothing '
+        "here is a standing wall.\n"
+    ),
 }
 
 # The adversarial-review MUST-RED set (fm ORDER 048): every genuine STANDING
@@ -343,6 +359,23 @@ _MUST_STAY_RED = {
         "## Standing policy\n\n"
         "agents cannot merge their own PRs.\n"
     ),
+    # P2 (follow-up a) — the prev line's trailing clause repudiates a DIFFERENT
+    # capability (push) than the wall that wraps onto the current line (merge).
+    # The tight lookback must NOT bridge across capabilities: the merge wall
+    # stays RED. Before the fix, "not walled"/"proven repeatedly" bled across
+    # the wrap and cleared it (the punctuation-gated bleed).
+    "p2_prev_line_repudiates_different_capability": (
+        "Pushing is NOT walled (proven repeatedly), and\n"
+        "agents cannot merge their own PRs.\n"
+    ),
+    # P3 (follow-up b) — one physical line carries BOTH a repudiated
+    # `false "self-merge classifier"` quote AND a genuine standing self-merge
+    # wall outside the quote. Grading only the first hit masked the genuine
+    # wall; per-match, position-aware clearing reds it.
+    "p3_genuine_wall_shares_line_with_false_quote": (
+        'A prior false "self-merge classifier" note aside — the live self-merge '
+        "classifier still blocks every session and routes the PR to the owner.\n"
+    ),
 }
 
 
@@ -376,6 +409,41 @@ class TestClearingVocabulary:
             _MUST_STAY_RED["a_bare_wall_under_dated_heading"],
         )
         assert check_no_false_walls(tmp_path, Config()), "dated heading blinded the gate"
+
+    def test_p2_different_capability_wrap_stays_red_but_same_capability_clears(
+        self,
+    ) -> None:
+        # Mutation guard for P2 (wrapped-lookback same-capability gate), both
+        # directions from ONE assertion pair so a mutation to the gate breaks a
+        # test: a prev-line repudiation of a DIFFERENT capability must NOT bridge
+        # (stays red); the SAME-capability wrap must still bridge (clears).
+        red = _MUST_STAY_RED["p2_prev_line_repudiates_different_capability"]
+        clear = _FP_CLEAR["p2_same_capability_wrap_clears"]
+        assert scan_text(red), "P2: different-capability wrap must stay RED"
+        assert scan_text(clear) == [], "P2: same-capability wrap must still clear"
+
+    def test_p3_genuine_wall_on_false_quote_line_reds_but_lone_quote_clears(
+        self,
+    ) -> None:
+        # Mutation guard for P3 (per-match, position-aware clearing), both
+        # directions: a genuine wall SHARING a line with a repudiated
+        # `false "…"` quote must red (no longer masked by the first-hit grade);
+        # a LONE wall the quote names must still clear.
+        red = _MUST_STAY_RED["p3_genuine_wall_shares_line_with_false_quote"]
+        clear = _FP_CLEAR["p3_lone_false_quote_wall_clears"]
+        red_hits = scan_text(red)
+        assert red_hits, "P3: genuine wall sharing a false-quote line must RED"
+        assert red_hits[0].rule == "self-merge-classifier"
+        assert scan_text(clear) == [], "P3: lone false-quoted wall must still clear"
+
+    def test_p3_multi_wall_line_still_yields_at_most_one_finding(self) -> None:
+        # The legacy count contract: even a line carrying two independent genuine
+        # walls yields ≤1 finding per line (the first uncleared), so per-match
+        # grading does not multiply findings on existing must-fail fixtures.
+        two_walls = (
+            "agents do NOT arm auto-merge — classifier-denied since 2026-07-15\n"
+        )
+        assert len(scan_text(two_walls)) == 1
 
     def test_safe_false_positives_clear_but_incident_records_stay_red(
         self, tmp_path: Path
