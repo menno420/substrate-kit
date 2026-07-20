@@ -1,4 +1,4 @@
-"""substrate-kit bootstrap v1.20.0 — GENERATED, DO NOT EDIT.
+"""substrate-kit bootstrap v1.20.1 — GENERATED, DO NOT EDIT.
 
 Single-file, stdlib-only. Regenerate from source with:
     python3 substrate-kit/src/build_bootstrap.py
@@ -97,7 +97,7 @@ DEFAULT_STATE_DIR = ".substrate"
 # (`kit_version`) + state by `adopt`/`upgrade`. Bump together with
 # `pyproject.toml` `[project] version` (a test pins them equal) and a new
 # CHANGELOG.md section (the release workflow refuses to publish without one).
-KIT_VERSION = "1.20.0"
+KIT_VERSION = "1.20.1"
 
 
 def _new_project_id() -> str:
@@ -4910,14 +4910,26 @@ _PROHIBITION_FRAME = re.compile(
     re.I,
 )
 
-# ── Clearing — a candidate line PASSES if any of these hold ────────────────────
+# ── Clearing — ATTACHMENT-BASED (never section-based) ─────────────────────────
+#
+# A matched wall clears ONLY when a repudiation / date marker is ATTACHED to the
+# wall claim itself — in the SAME CLAUSE of the SAME physical line (or, for the
+# ``FALSE "…"`` label, a quote whose content IS the matched wall phrase). A cue
+# that merely shares a dated section, sits on a neighbouring bullet line, or
+# appears in a different clause of the same line NEVER clears — that neighbour-
+# bleed / section-sheltering blinds the gate to a genuine standing wall placed
+# under a dated heading or beside an unrelated repudiation (adversarial review,
+# fm ORDER 048). Safety wins: a false positive that stays red is cheaper than a
+# real wall that goes green.
 
-# Repudiation / correction cues (case-insensitive). A line that CORRECTS the
-# wall is exactly the forward-binding phrasing we WANT to keep.
+# Repudiation / correction cues (case-insensitive). Matched against the CLAUSE
+# that contains the wall phrase, so the correction has to be about THIS wall.
 _REPUDIATION_CUES = re.compile(
     r"no\s+standing|"
     r"not\s+a\s+wall|"
-    r"do(?:es)?\s+not\s+(?:invent|record|apply|stand|hold)|"
+    r"not\s+walled|"  # "Merging … is NOT walled" — a direct repudiation.
+    r"corrects?\s+a\s+prior\s+false|"  # "corrects a prior false '…' entry".
+    r"do(?:es)?\s+not\s+(?:invent|record|apply|stand|hold|establish)|"  # "do not establish that agents cannot merge".
     r"don'?t\s+invent|"
     r"never\s+route\s+a\s+mergeable\s+green\s+pr\s+to\s+the\s+owner|"
     r"normal\s+agent\s+(?:action|work)|"
@@ -4930,16 +4942,44 @@ _REPUDIATION_CUES = re.compile(
     r"proven\s+(?:repeatedly|by\b|~?\d)",
     re.I,
 )
-# The repo's repudiation label: FALSE "…" (case-sensitive uppercase).
+# The repo's repudiation label: FALSE "…" / false "…". The uppercase bare token
+# is the canonical marker (matched in-clause). The lowercase QUOTED form only
+# clears when the QUOTED CONTENT contains the matched wall phrase — i.e. it is
+# THIS wall that is being called false ('corrects a prior false "self-merge
+# classifier"'), not an unrelated false-quote elsewhere in the sentence.
 _FALSE_LABEL = re.compile(r"\bFALSE\b")
+_FALSE_QUOTE = re.compile(r"\bfalse\s+[\"“'`]([^\"”'`]*)[\"”'`]", re.I)
 
-# Inline dated-record markers (this line is itself a dated record).
+# Markdown emphasis / code markers stripped before running the CLEARING cues so
+# a bolded repudiation ("they do **not** establish …") still matches. Only the
+# clearing pass strips them — the blocklist match is left untouched.
+_EMPHASIS = re.compile(r"[*`]")
+
+# Strong clause separators. A wall clears only via a cue in the SAME clause, so
+# "Nothing here is 'not walled'; agents cannot merge" does NOT clear (the cue
+# and the wall are in different clauses). Comma is NOT a separator — too weak.
+_CLAUSE_SEP = re.compile(r";|—|:\s|\.\s")
+
+# A wall sentence can WRAP onto its line from the one above ("… no standing\n
+# 'classifier-denied' merge wall …"). A tight one-line lookback lets the
+# repudiation on the previous line clear it — but ONLY when the current line is
+# a genuine continuation, never a contrasting neighbour ("… agent-side\n but
+# agents cannot merge") whose "but" marks a distinct wall clause.
+_CONTRAST_START = re.compile(
+    r"^\s*>?\s*(?:but|however|except|though|although|yet|whereas|still|"
+    r"nonetheless|nevertheless)\b",
+    re.I,
+)
+_SENTENCE_END = re.compile(r"[.!?]\s*[)\"”'`*]*\s*$")
+
+# Inline dated-record markers (this clause is itself a dated record).
 _DATED_LINE = re.compile(
     r"\bLAST-VERIFIED\b|\bSUPERSEDED\b|"
     r"[—·(]\s*\d{4}-\d{2}-\d{2}|"
     r"\bverified\s+\d{4}-\d{2}-\d{2}",
 )
-# A bullet that STARTS a dated record block.
+# A bullet that STARTS with a date is an attached dated-record row (append-log
+# form) — the date is on the item's own first line, so its lines are records.
 _DATED_BULLET = re.compile(r"^\s*[-*]\s+\d{4}-\d{2}-\d{2}\b")
 # A markdown heading.
 _HEADING = re.compile(r"^\s*#{1,6}\s+(.*)$")
@@ -4954,16 +4994,105 @@ class RawHit(NamedTuple):
     rule: str
 
 
-def is_cleared(line: str, *, in_dated_block: bool, in_historical: bool) -> bool:
-    """True when a blocklist match on ``line`` must NOT count as a finding."""
+def _clause_containing(line: str, phrase: str) -> str:
+    """Return the CLAUSE of ``line`` that contains ``phrase``.
+
+    Clauses are split on strong separators (:data:`_CLAUSE_SEP`). A cue only
+    clears a wall when it lands in the SAME clause as the wall phrase, so a
+    repudiation in a different clause of the same line ("Nothing here is 'not
+    walled'; agents cannot merge …") does not bleed onto the wall. Falls back to
+    the whole line when the phrase is not found verbatim.
+    """
+    idx = line.find(phrase)
+    if idx < 0:
+        return line
+    lo, hi = 0, len(line)
+    for m in _CLAUSE_SEP.finditer(line):
+        if m.start() <= idx:
+            lo = m.end()  # a separator ends the clause before the phrase
+        else:
+            hi = m.start()  # …and the next separator ends the phrase's clause
+            break
+    return line[lo:hi]
+
+
+def _false_quote_attached(line: str, phrase: str) -> bool:
+    """True when a ``false "…"`` label on ``line`` names THIS wall — the matched
+    wall ``phrase`` is contained in the quoted content. An unrelated false-quote
+    ('a prior false "weather" note aside, sessions may not self-merge') does not
+    clear, because "weather" does not contain the wall phrase."""
+    p = phrase.lower().strip()
+    if not p:
+        return False
+    return any(p in m.group(1).lower() for m in _FALSE_QUOTE.finditer(line))
+
+
+def _last_clause(line: str) -> str:
+    """The final clause of ``line`` (text after the last strong separator)."""
+    seps = list(_CLAUSE_SEP.finditer(line))
+    return line[seps[-1].end() :] if seps else line
+
+
+def _wall_starts_line(line: str, phrase: str) -> bool:
+    """True when ``phrase`` sits in the FIRST clause of ``line`` (no strong
+    separator precedes it) — i.e. the wall's sentence may have begun above."""
+    idx = line.find(phrase)
+    return idx >= 0 and not _CLAUSE_SEP.search(line[:idx])
+
+
+def _clause_cleared(clause: str, line: str, phrase: str) -> bool:
+    """Run the attachment cues over one ``clause`` (+ the whole-line false-quote)."""
+    scrubbed = _EMPHASIS.sub("", clause)
+    if _DATED_LINE.search(clause):
+        return True
+    if _REPUDIATION_CUES.search(scrubbed):
+        return True
+    if _FALSE_LABEL.search(clause):
+        return True
+    return _false_quote_attached(line, phrase)
+
+
+def is_cleared(
+    line: str,
+    phrase: str,
+    *,
+    in_dated_block: bool,
+    in_historical: bool,
+    prev_line: str | None = None,
+) -> bool:
+    """True when the matched wall ``phrase`` on ``line`` must NOT count.
+
+    Clearing is ATTACHMENT-BASED: a cue clears only when it is attached to the
+    wall claim — in the same clause (repudiation cues, inline date, uppercase
+    ``FALSE`` label) or naming the wall in a ``false "…"`` quote. Section state
+    (:data:`_DATED_BULLET` append-log rows, ``append log`` / ``historical``
+    headings) is the one sanctioned non-clause path and is genuinely attached: a
+    ``- YYYY-MM-DD`` bullet carries its date on its own first line.
+
+    One tight cross-line allowance: when the wall opens ``line`` (its sentence
+    wrapped from above) and the line is NOT a contrasting neighbour, the
+    previous line's trailing clause is prepended so a wrapped repudiation ("…no
+    standing\\n 'classifier-denied' merge wall") still clears. A "but …" / dated
+    neighbour never qualifies, so it can't bleed onto a distinct wall.
+    """
     if in_dated_block or in_historical:
         return True
-    if _DATED_LINE.search(line):
+    clause = _clause_containing(line, phrase)
+    if _clause_cleared(clause, line, phrase):
         return True
-    if _REPUDIATION_CUES.search(line):
-        return True
-    if _FALSE_LABEL.search(line):
-        return True
+    # Tight one-line lookback for a wrapped repudiation.
+    if (
+        prev_line is not None
+        and prev_line.strip()
+        and not _HEADING.match(prev_line)
+        and not _DATED_BULLET.match(prev_line)
+        and not _SENTENCE_END.search(prev_line)
+        and not _CONTRAST_START.match(line)
+        and _wall_starts_line(line, phrase)
+    ):
+        combined = _last_clause(prev_line) + " " + clause
+        if _clause_cleared(combined, line, phrase):
+            return True
     return False
 
 
@@ -4992,26 +5121,29 @@ def scan_text(text: str) -> list[RawHit]:
     grammar (no duplicate logic).
     """
     hits: list[RawHit] = []
-    in_dated_block = False
     in_historical = False
+    prev_line: str | None = None
     for i, line in enumerate(text.splitlines(), start=1):
         heading = _HEADING.match(line)
         if heading:
             in_historical = bool(_HISTORICAL_HEADING.search(heading.group(1)))
-            in_dated_block = False
-        elif _DATED_BULLET.match(line):
-            in_dated_block = True
-        elif line.strip() and not line[:1].isspace() and not line.startswith(("-", "*", ">")):
-            # A fresh left-margin paragraph ends the current dated bullet block.
-            in_dated_block = False
 
         hit = match_blocklist(line)
-        if hit is None:
-            continue
-        if is_cleared(line, in_dated_block=in_dated_block, in_historical=in_historical):
-            continue
-        rule, phrase = hit
-        hits.append(RawHit(i, phrase.strip(), rule))
+        if hit is not None:
+            rule, phrase = hit
+            # A dated append-log bullet ("- 2026-07-16 · …") clears ONLY its own
+            # physical line — the date attaches to the row it heads, never to a
+            # continuation line that carries a distinct wall (neighbour-bleed).
+            in_dated_block = bool(_DATED_BULLET.match(line))
+            if not is_cleared(
+                line,
+                phrase,
+                in_dated_block=in_dated_block,
+                in_historical=in_historical,
+                prev_line=prev_line,
+            ):
+                hits.append(RawHit(i, phrase.strip(), rule))
+        prev_line = line
     return hits
 
 
