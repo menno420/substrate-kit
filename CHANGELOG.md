@@ -15,6 +15,8 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.20.0] - 2026-07-20
+
 Wave-2 hardening: the capability-ledger guard stack is completed, the
 doctrine-recipe machinery grows discovery/honesty/graduation checks, the
 `📊 Model:` run-report line gains an exit-affecting gate trilogy on the
@@ -22,6 +24,8 @@ born-red added card, the grounded-skills harness becomes tamper-evident and
 self-verifying, and `cut_release.py` learns to fold the dist rebuild into the
 cut. All changes are adopter-facing (new checkers, new CLI surfaces, new
 templates) — a MINOR bump. Reconciled against `git log v1.19.0..main`.
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
 
 ### Added
 
