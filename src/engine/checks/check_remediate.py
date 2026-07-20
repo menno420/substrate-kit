@@ -72,6 +72,24 @@ row instead (a false wall is not a standing limit). If it still refuses, the
 fresh dated row clears the staleness window.
 """
 
+_DATELESS_WALL = """\
+This `wall` row in docs/CAPABILITIES.md carries no parseable date, so the
+staleness re-verify rule (check_stale_walls) can never fire on it — it hardens
+into an un-auditable claim. Stamp it with a date so the cadence can catch it:
+
+- A `## Walls` seed row → append a trailing verification stamp:
+
+      - **<wall title>**: <finding> → <workaround>. — LAST-VERIFIED: YYYY-MM-DD
+
+- A `## Append log` wall row → give it the leading log date the format requires:
+
+      - YYYY-MM-DD · wall · <finding> · <evidence> · <workaround>
+
+Use today's date only if you re-verified the wall today; otherwise use the date
+it was actually last confirmed. Once dated, check_stale_walls owns its re-verify
+cadence (default 14 days).
+"""
+
 _WALL_LEDGER_DISAGREE = """\
 The `## Walls` correction row and the newest `## Append log` entry for this
 capability disagree. Reconcile them in docs/CAPABILITIES.md so both state the
@@ -121,6 +139,7 @@ REMEDIATIONS: dict[str, str] = {
     FINDING_KIND: REMEDIATION_SNIPPET,
     "recipe-applies-when": _RECIPE_APPLIES_WHEN,
     "stale-wall": _STALE_WALL,
+    "dateless-wall": _DATELESS_WALL,
     "wall-ledger-disagree": _WALL_LEDGER_DISAGREE,
     "baton-unresolved": _BATON_UNRESOLVED,
     "ungroomed-ideas": _UNGROOMED_IDEAS,
