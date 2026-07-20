@@ -186,8 +186,22 @@ primary artifact is not even in this repo. The one ordinary-lane sliver (an engi
 last-card freshness fix in `src/engine/checks/`) is likely already covered by the shipped
 `--require-session-log` anchor (#19), so it may be moot; verify before building.
 
-**Classification:** OWNER-GATED (pin-path, do-not-automerge) + cross-tree (kit-lab).
-Six-field below. Not landable from here.
+> **[Corrected 2026-07-20]** The cross-tree premise above is wrong: `bench/`
+> (including `bench/tasks/T5.md`, `bench/run_ab.py`, `bench/README.md`) lives in
+> substrate-kit itself, and the pin is enforced here by
+> `scripts/check_bench_integrity.py` rule 1 — not in a separate kit-lab repo. The
+> shape-2 fix WAS landable from substrate-kit and shipped as owner-review pin PR
+> #552 (open, `do-not-automerge`, awaiting owner merge — the additive shape-2
+> guard-observability step on `bench/tasks/T5.md`'s ON arm). It is
+> machine-documentation only — `run_ab.py` does not parse T5.md's body (it records
+> only the prompt-file path) — so a companion `run_ab.py` change that
+> ENFORCES the pre/post capture would be a separate `bench/` pin-path
+> `do-not-automerge` PR. The owner-gated + pin-path classification stands; only the
+> "not in this repo / not landable from here" framing was false.
+
+**Classification:** OWNER-GATED (pin-path, do-not-automerge). Six-field below.
+Landed as owner-review PR #552 from substrate-kit (see the 2026-07-20 correction
+above); awaits owner merge.
 
 **⚑ FOR OWNER — six-field:**
 - **WHAT:** fix the T5 bench probe so it produces a real in-session guard fire in the ON

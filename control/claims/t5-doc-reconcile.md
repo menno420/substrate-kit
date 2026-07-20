@@ -1,0 +1,1 @@
+- `t5-doc-reconcile` · **t5 doc/status reconcile** — update t5 ⚑ → PR #552; correct false cross-tree premise in planning doc §4 · control/status.md + docs/planning/2026-07-19-needs-planning-recipes.md · 2026-07-20
