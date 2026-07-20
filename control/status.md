@@ -64,14 +64,15 @@ The v1.20.1 adopter-upgrade wave ran under fm ORDER 048. Evidence: 9 vendoring a
   VERIFY: a sibling-seat session fetches a kit file read-only without "Access denied: repository … is not configured for this session".
   RISK: ⚠️ P11 effectively irreversible (history exposed once public) · ↩️ P13 reversible — revoke anytime. RECOMMENDATION: **B — mint a read-only PAT** (reversible; no history exposure).
 
-⚑ t5-headless-guard fix (owner-gated: pin-path + cross-tree kit-lab)
+⚑ t5-headless-guard fix (owner-review: pin-path PR #552 OPEN, awaiting owner merge)
+  STATUS: PR opened, awaiting owner review — https://github.com/menno420/substrate-kit/pull/552 (do-not-automerge; green; the additive shape-2 guard-observability edit to bench/tasks/T5.md).
   WHAT: fix the T5 bench probe so it produces a real in-session guard fire in the ON arm. Recommend shape 2 (check-driven guards) — needs no hook-honoring harness rebuild and the enforcement surface exists headless.
-  WHERE: kit-lab repo, `bench/tasks/T5.md` (PIN PATH) + `bench/README.md` / `run_ab.py`; optional engine sliver `src/engine/checks/` (substrate-kit) for the last-card freshness anchor — verify it is not already covered by #19's `--require-session-log`.
+  WHERE: substrate-kit, `bench/tasks/T5.md` (PIN PATH) + `bench/README.md` / `run_ab.py`; optional engine sliver `src/engine/checks/` for the last-card freshness anchor — verify it is not already covered by #19's `--require-session-log`.
   HOW: shape 2 — the arm's protocol runs `check --strict` inside the session flow (or a wrapper fails the task on red) so the guard's fire/obey/repair arc is observable without the hook layer.
   WHY: without it, T5 scores all guard items n/a — the ON arm demonstrates nothing over the unguarded baseline; the guard-probe purpose of T5 is unmet.
   UNBLOCKS: a T5 run that scores guard fire/obey/repair met/not-met instead of n/a; closes judge report §5.5 item 2.
   VERIFY: a T5 run produces ≥1 real in-session guard fire (or a recorded deliberate violation) in the ON arm.
-  RISK: ⚠️ pin-path change → must land via a `do-not-automerge` owner-review PR in kit-lab; not landable from substrate-kit. Detail home: docs/planning/2026-07-19-needs-planning-recipes.md §4.
+  RISK: ⚠️ pin-path oracle change → lands via a `do-not-automerge` owner-review PR (never auto-merged); landed as owner-review pin PR #552 in substrate-kit (bench/ lives here, enforced by scripts/check_bench_integrity.py), awaits owner merge. Detail home: docs/planning/2026-07-19-needs-planning-recipes.md §4.
 
 Standing (full paste-ready blocks verbatim in git history of this file):
 - fm #122 v3.4 restamp — owner reviews/merges PERSONALLY.
