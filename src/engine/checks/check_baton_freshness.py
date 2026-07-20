@@ -108,10 +108,10 @@ _RE_COMPLETION_MARKER = re.compile(
 # Directories never scanned for a deliverable's home (VCS / kit machinery / test
 # fixtures — a test that registers a ``--flag`` or defines a ``check_`` helper
 # must not count as the deliverable actually existing).
-_PRUNE_DIRS = frozenset(
+_BATON_FRESH_PRUNE_DIRS = frozenset(
     {".git", "__pycache__", "node_modules", ".venv", "venv", ".substrate", "tests"},
 )
-_MAX_BYTES = 512 * 1024
+_BATON_FRESH_MAX_BYTES = 512 * 1024
 
 
 def _iter_py_files(root: Path):
@@ -128,7 +128,7 @@ def _iter_py_files(root: Path):
         for entry in entries:
             try:
                 if entry.is_dir():
-                    if entry.name not in _PRUNE_DIRS:
+                    if entry.name not in _BATON_FRESH_PRUNE_DIRS:
                         stack.append(entry)
                     continue
             except OSError:
@@ -240,7 +240,7 @@ def check_baton_freshness(target: Path, config=None) -> list[Finding]:
         if not unresolved:
             break
         try:
-            if path.stat().st_size > _MAX_BYTES:
+            if path.stat().st_size > _BATON_FRESH_MAX_BYTES:
                 continue
             body = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
