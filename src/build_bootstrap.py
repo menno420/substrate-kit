@@ -62,6 +62,14 @@ MODULE_ORDER = (
     # `wall` row in docs/CAPABILITIES.md has aged past cadence.staleness_days.
     # Advisory-only, never exit-affecting.
     "checks/check_stale_walls.py",
+    # After check_stale_walls.py (it imports that module's wall-row grammar —
+    # _iter_bullets / _is_wall_section / _title / _parse_date + the _RE_APPENDLOG /
+    # _RE_LAST_VERIFIED regexes — as the single source of truth): the dateless-wall
+    # advisory (wave-2 groom S14), the negative complement of the R5 stale-wall
+    # advisory — warns when a `wall` row in docs/CAPABILITIES.md carries no
+    # parseable date, so it can never trip the staleness re-verify rule. Advisory-
+    # only, never exit-affecting.
+    "checks/check_dateless_walls.py",
     # After check_stale_walls.py (its only engine reference is check_docs.Finding):
     # the append-log ⇄ Walls-correction disagreement advisory (groom R7) — warns
     # when the two disagree on a capability; advisory-only, never exit-affecting.

@@ -54,6 +54,7 @@ from engine.checks.check_docs import Finding, run_doc_checks
 from engine.checks.check_folded_gate import check_folded_gate
 from engine.checks.check_fastlane_symmetry import check_fastlane_symmetry
 from engine.checks.check_stale_walls import check_stale_walls
+from engine.checks.check_dateless_walls import check_dateless_walls
 from engine.checks.check_wall_ledger_agreement import check_wall_ledger_agreement
 from engine.checks.check_recipe_applies_when import check_recipe_applies_when
 from engine.checks.check_recipe_signature_honesty import (
@@ -1440,6 +1441,16 @@ def cmd_check(
     # posture="advisory" seam below (NOT _extra_check_findings, which counts
     # toward the exit code) and stays off STRICT_SUBCHECKS.
     stale_walls_advisories = check_stale_walls(target, config)
+    # Capability dateless-wall advisory (wave-2 groom S14): the negative complement
+    # of the R5 stale-wall advisory above. check_stale_walls can only fire on a
+    # wall that carries a parseable date; a wall row with NO date escapes the
+    # DISCOVERY RULE's re-verify cadence forever (it can never age out). This
+    # surfaces those undated wall rows so a date can be stamped and the staleness
+    # rule can then fire. Advisory-only, NEVER exit-affecting (an as-yet-undated
+    # wall is a stamp-it nudge, not a defect), so it rides the same
+    # posture="advisory" seam below (NOT _extra_check_findings) and stays off
+    # STRICT_SUBCHECKS.
+    dateless_walls_advisories = check_dateless_walls(target, config)
     wall_ledger_advisories = check_wall_ledger_agreement(target, config)
     # Fast-lane prefix symmetry (night-run groom R8): warns when a host's
     # ci.yml claims-only fast-lane guard cards a prefix its auto-merge-enabler
@@ -2052,6 +2063,28 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=stale_walls_advisories,
+        )
+    if dateless_walls_advisories and not status_only:
+        # Same warn-only contract as the advisories above (wave-2 groom S14): a
+        # wall row carrying no parseable date can never trip the R5 staleness
+        # re-verify rule, so it hardens into an un-auditable claim — a "stamp it
+        # with a date" nudge, not a defect that should fail an adopter whose
+        # ledger legitimately carries an as-yet-undated wall. Surfaced +
+        # telemetry-recorded, NEVER counted toward the exit code (deliberately
+        # off STRICT_SUBCHECKS, the R5 stale-wall sibling's reason).
+        _emit(
+            f"check: {len(dateless_walls_advisories)} dateless-wall advisory "
+            "warning(s) (never exit-affecting):",
+        )
+        for finding in dateless_walls_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=dateless_walls_advisories,
         )
     if wall_ledger_advisories and not status_only:
         # Same warn-only contract as the advisories above (night-run groom R7):
