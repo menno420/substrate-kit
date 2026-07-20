@@ -404,6 +404,91 @@ def test_results_json_shape(fixture_tree: Path):
     assert payload["repos"][0]["cards"]["after"]["cards"] == 2
 
 
+# ── S13 — clone-depth provenance on results.json (clone_depth + git_sha) ─────
+
+
+def test_clone_provenance_non_git_tree_reports_unknown(tmp_path: Path):
+    # A plain (non-git) directory — the shared require_full_history helper
+    # reports UNKNOWN when it cannot ask, and rev-parse HEAD errors → None.
+    plain = tmp_path / "plain"
+    plain.mkdir()
+    depth, sha = mgs._clone_provenance(plain)
+    assert depth == "unknown"
+    assert sha is None
+
+
+def test_clone_provenance_full_git_repo_reports_full_and_sha(git_fixture_tree: Path):
+    # git_fixture_tree is a real (non-shallow) git-init'd repo with a HEAD
+    # commit — expect FULL + a 40-char lowercase-hex SHA.
+    depth, sha = mgs._clone_provenance(git_fixture_tree)
+    assert depth == "full"
+    assert isinstance(sha, str)
+    assert len(sha) == 40
+    assert all(c in "0123456789abcdef" for c in sha)
+
+
+def test_clone_provenance_shallow_repo_reports_shallow(
+    git_fixture_tree: Path, monkeypatch
+):
+    # Force the shared shallow probe to True (no need to build a real
+    # grafted history — the helper reads only this one boolean).
+    import _git_truth
+
+    monkeypatch.setattr(_git_truth, "is_shallow", lambda run: True)
+    depth, sha = mgs._clone_provenance(git_fixture_tree)
+    assert depth == "shallow"
+    # SHA still resolves — a shallow clone still has a HEAD.
+    assert isinstance(sha, str) and len(sha) == 40
+
+
+def test_measure_repo_records_clone_provenance(git_fixture_tree: Path):
+    # measure_repo populates the two new fields on RepoResult.
+    res = mgs.measure_repo("fixture", git_fixture_tree, names=(), **WINDOW)
+    assert res.clone_depth == "full"
+    assert isinstance(res.git_sha, str) and len(res.git_sha) == 40
+
+
+def test_measure_repo_non_git_tree_provenance_defaults(fixture_tree: Path):
+    # A non-git tree keeps M4 as an honest null AND provenance as
+    # unknown/None — the two seams stay coherent.
+    res = mgs.measure_repo("fixture", fixture_tree, names=(), **WINDOW)
+    assert res.merged is None
+    assert res.clone_depth == "unknown"
+    assert res.git_sha is None
+
+
+def test_results_json_carries_clone_provenance(git_fixture_tree: Path):
+    # The payload exposes the two new per-repo fields self-describingly.
+    res = mgs.measure_repo("fixture", git_fixture_tree, names=(), **WINDOW)
+    payload = mgs.results_json([res], **WINDOW)
+    repo_entry = payload["repos"][0]
+    assert repo_entry["clone_depth"] == "full"
+    assert isinstance(repo_entry["git_sha"], str) and len(repo_entry["git_sha"]) == 40
+
+
+def test_results_json_provenance_defaults_for_non_git_tree(fixture_tree: Path):
+    # Non-git tree: clone_depth=unknown, git_sha=None on the JSON payload.
+    res = mgs.measure_repo("fixture", fixture_tree, names=(), **WINDOW)
+    payload = mgs.results_json([res], **WINDOW)
+    repo_entry = payload["repos"][0]
+    assert repo_entry["clone_depth"] == "unknown"
+    assert repo_entry["git_sha"] is None
+
+
+def test_json_writes_provenance_end_to_end(git_fixture_tree: Path, tmp_path: Path, monkeypatch):
+    # End-to-end through main(): the written JSON carries the provenance.
+    monkeypatch.setattr(mgs, "_is_shallow", lambda repo_dir: False)
+    js = tmp_path / "results.json"
+    code = mgs.main(["--local", f"fixture={git_fixture_tree}", "--json", str(js)])
+    assert code == 0
+    import json as _json
+
+    payload = _json.loads(js.read_text(encoding="utf-8"))
+    entry = payload["repos"][0]
+    assert entry["clone_depth"] == "full"
+    assert isinstance(entry["git_sha"], str) and len(entry["git_sha"]) == 40
+
+
 # ── opt-in --api-latency mode (graduated from GSW-4) ──────────────────────────
 
 
