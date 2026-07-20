@@ -84,6 +84,12 @@ MODULE_ORDER = (
     # against the recipe body so a `content:`/`path:` token the prose never
     # mentions (a drifted signature) surfaces. Advisory-only, never exit-affecting.
     "checks/check_recipe_signature_honesty.py",
+    # After check_recipe_applies_when.py (it imports that module's badge-grammar
+    # regexes as the single source of truth): the recipe applies-when DISCOVERY
+    # advisory (wave-2 groom S17) — for an adopter tree that has grown a recipe's
+    # `applies-when:` structural shape but never references the recipe, nudges
+    # toward it (discovery, not enforcement). Advisory-only, never exit-affecting.
+    "checks/check_recipe_discovery.py",
     # After check_docs.py (its only engine reference is check_docs.Finding): the
     # un-groomed-idea counter advisory (wave-2 groom S3) — counts 💡 session-idea
     # lines on cards newer than the newest docs/planning/*groom*.md so a "backlog

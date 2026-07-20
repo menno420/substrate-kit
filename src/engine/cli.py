@@ -60,6 +60,7 @@ from engine.checks.check_recipe_applies_when import check_recipe_applies_when
 from engine.checks.check_recipe_signature_honesty import (
     check_recipe_signature_honesty,
 )
+from engine.checks.check_recipe_discovery import check_recipe_discovery
 from engine.checks.check_ungroomed_ideas import check_ungroomed_ideas
 from engine.checks.check_baton_resolves import check_baton_resolves
 from engine.checks.check_surface_census import surface_census_note
@@ -1477,6 +1478,15 @@ def cmd_check(
     # so it rides the same posture="advisory" seam below (NOT _extra_check_findings)
     # and stays off STRICT_SUBCHECKS.
     recipe_signature_honesty_advisories = check_recipe_signature_honesty(target, config)
+    # Recipe applies-when DISCOVERY (wave-2 groom S17): the discovery complement
+    # to R11 (well-formedness) + S8 (honesty) — for an adopter tree that has grown
+    # a recipe's `applies-when:` structural shape (full-signature match) but never
+    # references the recipe, nudges toward it (discovery, not enforcement). Excludes
+    # docs/recipes/ (self-reference) + suppresses when the recipe is already known,
+    # so it stays quiet on the authoring repo. A read-this-pattern nudge, not a
+    # defect, so it rides the same posture="advisory" seam below (NOT
+    # _extra_check_findings) and stays off STRICT_SUBCHECKS.
+    recipe_discovery_advisories = check_recipe_discovery(target, config)
     # Un-groomed-idea counter (wave-2 groom S3): counts 💡 session-idea lines on
     # cards newer than the newest docs/planning/*groom*.md, so a "backlog dry"
     # claim can't be made while un-groomed ideas still sit on cards. A nudge to
@@ -2171,6 +2181,27 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=recipe_signature_honesty_advisories,
+        )
+    if recipe_discovery_advisories and not status_only:
+        # Same warn-only contract as the advisories above (wave-2 groom S17): a
+        # tree that has grown a recipe's `applies-when:` structural shape but never
+        # references the recipe is nudged toward it — a "read this portable pattern"
+        # invitation, the DISCOVERY complement to R11/S8. Never a defect that should
+        # fail an adopter (discovery, not enforcement). Surfaced + telemetry-
+        # recorded, NEVER counted toward the exit code (off STRICT_SUBCHECKS).
+        _emit(
+            f"check: {len(recipe_discovery_advisories)} recipe discovery "
+            "advisory warning(s) (never exit-affecting):",
+        )
+        for finding in recipe_discovery_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=recipe_discovery_advisories,
         )
     if ungroomed_ideas_advisories and not status_only:
         # Same warn-only contract as the advisories above (wave-2 groom S3): 💡
