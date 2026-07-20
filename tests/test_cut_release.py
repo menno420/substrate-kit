@@ -478,6 +478,244 @@ Preamble prose block (KF-5 lives here).
         assert "malformed --date" in out
 
 
+# A faithful stand-in for src/build_bootstrap.py: resolves its own dist path
+# the same way (parents[1] == root), writes an artifact, and prints the real
+# `wrote <path> (N bytes)` line the byte-pin parses. The rebuild subprocess
+# exercises the actual sys.executable + cwd mechanics against this.
+FAKE_BUILDER_OK = '''\
+import sys
+from pathlib import Path
+
+data = b"# rebuilt dist artifact\\n" * 4
+dist = Path(__file__).resolve().parents[1] / "dist" / "bootstrap.py"
+dist.parent.mkdir(parents=True, exist_ok=True)
+dist.write_bytes(data)
+sys.stdout.write(f"wrote {dist} ({len(data)} bytes)\\n")
+'''
+
+# Lies about the count: writes N bytes but prints N+5 -> byte-pin must catch it.
+FAKE_BUILDER_MISMATCH = '''\
+import sys
+from pathlib import Path
+
+data = b"# rebuilt dist artifact\\n" * 4
+dist = Path(__file__).resolve().parents[1] / "dist" / "bootstrap.py"
+dist.parent.mkdir(parents=True, exist_ok=True)
+dist.write_bytes(data)
+sys.stdout.write(f"wrote {dist} ({len(data) + 5} bytes)\\n")
+'''
+
+# Prints success prose with no `(N bytes)` token -> unparseable refusal.
+FAKE_BUILDER_UNPARSEABLE = '''\
+import sys
+from pathlib import Path
+
+dist = Path(__file__).resolve().parents[1] / "dist" / "bootstrap.py"
+dist.parent.mkdir(parents=True, exist_ok=True)
+dist.write_bytes(b"x")
+sys.stdout.write("regenerated, all good\\n")
+'''
+
+# Fails outright -> non-zero refusal carrying the builder's stderr.
+FAKE_BUILDER_FAILS = '''\
+import sys
+
+sys.stderr.write("boom: template glyph exploded\\n")
+sys.exit(2)
+'''
+
+
+def make_rebuild_fixture(tmp_path: Path, builder_src: str | None) -> Path:
+    """A clean git fixture with an OLD committed dist + a fake builder.
+
+    ``builder_src`` writes ``src/build_bootstrap.py``; pass ``None`` to omit
+    the builder entirely (the missing-builder refusal case).
+    """
+    root = make_fixture(tmp_path)
+    (root / "src").mkdir(exist_ok=True)
+    (root / "dist").mkdir()
+    (root / "dist/bootstrap.py").write_text(
+        '"""OLD dist header v0.1.0."""\n', encoding="utf-8"
+    )
+    if builder_src is not None:
+        (root / "src/build_bootstrap.py").write_text(
+            builder_src, encoding="utf-8"
+        )
+    _git(root, "init", "-q")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "fixture")
+    return root
+
+
+class TestRebuildDist:
+    """S15: --rebuild-dist folds FOLLOWUP step 2 (dist regen + byte-pin) into
+    the --write cut. Tooling only — never a real release cut."""
+
+    def test_rebuild_regenerates_and_byte_pins(self, tmp_path, capsys):
+        root = make_rebuild_fixture(tmp_path, FAKE_BUILDER_OK)
+        rc = cr.main(
+            [
+                "0.2.0",
+                "--root",
+                str(root),
+                "--date",
+                "2026-07-14",
+                "--write",
+                "--rebuild-dist",
+            ]
+        )
+        out = capsys.readouterr().out
+        assert rc == 0
+        # The bump still landed in the version homes.
+        cfg = (root / cr.CONFIG_RELPATH).read_text(encoding="utf-8")
+        assert 'KIT_VERSION = "0.2.0"' in cfg
+        # Dist was actually regenerated (OLD header gone).
+        dist = (root / cr.DIST_RELPATH).read_bytes()
+        assert b"rebuilt dist artifact" in dist
+        assert b"OLD dist header" not in dist
+        # Byte-pin: the reported count equals the on-disk size.
+        assert dist == b"# rebuilt dist artifact\n" * 4
+        assert "byte-pin verified" in out
+        assert "FOLLOWUP step 2 folded in" in out
+        # Checklist step 2 now reads DONE, not the manual instruction.
+        assert "Dist regen + byte-pin: DONE" in out
+        assert "folded in via --rebuild-dist" in out
+        assert "python3 src/build_bootstrap.py, then confirm" not in out
+
+    def test_write_alone_does_not_rebuild(self, tmp_path, capsys):
+        root = make_rebuild_fixture(tmp_path, FAKE_BUILDER_OK)
+        rc = cr.main(
+            ["0.2.0", "--root", str(root), "--date", "2026-07-14", "--write"]
+        )
+        out = capsys.readouterr().out
+        assert rc == 0
+        # Dist untouched — the OLD committed artifact remains.
+        dist = (root / cr.DIST_RELPATH).read_text(encoding="utf-8")
+        assert "OLD dist header" in dist
+        # Checklist keeps the manual step 2.
+        assert "python3 src/build_bootstrap.py, then confirm" in out
+        assert "DONE — folded in via --rebuild-dist" not in out
+
+    def test_rebuild_without_write_refused(self, tmp_path, capsys):
+        root = make_rebuild_fixture(tmp_path, FAKE_BUILDER_OK)
+        rc = cr.main(
+            [
+                "0.2.0",
+                "--root",
+                str(root),
+                "--date",
+                "2026-07-14",
+                "--rebuild-dist",
+            ]
+        )
+        out = capsys.readouterr().out
+        assert rc == 1
+        assert "--rebuild-dist requires --write" in out
+        # Nothing bumped, dist untouched.
+        cfg = (root / cr.CONFIG_RELPATH).read_text(encoding="utf-8")
+        assert 'KIT_VERSION = "0.1.0"' in cfg
+        assert "OLD dist header" in (
+            root / cr.DIST_RELPATH
+        ).read_text(encoding="utf-8")
+
+    def test_missing_builder_refused(self, tmp_path, capsys):
+        root = make_rebuild_fixture(tmp_path, None)
+        rc = cr.main(
+            [
+                "0.2.0",
+                "--root",
+                str(root),
+                "--date",
+                "2026-07-14",
+                "--write",
+                "--rebuild-dist",
+            ]
+        )
+        out = capsys.readouterr().out
+        assert rc == 1
+        assert "src/build_bootstrap.py not found" in out
+        assert "cannot --rebuild-dist" in out
+        # The version bump DID land before the rebuild attempt (the bump is
+        # committed to the tree; the rebuild is a follow-up that then refuses).
+        cfg = (root / cr.CONFIG_RELPATH).read_text(encoding="utf-8")
+        assert 'KIT_VERSION = "0.2.0"' in cfg
+
+    def test_byte_pin_mismatch_refused(self, tmp_path, capsys):
+        root = make_rebuild_fixture(tmp_path, FAKE_BUILDER_MISMATCH)
+        rc = cr.main(
+            [
+                "0.2.0",
+                "--root",
+                str(root),
+                "--date",
+                "2026-07-14",
+                "--write",
+                "--rebuild-dist",
+            ]
+        )
+        out = capsys.readouterr().out
+        assert rc == 1
+        assert "byte-pin mismatch" in out
+
+    def test_unparseable_builder_output_refused(self, tmp_path, capsys):
+        root = make_rebuild_fixture(tmp_path, FAKE_BUILDER_UNPARSEABLE)
+        rc = cr.main(
+            [
+                "0.2.0",
+                "--root",
+                str(root),
+                "--date",
+                "2026-07-14",
+                "--write",
+                "--rebuild-dist",
+            ]
+        )
+        out = capsys.readouterr().out
+        assert rc == 1
+        assert "no parseable byte count" in out
+
+    def test_builder_failure_refused(self, tmp_path, capsys):
+        root = make_rebuild_fixture(tmp_path, FAKE_BUILDER_FAILS)
+        rc = cr.main(
+            [
+                "0.2.0",
+                "--root",
+                str(root),
+                "--date",
+                "2026-07-14",
+                "--write",
+                "--rebuild-dist",
+            ]
+        )
+        out = capsys.readouterr().out
+        assert rc == 1
+        assert "dist rebuild exited 2" in out
+        assert "boom: template glyph exploded" in out
+
+    def test_run_guard_rejects_rebuild_without_write(self, tmp_path):
+        """The refusal lives in run(), not just argparse — a direct call is
+        guarded too."""
+        root = make_rebuild_fixture(tmp_path, FAKE_BUILDER_OK)
+        try:
+            cr.run(root, "0.2.0", write=False, date="2026-07-14", rebuild=True)
+        except cr.CutError as exc:
+            assert "--rebuild-dist requires --write" in str(exc)
+        else:  # pragma: no cover
+            raise AssertionError("run() should refuse rebuild without write")
+
+    def test_followup_checklist_helper_two_faces(self):
+        manual = cr.followup_checklist("9.9.9", None)
+        done = cr.followup_checklist("9.9.9", 625000)
+        assert "python3 src/build_bootstrap.py, then confirm" in manual
+        assert "DONE" not in manual
+        assert "DONE — folded in via --rebuild-dist (625000 bytes" in done
+        assert "python3 src/build_bootstrap.py, then confirm" not in done
+        # Both still name the canonical runbook and the later steps.
+        for text in (manual, done):
+            assert "docs/operations/release-runbook.md" in text
+            assert "workflow_dispatch" in text
+
+
 class TestHelpers:
     def test_classify_increment(self):
         assert cr.classify_increment("1.15.0", "2.0.0") == "major"
@@ -531,7 +769,10 @@ class TestFollowupChecklistRunbookPin:
         runbook = (
             REPO_ROOT / "docs" / "operations" / "release-runbook.md"
         ).read_text(encoding="utf-8").lower()
-        checklist = cr.FOLLOWUP_CHECKLIST.format(version="9.9.9").lower()
+        # Build via the public helper (rebuilt_bytes=None -> manual step 2,
+        # the runbook-pinned face); FOLLOWUP_CHECKLIST now carries a
+        # {dist_step} slot the helper fills.
+        checklist = cr.followup_checklist("9.9.9", None).lower()
         # The checklist must name its canonical source.
         assert "docs/operations/release-runbook.md" in checklist
         missing = []

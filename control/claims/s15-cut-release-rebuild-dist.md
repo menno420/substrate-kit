@@ -1,1 +1,1 @@
-- claude/s15-cut-release-rebuild-dist · S15 cut_release --rebuild-dist (fold FOLLOWUP dist rebuild into the cut) · scripts/cut_release.py + tests · 2026-07-20
+- `claude/s15-cut-release-rebuild-dist` · S15 cut_release --rebuild-dist (fold FOLLOWUP dist rebuild into the cut) · `scripts/cut_release.py` + tests · 2026-07-20
