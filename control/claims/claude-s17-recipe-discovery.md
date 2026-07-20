@@ -1,1 +1,0 @@
-- `claude/s17-recipe-discovery` · build wave-2 groom S17 (check_recipe_discovery advisory — applies-when discovery nudge) · `src/engine/checks/check_recipe_discovery.py` + `cli.py` + `build_bootstrap.py` + `dist/bootstrap.py` + `tests/` · 2026-07-20
