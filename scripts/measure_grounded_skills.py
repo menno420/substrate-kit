@@ -61,6 +61,13 @@ malformed artifact-or-sidecar. It is a standalone check (no measurement), so it
 needs none of the ``--clone``/``--local``/``--json`` measurement flags; it is
 the scripted form of the ``sha256sum <artifact>`` line the freeze block prints.
 
+Every per-repo entry on the machine-readable ``results.json`` payload also
+carries **clone-depth provenance** (S13): ``clone_depth`` (``full``/``shallow``
+/``unknown``, from :func:`_git_truth.require_full_history`) and ``git_sha``
+(HEAD commit SHA the measurement was taken against, or ``null`` when the tree
+is not a usable git repo). Self-describing: a later reader learns the tree
+state each number was computed against without re-running.
+
 Tests: ``tests/test_measure_grounded_skills.py`` (fixture trees, no network).
 """
 
@@ -333,6 +340,46 @@ class RepoResult:
     status_oa_blocks: int = 0
     status_oa_compliant: int = 0
     merged: dict | None = None
+    #: Per-repo clone-depth provenance recorded on ``results.json`` (S13):
+    #: ``full`` / ``shallow`` / ``unknown``, from the shared
+    #: ``_git_truth.require_full_history`` helper — the tri-state complement
+    #: to ``merged["shallow"]``'s bool (which collapses UNKNOWN into False).
+    #: A later reader of a frozen artifact learns the clone depth without
+    #: re-running.
+    clone_depth: str = _git_truth.UNKNOWN
+    #: HEAD commit SHA the measurement was taken against, or ``None`` when
+    #: the tree is not a usable git repo. Self-describing provenance —
+    #: pins the exact tree state each per-repo number was computed against.
+    git_sha: str | None = None
+
+
+def _clone_provenance(repo_dir: Path) -> tuple[str, str | None]:
+    """Read per-repo clone-depth provenance for the results payload (S13).
+
+    Returns ``(clone_depth, git_sha)`` where ``clone_depth`` is one of
+    ``_git_truth.FULL`` / ``_git_truth.SHALLOW`` / ``_git_truth.UNKNOWN``
+    (tri-state, from :func:`_git_truth.require_full_history` — the same
+    S5-shared helper the M4 shallow-refuse guard rides on) and ``git_sha``
+    is the HEAD commit SHA (``git rev-parse HEAD``, full 40-char) or
+    ``None`` when the tree is not a usable git repo.
+
+    Fail-open: any git failure (missing ``.git``, corrupt repo, subprocess
+    error, timeout) degrades ``git_sha`` to ``None`` without crashing the
+    measurement pass. ``clone_depth`` inherits the tri-state's ``UNKNOWN``
+    on the same class of failure — never reads a "could not ask" as
+    "provably full", matching the S5 helper's own contract.
+
+    This is a self-describing provenance seam only. The refuse-to-publish
+    gate on ``--json`` / ``--commit-results`` for a shallow clone is
+    unchanged (still reads ``merged["shallow"]``); this helper only surfaces
+    the depth verdict + HEAD SHA onto the payload so a later reader learns
+    them without re-running.
+    """
+    runner = _git_truth.make_runner(repo_dir)
+    depth = _git_truth.require_full_history(runner).verdict
+    rc, out, _err = runner(["rev-parse", "HEAD"])
+    sha = out.strip() if rc == 0 else ""
+    return depth, (sha or None)
 
 
 def _empty_card_bucket() -> dict:
@@ -411,6 +458,10 @@ def measure_repo(
                     res.status_oa_compliant += 1
 
     res.merged = merged_counts(root, start=start, boundary=boundary, end=end)
+    # S13 — record per-repo clone-depth provenance on the payload (never
+    # publication-affecting; the shallow-refuse gate on --json/--commit-results
+    # still rides ``merged["shallow"]``).
+    res.clone_depth, res.git_sha = _clone_provenance(root)
     return res
 
 
@@ -576,6 +627,12 @@ def results_json(
                 "status_oa_blocks": r.status_oa_blocks,
                 "status_oa_compliant": r.status_oa_compliant,
                 "merged": r.merged,
+                # S13 — clone-depth provenance: pins WHICH commit of each
+                # repo the numbers were computed against, and whether the
+                # clone was full/shallow. Tri-state depth (distinct from
+                # merged["shallow"]'s bool, which collapses UNKNOWN).
+                "clone_depth": r.clone_depth,
+                "git_sha": r.git_sha,
             }
             for r in results
         ],
