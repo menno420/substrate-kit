@@ -6,7 +6,8 @@ a PRINT-ONLY CLI convenience, never a gate.
 
 Why this exists: when `check` surfaces an advisory (or a red gate) it names the
 finding kind — `folded-gate-mtime-picker`, `recipe-applies-when`, `stale-wall`,
-`wall-ledger-disagree`, `baton-unresolved`, `ungroomed-ideas` — and its message
+`wall-ledger-disagree`, `baton-unresolved`, `baton-stale-deliverable`,
+`ungroomed-ideas` — and its message
 describes the fix in prose. A host then has to re-derive the exact paste-ready
 form from that prose. This lookup hands back the ready-to-apply remediation block
 for a named kind directly, so the "what do I actually paste/edit to clear this?"
@@ -118,6 +119,22 @@ that exists on disk:
    instead of leaving a dead pointer.
 """
 
+_BATON_STALE_DELIVERABLE = """\
+The `## Next-2 baton` in control/status*.md names a `check_*` / `--flag`
+deliverable as work still to build, but that deliverable ALREADY resolves in the
+tree — a "build X" baton pointing at already-shipped work (the S16 `--api-latency`
+incident). Advance the baton off the already-built rank:
+
+1. Confirm it is shipped — find its definition / registration:
+       grep -rn 'def <check_name>(' src/ scripts/        # a checker
+       grep -rn 'add_argument("--<flag>"' src/ scripts/  # a CLI flag
+2. In the `## Next-2 baton`, mark that rank DONE with its PR number (a line that
+   carries a `#<PR>` / `shipped` marker is suppressed by this advisory), OR
+   retarget the baton at the next genuinely-unbuilt slice.
+3. If the whole buildable band is consumed, say so plainly (backlog dry) rather
+   than pointing the next wake at work that already exists.
+"""
+
 _UNGROOMED_IDEAS = """\
 There are `💡` session-idea lines on cards newer than the newest groom doc —
 so a "backlog dry" claim would be false. Run a groom pass before claiming the
@@ -142,6 +159,7 @@ REMEDIATIONS: dict[str, str] = {
     "dateless-wall": _DATELESS_WALL,
     "wall-ledger-disagree": _WALL_LEDGER_DISAGREE,
     "baton-unresolved": _BATON_UNRESOLVED,
+    "baton-stale-deliverable": _BATON_STALE_DELIVERABLE,
     "ungroomed-ideas": _UNGROOMED_IDEAS,
 }
 
