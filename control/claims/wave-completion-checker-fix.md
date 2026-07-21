@@ -1,0 +1,1 @@
+- branch: `claude/false-wall-exemptions-v1.20.2` · scope: check_no_false_walls 3-class clearing exemptions (dated/quoted repudiation cue-widen, generated-render marker, product-copy allowlist) + v1.20.2 release + re-vendor into trading-strategy#160, venture-lab#282, superbot-next#602 · date: 2026-07-21
