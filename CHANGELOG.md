@@ -15,6 +15,44 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+## [1.20.2] - 2026-07-21
+
+<!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
+
+### Fixed
+
+- **`check_no_false_walls` clearing gains five attachment-based relaxations (v1.20.2).**
+  The v1.20.1 leg still retroactively reddened adopter upgrade PRs on lines that already
+  CORRECTLY repudiate a past false capability wall. This adds five clearing paths, each
+  kept **attachment-based** (same-clause / same-single-bullet / immediately-adjacent) and
+  **`_capability_families`-gated** so none reopens the #549 ancestor/section-sheltering
+  hole: **(G2)** same-clause repudiation-cue vocabulary — `never/not a standing "…" wall`,
+  `was (based on) a false (standing) wall`, `does not reproduce`, and a bare `false standing
+  wall` only when a `superseded`/`proven` second signal accompanies it; **(G4)** a
+  position-aware `false`/`superseded` marker IMMEDIATELY after a quote whose content is the
+  wall phrase (the mirror of the existing `false "…"` before-quote form); **(G1)** a bounded
+  same-family lookforward mirroring the wrapped lookback (1–2 lines, stopping at a blank line,
+  new bullet, heading, dated bullet, or `but …` contrast); **(class b)** an exemption for the
+  kit's generated derived-render file/blocks (seat-digest header marker or
+  `<!-- substrate-kit:*-digest BEGIN … -->` fence) honoured **only on the known render path**
+  (`docs/seat-digest.md` per `seat_digest_relpath`), so the marker cannot blanket-exempt a
+  real doc — sound because the render's source docs stay in the scan set; and **(class c —
+  product-copy triage)** false-wall findings now ride the repo's generic **reason-required**
+  allowlist seam (`engine.checks.allowlist`, file `<state_dir>/check-exceptions.yml`): an
+  entry suppresses a `false-wall:<rule>` finding only on an exact `path` + `kind` match **with
+  a non-empty `reason`**, and a reason-less entry suppresses nothing and is itself reported as
+  a `kind=allowlist` finding (fail-closed, loud). Also **hardened same-clause clearing** — a
+  mid-line `, but/and/yet/so/…` conjunction is now a clause boundary (so a capability-agnostic
+  cue can't bleed across it to blind a genuine wall), and a same-clause cue whose non-wall
+  remainder names a disjoint capability family no longer clears. A dated-bullet-continuation
+  relaxation (G3) was evaluated and
+  **dropped as UNSAFE** — propagating a bullet's date to its continuation lines would clear
+  genuine standing walls (it fails the `_MUST_STAY_RED` neighbour-bleed fixtures). The
+  motivating same-line / adjacent-continuation cases clear via G1+G2 instead; walls that only
+  a dated-bullet propagation would have cleared fall back to a resident-lane doc reword. Genuine
+  standing walls stay red; the full both-directions MUST-RED / MUST-CLEAR matrix is pinned in
+  `TestClearingVocabulary` and `TestFalseWallRidesGenericAllowlist`.
+
 ## [1.20.1] - 2026-07-20
 
 <!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->

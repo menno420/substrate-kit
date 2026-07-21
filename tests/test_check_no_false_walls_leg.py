@@ -277,6 +277,64 @@ _FP_CLEAR = {
         'This corrects a prior false "self-merge classifier" entry — nothing '
         "here is a standing wall.\n"
     ),
+    # ── G2 (v1.20.2): same-clause repudiation-cue vocabulary ──
+    # "never a standing '…' wall" (conventions.md style): the cue and the quoted
+    # wall phrase share the clause.
+    "g2_never_a_standing_wall": (
+        'This was never a standing "agents cannot merge" wall.\n'
+    ),
+    # "does not reproduce": the correction phrasing on the SAME clause as the
+    # quoted wall (the superbot-next:118 shape, reduced to one line).
+    "g2_does_not_reproduce": (
+        'The "classifier-denied" framing does not reproduce in the default env.\n'
+    ),
+    # "was a false standing wall": explicit past-tense repudiation, same clause.
+    "g2_was_a_false_standing_wall": (
+        'The old "self-merge classifier" note was a false standing wall.\n'
+    ),
+    # "false standing wall" + "superseded" (the two-signal conditional): the bare
+    # phrase clears ONLY because a second repudiation signal accompanies it.
+    "g2_false_standing_wall_superseded": (
+        'The "agents cannot merge" claim is a false standing wall, superseded by '
+        "later proof.\n"
+    ),
+    # ── G4 (v1.20.2): false/superseded characterisation AFTER the quote ──
+    # '"…wall…" — superseded': the marker sits immediately after the closing
+    # quote (only a dash between), and the wall phrase is INSIDE the quote.
+    "g4_superseded_after_quote": (
+        '"sessions may not self-merge" — superseded; agents merge green PRs.\n'
+    ),
+    # '"…wall…" was based on a false … wall': the "based on a false … wall"
+    # marker follows the quote within the clause.
+    "g4_based_on_false_after_quote": (
+        '"self-merge classifier" was based on a false wall.\n'
+    ),
+    # ── G1 (v1.20.2): bounded, same-family lookforward ──
+    # A `>` blockquote whose wall line is followed, in the SAME blockquote, by a
+    # same-family (merge) repudiation that wraps onto the next line. The wall
+    # line carries NO cue of its own — this genuinely exercises the lookforward.
+    "g1_blockquote_forward_same_family": (
+        '> Merging own PRs — the "self-merge classifier"\n'
+        "> framing does not reproduce and is normal agent work.\n"
+    ),
+    # ── FIX C (v1.20.2): the EXACT multi-line dated-bullet-continuation shape ──
+    # (i) the trigger (classifier-denied) and the "does not reproduce" cue on the
+    # SAME continuation line of a `- 2026-07-17 — CORRECTION …` dated bullet →
+    # clears via G2 same-clause. The wall is on the CONTINUATION line (not the
+    # dated first line), so the date does NOT trivially clear it — the cue does.
+    "c_dated_bullet_same_continuation_line_g2": (
+        "- 2026-07-17 — CORRECTION to the classifier-wall note:\n"
+        '  the "DB provisioning DDL is classifier-denied in agent auto-mode" '
+        "framing does not reproduce in the project-default env.\n"
+    ),
+    # (ii) the trigger on one continuation line and the cue on the NEXT
+    # continuation line within the SAME bullet → clears via G1 lookforward. This
+    # is the verbatim superbot-next current-state.md:117-119 shape.
+    "c_dated_bullet_next_continuation_line_g1": (
+        "- 2026-07-17 — CORRECTION to the classifier-wall note above:\n"
+        '  the "DB provisioning DDL is classifier-denied in agent\n'
+        '  auto-mode" framing does not reproduce in the project-default env.\n'
+    ),
 }
 
 # The adversarial-review MUST-RED set (fm ORDER 048): every genuine STANDING
@@ -376,6 +434,124 @@ _MUST_STAY_RED = {
         'A prior false "self-merge classifier" note aside — the live self-merge '
         "classifier still blocks every session and routes the PR to the owner.\n"
     ),
+    # ── G2 (v1.20.2) negatives: the trigger phrase alone never clears ──
+    # "a standing wall" WITHOUT a "never/not" repudiation prefix stays red.
+    "g2_bare_standing_wall_no_repudiation": (
+        "The self-merge classifier is a standing wall for every session.\n"
+    ),
+    # "reproduces" without the negated "does not reproduce" stays red.
+    "g2_reproduces_without_negation": (
+        "The classifier-denied error reproduces every session.\n"
+    ),
+    # ── G4 (v1.20.2) negative: an unrelated quote characterised false does NOT
+    # clear a bare wall elsewhere on the line (the wall must be INSIDE the
+    # quote). ──
+    "g4_unrelated_quote_then_superseded": (
+        '"weather" is superseded, but sessions may not self-merge their PRs.\n'
+    ),
+    # ── G1 (v1.20.2) negatives ──
+    # A forward repudiation of a DIFFERENT capability family (push) must NOT
+    # bridge to clear a merge wall — the same-family gate holds.
+    "g1_forward_different_capability": (
+        'The "self-merge classifier" note here\n'
+        "is not walled for pushing, which is proven repeatedly.\n"
+    ),
+    # A forward repudiation PAST a blank line does NOT clear (paragraph ended).
+    "g1_forward_past_blank_line": (
+        'The "self-merge classifier" note here\n'
+        "\n"
+        "is not walled, proven repeatedly.\n"
+    ),
+    # A forward repudiation on a NEW bullet does NOT clear (bullet boundary).
+    "g1_forward_new_bullet": (
+        'The "self-merge classifier" note\n'
+        "- is not walled, proven repeatedly.\n"
+    ),
+    # ── Class (b) negative: a doc WITHOUT the render marker is still scanned. ──
+    "b_no_render_marker_still_scanned": (
+        "A normal project doc.\n\nagents cannot merge their own PRs.\n"
+    ),
+    # A wall OUTSIDE a digest fence still reds (only the fenced block is exempt).
+    "b_wall_outside_fence_still_reds": (
+        "<!-- substrate-kit:skills-digest BEGIN — derived render, never edit. -->\n"
+        "fine rendered content\n"
+        "<!-- substrate-kit:skills-digest END -->\n\n"
+        "agents cannot merge their own PRs.\n"
+    ),
+    # ── Governance / launch-copy lines with no date/repudiation stay red. ──
+    "owner_merges_on_green_governance": (
+        "Governance: the owner merges on green.\n"
+    ),
+    "launch_copy_agent_unlandable_no_entry": (
+        "Launch copy: the legacy bot was agent-unlandable.\n"
+    ),
+    "classifier_denied_agent_merge_owner_click": (
+        "classifier denied agent merge — owner click needed.\n"
+    ),
+    # ── FIX A (v1.20.2): comma-bleed genuine-wall blind must STAY red ──
+    # The capability-agnostic cue ("does not reproduce") sits before a
+    # `, but`/`, and`/`, yet`/`, so` conjunction; the wall in the second half
+    # must land in its own cue-less clause and RED. The comma+conjunction split
+    # (not the family gate) is what closes this — an empty-family cue bypasses
+    # the disjoint gate, so the split is load-bearing.
+    "a_comma_but_does_not_reproduce_bleed": (
+        "The bug does not reproduce now, but agents cannot merge PRs in prod.\n"
+    ),
+    "a_comma_and_never_standing_deploy_wall_bleed": (
+        "That was never a standing deploy wall, and agents cannot merge here.\n"
+    ),
+    "a_comma_yet_false_standing_wall_bleed": (
+        "The prior note was a false standing wall, yet agents cannot merge to "
+        "main.\n"
+    ),
+    "a_comma_but_freeze_reproduce_bleed": (
+        "The freeze does not reproduce, but agents cannot merge to main.\n"
+    ),
+    "a_comma_and_deploy_wall_arm_bleed": (
+        "That was never a standing deploy wall, and seats can't arm auto-merge.\n"
+    ),
+    # Regression pin: a semicolon is ALREADY a separator — the wall in the
+    # second clause stays red (confirms the existing split still holds).
+    "a_semicolon_superseded_bleed": (
+        "The classifier note is superseded; agents cannot self-merge on "
+        "protected main.\n"
+    ),
+    # ── FIX B (v1.20.2): render marker on a NON-render file does not exempt ──
+    # A CAPABILITIES.md-shaped doc bearing the seat-digest render header marker
+    # AND a genuine wall must still RED — the exemption is gated to the known
+    # render path (docs/seat-digest.md), so an author cannot blanket-exempt a
+    # real doc by pasting the marker. (Exercised via check_no_false_walls below,
+    # which knows the path; scan_text with the default is_render_path=False also
+    # reds it, so it belongs in the MUST-RED matrix.)
+    "b_render_marker_on_capabilities_doc_still_reds": (
+        "# capabilities\n\n"
+        "> Generated by substrate-kit — a **derived render**.\n"
+        "> NEVER edit this file: regenerate with `python3 bootstrap.py "
+        "seat-digest`.\n\n"
+        "agents cannot merge their own PRs.\n"
+    ),
+}
+
+# Class (b) (v1.20.2): kit-generated derived-render files/blocks are exempt from
+# wall-scanning because their SOURCE docs are scanned independently. Kept in a
+# separate dict (they exercise scan_text like _FP_CLEAR, but the mechanism is
+# file/block exemption, not clause clearing).
+_RENDER_EXEMPT_CLEAR = {
+    # Whole-file exemption via the seat-digest header marker.
+    "b_header_marked_file": (
+        "> Generated by substrate-kit — a **derived render**, never a copy.\n"
+        "> NEVER edit this file: regenerate with `python3 bootstrap.py "
+        "seat-digest`.\n\n"
+        "agents cannot merge their own PRs.\n"
+    ),
+    # Block exemption via the digest fence (no whole-file header present).
+    "b_fenced_block": (
+        "# skill index\n\n"
+        "<!-- substrate-kit:walls-digest BEGIN — derived render, kit-generated; "
+        "never edit. -->\n"
+        "agents cannot merge their own PRs.\n"
+        "<!-- substrate-kit:walls-digest END -->\n"
+    ),
 }
 
 
@@ -463,3 +639,188 @@ class TestClearingVocabulary:
         findings = check_no_false_walls(tmp_path, Config())
         # Exactly the one incident-record line stays red.
         assert [f.kind for f in findings] == ["false-wall:classifier-denied-standing"]
+
+    # ── G1 (v1.20.2) mutation guard: bounded, same-family lookforward ──
+    def test_g1_lookforward_same_family_clears_but_different_family_stays_red(
+        self,
+    ) -> None:
+        # Both directions from one pair: a same-family repudiation that wraps
+        # onto the next line clears (the wall line carries no cue of its own);
+        # a DIFFERENT-family forward repudiation must NOT bridge.
+        assert scan_text(_FP_CLEAR["g1_blockquote_forward_same_family"]) == [], (
+            "G1: same-family forward repudiation must clear"
+        )
+        assert scan_text(_MUST_STAY_RED["g1_forward_different_capability"]), (
+            "G1: different-family forward repudiation must STAY red"
+        )
+
+    def test_g1_lookforward_stops_at_blank_line_and_new_bullet(self) -> None:
+        # The paragraph/bullet boundary: a forward repudiation past a blank line
+        # or on a new bullet is out of the wall's paragraph and must not clear.
+        assert scan_text(_MUST_STAY_RED["g1_forward_past_blank_line"])
+        assert scan_text(_MUST_STAY_RED["g1_forward_new_bullet"])
+
+    # ── G2 (v1.20.2) mutation guard: cue vocabulary requires the context ──
+    def test_g2_cues_clear_but_bare_trigger_phrase_stays_red(self) -> None:
+        for name in (
+            "g2_never_a_standing_wall",
+            "g2_does_not_reproduce",
+            "g2_was_a_false_standing_wall",
+            "g2_false_standing_wall_superseded",
+        ):
+            assert scan_text(_FP_CLEAR[name]) == [], f"G2 {name!r} must clear"
+        for name in (
+            "g2_bare_standing_wall_no_repudiation",
+            "g2_reproduces_without_negation",
+        ):
+            assert scan_text(_MUST_STAY_RED[name]), f"G2 {name!r} must STAY red"
+
+    # ── G4 (v1.20.2) mutation guard: false/superseded AFTER the quote ──
+    def test_g4_marker_after_quote_clears_but_unrelated_quote_stays_red(self) -> None:
+        assert scan_text(_FP_CLEAR["g4_superseded_after_quote"]) == []
+        assert scan_text(_FP_CLEAR["g4_based_on_false_after_quote"]) == []
+        # The wall must be INSIDE the quote — an unrelated false-quote does not
+        # clear a bare wall elsewhere on the line.
+        assert scan_text(_MUST_STAY_RED["g4_unrelated_quote_then_superseded"])
+
+    # ── Class (b) (v1.20.2): kit-generated derived-render exemption ──
+    def test_render_exempt_files_and_blocks_clear_on_the_render_path(self) -> None:
+        # The exemption fires only for the KNOWN render path (FIX B) — modelled
+        # by scan_text(..., is_render_path=True). Off the render path it does not.
+        for name, text in _RENDER_EXEMPT_CLEAR.items():
+            assert scan_text(text, is_render_path=True) == [], (
+                f"render-exempt {name!r} must clear on the render path, got: "
+                f"{[(h.line, h.rule) for h in scan_text(text, is_render_path=True)]}"
+            )
+            assert scan_text(text, is_render_path=False), (
+                f"render-exempt {name!r} must STILL red off the render path"
+            )
+
+    def test_render_exemption_is_render_path_gated_not_marker_blanket(
+        self, tmp_path: Path
+    ) -> None:
+        # FIX B: an author cannot blanket-exempt a real doc by pasting the render
+        # marker. A CAPABILITIES.md-shaped file bearing the marker + a genuine
+        # wall must still RED through the engine leg (it is NOT the render path);
+        # the real docs/seat-digest.md (which IS the render path) clears.
+        _plant(
+            tmp_path,
+            "docs/CAPABILITIES.md",
+            _MUST_STAY_RED["b_render_marker_on_capabilities_doc_still_reds"],
+        )
+        findings = check_no_false_walls(tmp_path, Config())
+        assert [f.path for f in findings] == ["docs/CAPABILITIES.md"], (
+            "render marker on a non-render doc must not exempt it"
+        )
+        # The same marker text, planted AT the render path, clears.
+        (tmp_path / "docs" / "CAPABILITIES.md").unlink()
+        _plant(
+            tmp_path,
+            "docs/seat-digest.md",
+            _MUST_STAY_RED["b_render_marker_on_capabilities_doc_still_reds"],
+        )
+        assert check_no_false_walls(tmp_path, Config()) == [], (
+            "the marker on the known render path (docs/seat-digest.md) exempts it"
+        )
+
+    def test_normal_doc_and_wall_outside_fence_still_red(self, tmp_path: Path) -> None:
+        # A normal doc without the marker is scanned; a wall OUTSIDE a fence reds
+        # even on the render path (only the fenced block is exempt).
+        _plant(
+            tmp_path, "docs/d.md", _MUST_STAY_RED["b_no_render_marker_still_scanned"]
+        )
+        assert check_no_false_walls(tmp_path, Config())
+        assert scan_text(
+            _MUST_STAY_RED["b_wall_outside_fence_still_reds"], is_render_path=True
+        )
+
+
+# ── FIX D (v1.20.2): false-wall findings ride the generic REASON-REQUIRED
+# allowlist seam (engine.checks.allowlist), NOT a bespoke fail-open path ────────
+#
+# check_no_false_walls emits the finding unconditionally; cmd_check post-processes
+# EVERY finding through load_allowlist + apply_allowlist. The product-copy
+# allowlist is that generic seam: exact path+kind match WITH a non-empty reason
+# suppresses; a reason-less entry suppresses nothing and surfaces as a
+# `kind=allowlist` finding (fail-CLOSED, loud).
+
+
+class TestFalseWallRidesGenericAllowlist:
+    _WALL = "Launch copy: the legacy bot was agent-unlandable.\n"
+    # The `agent-unlandable` phrase is emitted under the `standing-platform-wall`
+    # rule (earlier in blocklist order) — the allowlist keys on the EXACT kind.
+    _KIND = "false-wall:standing-platform-wall"
+    _REASONED = (
+        "- path: docs/launch.md\n"
+        f"  kind: {_KIND}\n"
+        "  reason: marketing copy describing the legacy bot\n"
+        "  triaged: 2026-07-21\n"
+        "  by: menno420\n"
+        "  verdict: false_positive\n"
+    )
+
+    def _false_wall_finding(self, tmp_path: Path):
+        _plant(tmp_path, "docs/launch.md", self._WALL)
+        findings = check_no_false_walls(tmp_path, Config())
+        assert [f.kind for f in findings] == [self._KIND], (
+            "the leg must emit the finding; suppression is the allowlist's job"
+        )
+        return findings
+
+    def test_reasoned_entry_suppresses_via_apply_allowlist(self, tmp_path: Path) -> None:
+        from engine.checks.allowlist import apply_allowlist, parse_allowlist
+
+        findings = self._false_wall_finding(tmp_path)
+        entries, allow_findings = parse_allowlist(self._REASONED, ".substrate/x.yml")
+        assert allow_findings == []  # a reasoned entry parses cleanly
+        kept, suppressed = apply_allowlist(findings, entries)
+        assert kept == [] and len(suppressed) == 1
+
+    def test_reasonless_entry_does_not_clear_and_is_reported(
+        self, tmp_path: Path
+    ) -> None:
+        from engine.checks.allowlist import apply_allowlist, parse_allowlist
+
+        findings = self._false_wall_finding(tmp_path)
+        reasonless = self._REASONED.replace(
+            "  reason: marketing copy describing the legacy bot\n", ""
+        )
+        entries, allow_findings = parse_allowlist(reasonless, ".substrate/x.yml")
+        # The reason-less entry suppresses nothing AND surfaces as an allowlist
+        # finding — fail-closed and loud (not the old fail-open behaviour).
+        assert entries == []
+        assert [f.kind for f in allow_findings] == ["allowlist"]
+        kept, suppressed = apply_allowlist(findings, entries)
+        assert kept == findings and suppressed == []
+
+    def test_wrong_kind_entry_does_not_clear(self, tmp_path: Path) -> None:
+        from engine.checks.allowlist import apply_allowlist, parse_allowlist
+
+        findings = self._false_wall_finding(tmp_path)
+        entries, _ = parse_allowlist(
+            self._REASONED.replace(self._KIND, "false-wall:the-owner-merges"),
+            ".substrate/x.yml",
+        )
+        kept, suppressed = apply_allowlist(findings, entries)
+        assert kept == findings and suppressed == []
+
+    def test_end_to_end_reasoned_entry_suppresses_through_cmd_check(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        # Proof the false-wall finding actually flows through cmd_check's
+        # allowlist pass: with a reasoned entry, the false-wall line is gone.
+        save_config(tmp_path, Config())
+        _plant(tmp_path, "docs/launch.md", self._WALL)
+        _plant(tmp_path, ".substrate/check-exceptions.yml", self._REASONED)
+        cmd_check(tmp_path, strict=True)
+        out = capsys.readouterr().out
+        assert "false-wall" not in out, "reasoned allowlist entry must suppress it"
+
+    def test_end_to_end_no_allowlist_leaves_false_wall_red(
+        self, tmp_path: Path, capsys
+    ) -> None:
+        save_config(tmp_path, Config())
+        _plant(tmp_path, "docs/launch.md", self._WALL)
+        rc = cmd_check(tmp_path, strict=True)
+        out = capsys.readouterr().out
+        assert rc == 1 and "[false-wall:" in out
