@@ -48,8 +48,14 @@ workflow refuses to publish a version that has no section in this file.
   a **bare (comma-less) conjunction** — a whitespace-surrounded ` and / but / so / yet /
   however / though / although / whereas / while ` is a boundary too, so
   "…does not reproduce **and** agents cannot merge…" splits the wall into its own cue-less
-  clause → red (the comma form alone left this bare case blind). A dated-bullet-continuation
-  relaxation (G3) was evaluated and
+  clause → red (the comma form alone left this bare case blind). Repudiation cues are also
+  **partitioned into STRONG (wall-referential) vs WEAK (subject-dependent)**: only STRONG
+  cues (`no standing`, `not a wall`, `never a standing … wall`, `no longer applies/stands`,
+  `corrects a prior false`, `repudiated`, `false (standing) wall`, `was (based on) a false
+  wall`, `superseded`, and the quote-covers path) may clear a wall ACROSS a line break via
+  the lookback / G1 lookforward bridge — a WEAK cue (`does not reproduce`) clears same-clause
+  only, so it can no longer re-attach to a genuine standing wall on the neighbouring line.
+  A dated-bullet-continuation relaxation (G3) was evaluated and
   **dropped as UNSAFE** — propagating a bullet's date to its continuation lines would clear
   genuine standing walls (it fails the `_MUST_STAY_RED` neighbour-bleed fixtures). The
   motivating same-line / adjacent-continuation cases clear via G1+G2 instead; walls that only

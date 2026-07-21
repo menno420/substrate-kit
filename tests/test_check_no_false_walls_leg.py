@@ -309,31 +309,32 @@ _FP_CLEAR = {
     "g4_based_on_false_after_quote": (
         '"self-merge classifier" was based on a false wall.\n'
     ),
-    # ── G1 (v1.20.2): bounded, same-family lookforward ──
+    # ── G1 (v1.20.2): bounded, same-family lookforward — STRONG cue only ──
     # A `>` blockquote whose wall line is followed, in the SAME blockquote, by a
-    # same-family (merge) repudiation that wraps onto the next line. The wall
-    # line carries NO cue of its own — this genuinely exercises the lookforward.
+    # STRONG (wall-referential) repudiation that wraps onto the next line. The
+    # wall line carries NO cue of its own — this genuinely exercises the
+    # lookforward. (A WEAK cue here would NOT bridge; see the MUST-RED twin.)
     "g1_blockquote_forward_same_family": (
         '> Merging own PRs — the "self-merge classifier"\n'
-        "> framing does not reproduce and is normal agent work.\n"
+        "> framing no longer stands and is normal agent work.\n"
     ),
-    # ── FIX C (v1.20.2): the EXACT multi-line dated-bullet-continuation shape ──
-    # (i) the trigger (classifier-denied) and the "does not reproduce" cue on the
+    # ── FIX C (v1.20.2): dated-bullet-continuation, cue on the SAME line ──
+    # The trigger (classifier-denied) and the "does not reproduce" cue on the
     # SAME continuation line of a `- 2026-07-17 — CORRECTION …` dated bullet →
-    # clears via G2 same-clause. The wall is on the CONTINUATION line (not the
-    # dated first line), so the date does NOT trivially clear it — the cue does.
+    # clears via G2 same-clause (same-line uses the FULL cue set, weak included).
+    # The wall is on the CONTINUATION line (not the dated first line), so the
+    # date does NOT trivially clear it — the same-line cue does.
     "c_dated_bullet_same_continuation_line_g2": (
         "- 2026-07-17 — CORRECTION to the classifier-wall note:\n"
         '  the "DB provisioning DDL is classifier-denied in agent auto-mode" '
         "framing does not reproduce in the project-default env.\n"
     ),
-    # (ii) the trigger on one continuation line and the cue on the NEXT
-    # continuation line within the SAME bullet → clears via G1 lookforward. This
-    # is the verbatim superbot-next current-state.md:117-119 shape.
-    "c_dated_bullet_next_continuation_line_g1": (
+    # G1 lookforward with a STRONG cue on the NEXT continuation line still
+    # bridges (a strong, wall-referential repudiation may cross the line break).
+    "g1_forward_strong_cue_next_line_clears": (
         "- 2026-07-17 — CORRECTION to the classifier-wall note above:\n"
         '  the "DB provisioning DDL is classifier-denied in agent\n'
-        '  auto-mode" framing does not reproduce in the project-default env.\n'
+        '  auto-mode" framing was a false standing wall, superseded.\n'
     ),
 }
 
@@ -535,6 +536,40 @@ _MUST_STAY_RED = {
     "aprime_bare_and_deploy_wall_bleed": (
         "That was never a standing deploy wall and agents cannot merge here.\n"
     ),
+    # ── weak-cue CROSS-LINE bridge (v1.20.2 follow-up): a WEAK, subject-
+    # dependent cue ("does not reproduce") may clear only SAME-CLAUSE — never
+    # across a line break via the lookback / G1 lookforward. Each of these puts a
+    # weak cue on the line before/after a genuine standing wall → must STAY red. ──
+    "n8_weak_cue_and_newline_before_wall": (
+        "The freeze does not reproduce and\nagents cannot merge to main.\n"
+    ),
+    "n9_weak_cue_newline_before_wall": (
+        "The freeze does not reproduce\nagents cannot merge to main.\n"
+    ),
+    "n_weak_cue_but_newline_before_wall": (
+        "The freeze does not reproduce but\nagents cannot merge to main.\n"
+    ),
+    "n_weak_cue_so_newline_before_wall": (
+        "The freeze does not reproduce so\nagents cannot merge to main.\n"
+    ),
+    # REVERSED order: wall on line 1, weak cue on line 2 — the G1 lookforward
+    # must not bridge a weak cue forward either.
+    "n_weak_cue_after_wall_reversed": (
+        "agents cannot merge to main\nthe freeze does not reproduce.\n"
+    ),
+    # N10: punctuated prose — a period ends the sentence, so "And agents cannot
+    # merge" is a fresh clause with no cue → red (the punctuation guard holds).
+    "n10_period_then_and_wall": (
+        "The freeze does not reproduce. And agents cannot merge to main.\n"
+    ),
+    # The superbot-next current-state.md:117-119 shape — a WEAK cue on the line
+    # AFTER the wall. It cleared via G1 before this fix; now it correctly reds
+    # (acceptable FP-red; the adopter reword or allowlist handles it).
+    "weak_cue_next_line_dated_bullet_now_reds": (
+        "- 2026-07-17 — CORRECTION to the classifier-wall note above:\n"
+        '  the "DB provisioning DDL is classifier-denied in agent\n'
+        '  auto-mode" framing does not reproduce in the project-default env.\n'
+    ),
     # ── FIX B (v1.20.2): render marker on a NON-render file does not exempt ──
     # A CAPABILITIES.md-shaped doc bearing the seat-digest render header marker
     # AND a genuine wall must still RED — the exemption is gated to the known
@@ -720,6 +755,28 @@ class TestClearingVocabulary:
         assert scan_text(_FP_CLEAR["g2_never_a_standing_wall"]) == []
         assert scan_text(_FP_CLEAR["g2_does_not_reproduce"]) == []
         assert scan_text(_FP_CLEAR["g4_superseded_after_quote"]) == []
+        assert scan_text(_FP_CLEAR["g1_blockquote_forward_same_family"]) == []
+
+    def test_weak_cue_never_bridges_across_lines_but_strong_cue_does(self) -> None:
+        # The root fix: a WEAK, subject-dependent cue ("does not reproduce")
+        # clears SAME-CLAUSE only, never across a line break; a STRONG,
+        # wall-referential cue may still bridge. Both directions from the fixtures.
+        for name in (
+            "n8_weak_cue_and_newline_before_wall",
+            "n9_weak_cue_newline_before_wall",
+            "n_weak_cue_but_newline_before_wall",
+            "n_weak_cue_so_newline_before_wall",
+            "n_weak_cue_after_wall_reversed",
+            "n10_period_then_and_wall",
+            "weak_cue_next_line_dated_bullet_now_reds",
+        ):
+            assert scan_text(_MUST_STAY_RED[name]), f"weak cross-line {name!r} must RED"
+        # A same-line weak cue STILL clears (same-line uses the full cue set)…
+        assert scan_text(_FP_CLEAR["g2_does_not_reproduce"]) == []
+        assert scan_text(_FP_CLEAR["c_dated_bullet_same_continuation_line_g2"]) == []
+        # …and a STRONG cue still bridges the lookback and the G1 lookforward.
+        assert scan_text(_FP_CLEAR["p2_same_capability_wrap_clears"]) == []
+        assert scan_text(_FP_CLEAR["g1_forward_strong_cue_next_line_clears"]) == []
         assert scan_text(_FP_CLEAR["g1_blockquote_forward_same_family"]) == []
 
     # ── Class (b) (v1.20.2): kit-generated derived-render exemption ──
