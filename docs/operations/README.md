@@ -5,6 +5,9 @@
 > Index of the kit's operational docs (a reachability root — link new
 > operations docs here, not from the K0-metered boot docs).
 
+- [../PROJECT-CLOSEOUT.md](../PROJECT-CLOSEOUT.md) — the Self Improvement
+  seat's project closeout (2026-07-21): what the kit is, what the run shipped
+  (all cited), current true state, continuation items, and an owner walkthrough.
 - [lab-loop.md](lab-loop.md) — the daily kit-lab routine definition + its
   paste-ready prompt (binding).
 - [auto-merge-guards.md](auto-merge-guards.md) — the auto-merge guard

@@ -26,6 +26,14 @@
 > to restore K0 orientation headroom. Rows below are the condensed ledger;
 > the archive + run dirs + CHANGELOG are the full record.
 
+## SEAT CLOSED — 2026-07-21
+
+The Self Improvement seat is closed as of 2026-07-21. Kit is at **v1.20.2** (tag
+commit `4712ebf`); the v1.20.x adopter wave brought 7 of 10 tracked repos current;
+the only open PR is #552 (parked for owner ratification). The full handover — what
+shipped, current true state, continuation items, and an owner walkthrough — is
+**[docs/PROJECT-CLOSEOUT.md](PROJECT-CLOSEOUT.md)**. Read that first.
+
 ## Fresh-start reconciliation (2026-07-17) — READ THIS FIRST
 
 *(This block is the current truth; the dated sections below it are a
