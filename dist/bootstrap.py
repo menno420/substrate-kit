@@ -4959,12 +4959,35 @@ _REPUDIATION_CUES = re.compile(
     r"land\s+your\s+own|"
     r"no\s+longer\s+(?:applies|a\b|an\b|the\b|stands|holds)|"
     r"\bthe\s+old\b|"
+    r"\brepudiat|"  # "repudiates / repudiated the … wall".
+    r"\bsuperseded\b|"  # "the … wall is superseded".
     r"proven\s+(?:repeatedly|by\b|~?\d)|"
     # ── G2 (v1.20.2): same-clause repudiation cues (each still requires the
     # repudiating context — never clears on a bare trigger phrase) ──
     r"(?:never|not)\s+a\s+standing\b[^.\n]{0,40}?\bwall\b|"  # "never a standing '…' wall".
     r"was\s+(?:based\s+on\s+)?a\s+false\s+(?:standing\s+)?wall|"  # "was (based on) a false (standing) wall".
     r"does(?:n'?t|\s+not)\s+reproduce",  # "does not reproduce".
+    re.I,
+)
+# STRONG, WALL-REFERENTIAL repudiation cues — the ONLY cue subset allowed to
+# clear across a line break (the lookback / G1 lookforward bridges). FIX
+# (v1.20.2 follow-up): a WEAK, subject-dependent cue (e.g. "does not reproduce")
+# names no wall itself, so if it were allowed to bridge it would re-attach to an
+# unrelated genuine standing wall on the neighbouring line and clear it (reviewer
+# probes N8/N9). WEAK cues therefore clear SAME-CLAUSE / same-physical-line ONLY.
+# This set is a strict SUBSET of _REPUDIATION_CUES (every strong cue is also a
+# full cue), so same-line clearing is always at least as permissive as bridging.
+# Classification rule: a cue is STRONG only if it references a wall / standing
+# rule concept; when unsure, it stays WEAK (conservative = stricter = safe).
+_STRONG_REPUDIATION_CUES = re.compile(
+    r"no\s+standing|"
+    r"not\s+a\s+wall|"
+    r"corrects?\s+a\s+prior\s+false|"
+    r"no\s+longer\s+(?:applies|a\b|an\b|the\b|stands|holds)|"
+    r"\brepudiat|"
+    r"\bsuperseded\b|"
+    r"(?:never|not)\s+a\s+standing\b[^.\n]{0,40}?\bwall\b|"
+    r"was\s+(?:based\s+on\s+)?a\s+false\s+(?:standing\s+)?wall",
     re.I,
 )
 # G2: a bare "false standing wall" clears ONLY when accompanied by a SECOND
@@ -5210,12 +5233,21 @@ def _clause_cleared(
     phrase: str,
     *,
     match_span: tuple[int, int] | None = None,
+    strong_only: bool = False,
 ) -> bool:
     """Run the attachment cues over one ``clause``.
 
     The ``false "…"`` label clears position-aware when ``match_span`` is given
     (the quote must SPAN this match — P3), and line-wide by ``phrase`` otherwise
-    (the synthetic wrapped-lookback string, where offsets are meaningless)."""
+    (the synthetic wrapped-lookback string, where offsets are meaningless).
+
+    ``strong_only`` (v1.20.2 follow-up) restricts the CUE check to the STRONG,
+    wall-referential subset — used by the cross-line lookback / G1 lookforward
+    bridges so a WEAK subject-dependent cue (e.g. "does not reproduce") can never
+    re-attach to a genuine standing wall on a neighbouring line. Same-line
+    clearing leaves it False, keeping the full strong+weak vocabulary. The
+    inline-date, uppercase ``FALSE`` label and ``false "…"`` quote paths are all
+    wall-referential, so they clear in both modes."""
     scrubbed = _EMPHASIS.sub("", clause)
     if _DATED_LINE.search(clause):
         return True
@@ -5232,10 +5264,12 @@ def _clause_cleared(
         wall_fams and rest_fams and rest_fams.isdisjoint(wall_fams)
     )
     if not cue_family_conflict:
-        if _REPUDIATION_CUES.search(scrubbed):
+        cues = _STRONG_REPUDIATION_CUES if strong_only else _REPUDIATION_CUES
+        if cues.search(scrubbed):
             return True
         # G2: bare "false standing wall" clears only with a second repudiation
-        # signal (superseded / proven) in the same clause.
+        # signal (superseded / proven) in the same clause. Wall-referential, so
+        # it bridges in strong_only mode too.
         if _FALSE_STANDING_WALL.search(scrubbed) and _SUPERSEDE_OR_PROVEN.search(
             scrubbed
         ):
@@ -5307,7 +5341,9 @@ def is_cleared(
         different_capability = bool(wall_fams and prev_fams and prev_fams.isdisjoint(wall_fams))
         if not different_capability:
             combined = prev_clause + " " + clause
-            if _clause_cleared(combined, line, phrase):
+            # Cross-line bridge: STRONG cues only — a weak subject-dependent cue
+            # on the prev line must not re-attach to this wall.
+            if _clause_cleared(combined, line, phrase, strong_only=True):
                 return True
     # G1 (v1.20.2): tight bounded lookforward — the forward-facing mirror of the
     # lookback. When the wall CLOSES its line and the sentence has NOT ended, the
@@ -5340,7 +5376,9 @@ def is_cleared(
             if wall_fams and fwd_fams and fwd_fams.isdisjoint(wall_fams):
                 break
             acc = acc + " " + fwd_clause
-            if _clause_cleared(acc, line, phrase):
+            # Cross-line bridge: STRONG cues only (see the lookback above) — a
+            # weak cue on a forward line must not clear this wall.
+            if _clause_cleared(acc, line, phrase, strong_only=True):
                 return True
             if _SENTENCE_END.search(fwd):
                 break
