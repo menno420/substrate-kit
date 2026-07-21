@@ -1,6 +1,6 @@
 # 2026-07-21 · Project closeout — Self Improvement seat
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 **About to do:** write docs/PROJECT-CLOSEOUT.md, true up records (current-state
 SEAT CLOSED note, delete stale claims, regenerate adopters.md, add #552 resume
@@ -10,7 +10,7 @@ card complete to land the closeout.
 - **📊 Model:** opus-4.8 · high · docs-only
 - **⚑ Self-initiated:** no — owner-directed final closeout of the seat.
 
-## What shipped (PR #<this-PR-number>)
+## What shipped (PR #564)
 
 - `docs/PROJECT-CLOSEOUT.md` — standalone handover for the owner and a fresh
   future session: what the kit is, what this run shipped (all cited), current true
