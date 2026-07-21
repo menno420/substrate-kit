@@ -1,0 +1,1 @@
+- branch: claude/wave-completion-pass · scope: wave-completion-pass false-wall wording corrections on adopter PRs trading-strategy#160, venture-lab#282, superbot-next#602 (websites#452 dropped — already merged) · date: 2026-07-21
