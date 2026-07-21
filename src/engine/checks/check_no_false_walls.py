@@ -455,7 +455,14 @@ _CLAUSE_SEP = re.compile(
     # second ("… does not reproduce now, but agents cannot merge in prod"). The
     # split — not the family gate — is what closes that blind: an empty-family
     # cue lands in its own clause, leaving the wall's clause cue-less → RED.
-    r",\s*(?:but|however|yet|and|so|though|although|whereas|while|still)\b",
+    r",\s*(?:but|however|yet|and|so|though|although|whereas|while|still)\b|"
+    # FIX A' (v1.20.2, follow-up): a BARE conjunction — no preceding comma —
+    # bleeds the same way ("does not reproduce and agents cannot merge"). A
+    # whitespace-surrounded coordinating/contrast conjunction is a clause
+    # boundary too. Whitespace on BOTH sides is required, so a conjunction that
+    # ends a wrapped line ("… no longer applies and\n<continuation>") is NOT a
+    # split (it stays a genuine sentence continuation for the lookback).
+    r"\s(?:and|but|so|yet|however|though|although|whereas|while)\s",
     re.I,
 )
 

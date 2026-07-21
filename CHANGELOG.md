@@ -44,7 +44,11 @@ workflow refuses to publish a version that has no section in this file.
   a `kind=allowlist` finding (fail-closed, loud). Also **hardened same-clause clearing** — a
   mid-line `, but/and/yet/so/…` conjunction is now a clause boundary (so a capability-agnostic
   cue can't bleed across it to blind a genuine wall), and a same-clause cue whose non-wall
-  remainder names a disjoint capability family no longer clears. A dated-bullet-continuation
+  remainder names a disjoint capability family no longer clears. The clause split also covers
+  a **bare (comma-less) conjunction** — a whitespace-surrounded ` and / but / so / yet /
+  however / though / although / whereas / while ` is a boundary too, so
+  "…does not reproduce **and** agents cannot merge…" splits the wall into its own cue-less
+  clause → red (the comma form alone left this bare case blind). A dated-bullet-continuation
   relaxation (G3) was evaluated and
   **dropped as UNSAFE** — propagating a bullet's date to its continuation lines would clear
   genuine standing walls (it fails the `_MUST_STAY_RED` neighbour-bleed fixtures). The
