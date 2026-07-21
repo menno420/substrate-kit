@@ -68,6 +68,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from engine.checks.check_docs import Finding
+from engine.seatdigest import seat_digest_relpath
 
 # ── Scan scope ────────────────────────────────────────────────────────────────
 
@@ -446,7 +447,17 @@ def _capability_families(text: str) -> frozenset[str]:
 # Strong clause separators. A wall clears only via a cue in the SAME clause, so
 # "Nothing here is 'not walled'; agents cannot merge" does NOT clear (the cue
 # and the wall are in different clauses). Comma is NOT a separator — too weak.
-_CLAUSE_SEP = re.compile(r";|—|:\s|\.\s")
+_CLAUSE_SEP = re.compile(
+    r";|—|:\s|\.\s|"
+    # FIX A (v1.20.2): a mid-line contrast / coordination conjunction after a
+    # comma is a clause boundary too — otherwise a capability-AGNOSTIC cue (e.g.
+    # "does not reproduce") in the first half blinds a genuine wall in the
+    # second ("… does not reproduce now, but agents cannot merge in prod"). The
+    # split — not the family gate — is what closes that blind: an empty-family
+    # cue lands in its own clause, leaving the wall's clause cue-less → RED.
+    r",\s*(?:but|however|yet|and|so|though|although|whereas|while|still)\b",
+    re.I,
+)
 
 # A wall sentence can WRAP onto its line from the one above ("… no standing\n
 # 'classifier-denied' merge wall …"). A tight one-line lookback lets the
@@ -601,11 +612,27 @@ def _clause_cleared(
     scrubbed = _EMPHASIS.sub("", clause)
     if _DATED_LINE.search(clause):
         return True
-    if _REPUDIATION_CUES.search(scrubbed):
-        return True
-    # G2: bare "false standing wall" clears only with a second repudiation signal.
-    if _FALSE_STANDING_WALL.search(scrubbed) and _SUPERSEDE_OR_PROVEN.search(scrubbed):
-        return True
+    # FIX A (v1.20.2) hardening: a cue in this clause clears the wall ONLY when
+    # it is not a DIFFERENT-capability bleed. If the clause's non-wall remainder
+    # names a capability family disjoint from the wall's own family, the cue is
+    # about a different capability and must not clear this wall (mirror of the
+    # G1 / wrapped-lookback family gate). This is hardening only — an
+    # empty-family cue ("does not reproduce") is NOT gated here; the
+    # comma-conjunction clause split (above) is what stops that class of bleed.
+    wall_fams = _capability_families(phrase)
+    rest_fams = _capability_families(scrubbed.replace(phrase, " ", 1))
+    cue_family_conflict = bool(
+        wall_fams and rest_fams and rest_fams.isdisjoint(wall_fams)
+    )
+    if not cue_family_conflict:
+        if _REPUDIATION_CUES.search(scrubbed):
+            return True
+        # G2: bare "false standing wall" clears only with a second repudiation
+        # signal (superseded / proven) in the same clause.
+        if _FALSE_STANDING_WALL.search(scrubbed) and _SUPERSEDE_OR_PROVEN.search(
+            scrubbed
+        ):
+            return True
     if _FALSE_LABEL.search(clause):
         return True
     if match_span is not None:
@@ -755,7 +782,7 @@ def match_blocklist_all(line: str) -> list[tuple[str, str, int, int]]:
     return out
 
 
-def scan_text(text: str) -> list[RawHit]:
+def scan_text(text: str, *, is_render_path: bool = False) -> list[RawHit]:
     """Scan ``text`` line by line, returning every uncleared false-wall hit.
 
     The stateful loop tracks dated-record blocks (a ``- YYYY-MM-DD …`` bullet
@@ -768,10 +795,18 @@ def scan_text(text: str) -> list[RawHit]:
     UNCLEARED one — so a genuine wall sharing a line with a repudiated
     ``false "…"`` quote still reds, while the line still yields at most one hit
     (the legacy count contract).
+
+    ``is_render_path`` (FIX B, v1.20.2) enables the class (b) generated-render
+    exemption ONLY when the file being scanned IS the kit's known render path
+    (``docs/seat-digest.md`` per :func:`seat_digest_relpath`). The render marker
+    / digest fence is NOT honoured on any other file — an author cannot
+    blanket-exempt a real doc (``CONSTITUTION.md`` / ``CAPABILITIES.md``) by
+    pasting the marker; the exemption is sound only because the render's SOURCE
+    docs are independently scanned, which is guaranteed only for that one path.
     """
-    # Class (b): a whole file that is a kit-generated derived render is exempt —
-    # its source docs are scanned independently.
-    if _RENDER_FILE_MARKER.search(text):
+    # Class (b): the whole known-render file is exempt (its source docs are
+    # scanned independently). Marker gated to the render path (FIX B).
+    if is_render_path and _RENDER_FILE_MARKER.search(text):
         return []
 
     hits: list[RawHit] = []
@@ -781,12 +816,13 @@ def scan_text(text: str) -> list[RawHit]:
     lines = text.splitlines()
     for i, line in enumerate(lines, start=1):
         # Class (b): skip lines inside a kit-generated derived-render fence
-        # (<!-- substrate-kit:*-digest BEGIN … --> … <!-- … END -->).
-        if _DIGEST_FENCE_BEGIN.search(line):
+        # (<!-- substrate-kit:*-digest BEGIN … --> … <!-- … END -->) — but only
+        # on the known render path (FIX B).
+        if is_render_path and _DIGEST_FENCE_BEGIN.search(line):
             in_digest_fence = True
             prev_line = line
             continue
-        if _DIGEST_FENCE_END.search(line):
+        if is_render_path and _DIGEST_FENCE_END.search(line):
             in_digest_fence = False
             prev_line = line
             continue
@@ -895,82 +931,17 @@ def iter_adopter_files(
     return out
 
 
-# ── Class (c) (v1.20.2): per-repo product-copy allowlist ──────────────────────
-#
-# An OPTIONAL, opt-in `<state_dir>/check-exceptions.yml` lets a repo triage a
-# SPECIFIC flagged line as a product-copy false positive (launch copy, a quoted
-# competitor limitation, etc.) WITHOUT weakening the shared grammar. It is
-# deliberately NARROW: an entry must name the exact file `path`, the exact
-# finding `kind` (`false-wall:<rule>`), and — if given — a `phrase` substring
-# that must appear in the flagged line; only then is that one finding exempted.
-# Not a path-glob blanket. Absent file → behaviour unchanged. The engine carries
-# no YAML dependency, so a minimal stdlib parser reads the flat list-of-mappings
-# subset; a malformed file degrades to "no exceptions", never a crash.
-_EXCEPTIONS_BASENAME = "check-exceptions.yml"
-
-
-def _parse_check_exceptions(text: str) -> list[dict[str, str]]:
-    """Parse the narrow list-of-mappings subset of ``check-exceptions.yml``.
-
-    ``- key: value`` opens an entry; subsequent indented ``key: value`` lines add
-    to it. Surrounding quotes on values are stripped. Unknown / malformed lines
-    are ignored so a broken file can never red the gate by accident."""
-    entries: list[dict[str, str]] = []
-    cur: dict[str, str] | None = None
-    for raw in text.splitlines():
-        stripped = raw.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        if stripped.startswith("- "):
-            cur = {}
-            entries.append(cur)
-            stripped = stripped[2:].strip()
-            if not stripped:
-                continue
-        if cur is None:
-            continue
-        if ":" not in stripped:
-            continue
-        key, _, val = stripped.partition(":")
-        key = key.strip()
-        val = val.strip().strip("\"'")
-        if key:
-            cur[key] = val
-    return [e for e in entries if e]
-
-
-def _load_check_exceptions(root: Path, state_dir: str) -> list[dict[str, str]]:
-    """Read ``<root>/<state_dir>/check-exceptions.yml`` if present; else ``[]``."""
-    p = root / state_dir / _EXCEPTIONS_BASENAME
-    if not p.is_file():
-        return []
-    try:
-        return _parse_check_exceptions(p.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError):
-        return []
-
-
-def _finding_excepted(
-    exceptions: list[dict[str, str]], rel: str, hit: RawHit, lines: list[str]
-) -> bool:
-    """True when a triaged allowlist entry exempts THIS finding — exact ``path``
-    AND ``kind`` (AND ``phrase`` substring on the flagged line, if given), and an
-    explicit ``verdict: false_positive``. Anything short of an exact match leaves
-    the finding red."""
-    if not exceptions:
-        return False
-    kind = f"false-wall:{hit.rule}"
-    src_line = lines[hit.line - 1] if 0 <= hit.line - 1 < len(lines) else ""
-    for e in exceptions:
-        if e.get("verdict") != "false_positive":
-            continue
-        if e.get("path") != rel or e.get("kind") != kind:
-            continue
-        phrase = e.get("phrase")
-        if phrase and phrase not in src_line:
-            continue
-        return True
-    return False
+# Per-repo product-copy allowlist (FIX D, v1.20.2): NOT a bespoke path here.
+# false-wall findings ride the strict loop into `cmd_check`, which post-processes
+# EVERY finding through the repo's generic REASON-REQUIRED allowlist seam
+# (`engine.checks.allowlist.load_allowlist` + `apply_allowlist`, file
+# `<state_dir>/check-exceptions.yml`, schema `{path, kind, reason REQUIRED,
+# triaged, by, verdict?}`). An entry suppresses a `false-wall:<rule>` finding
+# only on an exact path+kind match WITH a non-empty reason; a reason-less entry
+# suppresses nothing and is itself reported as a `kind=allowlist` finding
+# (fail-CLOSED, loud). The earlier bespoke `_finding_excepted` path (exact
+# path+kind+optional phrase but reason-OPTIONAL — fail-open) was removed in
+# favour of that audited seam.
 
 
 def check_no_false_walls(target: Path, config) -> list[Finding]:  # noqa: ANN001
@@ -986,7 +957,13 @@ def check_no_false_walls(target: Path, config) -> list[Finding]:  # noqa: ANN001
     docs_root = getattr(config, "docs_root", "docs")
     state_dir = getattr(config, "state_dir", ".substrate")
     sessions_dir = getattr(config, "sessions_dir", ".sessions")
-    exceptions = _load_check_exceptions(target, state_dir)
+    # FIX B (v1.20.2): the ONE file on which the class (b) generated-render
+    # exemption is honoured — the kit's known render path. Any other file
+    # carrying the render marker/fence is still fully scanned.
+    try:
+        render_rel = seat_digest_relpath(config)
+    except Exception:  # noqa: BLE001 — a missing/odd config never breaks the gate
+        render_rel = "docs/seat-digest.md"
     findings: list[Finding] = []
     for path in iter_adopter_files(
         target,
@@ -999,12 +976,7 @@ def check_no_false_walls(target: Path, config) -> list[Finding]:  # noqa: ANN001
             text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
-        src_lines = text.splitlines()
-        for hit in scan_text(text):
-            # Class (c): a triaged per-repo allowlist entry (exact path + kind
-            # [+ phrase]) exempts this specific product-copy false positive.
-            if _finding_excepted(exceptions, rel, hit, src_lines):
-                continue
+        for hit in scan_text(text, is_render_path=(rel == render_rel)):
             # S6: inline the rule's per-rule ground-truth correction (the same
             # WALL_CORRECTIONS the R6 `check --explain-wall` lookup returns) so
             # the red gate names the SPECIFIC capability truth for this rule,
