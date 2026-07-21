@@ -5,7 +5,7 @@
 > **GENERATED — do not hand-edit** — regenerate with `python3 dist/bootstrap.py currency`
 > (agent-side: kit CI cannot auth to sibling repos, so CI validates
 > only this file's format + staleness, never refetches).
-> Generated: 2026-07-20T06:27:56Z · kit release: v1.20.1
+> Generated: 2026-07-20T06:27:56Z · kit release: v1.20.2
 >
 > Who runs which kit version — the substrate-coordinator's
 > visibility surface (inbox ORDER 003; manager research 2026-07-09).
@@ -24,7 +24,7 @@
 
 | repo | tree (vendored dist) | config pin | self-report (`kit:` line) | engaged | verdict vs kit v1.20.1 |
 |---|---|---|---|---|---|
-| menno420/substrate-kit | v1.20.1 (dist/bootstrap.py) | v1.20.1 | v1.20.0 | — | ⚠️ DRIFT · current |
+| menno420/substrate-kit | v1.20.2 (dist/bootstrap.py) | v1.20.2 | v1.20.1 | yes | ⚠️ DRIFT · current |
 | menno420/superbot-next | v1.17.0 (bootstrap.py) | v1.17.0 | v1.17.0 | no | stale (v1.17.0 < v1.20.1) |
 | menno420/websites | v1.17.0 (bootstrap.py) | v1.17.0 | v1.17.0 | — | stale (v1.17.0 < v1.20.1) |
 | menno420/superbot | — | v1.0.0 | no `kit:` line | — | stale (v1.0.0 < v1.20.1) · pin-only (no vendored dist found) |
