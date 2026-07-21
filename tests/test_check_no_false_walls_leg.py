@@ -277,6 +277,46 @@ _FP_CLEAR = {
         'This corrects a prior false "self-merge classifier" entry — nothing '
         "here is a standing wall.\n"
     ),
+    # ── G2 (v1.20.2): same-clause repudiation-cue vocabulary ──
+    # "never a standing '…' wall" (conventions.md style): the cue and the quoted
+    # wall phrase share the clause.
+    "g2_never_a_standing_wall": (
+        'This was never a standing "agents cannot merge" wall.\n'
+    ),
+    # "does not reproduce": the correction phrasing on the SAME clause as the
+    # quoted wall (the superbot-next:118 shape, reduced to one line).
+    "g2_does_not_reproduce": (
+        'The "classifier-denied" framing does not reproduce in the default env.\n'
+    ),
+    # "was a false standing wall": explicit past-tense repudiation, same clause.
+    "g2_was_a_false_standing_wall": (
+        'The old "self-merge classifier" note was a false standing wall.\n'
+    ),
+    # "false standing wall" + "superseded" (the two-signal conditional): the bare
+    # phrase clears ONLY because a second repudiation signal accompanies it.
+    "g2_false_standing_wall_superseded": (
+        'The "agents cannot merge" claim is a false standing wall, superseded by '
+        "later proof.\n"
+    ),
+    # ── G4 (v1.20.2): false/superseded characterisation AFTER the quote ──
+    # '"…wall…" — superseded': the marker sits immediately after the closing
+    # quote (only a dash between), and the wall phrase is INSIDE the quote.
+    "g4_superseded_after_quote": (
+        '"sessions may not self-merge" — superseded; agents merge green PRs.\n'
+    ),
+    # '"…wall…" was based on a false … wall': the "based on a false … wall"
+    # marker follows the quote within the clause.
+    "g4_based_on_false_after_quote": (
+        '"self-merge classifier" was based on a false wall.\n'
+    ),
+    # ── G1 (v1.20.2): bounded, same-family lookforward ──
+    # A `>` blockquote whose wall line is followed, in the SAME blockquote, by a
+    # same-family (merge) repudiation that wraps onto the next line. The wall
+    # line carries NO cue of its own — this genuinely exercises the lookforward.
+    "g1_blockquote_forward_same_family": (
+        '> Merging own PRs — the "self-merge classifier"\n'
+        "> framing does not reproduce and is normal agent work.\n"
+    ),
 }
 
 # The adversarial-review MUST-RED set (fm ORDER 048): every genuine STANDING
@@ -376,6 +416,82 @@ _MUST_STAY_RED = {
         'A prior false "self-merge classifier" note aside — the live self-merge '
         "classifier still blocks every session and routes the PR to the owner.\n"
     ),
+    # ── G2 (v1.20.2) negatives: the trigger phrase alone never clears ──
+    # "a standing wall" WITHOUT a "never/not" repudiation prefix stays red.
+    "g2_bare_standing_wall_no_repudiation": (
+        "The self-merge classifier is a standing wall for every session.\n"
+    ),
+    # "reproduces" without the negated "does not reproduce" stays red.
+    "g2_reproduces_without_negation": (
+        "The classifier-denied error reproduces every session.\n"
+    ),
+    # ── G4 (v1.20.2) negative: an unrelated quote characterised false does NOT
+    # clear a bare wall elsewhere on the line (the wall must be INSIDE the
+    # quote). ──
+    "g4_unrelated_quote_then_superseded": (
+        '"weather" is superseded, but sessions may not self-merge their PRs.\n'
+    ),
+    # ── G1 (v1.20.2) negatives ──
+    # A forward repudiation of a DIFFERENT capability family (push) must NOT
+    # bridge to clear a merge wall — the same-family gate holds.
+    "g1_forward_different_capability": (
+        'The "self-merge classifier" note here\n'
+        "is not walled for pushing, which is proven repeatedly.\n"
+    ),
+    # A forward repudiation PAST a blank line does NOT clear (paragraph ended).
+    "g1_forward_past_blank_line": (
+        'The "self-merge classifier" note here\n'
+        "\n"
+        "is not walled, proven repeatedly.\n"
+    ),
+    # A forward repudiation on a NEW bullet does NOT clear (bullet boundary).
+    "g1_forward_new_bullet": (
+        'The "self-merge classifier" note\n'
+        "- is not walled, proven repeatedly.\n"
+    ),
+    # ── Class (b) negative: a doc WITHOUT the render marker is still scanned. ──
+    "b_no_render_marker_still_scanned": (
+        "A normal project doc.\n\nagents cannot merge their own PRs.\n"
+    ),
+    # A wall OUTSIDE a digest fence still reds (only the fenced block is exempt).
+    "b_wall_outside_fence_still_reds": (
+        "<!-- substrate-kit:skills-digest BEGIN — derived render, never edit. -->\n"
+        "fine rendered content\n"
+        "<!-- substrate-kit:skills-digest END -->\n\n"
+        "agents cannot merge their own PRs.\n"
+    ),
+    # ── Governance / launch-copy lines with no date/repudiation stay red. ──
+    "owner_merges_on_green_governance": (
+        "Governance: the owner merges on green.\n"
+    ),
+    "launch_copy_agent_unlandable_no_entry": (
+        "Launch copy: the legacy bot was agent-unlandable.\n"
+    ),
+    "classifier_denied_agent_merge_owner_click": (
+        "classifier denied agent merge — owner click needed.\n"
+    ),
+}
+
+# Class (b) (v1.20.2): kit-generated derived-render files/blocks are exempt from
+# wall-scanning because their SOURCE docs are scanned independently. Kept in a
+# separate dict (they exercise scan_text like _FP_CLEAR, but the mechanism is
+# file/block exemption, not clause clearing).
+_RENDER_EXEMPT_CLEAR = {
+    # Whole-file exemption via the seat-digest header marker.
+    "b_header_marked_file": (
+        "> Generated by substrate-kit — a **derived render**, never a copy.\n"
+        "> NEVER edit this file: regenerate with `python3 bootstrap.py "
+        "seat-digest`.\n\n"
+        "agents cannot merge their own PRs.\n"
+    ),
+    # Block exemption via the digest fence (no whole-file header present).
+    "b_fenced_block": (
+        "# skill index\n\n"
+        "<!-- substrate-kit:walls-digest BEGIN — derived render, kit-generated; "
+        "never edit. -->\n"
+        "agents cannot merge their own PRs.\n"
+        "<!-- substrate-kit:walls-digest END -->\n"
+    ),
 }
 
 
@@ -463,3 +579,132 @@ class TestClearingVocabulary:
         findings = check_no_false_walls(tmp_path, Config())
         # Exactly the one incident-record line stays red.
         assert [f.kind for f in findings] == ["false-wall:classifier-denied-standing"]
+
+    # ── G1 (v1.20.2) mutation guard: bounded, same-family lookforward ──
+    def test_g1_lookforward_same_family_clears_but_different_family_stays_red(
+        self,
+    ) -> None:
+        # Both directions from one pair: a same-family repudiation that wraps
+        # onto the next line clears (the wall line carries no cue of its own);
+        # a DIFFERENT-family forward repudiation must NOT bridge.
+        assert scan_text(_FP_CLEAR["g1_blockquote_forward_same_family"]) == [], (
+            "G1: same-family forward repudiation must clear"
+        )
+        assert scan_text(_MUST_STAY_RED["g1_forward_different_capability"]), (
+            "G1: different-family forward repudiation must STAY red"
+        )
+
+    def test_g1_lookforward_stops_at_blank_line_and_new_bullet(self) -> None:
+        # The paragraph/bullet boundary: a forward repudiation past a blank line
+        # or on a new bullet is out of the wall's paragraph and must not clear.
+        assert scan_text(_MUST_STAY_RED["g1_forward_past_blank_line"])
+        assert scan_text(_MUST_STAY_RED["g1_forward_new_bullet"])
+
+    # ── G2 (v1.20.2) mutation guard: cue vocabulary requires the context ──
+    def test_g2_cues_clear_but_bare_trigger_phrase_stays_red(self) -> None:
+        for name in (
+            "g2_never_a_standing_wall",
+            "g2_does_not_reproduce",
+            "g2_was_a_false_standing_wall",
+            "g2_false_standing_wall_superseded",
+        ):
+            assert scan_text(_FP_CLEAR[name]) == [], f"G2 {name!r} must clear"
+        for name in (
+            "g2_bare_standing_wall_no_repudiation",
+            "g2_reproduces_without_negation",
+        ):
+            assert scan_text(_MUST_STAY_RED[name]), f"G2 {name!r} must STAY red"
+
+    # ── G4 (v1.20.2) mutation guard: false/superseded AFTER the quote ──
+    def test_g4_marker_after_quote_clears_but_unrelated_quote_stays_red(self) -> None:
+        assert scan_text(_FP_CLEAR["g4_superseded_after_quote"]) == []
+        assert scan_text(_FP_CLEAR["g4_based_on_false_after_quote"]) == []
+        # The wall must be INSIDE the quote — an unrelated false-quote does not
+        # clear a bare wall elsewhere on the line.
+        assert scan_text(_MUST_STAY_RED["g4_unrelated_quote_then_superseded"])
+
+    # ── Class (b) (v1.20.2): kit-generated derived-render exemption ──
+    def test_render_exempt_files_and_blocks_clear(self) -> None:
+        for name, text in _RENDER_EXEMPT_CLEAR.items():
+            assert scan_text(text) == [], (
+                f"render-exempt {name!r} must clear, got: "
+                f"{[(h.line, h.rule) for h in scan_text(text)]}"
+            )
+
+    def test_render_exemption_is_marker_keyed_not_path_keyed(
+        self, tmp_path: Path
+    ) -> None:
+        # A normal doc WITHOUT the render marker is still scanned (the exemption
+        # keys on the marker, never on the path); a wall OUTSIDE a fence reds.
+        _plant(
+            tmp_path, "docs/d.md", _MUST_STAY_RED["b_no_render_marker_still_scanned"]
+        )
+        assert check_no_false_walls(tmp_path, Config())
+        assert scan_text(_MUST_STAY_RED["b_wall_outside_fence_still_reds"])
+
+
+# ── Class (c) (v1.20.2): the per-repo product-copy allowlist mechanism ─────────
+
+
+class TestCheckExceptionsAllowlist:
+    _WALL = "Launch copy: the legacy bot was agent-unlandable.\n"
+    # NB: the `agent-unlandable` phrase is emitted under the `standing-platform-
+    # wall` rule (earlier in blocklist order), so the exemption must name the
+    # EXACT emitted kind — the mechanism is exact-kind, not phrase-guesswork.
+    _ENTRY = (
+        "- path: docs/launch.md\n"
+        "  kind: false-wall:standing-platform-wall\n"
+        "  phrase: agent-unlandable\n"
+        "  verdict: false_positive\n"
+        "  reason: marketing copy describing the legacy bot\n"
+        "  triaged: 2026-07-21\n"
+        "  by: menno420\n"
+    )
+
+    def test_matching_entry_exempts_the_finding(self, tmp_path: Path) -> None:
+        _plant(tmp_path, "docs/launch.md", self._WALL)
+        _plant(tmp_path, ".substrate/check-exceptions.yml", self._ENTRY)
+        assert check_no_false_walls(tmp_path, Config()) == []
+
+    def test_no_exceptions_file_leaves_the_wall_red(self, tmp_path: Path) -> None:
+        _plant(tmp_path, "docs/launch.md", self._WALL)
+        assert check_no_false_walls(tmp_path, Config())
+
+    def test_wrong_path_does_not_clear(self, tmp_path: Path) -> None:
+        _plant(tmp_path, "docs/launch.md", self._WALL)
+        _plant(
+            tmp_path,
+            ".substrate/check-exceptions.yml",
+            self._ENTRY.replace("docs/launch.md", "docs/other.md"),
+        )
+        assert check_no_false_walls(tmp_path, Config())
+
+    def test_wrong_kind_does_not_clear(self, tmp_path: Path) -> None:
+        _plant(tmp_path, "docs/launch.md", self._WALL)
+        _plant(
+            tmp_path,
+            ".substrate/check-exceptions.yml",
+            self._ENTRY.replace(
+                "false-wall:standing-platform-wall", "false-wall:the-owner-merges"
+            ),
+        )
+        assert check_no_false_walls(tmp_path, Config())
+
+    def test_phrase_mismatch_does_not_clear(self, tmp_path: Path) -> None:
+        _plant(tmp_path, "docs/launch.md", self._WALL)
+        _plant(
+            tmp_path,
+            ".substrate/check-exceptions.yml",
+            self._ENTRY.replace("phrase: agent-unlandable", "phrase: not-in-the-line"),
+        )
+        assert check_no_false_walls(tmp_path, Config())
+
+    def test_missing_verdict_does_not_clear(self, tmp_path: Path) -> None:
+        # verdict must be an explicit false_positive triage, not an implicit one.
+        _plant(tmp_path, "docs/launch.md", self._WALL)
+        _plant(
+            tmp_path,
+            ".substrate/check-exceptions.yml",
+            self._ENTRY.replace("  verdict: false_positive\n", ""),
+        )
+        assert check_no_false_walls(tmp_path, Config())

@@ -92,6 +92,26 @@ _GEN2_HISTORICAL = re.compile(r"gen2/[^/]*(?:queue|proposal)[^/]*\.md$", re.I)
 # snapshots, walkthroughs) — skipped wholesale.
 _DATED_FILENAME = re.compile(r"\d{4}-\d{2}-\d{2}")
 
+# ── Class (b) (v1.20.2): kit-generated derived-render exemption ────────────────
+#
+# A file (or a fenced block within one) that the kit RENDERS from an
+# independently-scanned source (docs/SKILLS.md + docs/CAPABILITIES.md — the
+# seat-digest render) carries a render marker. Re-scanning the render is
+# redundant (the SOURCE is already in the scan set and flags any real wall at
+# its true home) and can re-red a wall phrase that only APPEARS in the render.
+# Exempt by MARKER, never by path or content — a normal doc without the marker
+# is still scanned. Sound ONLY because the source docs stay scanned.
+_RENDER_FILE_MARKER = re.compile(
+    r"never\s+edit\s+this\s+file[:\s].{0,80}?regenerate\s+with[^\n]*?seat-digest",
+    re.I,
+)
+_DIGEST_FENCE_BEGIN = re.compile(
+    r"<!--\s*substrate-kit:[\w-]*digest\s+BEGIN\b.*?-->", re.I
+)
+_DIGEST_FENCE_END = re.compile(
+    r"<!--\s*substrate-kit:[\w-]*digest\s+END\b.*?-->", re.I
+)
+
 # ── Shared grammar fragments for the generalized capability-wall class ─────────
 #
 # SUBJECT: an agent/session actor. Scoped tight — "services" / "views" / "the
@@ -338,9 +358,19 @@ _REPUDIATION_CUES = re.compile(
     r"land\s+your\s+own|"
     r"no\s+longer\s+(?:applies|a\b|an\b|the\b|stands|holds)|"
     r"\bthe\s+old\b|"
-    r"proven\s+(?:repeatedly|by\b|~?\d)",
+    r"proven\s+(?:repeatedly|by\b|~?\d)|"
+    # ── G2 (v1.20.2): same-clause repudiation cues (each still requires the
+    # repudiating context — never clears on a bare trigger phrase) ──
+    r"(?:never|not)\s+a\s+standing\b[^.\n]{0,40}?\bwall\b|"  # "never a standing '…' wall".
+    r"was\s+(?:based\s+on\s+)?a\s+false\s+(?:standing\s+)?wall|"  # "was (based on) a false (standing) wall".
+    r"does(?:n'?t|\s+not)\s+reproduce",  # "does not reproduce".
     re.I,
 )
+# G2: a bare "false standing wall" clears ONLY when accompanied by a SECOND
+# repudiation signal (superseded / proven) in the same clause — the two-signal
+# bar keeps it from clearing on the phrase alone.
+_FALSE_STANDING_WALL = re.compile(r"false\s+standing\s+wall", re.I)
+_SUPERSEDE_OR_PROVEN = re.compile(r"\bsuperseded\b|\bproven\b", re.I)
 # The repo's repudiation label: FALSE "…" / false "…". The uppercase bare token
 # is the canonical marker (matched in-clause). The lowercase QUOTED form only
 # clears when the QUOTED CONTENT contains the matched wall phrase — i.e. it is
@@ -348,6 +378,20 @@ _REPUDIATION_CUES = re.compile(
 # classifier"'), not an unrelated false-quote elsewhere in the sentence.
 _FALSE_LABEL = re.compile(r"\bFALSE\b")
 _FALSE_QUOTE = re.compile(r"\bfalse\s+[\"“'`]([^\"”'`]*)[\"”'`]", re.I)
+# G4 (v1.20.2): position-aware "false/superseded AFTER the quote" — the quote is
+# characterised as false/superseded IMMEDIATELY after its closing quote, same
+# clause ('"…self-merge classifier…" was a false standing wall', '"…" —
+# superseded', '"…" was based on a false … wall'). The wall phrase must be
+# INSIDE the quote (group 1), and only a dash / "was" / "is" may sit between the
+# quote and the false/superseded marker (attachment-tight — an unrelated quote
+# elsewhere in the sentence cannot clear a bare wall).
+_QUOTE_THEN_FALSE = re.compile(
+    r"[\"“'`]([^\"”'`]*)[\"”'`]"
+    r"\s*(?:[—–-]\s*)?"
+    r"(?:\(?\s*(?:was|is)\s+)?"
+    r"(?:based\s+on\s+a\s+false[^.\n]*?\bwall\b|a\s+false\s+standing\s+wall|superseded)",
+    re.I,
+)
 
 # Markdown emphasis / code markers stripped before running the CLEARING cues so
 # a bolded repudiation ("they do **not** establish …") still matches. Only the
@@ -478,7 +522,10 @@ def _false_quote_attached(line: str, phrase: str) -> bool:
     p = phrase.lower().strip()
     if not p:
         return False
-    return any(p in m.group(1).lower() for m in _FALSE_QUOTE.finditer(line))
+    for pat in (_FALSE_QUOTE, _QUOTE_THEN_FALSE):
+        if any(p in m.group(1).lower() for m in pat.finditer(line)):
+            return True
+    return False
 
 
 def _false_quote_covers(line: str, start: int, end: int) -> bool:
@@ -487,10 +534,11 @@ def _false_quote_covers(line: str, start: int, end: int) -> bool:
     same physical line ('false "self-merge classifier" aside — the real
     self-merge classifier still blocks') is NOT cleared, because only the quoted
     occurrence's span is covered."""
-    for m in _FALSE_QUOTE.finditer(line):
-        qs, qe = m.span(1)
-        if qs <= start and end <= qe:
-            return True
+    for pat in (_FALSE_QUOTE, _QUOTE_THEN_FALSE):
+        for m in pat.finditer(line):
+            qs, qe = m.span(1)
+            if qs <= start and end <= qe:
+                return True
     return False
 
 
@@ -505,6 +553,37 @@ def _wall_starts_line(line: str, phrase: str) -> bool:
     separator precedes it) — i.e. the wall's sentence may have begun above."""
     idx = line.find(phrase)
     return idx >= 0 and not _CLAUSE_SEP.search(line[:idx])
+
+
+def _first_clause(line: str) -> str:
+    """The first clause of ``line`` (text before the first strong separator).
+
+    Mirror of :func:`_last_clause`; used by the G1 bounded lookforward so a
+    repudiation that WRAPS onto the next line clears the wall that ended the
+    current line."""
+    m = _CLAUSE_SEP.search(line)
+    return line[: m.start()] if m else line
+
+
+def _wall_ends_line(
+    line: str, phrase: str, match_span: tuple[int, int] | None
+) -> bool:
+    """True when the wall sits in the LAST clause of ``line`` (no strong
+    separator follows it) — i.e. the wall's sentence may continue below. The
+    forward-facing mirror of :func:`_wall_starts_line`, gating the G1 lookforward
+    the same way the lookback is gated by ``_wall_starts_line``."""
+    if match_span is not None:
+        idx = match_span[1]
+    else:
+        pos = line.find(phrase)
+        if pos < 0:
+            return False
+        idx = pos + len(phrase)
+    return not _CLAUSE_SEP.search(line[idx:])
+
+
+# A markdown list bullet start (used as a G1 lookforward STOP boundary).
+_NEW_BULLET = re.compile(r"^\s*[-*]\s")
 
 
 def _clause_cleared(
@@ -524,6 +603,9 @@ def _clause_cleared(
         return True
     if _REPUDIATION_CUES.search(scrubbed):
         return True
+    # G2: bare "false standing wall" clears only with a second repudiation signal.
+    if _FALSE_STANDING_WALL.search(scrubbed) and _SUPERSEDE_OR_PROVEN.search(scrubbed):
+        return True
     if _FALSE_LABEL.search(clause):
         return True
     if match_span is not None:
@@ -538,6 +620,7 @@ def is_cleared(
     in_dated_block: bool,
     in_historical: bool,
     prev_line: str | None = None,
+    next_lines: list[str] | None = None,
     match_span: tuple[int, int] | None = None,
 ) -> bool:
     """True when the matched wall ``phrase`` on ``line`` must NOT count.
@@ -592,6 +675,41 @@ def is_cleared(
             combined = prev_clause + " " + clause
             if _clause_cleared(combined, line, phrase):
                 return True
+    # G1 (v1.20.2): tight bounded lookforward — the forward-facing mirror of the
+    # lookback. When the wall CLOSES its line and the sentence has NOT ended, the
+    # repudiation may wrap onto the next line(s). Scan 1–2 lines forward ONLY
+    # within the SAME bullet / blockquote / paragraph — STOP at a blank line, a
+    # new `- `/`* ` bullet, a heading, a dated bullet, or a contrasting
+    # neighbour ("but …"). The P2 same-capability family gate applies exactly as
+    # in the lookback: a forward clause naming a DIFFERENT capability family than
+    # this wall never bridges. This can only ADD clears for genuine wrapped
+    # repudiations; it never blinds the gate to a standing wall.
+    if (
+        next_lines
+        and _wall_ends_line(line, phrase, match_span)
+        and not _SENTENCE_END.search(line)
+    ):
+        wall_fams = _capability_families(phrase)
+        acc = clause
+        for fwd in next_lines[:2]:
+            if not fwd.strip():
+                break
+            if (
+                _HEADING.match(fwd)
+                or _DATED_BULLET.match(fwd)
+                or _NEW_BULLET.match(fwd)
+                or _CONTRAST_START.match(fwd)
+            ):
+                break
+            fwd_clause = _first_clause(fwd)
+            fwd_fams = _capability_families(fwd_clause)
+            if wall_fams and fwd_fams and fwd_fams.isdisjoint(wall_fams):
+                break
+            acc = acc + " " + fwd_clause
+            if _clause_cleared(acc, line, phrase):
+                return True
+            if _SENTENCE_END.search(fwd):
+                break
     return False
 
 
@@ -651,10 +769,31 @@ def scan_text(text: str) -> list[RawHit]:
     ``false "…"`` quote still reds, while the line still yields at most one hit
     (the legacy count contract).
     """
+    # Class (b): a whole file that is a kit-generated derived render is exempt —
+    # its source docs are scanned independently.
+    if _RENDER_FILE_MARKER.search(text):
+        return []
+
     hits: list[RawHit] = []
     in_historical = False
+    in_digest_fence = False
     prev_line: str | None = None
-    for i, line in enumerate(text.splitlines(), start=1):
+    lines = text.splitlines()
+    for i, line in enumerate(lines, start=1):
+        # Class (b): skip lines inside a kit-generated derived-render fence
+        # (<!-- substrate-kit:*-digest BEGIN … --> … <!-- … END -->).
+        if _DIGEST_FENCE_BEGIN.search(line):
+            in_digest_fence = True
+            prev_line = line
+            continue
+        if _DIGEST_FENCE_END.search(line):
+            in_digest_fence = False
+            prev_line = line
+            continue
+        if in_digest_fence:
+            prev_line = line
+            continue
+
         heading = _HEADING.match(line)
         if heading:
             in_historical = bool(_HISTORICAL_HEADING.search(heading.group(1)))
@@ -663,6 +802,7 @@ def scan_text(text: str) -> list[RawHit]:
         # physical line — the date attaches to the row it heads, never to a
         # continuation line that carries a distinct wall (neighbour-bleed).
         in_dated_block = bool(_DATED_BULLET.match(line))
+        next_lines = lines[i : i + 2]  # i is 1-based; lines[i] is the next line
         for rule, phrase, start, end in match_blocklist_all(line):
             if not is_cleared(
                 line,
@@ -670,6 +810,7 @@ def scan_text(text: str) -> list[RawHit]:
                 in_dated_block=in_dated_block,
                 in_historical=in_historical,
                 prev_line=prev_line,
+                next_lines=next_lines,
                 match_span=(start, end),
             ):
                 hits.append(RawHit(i, phrase.strip(), rule))
@@ -754,6 +895,84 @@ def iter_adopter_files(
     return out
 
 
+# ── Class (c) (v1.20.2): per-repo product-copy allowlist ──────────────────────
+#
+# An OPTIONAL, opt-in `<state_dir>/check-exceptions.yml` lets a repo triage a
+# SPECIFIC flagged line as a product-copy false positive (launch copy, a quoted
+# competitor limitation, etc.) WITHOUT weakening the shared grammar. It is
+# deliberately NARROW: an entry must name the exact file `path`, the exact
+# finding `kind` (`false-wall:<rule>`), and — if given — a `phrase` substring
+# that must appear in the flagged line; only then is that one finding exempted.
+# Not a path-glob blanket. Absent file → behaviour unchanged. The engine carries
+# no YAML dependency, so a minimal stdlib parser reads the flat list-of-mappings
+# subset; a malformed file degrades to "no exceptions", never a crash.
+_EXCEPTIONS_BASENAME = "check-exceptions.yml"
+
+
+def _parse_check_exceptions(text: str) -> list[dict[str, str]]:
+    """Parse the narrow list-of-mappings subset of ``check-exceptions.yml``.
+
+    ``- key: value`` opens an entry; subsequent indented ``key: value`` lines add
+    to it. Surrounding quotes on values are stripped. Unknown / malformed lines
+    are ignored so a broken file can never red the gate by accident."""
+    entries: list[dict[str, str]] = []
+    cur: dict[str, str] | None = None
+    for raw in text.splitlines():
+        stripped = raw.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if stripped.startswith("- "):
+            cur = {}
+            entries.append(cur)
+            stripped = stripped[2:].strip()
+            if not stripped:
+                continue
+        if cur is None:
+            continue
+        if ":" not in stripped:
+            continue
+        key, _, val = stripped.partition(":")
+        key = key.strip()
+        val = val.strip().strip("\"'")
+        if key:
+            cur[key] = val
+    return [e for e in entries if e]
+
+
+def _load_check_exceptions(root: Path, state_dir: str) -> list[dict[str, str]]:
+    """Read ``<root>/<state_dir>/check-exceptions.yml`` if present; else ``[]``."""
+    p = root / state_dir / _EXCEPTIONS_BASENAME
+    if not p.is_file():
+        return []
+    try:
+        return _parse_check_exceptions(p.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError):
+        return []
+
+
+def _finding_excepted(
+    exceptions: list[dict[str, str]], rel: str, hit: RawHit, lines: list[str]
+) -> bool:
+    """True when a triaged allowlist entry exempts THIS finding — exact ``path``
+    AND ``kind`` (AND ``phrase`` substring on the flagged line, if given), and an
+    explicit ``verdict: false_positive``. Anything short of an exact match leaves
+    the finding red."""
+    if not exceptions:
+        return False
+    kind = f"false-wall:{hit.rule}"
+    src_line = lines[hit.line - 1] if 0 <= hit.line - 1 < len(lines) else ""
+    for e in exceptions:
+        if e.get("verdict") != "false_positive":
+            continue
+        if e.get("path") != rel or e.get("kind") != kind:
+            continue
+        phrase = e.get("phrase")
+        if phrase and phrase not in src_line:
+            continue
+        return True
+    return False
+
+
 def check_no_false_walls(target: Path, config) -> list[Finding]:  # noqa: ANN001
     """Engine leg: flag any FALSE agent-capability wall on an adopter's surfaces.
 
@@ -767,6 +986,7 @@ def check_no_false_walls(target: Path, config) -> list[Finding]:  # noqa: ANN001
     docs_root = getattr(config, "docs_root", "docs")
     state_dir = getattr(config, "state_dir", ".substrate")
     sessions_dir = getattr(config, "sessions_dir", ".sessions")
+    exceptions = _load_check_exceptions(target, state_dir)
     findings: list[Finding] = []
     for path in iter_adopter_files(
         target,
@@ -779,7 +999,12 @@ def check_no_false_walls(target: Path, config) -> list[Finding]:  # noqa: ANN001
             text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
+        src_lines = text.splitlines()
         for hit in scan_text(text):
+            # Class (c): a triaged per-repo allowlist entry (exact path + kind
+            # [+ phrase]) exempts this specific product-copy false positive.
+            if _finding_excepted(exceptions, rel, hit, src_lines):
+                continue
             # S6: inline the rule's per-rule ground-truth correction (the same
             # WALL_CORRECTIONS the R6 `check --explain-wall` lookup returns) so
             # the red gate names the SPECIFIC capability truth for this rule,
