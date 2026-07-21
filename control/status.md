@@ -1,46 +1,54 @@
 # Self Improvement seat — heartbeat
-updated: 2026-07-20T07:45:00Z
-phase: v1.20.1 shipped + adopter-distribution wave complete (fm ORDER 048). Detector follow-ups P2+P3 (#549's card) built + landing as PR #555. Wave: gba-homebrew merged; 8 adopter upgrade PRs open in resident lanes (all red only on resident-owned content); superbot pin-only (flagged).
+updated: 2026-07-21T11:07:21Z
+phase: v1.20.2 RELEASED (false-wall-checker clearing/exemption fix). Adopter re-vendoring wave complete: websites already merged; trading-strategy + superbot-next re-vendored (blocked only on genuine resident/governance lines); venture-lab blocked on the classifier-walled `upgrade` verb (escalated to fm owner-queue).
 health: green
-kit: v1.20.1 · check: green (except this session's by-design born-red card HOLD) · engaged: yes
-last-shipped: #549/#550 v1.20.1 patch (detector attachment-based clearing + release); #555 (P2/P3 hardenings) landing on green.
-blockers: none agent-side. Remaining wave completion is resident-side merge of the 8 open upgrade PRs; owner-gated ⚑ set below.
+kit: v1.20.2 · check: green · engaged: yes
+last-shipped: v1.20.2 (tag → commit 4712ebf; release run 29819484154; dist sha256 48ecd47…9ece6) via PRs #558, #559, #560, #561 (all merged). Passed a 4-round independent adversarial review.
+blockers: none agent-side. Remaining wave items are genuine resident/governance content (residents' to fix) + the owner-gated `upgrade`-verb wall (⚑ escalated to fm).
 
-## This session — PR #555 (P2 + P3 detector hardenings)
-The two NON-BLOCKING follow-ups recorded in #549's card, both built + mutation-pinned:
-- **P2 — wrapped-lookback punctuation-gated bleed.** `is_cleared`'s one-line wrapped lookback could bridge a repudiation from the previous line's trailing clause onto a wall on the current line even when that clause repudiated a DIFFERENT capability. Added a `_capability_families` gate: the lookback bridges only when the prev clause names the SAME family as the wall (or names none — a genuine continuation). Merge wall no longer cleared by a push repudiation.
-- **P3 — `match_blocklist` one-hit-per-line masking.** Clearing was graded on only the first blocklist hit per line, masking a genuine wall sharing a line with a repudiated `false "…"` quote. Added `match_blocklist_all` (all matches + spans); `scan_text` grades each independently and reports the first uncleared (≤1 finding/line preserved). Clearing is now position-aware (a `false "…"` quote clears only the match its span covers).
-- Engine source + `dist/bootstrap.py` rebuilt (currency green) + `tests/test_check_no_false_walls_leg.py` (mutation-pinned both directions). Full suite **2060 passed, 1 skipped**; `check --strict` clean except the born-red card HOLD.
-- CI note: on PR #555 the checks named `Kit test suite` + `Cold-adoption smoke (adopt + check --strict)` are TEMPORARY legacy-context ALIAS jobs (ci.yml §362-399) that `needs: kit-quality` and conclude failure whenever kit-quality ≠ success. The real suite + cold-adopt smoke run as STEPS inside kit-quality. All three reds trace to the single born-red session-gate HOLD and clear at card flip — not independent failures.
+## v1.20.2 — false-wall checker fix (RELEASED)
+Fix to `check_no_false_walls` clearing/exemption logic (closes the weak-OR-strong cross-line reattachment class):
+- **Cross-line bridge now gated on the wall phrase being QUOTED** — a repudiation on the previous line only bridges onto a wall on the current line when that wall phrase is quoted; bare cross-line reattachment no longer clears a genuine wall.
+- **Clause-split on bare conjunctions** — clauses are split so a repudiation of one capability no longer clears a wall on a different conjunction-joined clause.
+- **Generated-render path-gated exemption** — the generated-render exemption is scoped by path rather than matching everywhere.
+- **False-wall exemptions ride the reason-required `apply_allowlist` seam** — every exemption now carries a reason through the allowlist path.
+- Shipped across PRs #558 → #561 (all merged); tag v1.20.2 = commit 4712ebf; release run 29819484154; dist sha256 48ecd47…9ece6. Passed a 4-round independent adversarial review.
 
-## v1.20.1 adopter-distribution wave — LIVE state (checked 2026-07-20T07:40Z via per-PR MCP get)
-All upgrades 1.17.0 → 1.20.1; each PR = kit-distribution files only (host workflows / control / settings / hooks untouched). Every red is on RESIDENT-owned content (the v1.20.1 false-wall gate catching resident-authored walls, or the repo's own product CI) — NOT kit-distribution content, and NOT a wave defect. No resident (non-agent) activity on any (all single-commit agent PRs, updated_at == created_at). Per Q-0261.3 these PRs are the resident lanes' to merge; the hub does NOT push to them.
+## ⚑ This completion-pass — coordinator decision, FLAGGED (reversible)
+The wave PIVOTED from correcting adopter false-wall WORDING to fixing the checker itself, then re-vendoring. Rationale: per Q-0120 a red firing against correct evidence is the checker's bug, not the evidence's — so the durable fix is the checker, not per-adopter wording edits. Reversible: the owner or any resident may revert any adopter wording change independently.
 
-| adopter | PR | state | CI | red-on-resident? | resident-activity? |
-|---|---|---|---|---|---|
-| gba-homebrew | #211 | MERGED | green | n/a | n/a |
-| idea-engine | #740 | open | substrate-gate RED | yes — CAPABILITIES.md:139/:149 (dated incident, no inline date) | none |
-| superbot-next | #602 | open | substrate-gate + tests/checkers/code-quality RED | yes — current-state.md:97/:114 + repo's own product CI | none |
-| websites | #452 | open | quality RED | yes — resident docs false-walls (backlog.md:924, OWNER-ACTIONS.md:173/187/481, seat-digest.md:48) | none |
-| trading-strategy | #160 | open | substrate-gate RED (pytest green) | yes — current-state.md:389, review-queue.md:8, CONSTITUTION.md:166 | none |
-| superbot-games | #183 | open | substrate-gate + tests RED | yes — current-state.md:102, gen2…:73 + resident test pins OLD kit wording | none |
-| venture-lab | #282 | open | substrate-gate RED (24 others green) | yes — 9 resident-doc false-walls (NEXT-TASKS.md:208, conventions.md:26, launch/*, operations/*) | none |
-| superbot-mineverse | #138 | open | substrate-gate RED (pytest green) | yes — NEXT-TASKS.md:26, decisions.md:39 | none |
-| fleet-manager | #390 | open | substrate-gate RED (freshness green) | yes — 39 resident/hub-owned false-walls across docs/ + CONSTITUTION.md:88 | none |
-| superbot | — | skip | n/a | pin-only nominal adoption (pin 1.0.0; no vendored dist / .substrate) — dist-vendoring upgrade N/A; owner ⚑ below | n/a |
-| pokemon-mod-lab | — | DARK (private) | unknown | adoption UNKNOWN — skipped | n/a |
+## v1.20.2 re-vendoring wave — adopter distribution status
+Re-vendored to v1.20.2 where applicable; remaining reds trace to genuine resident/governance content or the owner-gated `upgrade` wall — NOT checker false-positives.
+
+| adopter | PR | state | notes |
+|---|---|---|---|
+| websites | #452 | MERGED | already landed; dropped from this pass |
+| trading-strategy | #160 | re-vendored (commit f1c5284) | blocked on 3 GENUINE governance/resident lines: current-state.md:389 + CONSTITUTION.md:166 (owner governance) · review-queue.md:8 (resident live-queue note). NOT checker FPs. |
+| superbot-next | #602 | re-vendored (commit 2755fdb) | blocked; all 4 CI reds trace to the same `check --strict` on current-state.md:97 (genuine wall) + :114 (two-line-quote FP-red). No independent product failure; resident fixes both → greens. |
+| venture-lab | #282 | NOT re-vendored | kit `upgrade` verb is classifier-walled venture-lab-specifically (escalated to fm owner-queue). Needs a non-walled venue / owner permission rule, then reword-3 + allowlist-4 greens it. |
+
+## Known limitation (pointer)
+A legitimate repudiation whose wall quote SPANS a line break now FP-reds (safe direction — over-flags, never under-flags a real wall). Future-hardening idea logged: detect a quote opening on the wall line and closing on the next.
 
 ## Registry / docs
-- Version truth is the generated registry + each repo's committed tree, never this `kit:` line (self-reports lag by design). The adopters.md rows reflect each adopter's main-branch tree (still pre-upgrade for the 8 open PRs — an open PR is not in the tree).
+- Version truth is the generated registry + each repo's committed tree, never this `kit:` line (self-reports lag by design). The adopters.md rows reflect each adopter's main-branch tree (an open/blocked upgrade PR is not yet in the tree).
 
 ## Routine / trigger state (no writes this wake)
 - ARMED (active failsafe, F-1): `trig_01194PdaWChtHGNKASURxdLx` "Self Improvement failsafe wake", cron `2 */2 * * *`, bound to the coordinator session — the dead-man bridge. LEFT UNTOUCHED this wake.
 - No routines armed/deleted; no trigger APIs called. ORDER 024 bars re-arming routines pending the per-seat reboot go.
 
 ## Baton (honest next-slice judgment)
-Agent-buildable kit slices are drained through v1.20.1 + #555. The honest next slice is: land #555 on green, then WATCH the 8 open adopter PRs — they are resident-lane merges the hub cannot make. If residents stay dormant (no merge / no resident activity across the next wake or two), ESCALATE to the hub venue (fleet-manager) so the owner sees the stalled adoption, rather than the hub silently pushing to resident-owned PRs (barred by Q-0261.3). Remaining non-resident work is owner-gated (⚑ below).
+The checker-fix wave is drained through v1.20.2. Honest next slice: WATCH the two re-vendored adopter PRs (trading-strategy #160, superbot-next #602) — their remaining reds are resident/governance lines the hub cannot fix without pushing to resident-owned content (barred by Q-0261.3). If they stay dormant, ESCALATE to the hub venue (fleet-manager) so the owner sees the stalled adoption. The venture-lab `upgrade`-verb wall is already owner-gated at the fm owner-queue.
 
 ## ⚑ FOR OWNER (standing set)
+
+⚑ FOR OWNER — venture-lab `upgrade`-verb classifier wall (escalated to fm owner-queue)
+  WHAT:   The kit `upgrade` verb is classifier-walled venture-lab-specifically, so venture-lab #282 could NOT be re-vendored to v1.20.2 this pass.
+  WHERE:  fleet-manager owner-queue (escalated) — venture-lab lane.
+  HOW:    run the re-vendor from a non-walled venue, OR add an owner permission rule that clears the verb for venture-lab; then reword-3 + allowlist-4 greens it.
+  WHY:    the wall is venue/classifier-specific, not a kit defect — the same verb succeeds in the other adopter lanes.
+  UNBLOCKS: venture-lab v1.20.2 re-vendor.
+  RISK: ↩️ reversible. RECOMMENDATION: re-run from a non-walled venue.
 
 ⚑ FOR OWNER — kit-lab daily cron: recreate or retire? (A/B)
   WHAT:   The 06:00Z 'kit-lab daily' owner-business cron is absent from the account trigger registry (coordinator-reported: ~2318 entries paginated to exhaustion 2026-07-17; no kit-named or hour-6 cron; never created or deleted — not re-verified by this stateless seat).
@@ -68,10 +76,10 @@ Agent-buildable kit slices are drained through v1.20.1 + #555. The honest next s
   RISK: ⚠️ pin-path oracle change → lands via a `do-not-automerge` owner-review PR (never auto-merged). Detail: docs/planning/2026-07-19-needs-planning-recipes.md §4.
 
 ⚑ FOR OWNER — superbot pin-bump: bump nominal pin, or leave as pin-only? (question)
-  WHAT: superbot adopts substrate-kit as a PIN ONLY (substrate.config pin 1.0.0; no vendored dist, no `.substrate/` state) — so the v1.20.1 dist-vendoring upgrade is genuinely N/A there; it was correctly skipped in this wave.
+  WHAT: superbot adopts substrate-kit as a PIN ONLY (substrate.config pin 1.0.0; no vendored dist, no `.substrate/` state) — so the dist-vendoring upgrade is genuinely N/A there; it was correctly skipped in this wave.
   WHERE: superbot/substrate.config.json (or equivalent pin), pin `1.0.0`.
-  HOW: (A) bump the nominal pin to `1.20.1` for a truthful version label even though no dist is vendored; (B) leave pin-only and document superbot as intentionally non-vendoring (adoption = pin-nominal only).
-  WHY: the pin currently reads 1.0.0 while the fleet is on 1.20.1 — a reader can't tell "deliberately pin-only" from "stale". A one-line decision removes the ambiguity.
+  HOW: (A) bump the nominal pin to `1.20.2` for a truthful version label even though no dist is vendored; (B) leave pin-only and document superbot as intentionally non-vendoring (adoption = pin-nominal only).
+  WHY: the pin currently reads 1.0.0 while the fleet is on 1.20.2 — a reader can't tell "deliberately pin-only" from "stale". A one-line decision removes the ambiguity.
   UNBLOCKS: honest fleet version truth for superbot.
   RISK: ↩️ reversible either way. RECOMMENDATION: **B — document pin-only** (superbot genuinely vendors no dist; a bumped pin with no dist would itself mislead). Answer: A (bump pin) / B (document pin-only).
 
