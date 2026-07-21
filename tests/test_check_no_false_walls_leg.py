@@ -261,14 +261,13 @@ _FP_CLEAR = {
         '(corrects a prior false "self-merge classifier" entry): direct '
         "REST/MCP squash-on-green, arming auto-merge,…\n"
     ),
-    # P2 — SAME-capability wrapped repudiation still clears: the prev line's
-    # trailing clause repudiates the SAME capability (self-merge) that the wall
-    # on the continuation line names, so the tight lookback still bridges. (The
-    # continuation line carries no clearing cue of its own, so this genuinely
-    # exercises the wrap, not same-line clearing.)
-    "p2_same_capability_wrap_clears": (
-        "The self-merge claim no longer applies and\n"
-        "self-merge classifier remains a worry for some readers.\n"
+    # Quoted-wall cross-line lookback: the wall is QUOTED on line 2 (a mention,
+    # not an assertion), so the tight lookback may bridge a repudiation on line 1
+    # (v1.20.2 root fix — only a quoted wall bridges; the bare-wall twin is in
+    # _MUST_STAY_RED).
+    "p2_quoted_wall_wrap_clears": (
+        "The old note was superseded and\n"
+        '"self-merge classifier" was the wording.\n'
     ),
     # P3 — a LONE wall named by a repudiated `false "…"` quote still clears: the
     # quote spans the only wall match on the line, so position-aware clearing
@@ -329,12 +328,39 @@ _FP_CLEAR = {
         '  the "DB provisioning DDL is classifier-denied in agent auto-mode" '
         "framing does not reproduce in the project-default env.\n"
     ),
-    # G1 lookforward with a STRONG cue on the NEXT continuation line still
-    # bridges (a strong, wall-referential repudiation may cross the line break).
-    "g1_forward_strong_cue_next_line_clears": (
-        "- 2026-07-17 — CORRECTION to the classifier-wall note above:\n"
-        '  the "DB provisioning DDL is classifier-denied in agent\n'
-        '  auto-mode" framing was a false standing wall, superseded.\n'
+    # G1 lookforward bridges when the wall is QUOTED on its own line and the cue
+    # follows on the next line (v1.20.2 root fix).
+    "g1_quoted_wall_forward_clears": (
+        'Here the "the owner merges" claim\n'
+        "was a false standing wall, now repudiated.\n"
+    ),
+    # ── v1.20.2 root fix: the QUOTED-wall cross-line MATRIX (must CLEAR) ──
+    # {quoted} × {weak, strong cue} × {lookback, lookforward} — all four clear
+    # because the wall is a mention inside "…".
+    "q_weak_lookback_clears": (
+        "the retest shows it does not reproduce and\n"
+        '"agents cannot merge" was the old wording.\n'
+    ),
+    "q_weak_lookforward_clears": (
+        'Here the "agents cannot merge" claim\n'
+        "does not reproduce in the retest.\n"
+    ),
+    "q_strong_lookback_clears": (
+        "the old note was superseded and\n"
+        '"agents cannot merge" was the wording.\n'
+    ),
+    # C4 — quoted wall, strong cue on the next line (lookforward).
+    "c4_quoted_wall_was_superseded": (
+        'The "agents cannot merge" rule\nwas superseded.\n'
+    ),
+    # C5 — quoted wall, the "no longer / applies" cue itself wraps the line.
+    "c5_quoted_wall_no_longer_applies_wraps": (
+        'The old "agents cannot merge" claim no longer\napplies.\n'
+    ),
+    # C6 — blockquote, quoted wall, "was a false standing wall" on the next line.
+    "c6_blockquote_quoted_wall_false_standing": (
+        '> The "the owner merges" claim\n'
+        "> was a false standing wall, now repudiated.\n"
     ),
 }
 
@@ -570,6 +596,38 @@ _MUST_STAY_RED = {
         '  the "DB provisioning DDL is classifier-denied in agent\n'
         '  auto-mode" framing does not reproduce in the project-default env.\n'
     ),
+    # ── v1.20.2 DEFINITIVE root fix: an UNQUOTED (bare, asserted) wall never
+    # bridges across a line break — not even for a STRONG cue. Only a QUOTED wall
+    # (a mention) may bridge. These are the reviewer's S-probes plus the two
+    # former _FP_CLEAR bare-wall fixtures that now correctly RED. ──
+    "s1_strong_and_newline_bare_wall": (
+        "The enabler is superseded and\nagents cannot merge without it.\n"
+    ),
+    "s2_strong_newline_bare_wall": (
+        "The enabler is superseded\nagents cannot merge to main.\n"
+    ),
+    "s3_no_longer_applies_newline_bare_wall": (
+        "That rule no longer applies and\nagents cannot merge to main.\n"
+    ),
+    # S5 — wall FIRST (bare), strong cue on the next line (G1 lookforward).
+    "s5_bare_wall_first_strong_lookforward": (
+        "agents cannot merge and\nthat rule is superseded.\n"
+    ),
+    # The former p2_same_capability_wrap_clears: a BARE wall on line 2 with a
+    # strong cue ("no longer applies") on line 1 — now RED (wall not quoted).
+    "p2_bare_wall_wrap_now_reds": (
+        "The self-merge claim no longer applies and\n"
+        "self-merge classifier remains a worry for some readers.\n"
+    ),
+    # The former g1_forward_strong_cue_next_line_clears: the wall's line carries
+    # only an OPENING quote (the quote spans lines), so the wall is not quoted on
+    # its own line → no bridge → RED (a multi-line quote is not a same-line
+    # mention; safety wins).
+    "g1_multiline_quote_bare_wall_line_now_reds": (
+        "- 2026-07-17 — CORRECTION to the classifier-wall note above:\n"
+        '  the "DB provisioning DDL is classifier-denied in agent\n'
+        '  auto-mode" framing was a false standing wall, superseded.\n'
+    ),
     # ── FIX B (v1.20.2): render marker on a NON-render file does not exempt ──
     # A CAPABILITIES.md-shaped doc bearing the seat-digest render header marker
     # AND a genuine wall must still RED — the exemption is gated to the known
@@ -640,17 +698,15 @@ class TestClearingVocabulary:
         )
         assert check_no_false_walls(tmp_path, Config()), "dated heading blinded the gate"
 
-    def test_p2_different_capability_wrap_stays_red_but_same_capability_clears(
-        self,
-    ) -> None:
-        # Mutation guard for P2 (wrapped-lookback same-capability gate), both
-        # directions from ONE assertion pair so a mutation to the gate breaks a
-        # test: a prev-line repudiation of a DIFFERENT capability must NOT bridge
-        # (stays red); the SAME-capability wrap must still bridge (clears).
-        red = _MUST_STAY_RED["p2_prev_line_repudiates_different_capability"]
-        clear = _FP_CLEAR["p2_same_capability_wrap_clears"]
-        assert scan_text(red), "P2: different-capability wrap must stay RED"
-        assert scan_text(clear) == [], "P2: same-capability wrap must still clear"
+    def test_cross_line_lookback_bridges_only_a_quoted_wall(self) -> None:
+        # v1.20.2 root fix (supersedes the P2 same/different-capability lookback
+        # test): a BARE (asserted) wall on the wrapped line never bridges — not
+        # even for a same-capability strong cue; only a QUOTED wall (a mention)
+        # bridges. Both directions from one pair.
+        red = _MUST_STAY_RED["p2_bare_wall_wrap_now_reds"]
+        clear = _FP_CLEAR["p2_quoted_wall_wrap_clears"]
+        assert scan_text(red), "root fix: bare-wall lookback wrap must stay RED"
+        assert scan_text(clear) == [], "root fix: quoted-wall lookback wrap clears"
 
     def test_p3_genuine_wall_on_false_quote_line_reds_but_lone_quote_clears(
         self,
@@ -757,27 +813,43 @@ class TestClearingVocabulary:
         assert scan_text(_FP_CLEAR["g4_superseded_after_quote"]) == []
         assert scan_text(_FP_CLEAR["g1_blockquote_forward_same_family"]) == []
 
-    def test_weak_cue_never_bridges_across_lines_but_strong_cue_does(self) -> None:
-        # The root fix: a WEAK, subject-dependent cue ("does not reproduce")
-        # clears SAME-CLAUSE only, never across a line break; a STRONG,
-        # wall-referential cue may still bridge. Both directions from the fixtures.
-        for name in (
-            "n8_weak_cue_and_newline_before_wall",
-            "n9_weak_cue_newline_before_wall",
-            "n_weak_cue_but_newline_before_wall",
-            "n_weak_cue_so_newline_before_wall",
-            "n_weak_cue_after_wall_reversed",
-            "n10_period_then_and_wall",
-            "weak_cue_next_line_dated_bullet_now_reds",
-        ):
-            assert scan_text(_MUST_STAY_RED[name]), f"weak cross-line {name!r} must RED"
-        # A same-line weak cue STILL clears (same-line uses the full cue set)…
+    def test_cross_line_bridge_gated_on_quoted_wall_full_matrix(self) -> None:
+        # THE definitive root fix (v1.20.2): the cross-line bridge (lookback AND
+        # G1 lookforward) fires ONLY for a QUOTED wall (a mention). The full
+        # {quoted, unquoted} × {weak, strong cue} × {lookback, lookforward} matrix:
+        # the 4 UNQUOTED cells RED (a bare asserted wall never bridges, not even a
+        # strong cue — the earlier weak/strong distinction is superseded), the 4
+        # QUOTED cells CLEAR (full cue set is safe once gated on quoting).
+        unquoted_red = (
+            "s1_strong_and_newline_bare_wall",           # strong, lookback
+            "s2_strong_newline_bare_wall",               # strong, lookback (no conj)
+            "s3_no_longer_applies_newline_bare_wall",    # strong, lookback
+            "s5_bare_wall_first_strong_lookforward",     # strong, lookforward
+            "n8_weak_cue_and_newline_before_wall",       # weak, lookback
+            "n9_weak_cue_newline_before_wall",           # weak, lookback (no conj)
+            "n_weak_cue_after_wall_reversed",            # weak, lookforward
+            "p2_bare_wall_wrap_now_reds",                # strong, lookback (bare)
+        )
+        for name in unquoted_red:
+            assert scan_text(_MUST_STAY_RED[name]), f"unquoted cross-line {name!r} must RED"
+        quoted_clear = (
+            "q_weak_lookback_clears",
+            "q_weak_lookforward_clears",
+            "q_strong_lookback_clears",
+            "c4_quoted_wall_was_superseded",             # strong, lookforward
+            "c5_quoted_wall_no_longer_applies_wraps",
+            "c6_blockquote_quoted_wall_false_standing",
+            "p2_quoted_wall_wrap_clears",
+            "g1_quoted_wall_forward_clears",
+        )
+        for name in quoted_clear:
+            assert scan_text(_FP_CLEAR[name]) == [], f"quoted cross-line {name!r} must CLEAR"
+        # N10 — a period ends the sentence, so the bare wall after "And" reds even
+        # with a strong cue before the period.
+        assert scan_text(_MUST_STAY_RED["n10_period_then_and_wall"])
+        # A same-line weak cue STILL clears (same-line clearing is unchanged).
         assert scan_text(_FP_CLEAR["g2_does_not_reproduce"]) == []
         assert scan_text(_FP_CLEAR["c_dated_bullet_same_continuation_line_g2"]) == []
-        # …and a STRONG cue still bridges the lookback and the G1 lookforward.
-        assert scan_text(_FP_CLEAR["p2_same_capability_wrap_clears"]) == []
-        assert scan_text(_FP_CLEAR["g1_forward_strong_cue_next_line_clears"]) == []
-        assert scan_text(_FP_CLEAR["g1_blockquote_forward_same_family"]) == []
 
     # ── Class (b) (v1.20.2): kit-generated derived-render exemption ──
     def test_render_exempt_files_and_blocks_clear_on_the_render_path(self) -> None:

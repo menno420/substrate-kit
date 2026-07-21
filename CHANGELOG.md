@@ -55,6 +55,16 @@ workflow refuses to publish a version that has no section in this file.
   wall`, `superseded`, and the quote-covers path) may clear a wall ACROSS a line break via
   the lookback / G1 lookforward bridge — a WEAK cue (`does not reproduce`) clears same-clause
   only, so it can no longer re-attach to a genuine standing wall on the neighbouring line.
+  **Definitive cross-line root fix:** the weak/strong bridge distinction is superseded by
+  gating BOTH cross-line bridges on **the matched wall phrase being QUOTED** on its own line
+  (`_wall_is_quoted`). Every legitimate cross-line clear MENTIONS (quotes) the wall
+  (`The "agents cannot merge" rule\n was superseded`); every hole ASSERTS it bare
+  (`…superseded and\n agents cannot merge`). An unquoted wall gets no cross-line bridge (its
+  same-line clearing is unchanged); a quoted wall bridges with the full cue set. This closes
+  the class the earlier cue-by-cue patches chased (the family gate can't block an empty-family
+  neighbour cue, so ANY cue reattached to a bare wall across the break). The repudiation note
+  in the adopter `CONSTITUTION.md` template was reworded so its `no standing … wall` cue sits
+  on the wall's own line (same-line clear, no cross-line dependency).
   A dated-bullet-continuation relaxation (G3) was evaluated and
   **dropped as UNSAFE** — propagating a bullet's date to its continuation lines would clear
   genuine standing walls (it fails the `_MUST_STAY_RED` neighbour-bleed fixtures). The
