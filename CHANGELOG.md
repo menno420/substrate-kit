@@ -15,6 +15,30 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`check_no_false_walls` clearing gains five attachment-based relaxations (v1.20.2).**
+  The v1.20.1 leg still retroactively reddened adopter upgrade PRs on lines that already
+  CORRECTLY repudiate a past false capability wall. This adds five clearing paths, each
+  kept **attachment-based** (same-clause / same-single-bullet / immediately-adjacent) and
+  **`_capability_families`-gated** so none reopens the #549 ancestor/section-sheltering
+  hole: **(G2)** same-clause repudiation-cue vocabulary — `never/not a standing "…" wall`,
+  `was (based on) a false (standing) wall`, `does not reproduce`, and a bare `false standing
+  wall` only when a `superseded`/`proven` second signal accompanies it; **(G4)** a
+  position-aware `false`/`superseded` marker IMMEDIATELY after a quote whose content is the
+  wall phrase (the mirror of the existing `false "…"` before-quote form); **(G1)** a bounded
+  same-family lookforward mirroring the wrapped lookback (1–2 lines, stopping at a blank line,
+  new bullet, heading, dated bullet, or `but …` contrast); **(class b)** an exemption for
+  kit-generated derived-render files/blocks keyed on the render MARKER (seat-digest header or
+  `<!-- substrate-kit:*-digest BEGIN … -->` fence), sound because the render's source docs
+  stay in the scan set; and **(class c)** consumption of an optional, opt-in
+  `.substrate/check-exceptions.yml` product-copy allowlist that exempts a finding only on an
+  exact `path` + `kind` (+ optional `phrase` substring) match with an explicit
+  `verdict: false_positive`. A dated-bullet-continuation relaxation (G3) was evaluated and
+  **dropped** as unsafe (it cleared genuine standing walls) and redundant with G1. Genuine
+  standing walls stay red; the full both-directions MUST-RED / MUST-CLEAR matrix is pinned in
+  `TestClearingVocabulary` and `TestCheckExceptionsAllowlist`.
+
 ## [1.20.1] - 2026-07-20
 
 <!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->
