@@ -516,6 +516,25 @@ _MUST_STAY_RED = {
         "The classifier note is superseded; agents cannot self-merge on "
         "protected main.\n"
     ),
+    # ── FIX A' (v1.20.2 follow-up): BARE (comma-less) conjunction bleed must
+    # STAY red — one pinned variant per coordinating/contrast conjunction. A
+    # whitespace-surrounded ` and/but/so/yet/… ` splits the cue's clause from
+    # the wall's, so the wall lands cue-less → RED. ──
+    "aprime_bare_and_reproduce_bleed": (
+        "The freeze does not reproduce and agents cannot merge to main.\n"
+    ),
+    "aprime_bare_but_reproduce_bleed": (
+        "The bug does not reproduce but agents cannot merge their own PRs.\n"
+    ),
+    "aprime_bare_so_reproduce_bleed": (
+        "The note does not reproduce so agents cannot merge to main.\n"
+    ),
+    "aprime_bare_yet_reproduce_bleed": (
+        "The freeze does not reproduce yet agents cannot merge to main.\n"
+    ),
+    "aprime_bare_and_deploy_wall_bleed": (
+        "That was never a standing deploy wall and agents cannot merge here.\n"
+    ),
     # ── FIX B (v1.20.2): render marker on a NON-render file does not exempt ──
     # A CAPABILITIES.md-shaped doc bearing the seat-digest render header marker
     # AND a genuine wall must still RED — the exemption is gated to the known
@@ -682,6 +701,26 @@ class TestClearingVocabulary:
         # The wall must be INSIDE the quote — an unrelated false-quote does not
         # clear a bare wall elsewhere on the line.
         assert scan_text(_MUST_STAY_RED["g4_unrelated_quote_then_superseded"])
+
+    # ── FIX A' (v1.20.2 follow-up): bare (comma-less) conjunction split ──
+    def test_bare_conjunction_splits_but_no_conjunction_clears(self) -> None:
+        # Both directions: a BARE conjunction between a cue and a wall isolates
+        # the wall in its own cue-less clause → RED (one per conjunction); the
+        # intended clears (no bare cue↔wall conjunction) still CLEAR, and the
+        # quote-covered G4 path — independent of clause splitting — is untouched.
+        for name in (
+            "aprime_bare_and_reproduce_bleed",
+            "aprime_bare_but_reproduce_bleed",
+            "aprime_bare_so_reproduce_bleed",
+            "aprime_bare_yet_reproduce_bleed",
+            "aprime_bare_and_deploy_wall_bleed",
+        ):
+            assert scan_text(_MUST_STAY_RED[name]), f"bare-conjunction {name!r} must RED"
+        # Intended clears survive (no bare cue↔wall conjunction).
+        assert scan_text(_FP_CLEAR["g2_never_a_standing_wall"]) == []
+        assert scan_text(_FP_CLEAR["g2_does_not_reproduce"]) == []
+        assert scan_text(_FP_CLEAR["g4_superseded_after_quote"]) == []
+        assert scan_text(_FP_CLEAR["g1_blockquote_forward_same_family"]) == []
 
     # ── Class (b) (v1.20.2): kit-generated derived-render exemption ──
     def test_render_exempt_files_and_blocks_clear_on_the_render_path(self) -> None:
