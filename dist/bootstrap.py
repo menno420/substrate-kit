@@ -2862,9 +2862,25 @@ mention their method.
 
 What it does: over documents under a measurements-style directory whose badge is
 a result-bearing token, emit ONE advisory per document that presents numeric
-result tables while carrying no provenance marker (``measured`` / ``inferred`` /
-``assumed``). It never inspects individual numbers and never proposes a value —
-it asks only whether the document says where its numbers came from.
+result tables while carrying no **labelled** provenance statement. It never
+inspects individual numbers and never proposes a value — it asks only whether
+the document says where its numbers came from.
+
+Two conditions, deliberately AND-ed — the document must carry the literal label
+``provenance`` (a heading, a bolded lead, a table column) AND at least one word
+of the PL-013 vocabulary (``measured`` / ``inferred`` / ``assumed``).
+
+**Why the label is required, and it is not pedantry.** The first draft tested
+for the vocabulary alone, and measured against the seven spider-swing documents
+this ruling was extracted FROM, it fired on **zero of seven** — every one of
+them already used "measured" incidentally in prose ("the exploit is now
+measured", "measured per track in isolation"). A check with no sensitivity on
+the corpus that motivated it is a false green, which PL-006 calls the check's
+own bug. Emphasis alone does not rescue it either: two of the seven carry
+*bolded* incidental uses. The literal label is the discriminator that survived
+the corpus, because "provenance" is a word nobody writes by accident in a
+results table — and it has the side benefit PL-013 actually wants, that the
+instrument becomes greppable rather than merely present.
 
 Posture — ADVISORY only (warn-only, never exit-affecting): returns a single
 ``list[Finding]`` with no gate tier, wired on the advisory path in ``cli.py``
@@ -2895,12 +2911,19 @@ CLAIM_PROVENANCE_KIND = "claim-provenance"
 _MEASUREMENT_DIRS = ("measurements", "benchmarks", "instrumentation")
 
 # The provenance vocabulary from PL-013. Matched case-insensitively as whole
-# words so "measured", "Measured," and "(measured, 60 fps)" all count, while
-# "remeasured" alone does not satisfy it by accident.
-_RE_PROVENANCE = re.compile(
+# words so "measured", "Measured," and "(measured, 60 fps)" all count.
+_RE_PROVENANCE_WORD = re.compile(
     r"\b(measured|inferred|assumed)\b",
     re.IGNORECASE,
 )
+
+# The deliberate LABEL. Prose about a measurement uses "measured" constantly and
+# the word "provenance" essentially never, which is what makes this the half of
+# the test that carries the signal (see the module docstring for the corpus
+# measurement that forced it). Any shape counts — `## Provenance`, `**Claim
+# provenance (PL-013)**`, a `| Provenance |` table column — because the point is
+# that the author labelled the statement, not that they matched a template.
+_RE_PROVENANCE_LABEL = re.compile(r"\bprovenance\b", re.IGNORECASE)
 
 # A markdown table row carrying at least one number — the shape of a reported
 # result. Deliberately crude: this checker asks whether the document states its
@@ -2963,18 +2986,33 @@ def check_claim_provenance(target, config=None) -> list[Finding]:
             continue  # fail open — an unreadable document is not a verdict
         if not _reports_numbers(text):
             continue
-        if _RE_PROVENANCE.search(text) is not None:
+        labelled = _RE_PROVENANCE_LABEL.search(text) is not None
+        classified = _RE_PROVENANCE_WORD.search(text) is not None
+        if labelled and classified:
             continue
+        if labelled:
+            detail = (
+                "labels a provenance statement but never classifies a claim — "
+                "use the PL-013 vocabulary"
+            )
+        elif classified:
+            detail = (
+                "uses provenance words in prose but carries no labelled "
+                "provenance statement, so the instrument is not findable — "
+                "add one (a `## Provenance` section, or a **Provenance:** lead "
+                "under each result table)"
+            )
+        else:
+            detail = "reports numeric results but states no provenance"
         findings.append(
             Finding(
                 str(relative).replace("\\", "/"),
                 CLAIM_PROVENANCE_KIND,
-                "reports numeric results but states no provenance — mark each "
-                "claim `measured` (with the method AND the instrument's "
-                "resolution), `inferred` (from what), or `assumed` (PL-013). A "
-                "number with no stated instrument has no source to lose to, so "
-                "nothing can ever show it wrong, and it compounds silently into "
-                "the decisions taken on top of it.",
+                f"{detail} — say of each claim `measured` (with the method AND "
+                "the instrument's resolution), `inferred` (from what), or "
+                "`assumed` (PL-013). A number with no stated instrument has no "
+                "source to lose to, so nothing can ever show it wrong, and it "
+                "compounds silently into the decisions taken on top of it.",
             ),
         )
     return findings
@@ -4480,8 +4518,14 @@ cadence (default 14 days).
 
 _CLAIM_PROVENANCE = """\
 This measurement document reports numeric results but never says where the
-numbers came from, so nothing can ever show one of them wrong (PL-013). Mark
-each load-bearing claim with one of three words, inline, at the number:
+numbers came from, so nothing can ever show one of them wrong (PL-013).
+
+Add a LABELLED provenance statement — a `## Provenance` section, a
+`**Provenance:**` lead under each result table, or a `| Provenance |` column.
+The label is required, and not as decoration: using "measured" in prose is
+what every un-retrofitted document already did, so the label is the part that
+distinguishes a stated instrument from an ordinary sentence (and it makes the
+instrument greppable). Then classify each load-bearing claim:
 
 - `measured` — state the METHOD *and* the instrument's resolution:
 

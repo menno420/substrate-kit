@@ -12,10 +12,18 @@ them.
 The load-bearing NEGATIVES are what keep this advisory honest, and most of the
 tests below pin them: a document outside a measurements-style directory never
 flags (ordinary prose quotes numbers constantly), a non-result badge never
-flags (a `plan` may carry illustrative figures), a document with no numeric
-result table never flags, and any one provenance marker anywhere silences the
-whole document. This checker asks ONE binary question — does the document say
-where its numbers came from — and never inspects an individual number.
+flags (a `plan` may carry illustrative figures), and a document with no numeric
+result table never flags. This checker asks ONE binary question — does the
+document say where its numbers came from — and never inspects an individual
+number.
+
+**The sensitivity tests are the ones that matter most here**, and they exist
+because the first draft failed them. Testing for the vocabulary alone
+(`measured` / `inferred` / `assumed`) fired on ZERO of the seven spider-swing
+documents PL-013 was extracted from: every one already used "measured" in
+ordinary prose. `test_incidental_prose_use_still_fires` and its bolded sibling
+are that corpus in miniature, and they are the reason the real test requires a
+labelled provenance statement AND the vocabulary, not either alone.
 """
 
 from __future__ import annotations
@@ -50,7 +58,8 @@ _MARKED = """\
 
 > **Status:** `reference`
 
-Measured from the device recordings, frame-stepped at the native 60 fps.
+**Provenance:** measured from the device recordings, frame-stepped at the
+native 60 fps.
 
 | metric | value |
 | --- | ---: |
@@ -85,13 +94,80 @@ def test_marked_measurement_doc_is_silent(tmp_path: Path):
 
 
 @pytest.mark.parametrize("marker", ["measured", "inferred", "assumed"])
-def test_each_vocabulary_word_silences_the_doc(tmp_path: Path, marker: str):
-    # All three PL-013 words count, in any case, mid-sentence.
+def test_each_vocabulary_word_silences_a_labelled_doc(tmp_path: Path, marker: str):
+    # All three PL-013 words count, in any case, mid-sentence — given a label.
     text = _UNMARKED.replace(
         "| metric | value |",
-        f"Rate {marker.capitalize()} at source resolution.\n\n| metric | value |",
+        f"**Provenance:** {marker.capitalize()} at source resolution.\n\n"
+        "| metric | value |",
     )
     _write(tmp_path, "measurements/2026-08-01-taps.md", text)
+    assert check_claim_provenance(tmp_path) == []
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        # Verbatim shapes from the seven spider-swing documents that motivated
+        # PL-013. Each one satisfied the first draft's vocabulary-only test.
+        "He is right, and the exploit is now measured.",
+        "What each upgrade track is worth, measured per track in isolation.",
+        "This was inferred from L20 footage alone.",
+        # ...including the two that carry the word in BOLD, which is why
+        # emphasis alone was not a sufficient discriminator either.
+        "**He is right, and the exploit is now measured.**",
+        "It reads **0.00 in every policy measured**, at every level.",
+    ],
+)
+def test_incidental_prose_use_still_fires(tmp_path: Path, sentence: str):
+    # THE regression test. A results document that happens to use a provenance
+    # word in prose has not stated its provenance, and a checker that goes
+    # quiet on it is a false green — PL-006 calls that the check's own bug.
+    _write(
+        tmp_path,
+        "measurements/2026-08-01-taps.md",
+        _UNMARKED.replace("| metric | value |", f"{sentence}\n\n| metric | value |"),
+    )
+    findings = check_claim_provenance(tmp_path)
+    assert len(findings) == 1
+    assert "no labelled provenance statement" in findings[0].message
+
+
+def test_label_without_vocabulary_still_fires(tmp_path: Path):
+    # The other half of the AND: labelling a provenance section but never
+    # classifying a claim leaves the reader no better off.
+    _write(
+        tmp_path,
+        "measurements/2026-08-01-taps.md",
+        _UNMARKED.replace(
+            "| metric | value |",
+            "## Provenance\n\nTaken from the recordings.\n\n| metric | value |",
+        ),
+    )
+    findings = check_claim_provenance(tmp_path)
+    assert len(findings) == 1
+    assert "never classifies a claim" in findings[0].message
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        "## Provenance",
+        "### Claim provenance (PL-013)",
+        "**Provenance (PL-013): measured** — 60 fps capture.",
+        "| Metric | Value | Provenance |",
+    ],
+)
+def test_any_label_shape_counts(tmp_path: Path, label: str):
+    # The rule is "the author labelled it", not "the author matched a template".
+    _write(
+        tmp_path,
+        "measurements/2026-08-01-taps.md",
+        _UNMARKED.replace(
+            "| metric | value |",
+            f"{label}\n\nRate measured at 60 fps.\n\n| metric | value |",
+        ),
+    )
     assert check_claim_provenance(tmp_path) == []
 
 

@@ -398,3 +398,16 @@
   would flag every existing document at once, which is exhortation wearing
   enforcement's clothes and the opposite of the nudge intended. PL-007's
   ladder still applies — this is the checker rung, not the written-rule rung.
+- form: The provenance statement must be **labelled** — the literal word
+  "provenance" in a heading, a bolded lead, or a table column — *and* carry the
+  vocabulary. Sprinkling "measured" through prose does not satisfy it. This is
+  not style policing; it is the only shape that measured non-zero. The first
+  checker tested for the vocabulary alone and, run against the seven documents
+  this ruling was extracted FROM, fired on **zero of seven**: every one already
+  used "measured" in ordinary prose ("the exploit is now measured"), and two
+  used it in bold, so emphasis was not a discriminator either. Requiring the
+  label took it to **seven of seven before those documents were retrofitted and
+  zero after**. The ruling about stating your instrument was itself nearly
+  shipped on an unmeasured claim about its own checker; the correction is
+  recorded here rather than quietly fixed, because that is precisely the
+  failure mode PL-013 exists to catch.

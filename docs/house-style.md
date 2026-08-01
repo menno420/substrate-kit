@@ -55,8 +55,10 @@ kit will not carry per-marker config.
   date · "unverified until proven" · "delete this if unreliable over multiple
   sessions."
 - **Claim provenance in measurement docs** (PL-013): a reported number states
-  its instrument — `measured` (method *and* resolution), `inferred` (from
-  what), or `assumed`. Advisory `check_claim_provenance` nudges; never gates.
+  its instrument in a **labelled** statement — `measured` (method *and*
+  resolution), `inferred` (from what), or `assumed`. The label is load-bearing,
+  not decoration; PL-013's `form` field records why. Advisory
+  `check_claim_provenance` nudges; never gates.
 
 ## Rollout order (guided mode)
 

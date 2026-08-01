@@ -58,9 +58,10 @@ that is precisely the gap the number fell through.
 - `src/engine/checks/check_claim_provenance.py` — advisory, input-gated,
   fail-open, full PL-008 provenance + reliability + kill-switch header. One
   finding per *document*, never per row.
-- `tests/test_check_claim_provenance.py` — 23 tests, weighted toward the
+- `tests/test_check_claim_provenance.py` — 33 tests, weighted toward the
   load-bearing negatives (out-of-scope directory, non-result badge, no numeric
-  table, one-row threshold, unreadable file).
+  table, one-row threshold, unreadable file) **and the sensitivity cases the
+  first draft failed** (see below).
 - `src/engine/cli.py` — import + `posture="advisory"` seam, mirroring
   `check_dateless_walls` exactly. Off `STRICT_SUBCHECKS` by design.
 - `src/engine/checks/check_remediate.py` — `claim-provenance` remediation block
@@ -76,14 +77,42 @@ shadowed. The fix was better than the original: use the exported
 `check_docs.badge_token()` — the kit's own "one badge reader, not per-module
 copies" — which already fails open on an unreadable file.
 
-**Verify.** `python3 -m pytest -q` → 2097 passed, 1 skipped.
+## The checker was wrong, and the corpus is what caught it
+
+Worth recording in full, because the rule is about exactly this.
+
+The first draft tested for the **vocabulary alone** — does `measured`,
+`inferred` or `assumed` appear anywhere. It passed 23 tests, survived three
+mutants, and worked end-to-end through the dist. Then it was run against the
+**seven real spider-swing documents PL-013 was extracted from**, and fired on
+**zero of seven**. Every one of them already used "measured" in ordinary prose
+— *"the exploit is now measured"*, *"measured per track in isolation"* — so the
+check had essentially **no sensitivity on the only corpus that mattered**.
+
+Bolding was tried next as a discriminator and also failed: two of the seven
+carry *bolded* incidental uses.
+
+What survived was requiring a **labelled** statement — the literal word
+"provenance" — AND the vocabulary. That measures **7/7 before the retrofit,
+0/7 after**. It also gives PL-013 something the word-sprinkle version never
+had: the instrument becomes greppable.
+
+**This is the ruling's own failure mode, committed while writing the ruling.**
+"The checker guards this class" was a claim about the world, it went into a
+PR body and a session card before it was tested against real data, and it was
+false. It is recorded in PL-013's `form` field rather than quietly fixed,
+because a silently-corrected false claim teaches nobody.
+
+**Verify.** `python3 -m pytest -q` → 2107 passed, 1 skipped.
 `python3 dist/bootstrap.py check --strict` → exit 0, new advisory silent on this
 repo (input-gated: the kit has no measurements directory).
 
-**Falsified before trusting it**, three mutants against the test file:
-never-fires → 8 failures; ignore-markers → 4; drop-the-directory-gate → 1. All
-restored green. Then end-to-end through the **built dist** on a synthetic tree:
-unmarked doc → 1 `claim-provenance` finding; add one `measured` sentence → 0.
+**Falsified before trusting it.** Three mutants against the test file:
+never-fires → 8 failures; ignore-markers → 4; drop-the-directory-gate → 1; all
+restored green. End-to-end through the **built dist** on a synthetic tree.
+Then the one that actually mattered — the real corpus, both states, above. The
+five verbatim prose sentences that beat the first draft are now parametrized
+regression cases in `test_incidental_prose_use_still_fires`.
 
 ## 💡 Session idea
 

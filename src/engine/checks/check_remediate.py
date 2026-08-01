@@ -93,8 +93,14 @@ cadence (default 14 days).
 
 _CLAIM_PROVENANCE = """\
 This measurement document reports numeric results but never says where the
-numbers came from, so nothing can ever show one of them wrong (PL-013). Mark
-each load-bearing claim with one of three words, inline, at the number:
+numbers came from, so nothing can ever show one of them wrong (PL-013).
+
+Add a LABELLED provenance statement — a `## Provenance` section, a
+`**Provenance:**` lead under each result table, or a `| Provenance |` column.
+The label is required, and not as decoration: using "measured" in prose is
+what every un-retrofitted document already did, so the label is the part that
+distinguishes a stated instrument from an ordinary sentence (and it makes the
+instrument greppable). Then classify each load-bearing claim:
 
 - `measured` — state the METHOD *and* the instrument's resolution:
 
