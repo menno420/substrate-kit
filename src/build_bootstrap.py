@@ -70,6 +70,13 @@ MODULE_ORDER = (
     # parseable date, so it can never trip the staleness re-verify rule. Advisory-
     # only, never exit-affecting.
     "checks/check_dateless_walls.py",
+    # After check_docs.py (its only engine reference is check_docs.Finding): the
+    # measurement-claim provenance advisory (PL-013) — warns when a result-badged
+    # document under a measurements-style directory reports numeric tables while
+    # stating no provenance (`measured` / `inferred` / `assumed`). A number with
+    # no stated instrument has no source to lose to, so PL-006's "source wins"
+    # can never adjudicate it. Advisory-only, never exit-affecting.
+    "checks/check_claim_provenance.py",
     # After check_stale_walls.py (its only engine reference is check_docs.Finding):
     # the append-log ⇄ Walls-correction disagreement advisory (groom R7) — warns
     # when the two disagree on a capability; advisory-only, never exit-affecting.

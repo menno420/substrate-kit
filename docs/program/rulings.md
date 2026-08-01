@@ -364,3 +364,37 @@
   is the ask-first brake that survives generalization; PL-002's scope
   deferral ("he can extend PL-002 to all work at any time") is discharged
   by this block for seat work.
+
+## [PL-013] A measured claim carries its instrument
+
+- status: decided
+- date: 2026-08-01
+- provenance: spider-swing session 2026-08-01 (the owner-play calibration →
+  policy-search → replay-review run). The owner corrected ~14 published claims
+  in a single session; the measurements were overwhelmingly sound and the
+  **summary sentences** were not. The load-bearing case: a tap rate of
+  "4.71 taps/s" was sampled at 30 fps from a natively 60 fps recording, then a
+  design constraint (frozen bot perception limits) was built on that number,
+  then that constraint was cited as *the reason the design was trustworthy* —
+  three layers, each internally consistent, none catchable by any gate. It was
+  caught only because the owner knew how fast he taps. His own naming of the
+  failure class — "verifiable but didn't verify" — is what this ruling
+  mechanizes.
+- verdict: A numeric claim in a measurement document **carries its provenance
+  inline**, in one of three forms: **`measured`** — with the method *and the
+  instrument's resolution*; **`inferred`** — naming what it was derived from;
+  or **`assumed`**. Resolution is not optional decoration: "4.71 taps/s
+  (measured)" reads complete while "4.71 taps/s (measured, 30 fps sampling)"
+  puts the defect on the page, and that difference is the whole ruling. A
+  document that reports numbers without provenance is a claim about the world
+  wearing the costume of a result.
+- why: PL-006 says source wins and a false green is the check's bug — but a
+  number with no stated instrument has no source to lose to, so nothing can
+  ever be shown wrong by it. Recording the instrument is what makes a
+  measurement falsifiable at all, and an unfalsifiable number compounds
+  silently into the design decisions taken on top of it.
+- scope: Measurement/instrumentation documents. Deliberately ADVISORY at the
+  gate (`check_claim_provenance`, warn-only, off STRICT_SUBCHECKS): a hard red
+  would flag every existing document at once, which is exhortation wearing
+  enforcement's clothes and the opposite of the nudge intended. PL-007's
+  ladder still applies — this is the checker rung, not the written-rule rung.

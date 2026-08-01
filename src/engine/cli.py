@@ -55,6 +55,7 @@ from engine.checks.check_folded_gate import check_folded_gate
 from engine.checks.check_fastlane_symmetry import check_fastlane_symmetry
 from engine.checks.check_stale_walls import check_stale_walls
 from engine.checks.check_dateless_walls import check_dateless_walls
+from engine.checks.check_claim_provenance import check_claim_provenance
 from engine.checks.check_wall_ledger_agreement import check_wall_ledger_agreement
 from engine.checks.check_recipe_applies_when import check_recipe_applies_when
 from engine.checks.check_recipe_signature_honesty import (
@@ -1453,6 +1454,17 @@ def cmd_check(
     # posture="advisory" seam below (NOT _extra_check_findings) and stays off
     # STRICT_SUBCHECKS.
     dateless_walls_advisories = check_dateless_walls(target, config)
+    # Measurement-claim provenance advisory (PL-013): warns when a result-badged
+    # document under a measurements-style directory reports numeric tables while
+    # stating no provenance (`measured` / `inferred` / `assumed`). PL-006 says
+    # source wins — but a number with NO stated instrument has no source to lose
+    # to, so nothing can ever show it wrong and it compounds silently into every
+    # decision taken on top of it. Advisory-only, NEVER exit-affecting: a hard
+    # red would flag every existing measurement document at once, which is
+    # exhortation wearing enforcement's clothes and the opposite of the intended
+    # nudge (PL-013 scope). Rides the posture="advisory" seam below (NOT
+    # _extra_check_findings) and stays off STRICT_SUBCHECKS.
+    claim_provenance_advisories = check_claim_provenance(target, config)
     wall_ledger_advisories = check_wall_ledger_agreement(target, config)
     # Fast-lane prefix symmetry (night-run groom R8): warns when a host's
     # ci.yml claims-only fast-lane guard cards a prefix its auto-merge-enabler
@@ -2105,6 +2117,27 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=dateless_walls_advisories,
+        )
+    if claim_provenance_advisories and not status_only:
+        # Same warn-only contract as the advisories above (PL-013): a document
+        # that reports numbers without saying where they came from is a "state
+        # the instrument" nudge, not a defect that should fail an adopter whose
+        # measurement docs predate the convention. Surfaced +
+        # telemetry-recorded, NEVER counted toward the exit code (deliberately
+        # off STRICT_SUBCHECKS, the dateless-wall sibling's reason).
+        _emit(
+            f"check: {len(claim_provenance_advisories)} claim-provenance "
+            "advisory warning(s) (never exit-affecting):",
+        )
+        for finding in claim_provenance_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=claim_provenance_advisories,
         )
     if wall_ledger_advisories and not status_only:
         # Same warn-only contract as the advisories above (night-run groom R7):

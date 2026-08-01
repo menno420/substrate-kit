@@ -2839,6 +2839,146 @@ def check_dateless_walls(target, config=None) -> list[Finding]:
         )
     return findings
 
+# --- engine/checks/check_claim_provenance.py ---
+"""Measurement-claim provenance advisory — warn-only, NEVER exit-affecting.
+
+Provenance: PL-013 (``docs/program/rulings.md``), imported from the spider-swing
+session of 2026-08-01. The owner corrected ~14 published claims in a single run;
+the *measurements* were overwhelmingly sound and the **summary sentences** were
+not. The load-bearing case: "4.71 taps/s" was sampled at 30 fps from a natively
+60 fps recording, a design constraint was built on that number, and that
+constraint was then cited as the reason the design was trustworthy — three
+layers, each internally consistent, none catchable by any gate. It was caught
+only because the owner knew how fast he taps.
+
+Why this exists: PL-006 says source wins and a false green is the check's bug.
+But a number with **no stated instrument has no source to lose to** — nothing
+can ever show it wrong. Recording the instrument is what makes a measurement
+falsifiable at all, and an unfalsifiable number compounds silently into every
+decision taken on top of it. The owner's own name for the failure class,
+"verifiable but didn't verify", is what this checker mechanizes: it puts the
+question on the page instead of leaving it to whether the author happened to
+mention their method.
+
+What it does: over documents under a measurements-style directory whose badge is
+a result-bearing token, emit ONE advisory per document that presents numeric
+result tables while carrying no provenance marker (``measured`` / ``inferred`` /
+``assumed``). It never inspects individual numbers and never proposes a value —
+it asks only whether the document says where its numbers came from.
+
+Posture — ADVISORY only (warn-only, never exit-affecting): returns a single
+``list[Finding]`` with no gate tier, wired on the advisory path in ``cli.py``
+(``posture="advisory"``) exactly like ``check_dateless_walls``. It is
+deliberately NOT in ``STRICT_SUBCHECKS``: a hard red would flag every existing
+measurement document at once, which is exhortation wearing enforcement's clothes
+and the precise opposite of the nudge intended (PL-013 scope). Input-gated +
+fail-open like every checker: no measurements directory, or an unreadable file,
+yields nothing (an absent or unreadable document is not a verdict). Stdlib only.
+
+Reliability: UNVERIFIED as of 2026-08-01 — confirm its output against ground
+truth across a few sessions before trusting it. **Delete this checker if it
+proves unreliable over multiple sessions** (PL-008 kill-switch); a lying check
+left in place is worse than no check.
+"""
+
+
+
+
+# Named CLAIM_PROVENANCE_KIND, not a bare FINDING_KIND: the dist concatenates
+# every engine module into one namespace, where a second top-level
+# ``FINDING_KIND`` would collide (check_folded_gate.py already owns one).
+CLAIM_PROVENANCE_KIND = "claim-provenance"
+
+# Directory names that hold instrumentation output. A document only falls in
+# scope when it lives under one of these — ordinary prose docs quote numbers all
+# the time and are not making measurement claims.
+_MEASUREMENT_DIRS = ("measurements", "benchmarks", "instrumentation")
+
+# The provenance vocabulary from PL-013. Matched case-insensitively as whole
+# words so "measured", "Measured," and "(measured, 60 fps)" all count, while
+# "remeasured" alone does not satisfy it by accident.
+_RE_PROVENANCE = re.compile(
+    r"\b(measured|inferred|assumed)\b",
+    re.IGNORECASE,
+)
+
+# A markdown table row carrying at least one number — the shape of a reported
+# result. Deliberately crude: this checker asks whether the document states its
+# provenance at all, never whether any particular row is well-sourced.
+_RE_NUMERIC_TABLE_ROW = re.compile(r"^\s*\|.*\d.*\|")
+
+# Badge tokens whose documents report results. A `plan` or `ideas` doc may carry
+# illustrative numbers without claiming to have measured anything.
+_RESULT_BADGES = ("reference", "living-ledger", "audit")
+
+
+def _reports_numbers(text: str) -> bool:
+    """True when the document presents at least two numeric table rows.
+
+    Two rather than one so a lone header-ish row or a single incidental figure
+    does not pull a prose document into scope.
+    """
+    hits = 0
+    for line in text.splitlines():
+        if _RE_NUMERIC_TABLE_ROW.match(line) is not None:
+            hits += 1
+            if hits >= 2:
+                return True
+    return False
+
+
+def _in_measurement_dir(relative_parts) -> bool:
+    return any(part.lower() in _MEASUREMENT_DIRS for part in relative_parts)
+
+
+def check_claim_provenance(target, config=None) -> list[Finding]:
+    """Return advisory findings for measurement docs that state no provenance.
+
+    Advisory only — the caller wires this on the ``posture="advisory"`` path and
+    NEVER counts it toward the exit code. Input-gated + fail-open: an absent
+    ``docs/`` tree, or an unreadable file, yields no finding. ``config`` is
+    accepted for call-site symmetry with its advisory siblings but unused (there
+    is no threshold — stating provenance is a binary property).
+    """
+    docs_root = target / "docs"
+    if not docs_root.is_dir():
+        return []  # input-gated: nothing to scan
+
+    findings: list[Finding] = []
+    for path in sorted(docs_root.rglob("*.md")):
+        try:
+            relative = path.relative_to(docs_root)
+        except ValueError:  # pragma: no cover - rglob keeps these under root
+            continue
+        if not _in_measurement_dir(relative.parts[:-1]):
+            continue
+        # check_docs.badge_token is the kit's ONE badge reader (its own words:
+        # "one badge reader, not per-module copies"), and it already fails open
+        # to None on an unreadable or non-UTF-8 file.
+        if badge_token(path) not in _RESULT_BADGES:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue  # fail open — an unreadable document is not a verdict
+        if not _reports_numbers(text):
+            continue
+        if _RE_PROVENANCE.search(text) is not None:
+            continue
+        findings.append(
+            Finding(
+                str(relative).replace("\\", "/"),
+                CLAIM_PROVENANCE_KIND,
+                "reports numeric results but states no provenance — mark each "
+                "claim `measured` (with the method AND the instrument's "
+                "resolution), `inferred` (from what), or `assumed` (PL-013). A "
+                "number with no stated instrument has no source to lose to, so "
+                "nothing can ever show it wrong, and it compounds silently into "
+                "the decisions taken on top of it.",
+            ),
+        )
+    return findings
+
 # --- engine/checks/check_wall_ledger_agreement.py ---
 """Append-log ⇄ Walls-correction disagreement advisory — warn-only, NEVER exit-affecting.
 
@@ -4338,6 +4478,31 @@ it was actually last confirmed. Once dated, check_stale_walls owns its re-verify
 cadence (default 14 days).
 """
 
+_CLAIM_PROVENANCE = """\
+This measurement document reports numeric results but never says where the
+numbers came from, so nothing can ever show one of them wrong (PL-013). Mark
+each load-bearing claim with one of three words, inline, at the number:
+
+- `measured` — state the METHOD *and* the instrument's resolution:
+
+      Tap rate: 6.60/s (measured — device capture, frame-stepped at 60 fps).
+
+  Resolution is not optional. The failure this rule exists for was a rate
+  sampled at 30 fps from a natively 60 fps recording: the method was named,
+  the resolution was not, and the number came out 40% low.
+
+- `inferred` — say what it was inferred FROM, so the derivation can be redone:
+
+      Reach: ~220 px (inferred from surface_snap_distance in the swing config).
+
+- `assumed` — say so plainly; an assumption on the page can be challenged, an
+  assumption inside a summary sentence cannot.
+
+A document-level "all figures measured from X unless marked otherwise"
+preamble clears this advisory, and is the right shape when one instrument
+produced everything.
+"""
+
 _WALL_LEDGER_DISAGREE = """\
 The `## Walls` correction row and the newest `## Append log` entry for this
 capability disagree. Reconcile them in docs/CAPABILITIES.md so both state the
@@ -4404,6 +4569,7 @@ REMEDIATIONS: dict[str, str] = {
     "recipe-applies-when": _RECIPE_APPLIES_WHEN,
     "stale-wall": _STALE_WALL,
     "dateless-wall": _DATELESS_WALL,
+    "claim-provenance": _CLAIM_PROVENANCE,
     "wall-ledger-disagree": _WALL_LEDGER_DISAGREE,
     "baton-unresolved": _BATON_UNRESOLVED,
     "baton-stale-deliverable": _BATON_STALE_DELIVERABLE,
@@ -25405,6 +25571,17 @@ def cmd_check(
     # posture="advisory" seam below (NOT _extra_check_findings) and stays off
     # STRICT_SUBCHECKS.
     dateless_walls_advisories = check_dateless_walls(target, config)
+    # Measurement-claim provenance advisory (PL-013): warns when a result-badged
+    # document under a measurements-style directory reports numeric tables while
+    # stating no provenance (`measured` / `inferred` / `assumed`). PL-006 says
+    # source wins — but a number with NO stated instrument has no source to lose
+    # to, so nothing can ever show it wrong and it compounds silently into every
+    # decision taken on top of it. Advisory-only, NEVER exit-affecting: a hard
+    # red would flag every existing measurement document at once, which is
+    # exhortation wearing enforcement's clothes and the opposite of the intended
+    # nudge (PL-013 scope). Rides the posture="advisory" seam below (NOT
+    # _extra_check_findings) and stays off STRICT_SUBCHECKS.
+    claim_provenance_advisories = check_claim_provenance(target, config)
     wall_ledger_advisories = check_wall_ledger_agreement(target, config)
     # Fast-lane prefix symmetry (night-run groom R8): warns when a host's
     # ci.yml claims-only fast-lane guard cards a prefix its auto-merge-enabler
@@ -26057,6 +26234,27 @@ def cmd_check(
             surface="check",
             posture="advisory",
             findings=dateless_walls_advisories,
+        )
+    if claim_provenance_advisories and not status_only:
+        # Same warn-only contract as the advisories above (PL-013): a document
+        # that reports numbers without saying where they came from is a "state
+        # the instrument" nudge, not a defect that should fail an adopter whose
+        # measurement docs predate the convention. Surfaced +
+        # telemetry-recorded, NEVER counted toward the exit code (deliberately
+        # off STRICT_SUBCHECKS, the dateless-wall sibling's reason).
+        _emit(
+            f"check: {len(claim_provenance_advisories)} claim-provenance "
+            "advisory warning(s) (never exit-affecting):",
+        )
+        for finding in claim_provenance_advisories:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=claim_provenance_advisories,
         )
     if wall_ledger_advisories and not status_only:
         # Same warn-only contract as the advisories above (night-run groom R7):
