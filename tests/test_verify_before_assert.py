@@ -51,6 +51,10 @@ _CLAIM_PINS = (
     # the self-directed case, which is the one that goes unchecked
     "A plausible cause is not a checked cause",
     "check the explanation too",
+    # the owner case: not command-checkable, and the one that gets DOCUMENTED
+    "A claim about the owner is checked by asking them.",
+    "the repository is evidence of the work, not of the person",
+    "If the owner did not say it, ask",
 )
 
 
@@ -77,3 +81,16 @@ def test_claim_rule_is_a_practice_not_a_declared_limitation():
     section = section.split("\n## ", 1)[0].lower()
     for forbidden in ("cannot ", "can't ", "unable to", "not allowed to", "no access"):
         assert forbidden not in section, forbidden
+
+
+def test_owner_claim_rule_names_the_surface_it_protects():
+    # The owner clause exists because ${owner_profile} is not a note: it renders
+    # into owner-profile.md.tmpl AND into this template's own working-style
+    # section, so a wrong inference about the owner reaches every later session
+    # as boot context. If either slot moves, this rule's stated stake is stale.
+    claude = _template("CLAUDE.md.tmpl")
+    profile = _template("owner-profile.md.tmpl")
+    assert "${owner_profile}" in claude
+    assert "${owner_profile}" in profile
+    section = claude.split("## Verifying a claim", 1)[1].split("\n## ", 1)[0]
+    assert "docs/owner-profile.md" in section
