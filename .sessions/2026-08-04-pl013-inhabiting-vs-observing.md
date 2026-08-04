@@ -4,6 +4,26 @@
 
 - **📊 Model:** opus-5 · high · docs-only
 
+💡 Session idea: **the kit had the evidence for its own founding claim and no
+statement of it.** Three unrelated findings in one adopter — an art pipeline
+that survived only because it was committed, a queue that collapsed on a
+non-integrated surface, a convention drifted off while readable — were all
+instances of one unwritten proposition. A body of findings that all point the
+same way is a **missing ruling**, not a finished investigation; the signal is
+repetition across unrelated tasks, and the fix is to mint the law once where
+every repo can cite it rather than restate it in each finding.
+
+## previous-session review
+
+`2026-08-03-verify-before-assert-rule.md` put *"if a statement is checkable
+with one command, run the command before writing the sentence"* into the
+agreement template. This session is the same discipline applied one level up:
+that rule governs **stating**, PL-013 governs **binding** — a checked statement
+still does not constrain a session that merely reads it. The two compose, and
+this session proved it the hard way: the kit's own conventions were readable to
+me and skipped anyway, until the label gate and the session-card gate enforced
+them.
+
 ## What shipped
 
 `docs/program/rulings.md` gains **[PL-013] Inhabiting beats observing** — the
