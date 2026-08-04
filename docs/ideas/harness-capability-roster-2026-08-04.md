@@ -1,6 +1,10 @@
 ---
 state: captured
-origin: owner:fleet-manager hub chat 2026-08-04
+origin: owner
+shipped_pr: null
+shipped_repo: null
+merged_date: null
+outcome: open
 ---
 
 # A capability roster injected by the harness, not recalled by the model (2026-08-04)
