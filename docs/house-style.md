@@ -54,10 +54,10 @@ kit will not carry per-marker config.
 - **Provenance + reliability header** on every adopted tool (PL-008): why ·
   date · "unverified until proven" · "delete this if unreliable over multiple
   sessions."
-- **Claim provenance in measurement docs** (PL-013): a reported number states
+- **Claim provenance in measurement docs** (PL-014): a reported number states
   its instrument in a **labelled** statement — `measured` (method *and*
   resolution), `inferred` (from what), or `assumed`. The label is load-bearing,
-  not decoration; PL-013's `form` field records why. Advisory
+  not decoration; PL-014's `form` field records why. Advisory
   `check_claim_provenance` nudges; never gates.
 
 ## Rollout order (guided mode)

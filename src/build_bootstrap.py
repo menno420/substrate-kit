@@ -71,7 +71,7 @@ MODULE_ORDER = (
     # only, never exit-affecting.
     "checks/check_dateless_walls.py",
     # After check_docs.py (its only engine reference is check_docs.Finding): the
-    # measurement-claim provenance advisory (PL-013) — warns when a result-badged
+    # measurement-claim provenance advisory (PL-014) — warns when a result-badged
     # document under a measurements-style directory reports numeric tables while
     # stating no provenance (`measured` / `inferred` / `assumed`). A number with
     # no stated instrument has no source to lose to, so PL-006's "source wins"

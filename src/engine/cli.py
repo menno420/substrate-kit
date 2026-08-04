@@ -1454,7 +1454,7 @@ def cmd_check(
     # posture="advisory" seam below (NOT _extra_check_findings) and stays off
     # STRICT_SUBCHECKS.
     dateless_walls_advisories = check_dateless_walls(target, config)
-    # Measurement-claim provenance advisory (PL-013): warns when a result-badged
+    # Measurement-claim provenance advisory (PL-014): warns when a result-badged
     # document under a measurements-style directory reports numeric tables while
     # stating no provenance (`measured` / `inferred` / `assumed`). PL-006 says
     # source wins — but a number with NO stated instrument has no source to lose
@@ -1462,7 +1462,7 @@ def cmd_check(
     # decision taken on top of it. Advisory-only, NEVER exit-affecting: a hard
     # red would flag every existing measurement document at once, which is
     # exhortation wearing enforcement's clothes and the opposite of the intended
-    # nudge (PL-013 scope). Rides the posture="advisory" seam below (NOT
+    # nudge (PL-014 scope). Rides the posture="advisory" seam below (NOT
     # _extra_check_findings) and stays off STRICT_SUBCHECKS.
     claim_provenance_advisories = check_claim_provenance(target, config)
     wall_ledger_advisories = check_wall_ledger_agreement(target, config)
@@ -2119,7 +2119,7 @@ def cmd_check(
             findings=dateless_walls_advisories,
         )
     if claim_provenance_advisories and not status_only:
-        # Same warn-only contract as the advisories above (PL-013): a document
+        # Same warn-only contract as the advisories above (PL-014): a document
         # that reports numbers without saying where they came from is a "state
         # the instrument" nudge, not a defect that should fail an adopter whose
         # measurement docs predate the convention. Surfaced +

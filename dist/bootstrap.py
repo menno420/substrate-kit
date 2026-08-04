@@ -2842,7 +2842,7 @@ def check_dateless_walls(target, config=None) -> list[Finding]:
 # --- engine/checks/check_claim_provenance.py ---
 """Measurement-claim provenance advisory — warn-only, NEVER exit-affecting.
 
-Provenance: PL-013 (``docs/program/rulings.md``), imported from the spider-swing
+Provenance: PL-014 (``docs/program/rulings.md``), imported from the spider-swing
 session of 2026-08-01. The owner corrected ~14 published claims in a single run;
 the *measurements* were overwhelmingly sound and the **summary sentences** were
 not. The load-bearing case: "4.71 taps/s" was sampled at 30 fps from a natively
@@ -2868,7 +2868,7 @@ the document says where its numbers came from.
 
 Two conditions, deliberately AND-ed — the document must carry the literal label
 ``provenance`` (a heading, a bolded lead, a table column) AND at least one word
-of the PL-013 vocabulary (``measured`` / ``inferred`` / ``assumed``).
+of the PL-014 vocabulary (``measured`` / ``inferred`` / ``assumed``).
 
 **Why the label is required, and it is not pedantry.** The first draft tested
 for the vocabulary alone, and measured against the seven spider-swing documents
@@ -2879,7 +2879,7 @@ the corpus that motivated it is a false green, which PL-006 calls the check's
 own bug. Emphasis alone does not rescue it either: two of the seven carry
 *bolded* incidental uses. The literal label is the discriminator that survived
 the corpus, because "provenance" is a word nobody writes by accident in a
-results table — and it has the side benefit PL-013 actually wants, that the
+results table — and it has the side benefit PL-014 actually wants, that the
 instrument becomes greppable rather than merely present.
 
 Posture — ADVISORY only (warn-only, never exit-affecting): returns a single
@@ -2887,7 +2887,7 @@ Posture — ADVISORY only (warn-only, never exit-affecting): returns a single
 (``posture="advisory"``) exactly like ``check_dateless_walls``. It is
 deliberately NOT in ``STRICT_SUBCHECKS``: a hard red would flag every existing
 measurement document at once, which is exhortation wearing enforcement's clothes
-and the precise opposite of the nudge intended (PL-013 scope). Input-gated +
+and the precise opposite of the nudge intended (PL-014 scope). Input-gated +
 fail-open like every checker: no measurements directory, or an unreadable file,
 yields nothing (an absent or unreadable document is not a verdict). Stdlib only.
 
@@ -2910,7 +2910,7 @@ CLAIM_PROVENANCE_KIND = "claim-provenance"
 # the time and are not making measurement claims.
 _MEASUREMENT_DIRS = ("measurements", "benchmarks", "instrumentation")
 
-# The provenance vocabulary from PL-013. Matched case-insensitively as whole
+# The provenance vocabulary from PL-014. Matched case-insensitively as whole
 # words so "measured", "Measured," and "(measured, 60 fps)" all count.
 _RE_PROVENANCE_WORD = re.compile(
     r"\b(measured|inferred|assumed)\b",
@@ -2921,7 +2921,7 @@ _RE_PROVENANCE_WORD = re.compile(
 # the word "provenance" essentially never, which is what makes this the half of
 # the test that carries the signal (see the module docstring for the corpus
 # measurement that forced it). Any shape counts — `## Provenance`, `**Claim
-# provenance (PL-013)**`, a `| Provenance |` table column — because the point is
+# provenance (PL-014)**`, a `| Provenance |` table column — because the point is
 # that the author labelled the statement, not that they matched a template.
 _RE_PROVENANCE_LABEL = re.compile(r"\bprovenance\b", re.IGNORECASE)
 
@@ -2993,7 +2993,7 @@ def check_claim_provenance(target, config=None) -> list[Finding]:
         if labelled:
             detail = (
                 "labels a provenance statement but never classifies a claim — "
-                "use the PL-013 vocabulary"
+                "use the PL-014 vocabulary"
             )
         elif classified:
             detail = (
@@ -3010,7 +3010,7 @@ def check_claim_provenance(target, config=None) -> list[Finding]:
                 CLAIM_PROVENANCE_KIND,
                 f"{detail} — say of each claim `measured` (with the method AND "
                 "the instrument's resolution), `inferred` (from what), or "
-                "`assumed` (PL-013). A number with no stated instrument has no "
+                "`assumed` (PL-014). A number with no stated instrument has no "
                 "source to lose to, so nothing can ever show it wrong, and it "
                 "compounds silently into the decisions taken on top of it.",
             ),
@@ -4518,7 +4518,7 @@ cadence (default 14 days).
 
 _CLAIM_PROVENANCE = """\
 This measurement document reports numeric results but never says where the
-numbers came from, so nothing can ever show one of them wrong (PL-013).
+numbers came from, so nothing can ever show one of them wrong (PL-014).
 
 Add a LABELLED provenance statement — a `## Provenance` section, a
 `**Provenance:**` lead under each result table, or a `| Provenance |` column.
@@ -25621,7 +25621,7 @@ def cmd_check(
     # posture="advisory" seam below (NOT _extra_check_findings) and stays off
     # STRICT_SUBCHECKS.
     dateless_walls_advisories = check_dateless_walls(target, config)
-    # Measurement-claim provenance advisory (PL-013): warns when a result-badged
+    # Measurement-claim provenance advisory (PL-014): warns when a result-badged
     # document under a measurements-style directory reports numeric tables while
     # stating no provenance (`measured` / `inferred` / `assumed`). PL-006 says
     # source wins — but a number with NO stated instrument has no source to lose
@@ -25629,7 +25629,7 @@ def cmd_check(
     # decision taken on top of it. Advisory-only, NEVER exit-affecting: a hard
     # red would flag every existing measurement document at once, which is
     # exhortation wearing enforcement's clothes and the opposite of the intended
-    # nudge (PL-013 scope). Rides the posture="advisory" seam below (NOT
+    # nudge (PL-014 scope). Rides the posture="advisory" seam below (NOT
     # _extra_check_findings) and stays off STRICT_SUBCHECKS.
     claim_provenance_advisories = check_claim_provenance(target, config)
     wall_ledger_advisories = check_wall_ledger_agreement(target, config)
@@ -26286,7 +26286,7 @@ def cmd_check(
             findings=dateless_walls_advisories,
         )
     if claim_provenance_advisories and not status_only:
-        # Same warn-only contract as the advisories above (PL-013): a document
+        # Same warn-only contract as the advisories above (PL-014): a document
         # that reports numbers without saying where they came from is a "state
         # the instrument" nudge, not a defect that should fail an adopter whose
         # measurement docs predate the convention. Surfaced +

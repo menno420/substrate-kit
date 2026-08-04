@@ -93,7 +93,7 @@ cadence (default 14 days).
 
 _CLAIM_PROVENANCE = """\
 This measurement document reports numeric results but never says where the
-numbers came from, so nothing can ever show one of them wrong (PL-013).
+numbers came from, so nothing can ever show one of them wrong (PL-014).
 
 Add a LABELLED provenance statement — a `## Provenance` section, a
 `**Provenance:**` lead under each result table, or a `| Provenance |` column.

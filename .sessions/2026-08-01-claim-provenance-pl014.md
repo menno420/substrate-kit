@@ -1,4 +1,4 @@
-# PL-013 — a measured claim carries its instrument (+ its advisory checker)
+# PL-014 — a measured claim carries its instrument (+ its advisory checker)
 
 > **Status:** `complete`
 
@@ -9,7 +9,7 @@ the /substrate-kit and add it there, you should be able to determine the correct
 place to add it, if not then the substrate kit itself is failing."* The kit's
 navigability was explicitly the thing under test.
 
-**About to do:** (A) append `## [PL-013]` to `docs/program/rulings.md`;
+**About to do:** (A) append `## [PL-014]` to `docs/program/rulings.md`;
 (B) build `check_claim_provenance` as an advisory checker + its test file;
 (C) wire it into `cli.py`'s `posture="advisory"` seam, `MODULE_ORDER`, and the
 remediation registry; (D) one citing line in `docs/house-style.md`; (E) rebuild
@@ -47,13 +47,13 @@ number; the constraint was then cited as the reason the design was trustworthy.
 Each layer was internally consistent, so no gate could see any of them. It was
 caught only because the owner knew how fast he taps.
 
-That is why "measured" is not sufficient on its own in PL-013's verdict: the
+That is why "measured" is not sufficient on its own in PL-014's verdict: the
 method *was* named on that claim. The **instrument's resolution** was not, and
 that is precisely the gap the number fell through.
 
 ## What shipped
 
-- `docs/program/rulings.md` — `## [PL-013]`. Scope declares it deliberately
+- `docs/program/rulings.md` — `## [PL-014]`. Scope declares it deliberately
   advisory; `check_program_law` green.
 - `src/engine/checks/check_claim_provenance.py` — advisory, input-gated,
   fail-open, full PL-008 provenance + reliability + kill-switch header. One
@@ -67,7 +67,7 @@ that is precisely the gap the number fell through.
 - `src/engine/checks/check_remediate.py` — `claim-provenance` remediation block
   (S8 coverage lesson: every emittable advisory kind carries one).
 - `src/build_bootstrap.py` + rebuilt `dist/bootstrap.py`.
-- `docs/house-style.md` — one line citing PL-013 by ID, body not copied.
+- `docs/house-style.md` — one line citing PL-014 by ID, body not copied.
 
 **A collision the kit caught, not me.** My first draft defined a private
 `_BADGE_RE`; `test_check_namespace.py` failed with
@@ -84,7 +84,7 @@ Worth recording in full, because the rule is about exactly this.
 The first draft tested for the **vocabulary alone** — does `measured`,
 `inferred` or `assumed` appear anywhere. It passed 23 tests, survived three
 mutants, and worked end-to-end through the dist. Then it was run against the
-**seven real spider-swing documents PL-013 was extracted from**, and fired on
+**seven real spider-swing documents PL-014 was extracted from**, and fired on
 **zero of seven**. Every one of them already used "measured" in ordinary prose
 — *"the exploit is now measured"*, *"measured per track in isolation"* — so the
 check had essentially **no sensitivity on the only corpus that mattered**.
@@ -94,13 +94,13 @@ carry *bolded* incidental uses.
 
 What survived was requiring a **labelled** statement — the literal word
 "provenance" — AND the vocabulary. That measures **7/7 before the retrofit,
-0/7 after**. It also gives PL-013 something the word-sprinkle version never
+0/7 after**. It also gives PL-014 something the word-sprinkle version never
 had: the instrument becomes greppable.
 
 **This is the ruling's own failure mode, committed while writing the ruling.**
 "The checker guards this class" was a claim about the world, it went into a
 PR body and a session card before it was tested against real data, and it was
-false. It is recorded in PL-013's `form` field rather than quietly fixed,
+false. It is recorded in PL-014's `form` field rather than quietly fixed,
 because a silently-corrected false claim teaches nobody.
 
 **Verify.** `python3 -m pytest -q` → 2107 passed, 1 skipped.
@@ -117,7 +117,7 @@ regression cases in `test_incidental_prose_use_still_fires`.
 ## 💡 Session idea
 
 **The advisory that would have caught the compounding, not just the source.**
-PL-013 makes a number falsifiable; it does nothing about the third layer, where
+PL-014 makes a number falsifiable; it does nothing about the third layer, where
 a *constraint derived from* the number gets cited as evidence that the design is
 sound. A cheap complement: warn when a doc cites a figure that another doc marks
 `inferred` or `assumed` while presenting it as settled. Deduped: grepped

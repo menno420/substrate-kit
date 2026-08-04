@@ -1,4 +1,4 @@
-"""The measurement-claim provenance advisory (PL-013).
+"""The measurement-claim provenance advisory (PL-014).
 
 The failure class it guards is narrow and load-bearing: a number published with
 no stated instrument **has no source to lose to**, so PL-006's "source wins"
@@ -20,7 +20,7 @@ number.
 **The sensitivity tests are the ones that matter most here**, and they exist
 because the first draft failed them. Testing for the vocabulary alone
 (`measured` / `inferred` / `assumed`) fired on ZERO of the seven spider-swing
-documents PL-013 was extracted from: every one already used "measured" in
+documents PL-014 was extracted from: every one already used "measured" in
 ordinary prose. `test_incidental_prose_use_still_fires` and its bolded sibling
 are that corpus in miniature, and they are the reason the real test requires a
 labelled provenance statement AND the vocabulary, not either alone.
@@ -95,7 +95,7 @@ def test_marked_measurement_doc_is_silent(tmp_path: Path):
 
 @pytest.mark.parametrize("marker", ["measured", "inferred", "assumed"])
 def test_each_vocabulary_word_silences_a_labelled_doc(tmp_path: Path, marker: str):
-    # All three PL-013 words count, in any case, mid-sentence — given a label.
+    # All three PL-014 words count, in any case, mid-sentence — given a label.
     text = _UNMARKED.replace(
         "| metric | value |",
         f"**Provenance:** {marker.capitalize()} at source resolution.\n\n"
@@ -109,7 +109,7 @@ def test_each_vocabulary_word_silences_a_labelled_doc(tmp_path: Path, marker: st
     "sentence",
     [
         # Verbatim shapes from the seven spider-swing documents that motivated
-        # PL-013. Each one satisfied the first draft's vocabulary-only test.
+        # PL-014. Each one satisfied the first draft's vocabulary-only test.
         "He is right, and the exploit is now measured.",
         "What each upgrade track is worth, measured per track in isolation.",
         "This was inferred from L20 footage alone.",
@@ -153,8 +153,8 @@ def test_label_without_vocabulary_still_fires(tmp_path: Path):
     "label",
     [
         "## Provenance",
-        "### Claim provenance (PL-013)",
-        "**Provenance (PL-013): measured** — 60 fps capture.",
+        "### Claim provenance (PL-014)",
+        "**Provenance (PL-014): measured** — 60 fps capture.",
         "| Metric | Value | Provenance |",
     ],
 )
@@ -297,7 +297,7 @@ def test_findings_are_sorted_by_path(tmp_path: Path):
 
 
 def test_not_in_strict_subchecks():
-    # PL-013 scope declares this deliberately advisory. A regression that
+    # PL-014 scope declares this deliberately advisory. A regression that
     # classified it strict would red every adopter carrying an existing
     # measurement document at once — exhortation wearing enforcement's clothes,
     # the precise opposite of the intended nudge.

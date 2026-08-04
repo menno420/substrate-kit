@@ -1,6 +1,6 @@
 """Measurement-claim provenance advisory — warn-only, NEVER exit-affecting.
 
-Provenance: PL-013 (``docs/program/rulings.md``), imported from the spider-swing
+Provenance: PL-014 (``docs/program/rulings.md``), imported from the spider-swing
 session of 2026-08-01. The owner corrected ~14 published claims in a single run;
 the *measurements* were overwhelmingly sound and the **summary sentences** were
 not. The load-bearing case: "4.71 taps/s" was sampled at 30 fps from a natively
@@ -26,7 +26,7 @@ the document says where its numbers came from.
 
 Two conditions, deliberately AND-ed — the document must carry the literal label
 ``provenance`` (a heading, a bolded lead, a table column) AND at least one word
-of the PL-013 vocabulary (``measured`` / ``inferred`` / ``assumed``).
+of the PL-014 vocabulary (``measured`` / ``inferred`` / ``assumed``).
 
 **Why the label is required, and it is not pedantry.** The first draft tested
 for the vocabulary alone, and measured against the seven spider-swing documents
@@ -37,7 +37,7 @@ the corpus that motivated it is a false green, which PL-006 calls the check's
 own bug. Emphasis alone does not rescue it either: two of the seven carry
 *bolded* incidental uses. The literal label is the discriminator that survived
 the corpus, because "provenance" is a word nobody writes by accident in a
-results table — and it has the side benefit PL-013 actually wants, that the
+results table — and it has the side benefit PL-014 actually wants, that the
 instrument becomes greppable rather than merely present.
 
 Posture — ADVISORY only (warn-only, never exit-affecting): returns a single
@@ -45,7 +45,7 @@ Posture — ADVISORY only (warn-only, never exit-affecting): returns a single
 (``posture="advisory"``) exactly like ``check_dateless_walls``. It is
 deliberately NOT in ``STRICT_SUBCHECKS``: a hard red would flag every existing
 measurement document at once, which is exhortation wearing enforcement's clothes
-and the precise opposite of the nudge intended (PL-013 scope). Input-gated +
+and the precise opposite of the nudge intended (PL-014 scope). Input-gated +
 fail-open like every checker: no measurements directory, or an unreadable file,
 yields nothing (an absent or unreadable document is not a verdict). Stdlib only.
 
@@ -71,7 +71,7 @@ CLAIM_PROVENANCE_KIND = "claim-provenance"
 # the time and are not making measurement claims.
 _MEASUREMENT_DIRS = ("measurements", "benchmarks", "instrumentation")
 
-# The provenance vocabulary from PL-013. Matched case-insensitively as whole
+# The provenance vocabulary from PL-014. Matched case-insensitively as whole
 # words so "measured", "Measured," and "(measured, 60 fps)" all count.
 _RE_PROVENANCE_WORD = re.compile(
     r"\b(measured|inferred|assumed)\b",
@@ -82,7 +82,7 @@ _RE_PROVENANCE_WORD = re.compile(
 # the word "provenance" essentially never, which is what makes this the half of
 # the test that carries the signal (see the module docstring for the corpus
 # measurement that forced it). Any shape counts — `## Provenance`, `**Claim
-# provenance (PL-013)**`, a `| Provenance |` table column — because the point is
+# provenance (PL-014)**`, a `| Provenance |` table column — because the point is
 # that the author labelled the statement, not that they matched a template.
 _RE_PROVENANCE_LABEL = re.compile(r"\bprovenance\b", re.IGNORECASE)
 
@@ -154,7 +154,7 @@ def check_claim_provenance(target, config=None) -> list[Finding]:
         if labelled:
             detail = (
                 "labels a provenance statement but never classifies a claim — "
-                "use the PL-013 vocabulary"
+                "use the PL-014 vocabulary"
             )
         elif classified:
             detail = (
@@ -171,7 +171,7 @@ def check_claim_provenance(target, config=None) -> list[Finding]:
                 CLAIM_PROVENANCE_KIND,
                 f"{detail} — say of each claim `measured` (with the method AND "
                 "the instrument's resolution), `inferred` (from what), or "
-                "`assumed` (PL-013). A number with no stated instrument has no "
+                "`assumed` (PL-014). A number with no stated instrument has no "
                 "source to lose to, so nothing can ever show it wrong, and it "
                 "compounds silently into the decisions taken on top of it.",
             ),
