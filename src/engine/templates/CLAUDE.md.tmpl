@@ -101,6 +101,29 @@ there into this file's own working-style section, and read by every session
 afterwards as fact. **If the owner did not say it, ask — or mark it `inferred`
 and leave it out of the profile.**
 
+## Task → skill routing — invoking the skill IS part of the task
+
+When the task in front of you matches a row below, **loading that skill is
+part of doing the task**, not an optional extra — a skill you didn't load
+can't bind you (PL-013: readable is not binding). The index is
+`docs/SKILLS.md`; check it before novel work.
+
+| The task in front of you | Invoke |
+|---|---|
+| A fragmented / non-trivial owner ask | `intake` (+ `chase-references`) |
+| The ask references links, files, or docs you haven't opened | `chase-references` |
+| Steps the owner must do by hand | `prep-owner-steps` |
+| A backlog item needs shaping | `scope-backlog-item` |
+| A natural pause; a lesson or spotted action in hand | `rationalize` |
+| Proving a change before pushing | `quality-gate` |
+| Ending the session | `session-close` |
+| Kit version work | `release` → `upgrade-distribution` |
+
+Repo-local skills extend this table, not replace it — keep local rows in this
+section (or a local index the section points at) so every session sees one
+router. A task that matches a row where the skill never fired is a defect in
+the session, not a stylistic choice.
+
 ## How the maintainer works
 
 ${owner_profile}
