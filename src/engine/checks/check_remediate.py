@@ -91,6 +91,37 @@ it was actually last confirmed. Once dated, check_stale_walls owns its re-verify
 cadence (default 14 days).
 """
 
+_CLAIM_PROVENANCE = """\
+This measurement document reports numeric results but never says where the
+numbers came from, so nothing can ever show one of them wrong (PL-014).
+
+Add a LABELLED provenance statement — a `## Provenance` section, a
+`**Provenance:**` lead under each result table, or a `| Provenance |` column.
+The label is required, and not as decoration: using "measured" in prose is
+what every un-retrofitted document already did, so the label is the part that
+distinguishes a stated instrument from an ordinary sentence (and it makes the
+instrument greppable). Then classify each load-bearing claim:
+
+- `measured` — state the METHOD *and* the instrument's resolution:
+
+      Tap rate: 6.60/s (measured — device capture, frame-stepped at 60 fps).
+
+  Resolution is not optional. The failure this rule exists for was a rate
+  sampled at 30 fps from a natively 60 fps recording: the method was named,
+  the resolution was not, and the number came out 40% low.
+
+- `inferred` — say what it was inferred FROM, so the derivation can be redone:
+
+      Reach: ~220 px (inferred from surface_snap_distance in the swing config).
+
+- `assumed` — say so plainly; an assumption on the page can be challenged, an
+  assumption inside a summary sentence cannot.
+
+A document-level "all figures measured from X unless marked otherwise"
+preamble clears this advisory, and is the right shape when one instrument
+produced everything.
+"""
+
 _WALL_LEDGER_DISAGREE = """\
 The `## Walls` correction row and the newest `## Append log` entry for this
 capability disagree. Reconcile them in docs/CAPABILITIES.md so both state the
@@ -157,6 +188,7 @@ REMEDIATIONS: dict[str, str] = {
     "recipe-applies-when": _RECIPE_APPLIES_WHEN,
     "stale-wall": _STALE_WALL,
     "dateless-wall": _DATELESS_WALL,
+    "claim-provenance": _CLAIM_PROVENANCE,
     "wall-ledger-disagree": _WALL_LEDGER_DISAGREE,
     "baton-unresolved": _BATON_UNRESOLVED,
     "baton-stale-deliverable": _BATON_STALE_DELIVERABLE,

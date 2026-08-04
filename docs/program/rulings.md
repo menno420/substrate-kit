@@ -406,3 +406,50 @@
   surface for a task, to sizing a request, and to deciding whether a convention
   needs a guard. It does **not** license declining work on a non-integrated
   surface — PL-012 item 4 still governs: probe before declaring a wall.
+
+## [PL-014] A measured claim carries its instrument
+
+- status: decided
+- date: 2026-08-01
+- provenance: spider-swing session 2026-08-01 (the owner-play calibration →
+  policy-search → replay-review run). The owner corrected ~14 published claims
+  in a single session; the measurements were overwhelmingly sound and the
+  **summary sentences** were not. The load-bearing case: a tap rate of
+  "4.71 taps/s" was sampled at 30 fps from a natively 60 fps recording, then a
+  design constraint (frozen bot perception limits) was built on that number,
+  then that constraint was cited as *the reason the design was trustworthy* —
+  three layers, each internally consistent, none catchable by any gate. It was
+  caught only because the owner knew how fast he taps. His own naming of the
+  failure class — "verifiable but didn't verify" — is what this ruling
+  mechanizes.
+- verdict: A numeric claim in a measurement document **carries its provenance
+  inline**, in one of three forms: **`measured`** — with the method *and the
+  instrument's resolution*; **`inferred`** — naming what it was derived from;
+  or **`assumed`**. Resolution is not optional decoration: "4.71 taps/s
+  (measured)" reads complete while "4.71 taps/s (measured, 30 fps sampling)"
+  puts the defect on the page, and that difference is the whole ruling. A
+  document that reports numbers without provenance is a claim about the world
+  wearing the costume of a result.
+- why: PL-006 says source wins and a false green is the check's bug — but a
+  number with no stated instrument has no source to lose to, so nothing can
+  ever be shown wrong by it. Recording the instrument is what makes a
+  measurement falsifiable at all, and an unfalsifiable number compounds
+  silently into the design decisions taken on top of it.
+- scope: Measurement/instrumentation documents. Deliberately ADVISORY at the
+  gate (`check_claim_provenance`, warn-only, off STRICT_SUBCHECKS): a hard red
+  would flag every existing document at once, which is exhortation wearing
+  enforcement's clothes and the opposite of the nudge intended. PL-007's
+  ladder still applies — this is the checker rung, not the written-rule rung.
+- form: The provenance statement must be **labelled** — the literal word
+  "provenance" in a heading, a bolded lead, or a table column — *and* carry the
+  vocabulary. Sprinkling "measured" through prose does not satisfy it. This is
+  not style policing; it is the only shape that measured non-zero. The first
+  checker tested for the vocabulary alone and, run against the seven documents
+  this ruling was extracted FROM, fired on **zero of seven**: every one already
+  used "measured" in ordinary prose ("the exploit is now measured"), and two
+  used it in bold, so emphasis was not a discriminator either. Requiring the
+  label took it to **seven of seven before those documents were retrofitted and
+  zero after**. The ruling about stating your instrument was itself nearly
+  shipped on an unmeasured claim about its own checker; the correction is
+  recorded here rather than quietly fixed, because that is precisely the
+  failure mode PL-014 exists to catch.
