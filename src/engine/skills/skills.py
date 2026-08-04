@@ -64,7 +64,9 @@ steps.
    wall; see `control/README.md`) — Withdraw stale asks; groom one idea
    forward; add one new 💡 idea you genuinely believe in; write the ⟲
    previous-session review.
-6. Verify — `${verify_command}` and `python3 bootstrap.py check --strict`.
+6. Verify — `${verify_command}` and `python3 bootstrap.py check --strict`;
+   if those are the same command, also run the repo's other boot-file gates
+   (the collision otherwise drops a gate silently).
    The only acceptable pre-flip red is the designed born-red hold naming
    this session's own card.
 7. Flip as the deliberate LAST step — flip the card badge to `complete`,
@@ -118,7 +120,8 @@ tree, never a registry line or a PR read.
    clobber; list them verbatim in the PR body. `template-improved` applies
    only under `--apply-docs` and only to consumer-untouched docs.
 7. Verify + flip — `${verify_command}` and
-   `python3 bootstrap.py check --strict` green (own card's designed hold
+   `python3 bootstrap.py check --strict` green
+   — if those are the same command, run the repo's other boot-file gates too (own card's designed hold
    excepted); flip the card `complete`, delete the claim, push.
 8. Verify merged main afterward — TREE over registries:
    `git fetch origin main && git log -1 --oneline origin/main` and read the
@@ -531,7 +534,10 @@ _QUALITY_GATE_BODY = """\
 Prove a change is good before pushing ${project_name}.
 
 1. Run `${verify_command}` — the project's full verification (tests + lint/types).
-2. Run `python3 bootstrap.py check --strict` — doc + session-log hygiene.
+2. Run `python3 bootstrap.py check --strict` — doc + session-log hygiene. If
+   step 1 already IS this command, do not stop at one gate: run the repo's
+   remaining gates named in its boot file instead (fleet-manager lesson
+   2026-08-04 — the collision silently dropped the false-wall guard).
 3. Report every failure with the exact command to reproduce it.
 4. Do NOT push on red — green here should mean green in CI.
 
