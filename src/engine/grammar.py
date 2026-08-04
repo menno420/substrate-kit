@@ -438,7 +438,7 @@ MODEL_TASK_CLASSES = (
 # that recur; everything else is drift — "high effort", lane names) and the
 # harness's own effort levels. Off-list values are an ADVISORY nudge only —
 # the lint never rejects, and the harvest records verbatim either way.
-MODEL_EFFORT_VALUES = ("low", "medium", "high")
+MODEL_EFFORT_VALUES = ("low", "medium", "high", "xhigh", "max")
 # The sanctioned TERMINAL effort value for retroactive payload repairs (idea
 # model-line-unrecorded-effort-marker-2026-07-15, from the PR #390 sweep): when
 # a repairing session is not the card's author and the author never

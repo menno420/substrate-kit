@@ -53,6 +53,13 @@ historical` — the ship fact lives in `outcome: shipped`, never in `state:`;
 see "Frontmatter" above. Recorded here because two sessions in one day paid a
 red preflight round rediscovering it via checker error.)
 
+- [Harness-supplied capability roster in every seat/agent file](harness-capability-roster-2026-08-04.md)
+  — state: captured; origin: owner (fleet-manager hub chat 2026-08-04): a
+  ~10-line template block of STATIC capabilities (model, context, modalities,
+  shell, network posture, repo scope) planted into rendered seat/agent files —
+  the harness knows these with certainty while a model's self-report is
+  training data; empirical layer stays in `CAPABILITIES.md`. Sibling to
+  PL-013.
 - [Guard-parity meta-test: kit-vs-adopter guard drift detector](guard-parity-kit-vs-adopter-2026-07-18.md)
   — state: captured; origin: lab; asserts every *enforcing* guard step in
   the kit's own `ci.yml` `kit-quality` job has a mirrored counterpart in

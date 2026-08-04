@@ -365,7 +365,49 @@
   deferral ("he can extend PL-002 to all work at any time") is discharged
   by this block for seat work.
 
-## [PL-013] A measured claim carries its instrument
+## [PL-013] Inhabiting beats observing — an agent must be subject to the repo, not just able to read it
+
+- status: decided
+- date: 2026-08-04
+- provenance: owner ruling, fleet-manager hub chat 2026-08-04, given live while
+  reviewing the evidence below. His words: *"claude code and gpt work both
+  'live' inside the repos. Regular sessions can only view them from the
+  outside"*, and, on the failed run, *"the regular chat was obviously not able
+  to separate my prompt into executable batches, while the work environment is
+  highly comparable to the claude code environment."* Evidence file:
+  fleet-manager `docs/findings/2026-08-04-generated-art-pipeline.md`.
+- verdict: **Read access is not integration.** An agent that can read a repo is
+  *informed* by it; an agent that runs inside it is *subject* to it — its tests
+  fail, its gates go red, its pushes get rejected, its claims meet exit codes.
+  Only the second is corrected by the environment rather than by the owner.
+  Three consequences bind program-wide:
+  (1) **Readable is not binding.** A convention committed to docs does not
+  govern a session that merely reads it. Enforcement — a check, a gate, a test
+  — is the active ingredient; the doc is the record, not the mechanism. This is
+  PL-007 (enforce, don't exhort) restated as a claim about *why* it works.
+  (2) **Decomposition is an environment property, not a prompt property.** An
+  integrated environment splits a multi-item request into separately executed
+  parts; a plain chat has no boundary between items and collapses the queue
+  into one call. Sizing a request without knowing which surface will run it is
+  a category error — ask what the surface does with a queue before handing it
+  one.
+  (3) **Diverge cheaply, converge expensively.** A non-integrated surface is
+  the right tool for exploration and the wrong one for masters. Route
+  divergent, cheap, discardable work there deliberately; route anything that
+  must be verified, enforced, or inherited to an integrated seat.
+- why: Inhabitants are **temporary and amnesiac** — every session is a new
+  tenant, the container is reclaimed, and none of them remember the last one.
+  Living inside is what makes the rules *enforceable*; the kit is what makes
+  them *persist*. Either half alone gives a known failure mode: the observer
+  that drifts off a convention it can read, or the inhabitant that solves
+  something well and takes the solution with it when the container dies. The
+  kit's whole point is supplying the second half to agents that have the first.
+- scope: Every seat and every repo in the program. Applies to choosing a
+  surface for a task, to sizing a request, and to deciding whether a convention
+  needs a guard. It does **not** license declining work on a non-integrated
+  surface — PL-012 item 4 still governs: probe before declaring a wall.
+
+## [PL-014] A measured claim carries its instrument
 
 - status: decided
 - date: 2026-08-01
@@ -410,4 +452,4 @@
   zero after**. The ruling about stating your instrument was itself nearly
   shipped on an unmeasured claim about its own checker; the correction is
   recorded here rather than quietly fixed, because that is precisely the
-  failure mode PL-013 exists to catch.
+  failure mode PL-014 exists to catch.
