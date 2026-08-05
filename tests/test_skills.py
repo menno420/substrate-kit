@@ -39,6 +39,7 @@ def _init(target):
 def test_starter_pack_present_and_ordered():
     assert skill_names() == [
         "session-close",
+        "continuation-prompt",
         "upgrade-distribution",
         "release",
         "intake",
