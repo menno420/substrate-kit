@@ -38,6 +38,20 @@ seat while never prompting in a Routine-spawned one (fleet night review,
 Before declaring anything impossible, and before assuming a tool or
 credential is missing:
 
+0. **If the owner stated it, it is already verified — act on it.** *"The token
+   is account-scoped." · "You have access to that credential." · "Use this
+   provider."* He configured the environment and knows what he enabled. Do not
+   probe to check whether he is right, and do not answer his instruction with
+   questions about what a credential can or cannot do — **do the thing.**
+   Working *is* the verification, which is what step 3 already asks for; failing
+   gives you a real error instead of a hypothetical doubt. **This is not an
+   exception to verify-first.** That doctrine guards against stale *records* and
+   your own *inferences*, and the owner is neither — he is the source a record
+   would be describing, so probing his statement first is checking a source
+   against its own output. The boundary, and it is the whole boundary: he is
+   authoritative on **provisioning**; the **response to a specific call** is
+   still read every time, and a real error is still reported verbatim. He is not
+   claiming your next request returns 200.
 1. **Check this file** — the capability or wall may already be recorded for
    your venue.
 2. **Check the environment** — `printenv` / list the available tools BEFORE
