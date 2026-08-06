@@ -33,6 +33,48 @@ records survived / conceded / partial as three literal tags for that reason.
   known hole stated, measurement, and § 11's review record.
 - `docs/current-state.md` — linked from the read path.
 
+## Provenance
+
+### Q1 · What did you base this on?
+
+The gate's three-of-four-clauses-are-free claim is checked, not taken:
+`src/engine/lib/config.py:248` — `_default_session_markers()` returns
+`{label, needle}` substring pairs, config-driven, already enforced by the
+session gate. Owner-stated and confirmed here rather than assumed.
+
+### Q2 · Which documents covering this did you read? `path:line`
+
+`docs/program/rulings.md:410` (PL-014, the ruling PL-015 extends) ·
+`src/engine/checks/check_session_log.py:417` (the added-card lane this gate
+would ride) · `fleet-manager:docs/findings/2026-08-05-foundation-continuation.md:101`
+(the execution/judgment split, cross-repo — recorded, not gated).
+
+### Q3 · Anything asserted impossible or unavailable?
+
+Yes, and it is now the gate's stated boundary: no script settles whether a
+citation is RELEVANT. Paths tried across five review rounds — verbatim-quote
+matching, per-claim exemption inference, a second model scoring relevance —
+each produced a finding. `src/engine/guards.py:548` is the heuristic-class rule
+that says why. Untried and named: measuring whether an LLM relevance-scorer
+agrees with the owner on a sample of real dispositions.
+
+### Q4 · What are the consequences, and who else do they affect?
+
+Two of four clauses are `substrate.config.json` markers, which reach every
+adopter on their next upgrade. Scoped to substrate-kit's own decision surfaces
+first; no adopter sees it until a deliberate wave.
+
+### Q5 · What did you NOT do, check, or verify?
+
+`check_provenance` is not built — this PR is spec plus PL-015. The § 9 baseline
+is not collected. The hook (the next build) is not started. Whether the
+mechanism is proportionate overall is undecided and only § 9's ratio settles it.
+
+### Layer 2: completed — [`../docs/reviews/2026-08-06-provenance-mandate-review-record.md`](../docs/reviews/2026-08-06-provenance-mandate-review-record.md)
+
+Five rounds, 34 findings, all correct. Model: `gemini-3.6-flash` via Vertex
+(Layer 2 proper) and Codex via the GitHub connector (third perspective).
+
 ## Verification
 
 - The mechanism was **run on itself**: Layer 1 answered in writing first —
