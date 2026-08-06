@@ -130,19 +130,49 @@ being **cheap and safe to check**, not for being harder to game.
 What makes it worth having anyway is the honest, small claim below. Gate on
 exactly this:
 
-- The **provenance section exists and is non-empty**.
-- **Every `path:line` citation in it RESOLVES** — the file exists and has at
-  least that many lines. Pure fact extraction, no prose inference. The same
-  trick `route_docs.py` already uses: verify the pointer resolves, never judge
-  the prose.
-- **Commands and error strings are RECORDED but NOT GATED.** Re-executing them
-  in CI is unsafe — they are stateful and possibly destructive — and
-  regex-matching their shape is theatre.
+1. **All five Layer 1 slots are present**, as literal machine-detectable
+   headings `### Q1` … `### Q5`, each with a non-empty body. Answering Q1 and
+   dropping Q2–Q5 must red.
+2. **At least ONE resolving `path:line` citation**, unless every claim in the
+   section carries the `` `OWNER-DEPENDENT` `` marker — the single, precisely
+   defined exemption, because an owner-held fact has no citable source and
+   marking it is the honest answer.
+3. **Every `path:line` citation present RESOLVES** — the file exists and has at
+   least that many lines. Pure fact extraction, no prose inference; the trick
+   `route_docs.py` already uses.
+4. **A Layer 2 outcome marker exists** — see § 5b.
+5. **Commands and error strings are RECORDED but NOT GATED.** Re-executing them
+   in CI is unsafe — they are stateful and possibly destructive — and
+   regex-matching their shape is theatre.
+
+> **Rules 1 and 2 exist because Codex found the gate passed vacuously without
+> them** (PR #580, P1). An earlier draft gated only on "section non-empty" plus
+> "every citation resolves" — so a card reading `## Provenance` / *"Based on
+> general knowledge"* satisfied both: non-empty, and zero citations means all
+> citations resolve. The gate's own headline claim, that *"'I based this on
+> general knowledge' cannot produce a resolving citation"*, was false of the
+> gate as specified. It is true only once a citation is REQUIRED.
+
+### 5b · Layer 2 must leave a mark
+
+The reviewer call is un-gated on **success**, never on **occurrence**. Without
+this a triggered PR passes every check and merges with Layer 2 never having run,
+and the two-layer mandate silently collapses to Layer 1 exactly when time or API
+availability is inconvenient (Codex, P1).
+
+One of three literal markers is required:
+
+    ### Layer 2: completed — <path to the recorded exchange>
+    ### Layer 2: attempted-failed — <verbatim provider error>
+    ### Layer 2: deferred — <reason>
+
+Fail-open on the provider being down; **never** fail-open on the record.
 
 ### What this buys, stated honestly
 
-It catches an **absent** answer, not an unsound one. *"I based this on general
-knowledge"* cannot produce a resolving citation, and that is the whole claim.
+It catches an **absent** answer, not an unsound one. With rules 1–2 in place,
+*"I based this on general knowledge"* genuinely cannot pass — which is what the
+earlier draft claimed and did not deliver.
 
 This is the same division the estate already runs and does not call theatre: the
 session-card checker verifies the card exists and is complete; the owner judges
@@ -202,26 +232,65 @@ The plan states the rule and an earlier draft did not apply it to its own
 instrument. Before `gemini_review.py` is trusted, feed it two known-bad inputs
 and confirm it **flags rather than agrees**:
 
+**Known-bad — it must FLAG all of these:**
+
 1. A provenance section whose citations all **resolve but are irrelevant** —
    real `path:line` pointers into unrelated files. A reviewer that passes this
    is checking syntax, not provenance.
-2. A confidently-worded claim with **no grounding at all**. A reviewer that does
-   not flag it has failed the one job it has.
+2. A confidently-worded claim with **no grounding at all**.
 
-If it agrees with either, it is not usable and the failure is loud rather than
-a quietly degraded score — exactly what § 7a demands of any new instrument.
+**Known-good — it must ACCEPT all of these:**
+
+3. A claim with a **relevant** resolving citation.
+4. A claim **appropriately hedged** to its evidence, including one correctly
+   marked `` `OWNER-DEPENDENT` ``.
+
+> **Cases 3–4 exist because Codex found the known-bad set alone is not a test**
+> (PR #580, P1): a reviewer that flags *everything* passes both known-bad inputs
+> while having zero discrimination. That failure is worse than useless here — it
+> manufactures objections, burns the owner's attention, and would make § 9's
+> instrument-origin ratio look like it improved. Sensitivity without specificity
+> is not a qualification.
+
+**The input contract this implies.** Case 1 is undetectable unless the reviewer
+can SEE the cited text: a resolving-and-relevant pointer and a
+resolving-and-irrelevant one are observationally identical to a model that
+receives only the claim. So `gemini_review.py` must **resolve each citation and
+include a bounded window of the cited lines** alongside the claim. Without that
+the reviewer collapses to the syntax check § 5 explicitly rejects (Codex, P1).
+
+If it fails any of the four, it is not usable — loudly, not as a degraded
+score.
 
 ### Where survived-vs-conceded is recorded, so § 9 can be computed
 
-The session-card section carries one line per objection:
+**Two records, because they answer different questions** — an earlier draft
+conflated them and could not compute § 9 (Codex, P2).
+
+**(i) Objection disposition** — one line per Layer 2 objection, for honesty
+about deference:
 
     - [survived] <objection> — <evidence that refuted it>
     - [conceded] <objection> — <what changed>
     - [partial]  <objection> — <what changed, what stood>
 
-Three literal tags, so the § 9 ratio is a count rather than a reading. **An
-all-`conceded` record is a smell, not a success**: it is equally consistent with
-rigour and with deference, and the tags exist to keep those distinguishable.
+**An all-`conceded` record is a smell, not a success**: it is equally consistent
+with rigour and with deference.
+
+**(ii) Correction origin** — one line per CORRECTION actually made, which is
+what § 9 counts. Disposition tags cannot supply this: `[survived]` contains no
+correction at all, `[partial]` mixes corrected and surviving material, and a
+correction the agent found while answering Layer 1 gets no objection tag ever.
+
+    - [origin:self-reread]  <what changed>
+    - [origin:layer1]       <what changed>
+    - [origin:layer2]       <what changed>
+    - [origin:instrument]   <what changed> — <which checker/exporter>
+    - [origin:owner]        <what changed>
+
+§ 9's ratio is then `(layer1 + layer2 + instrument) / total`, over a stated
+observation window. **Both records are required; neither substitutes for the
+other.**
 
 ### The § 9 baseline, captured BEFORE rollout
 
@@ -235,10 +304,26 @@ An earlier draft's file-path table was removed after the reviewer showed
 path-triggers are blind to omissions, and was not replaced. It is replaced here,
 and the blindness is stated rather than papered over.
 
-**Fires on:** a diff touching `docs/decisions.md`, `docs/program/rulings.md`,
-`CONSTITUTION.md`, `docs/planning/**`, `src/engine/guards.py`; a release tag or
-distribution wave; **or a session card that declares a decision, a deferral or
-an honest null.**
+**Fires on a PATH:** a diff touching `docs/decisions.md`,
+`docs/program/rulings.md`, `CONSTITUTION.md`, `docs/planning/**`,
+`src/engine/guards.py`; or a release tag / distribution wave.
+
+**Fires on a CARD TAG** — three literal headings, not prose inference:
+
+    ### Decision: <one line>
+    ### Deferral: <one line>
+    ### Honest null: <one line>
+
+> **The tags are literal because Codex showed the prose version was
+> unimplementable** (PR #580, P1). An earlier draft said the trigger fires on "a
+> card that declares a decision, a deferral or an honest null" — which a checker
+> can only reach by keyword matching (misses rephrasings, fires on incidental
+> discussion) or by model classification (which makes a gate advertised as
+> deterministic nondeterministic). A literal heading is neither.
+
+**Fallback if the tags prove unusable in practice: trigger on every session
+card.** Noisier, still deterministic, and strictly better than a gate nobody can
+implement.
 
 **Does not fire on:** routine commits, typo fixes, mechanical refactors,
 telemetry deltas, roster regens.
@@ -252,9 +337,32 @@ subset and no more.** It is not a guarantee and must not be described as one.
 
 ## 8 · Build order
 
-1. **The blast-radius exporter** — deterministic, un-gameable, cheapest. At a
-   decision surface, extract and print: adopter count, distribution mechanism
-   (pinned vs live), upgrade vector, rollback presence, reversibility.
+1. **The blast-radius exporter** — deterministic, un-gameable, cheapest.
+
+   **It must map a specific change to its specific consequence, not print fleet
+   metadata** (Codex, P2): an implementation that emits the same adopter count
+   and distribution mode for a docs-only edit and a breaking dist change
+   satisfies a loose spec while detecting nothing. Required:
+
+   - **Input:** the diff's changed paths (authoritative: `git diff --name-only`
+     against the merge base).
+   - **Mapping, deterministic per path class:**
+     `dist/bootstrap.py` or `src/engine/**` → every adopter, on their next
+     upgrade PR · `src/engine/templates/**` → adopters that re-render that
+     template · `docs/**` (kit-local) → nobody downstream ·
+     `.github/workflows/**` → this repo only.
+   - **Adopter set + versions:** `docs/adopters.md`, whose limits are stated
+     below.
+   - **Rollback:** presence of a banked artifact under `.substrate/backup/`,
+     reported per affected repo — a fact about this change, not about the fleet.
+   - **Reversibility:** derived from the path class (a generated artifact is
+     regenerable; a hand-edited planted doc is not).
+
+   **Stated limit:** `docs/adopters.md` is generated by `currency.py`, which
+   fetches a repo's config, two known bootstrap paths and its heartbeat files —
+   **it does not enumerate committed trees.** It therefore establishes what each
+   repo VENDORS and cannot establish the absence of some other live linkage. The
+   exporter must not claim otherwise.
 2. **The provenance section + its `path:line` gate** — the Layer 1 list as a
    session-card section, and a checker that verifies the section is non-empty
    and every citation resolves.
@@ -294,14 +402,26 @@ answered in writing, then a Layer 2 reviewer call over Vertex. Recorded in the
 § 7b format, because "all objections conceded" is equally consistent with rigour
 and with deference and the estate has now been warned about exactly that.
 
-- **[survived]** *"The pinned-vendoring model is extended to 12 adopters from a
-  1-repo check."* — Refuted with evidence. `docs/adopters.md` is generated from
-  **each repo's committed tree** (the vendored `bootstrap.py` stamped header),
-  not from one repo: 12 rows, 11 citing a vendored dist header. The twelfth,
-  `superbot`, is pin-only with no vendored dist — an exception the registry
-  already flags rather than a gap in the claim. The reviewer's untested
-  sub-claim (submodules / floating refs as an alternate live path) was then
-  checked directly: **zero `.gitmodules` across all 10 sweep clones.**
+- **[partial]** *"The pinned-vendoring model is extended to 12 adopters from a
+  1-repo check."* — **Downgraded from `[survived]` after Codex checked my
+  refutation** (PR #580, P2), which is the third-perspective value in one line.
+
+  What stands: `docs/adopters.md` reads **each repo's own stamped
+  `bootstrap.py` header**, so "every adopter vendors a pinned dist" is
+  per-repo evidence across 12 rows, not a 1-repo extrapolation. The
+  `.gitmodules` check is now complete — **0 of 12**, the two I had missed
+  (`substrate-kit`, `fleet-manager`) verified since.
+
+  What does **not** stand: I wrote that as though it settled the alternate-live-
+  path question. It does not. `currency.py` fetches a repo's config, two known
+  bootstrap paths and its heartbeats — **it never enumerates a committed tree**
+  — so the registry can establish what a repo VENDORS and cannot establish that
+  nothing else is live. Submodules are one alternate mechanism; ruling them out
+  does not rule out the class. `superbot` in particular has no vendored dist at
+  all, so nothing here characterises how it consumes the kit.
+
+  The claim is now scoped to what the evidence carries, and § 8's exporter spec
+  states the same limit at the point of use.
 
 - **[conceded]** *"§ 0 asserts the exporter would have caught none of the
   thirteen owner corrections, while Layer 1 marks those corrections
@@ -326,7 +446,37 @@ and with deference and the estate has now been warned about exactly that.
   test for the reviewer itself, a record format for survived-vs-conceded, and a
   syntax for owner-dependent claims. All three are now § 7b.
 
-**Reviewer accuracy this run:** four substantive objections, two fully correct,
-one correct-in-part, one refuted by evidence — plus three sound follow-ups. The
-reviewer's known error rate held: it was wrong about something checkable, and
-checking it took one command.
+**Gemini (Layer 2) accuracy:** four substantive objections — two fully correct,
+one correct-in-part, one I judged refuted — plus three sound follow-ups.
+
+## 12 · The Codex review — third perspective, and it earned its place
+
+Requested on PR #580 specifically to find what a Claude/Gemini pair would not,
+since a plan reviewed only by an LLM pair is the shared-blind-spot problem § 2
+claims to solve. **Nine findings — five P1, four P2 — and eight were correct.**
+
+| | Finding | Disposition |
+|---|---|---|
+| P1 | The gate passes **vacuously** on zero citations, so its headline claim was false of itself | `[conceded]` — § 5 rules 1–2 |
+| P1 | "Card declares a decision/deferral/null" is **not machine-readable** | `[conceded]` — § 7c literal tags |
+| P1 | The reviewer **cannot see cited content**, so known-bad case 1 is undetectable | `[conceded]` — § 7b input contract |
+| P1 | Known-bad tests alone pass a reviewer that **flags everything** | `[conceded]` — § 7b known-good controls |
+| P1 | Un-gated Layer 2 means it can **never run** and nothing notices | `[conceded]` — § 5b markers |
+| P2 | Disposition tags **cannot compute** § 9's ratio | `[conceded]` — § 7b origin records |
+| P2 | The `[survived]` refutation **overclaims** on alternate live paths | `[partial]` — § 11 rescoped |
+| P2 | The Layer 1 record was **never committed**, so the self-test proved nothing | `[conceded]` — now `docs/reviews/` |
+| P2 | The exporter spec prints **fleet metadata**, not a decision→impact mapping | `[conceded]` — § 8 mapping |
+
+**The P1 that matters most is the first.** § 5 asserted *"'I based this on
+general knowledge' cannot produce a resolving citation, and that is the whole
+claim."* It was false of the gate as written: zero citations satisfies "every
+citation resolves" vacuously, so the exact string the plan used as its example
+would have passed. Neither the author nor Gemini saw it. That single finding is
+the argument for a third reviewer.
+
+**The P2 about the uncommitted Layer 1 record is the sharpest process catch.**
+The plan claimed Layer 1 earned its place while the evidence sat in a scratchpad
+no reader could open — a provenance failure inside the provenance mandate, of
+exactly the kind it exists to prevent. The record is now committed at
+[`../reviews/2026-08-06-provenance-mandate-layer1.md`](../reviews/2026-08-06-provenance-mandate-layer1.md),
+and all six of its citations were verified to resolve.

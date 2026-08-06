@@ -250,7 +250,7 @@ self-answered list, then an outside reviewer that asks what a claim is based on
 rather than whether it is right). Build order: exporter → provenance section +
 its `path:line` gate → the reviewer call, scoped to substrate-kit's own decision
 surfaces first. The plan carries the record of the review it was itself put
-through (§ 11).
+through (§ 11) and the Codex third-perspective review that followed (§ 12), with the Layer 1 answer record at [`reviews/2026-08-06-provenance-mandate-layer1.md`](reviews/2026-08-06-provenance-mandate-layer1.md).
 
 **→ Post-runs 6–10:** the open bench axis after run-10 is the enforcement
 *pull* — the kit induced no write-back/guard-response behavior change on
