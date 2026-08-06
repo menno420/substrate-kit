@@ -505,7 +505,18 @@ def test_cmd_check_records_guard_fires(tmp_path, capsys):
     kinds = {r["finding"]["kind"] for r in fires}
     assert "badge" in kinds
     assert all(r["surface"] == "check" for r in fires)
-    assert all(r["posture"] == "blocking" for r in fires)
+    # The EXIT-AFFECTING finding is recorded blocking. Scoped to that finding
+    # rather than to every fire: `check` has always recorded advisory fires too
+    # (posture="advisory" across the whole routed tier), and this fixture simply
+    # never happened to produce one until check_boot_path began firing on it.
+    # `all(... == "blocking")` was an accident of the fixture, not an invariant
+    # of the system — as written it reds on any newly-added advisory checker.
+    assert {r["posture"] for r in fires} <= {"blocking", "advisory"}
+    assert all(
+        r["posture"] == "blocking"
+        for r in fires
+        if r["finding"]["kind"] == "badge"
+    )
 
 
 def test_cmd_check_announces_guard_fire_writes(tmp_path, capsys):

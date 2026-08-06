@@ -116,6 +116,9 @@ MODULE_ORDER = (
     # `--api-latency` stale-baton class). Advisory-only, never exit-affecting;
     # wired on the posture="advisory" seam in cli.py.
     "checks/check_baton_freshness.py",
+    # Boot-pointer chain resolution. Imports engine.render lazily (inside the
+    # function) for agreement_home, so it has no ordering constraint here.
+    "checks/check_boot_path.py",
     # After check_folded_gate.py (it imports that module's REMEDIATION_SNIPPET +
     # FINDING_KIND as the single source of truth for the folded-gate block): the
     # `check --remediate <finding-kind>` paste-ready remediation lookup (wave-2
