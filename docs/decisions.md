@@ -225,3 +225,38 @@
 - provenance: inbox ORDER 004 (manager relay of the superbot-games
   finding, 2026-07-09; rider to ORDER 003/D-0009); shipped in PR #46 with
   the v1.4.0 cut.
+
+## [D-0011] The kit's own boot set lives in CONSTITUTION.md — the router points, it does not hold
+
+- status: decided
+- date: 2026-08-06
+- verdict: substrate-kit's boot read path is declared in `CONSTITUTION.md`
+  under "Boot read path", and `docs/AGENT_ORIENTATION.md` points at it
+  rather than carrying a competing list. One list, one home — the same
+  contract `AGENT_ORIENTATION.md.tmpl` already states for every adopter
+  ("The boot set lives in the working agreement — `${agreement_home}`").
+  The kit deliberately never installs `.claude/` into its own tree (it
+  STAGES the material at `.substrate/claude/` for a host to install, and
+  the source-layout guardrail refuses writes to the kit's own tree), so
+  `agreement_home` resolves to the root `CONSTITUTION.md` here and the
+  boot set must live there to be reachable at all.
+- why: measured 2026-08-06 — the kit had **no working boot read path**.
+  Three surfaces disagreed and none resolved: the rendered
+  `docs/AGENT_ORIENTATION.md` opened with "1. `.claude/CLAUDE.md` — the
+  working agreement", a file that does not exist in this tree and by
+  design never will; `substrate.config.json` set
+  `orientation.boot_docs: []`; and `CONSTITUTION.md`, which
+  `render.agreement_home` correctly resolves to, carried no boot list for
+  the router to point at. A session booting here got nothing auto-loaded
+  and a step-1 pointer into a missing file.
+
+  The dead-pointer half was already diagnosed and FIXED in the template on
+  2026-07-12 — `render.agreement_home`'s docstring records it as "a dead
+  boot pointer verified live in 3/3 adopters (inbox ORDER 015)". The kit
+  shipped that fix to its adopters and never re-rendered its own copy, so
+  consumer #0 kept the bug it had already patched for everyone else. That
+  is the generated-artifact drift class the kit exists to catch, landing
+  on the kit itself.
+- provenance: foundation-verification session 2026-08-06, PR #577; found
+  while auditing each repo's declared boot path against its actual tree
+  per the continuation handoff.
