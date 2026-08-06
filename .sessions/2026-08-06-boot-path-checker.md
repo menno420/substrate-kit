@@ -1,6 +1,6 @@
 # 2026-08-06 · Promote the deterministic tier, and instrument the boot path
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** opus-5 · high · feature build
 
@@ -57,6 +57,63 @@ promotion.
 - `--gate-preview` corrected: it reported "N sites ran" while counting only
   sites that produced findings.
 
+## What actually shipped — the sweep was corrected twice
+
+The table above is what the 12-tree sweep said. **Two of its three "promote"
+verdicts did not survive**, and both corrections came from instruments rather
+than from re-reasoning:
+
+- **`automerge_preflight` → held.** Its 2 findings are real, but my own stated
+  rule is *promote on a clean sweep*, and two live findings is not a clean
+  sweep. Promoting anyway would also spend the §6.4 compat guarantee. The rule
+  I wrote applied to me before it applied to anyone else.
+- **`staged_regen` → held.** It fires on **zero of 12 trees** and still cannot
+  be promoted: it fires **three times on the cold-adoption arc**, so promoting
+  it would make every NEW adoption born-red on a defect `adopt` itself creates.
+  My sweep swept mature trees and had no way to see this — `tests/
+  test_check_engagement.py` caught it. **A clean sweep across adopters is
+  necessary evidence for promotion, not sufficient**; the arc a new adopter
+  walks is part of the fleet too. That is a flaw in my method, not in the data.
+
+Final: **6 of 9 deterministic sites gate**; `automerge_preflight`,
+`staged_regen` and `boot_path` wait in `gate_pending_advisories()`.
+
 ## Verification
 
-Filled at close. Born red.
+- `python3 -m pytest tests/ -q` → **2132 passed, 1 skipped** (exit 0, read
+  directly).
+- `python3 -m ruff check src/engine/` → exit 0 · `tools/check_no_false_walls.py`
+  → exit 0 · `dist/bootstrap.py check --strict` → exit 0 (post-commit).
+- **Promotion verified live, not argued:** `check --strict` re-run across all
+  12 adopter trees after wiring → **0 promoted reds**.
+- **The new checker verified against the fleet:** boot-path findings on **10 of
+  12** trees; the two clean ones are substrate-kit and fleet-manager, both
+  repaired earlier today in #577/fm #789.
+
+⚠ **Two bugs in my own checker, both caught by tests I did not write.**
+
+1. It did not self-quiet on a bare tree, so `check` would red a repo before it
+   had adopted. `test_check_boot_path.py::test_bare_tree_is_silent` — a test
+   whose docstring I had written claiming behaviour the code did not have.
+2. Its `from engine.render import agreement_home` was **lazy, inside the
+   function**, which survives into the built single-file dist where no `engine`
+   package exists — `build_bootstrap` strips only *module-level* engine
+   imports. The source layout passes; the dist raises `ModuleNotFoundError` on
+   first call. Caught by `tests/test_bench.py`'s cold-adoption arc, the one
+   test that exercises the built dist rather than the source tree. Worth the
+   journal: **src-layout green says nothing about the artifact adopters run.**
+
+**Honest nulls.**
+
+- **The fleet is not converged.** 10 of 12 trees still have a dead boot path.
+  This ships the instrument, not the cleanup — each repo needs a `Boot read
+  path` section added by hand, because planted docs are skip-if-exists and
+  `upgrade` will not add one.
+- **`boot_path` is not gated**, so nothing yet stops the defect recurring; it
+  is only visible. Promotion waits on the fleet converging.
+- **The two `automerge_preflight` defects are recorded, not fixed** — the kit
+  never writes to consumers (KF-2), so they need a session in each repo.
+- **`--gate-preview` still cannot distinguish "ran clean" from "did not
+  engage".** The wording was corrected to stop implying coverage, but the
+  underlying limitation stands: a site only reaches the report when it produces
+  a finding.
