@@ -1,6 +1,6 @@
 # 2026-08-06 · The restate requirement belongs in the prompt, not in a skill
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** opus-5 · high · template
 
