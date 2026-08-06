@@ -133,9 +133,24 @@ exactly this:
 1. **All five Layer 1 slots are present**, as literal machine-detectable
    headings `### Q1` … `### Q5`, each with a non-empty body. Answering Q1 and
    dropping Q2–Q5 must red.
-2. **At least ONE resolving SAME-REPO citation**, unless the slot carries the
-   literal line `` OWNER-DEPENDENT-ONLY `` as its first line — a slot-level
-   declaration, not a per-claim inference.
+2. **Each APPLICABLE slot carries its own resolving same-repo citation**, or
+   the literal first line `` OWNER-DEPENDENT-ONLY ``. Applicable = Q1, Q2, Q3.
+   (Q4 consequences and Q5 coverage-of-effort are statements about this session,
+   not about the tree, and have nothing to cite.)
+
+> **Per-slot, because one-citation-for-the-whole-record was the vacuous gate
+> again** (Codex, PR #580 round 3, P1). Under the previous rule a card could put
+> *"Based on general knowledge"* in Q1, an unrelated but resolving `README.md:1`
+> in Q2, arbitrary text in Q3–Q5, and pass every deterministic rule — while § 5
+> claimed that exact Q1 answer could not pass. **Third iteration of the same
+> defect:** the gate's advertised guarantee ran ahead of what it enforced.
+
+> **One marker, two disjoint scopes, neither inferred** (Codex, round 3, P1).
+> Three incompatible forms were in play. Now:
+> - `` OWNER-DEPENDENT-ONLY `` — literal FIRST LINE of a slot. **The only form
+>   that exempts.** Machine-checked.
+> - `` `OWNER-DEPENDENT` `` — an inline readability hedge in ordinary prose.
+>   **Grants no exemption and is never gated.**
 3. **Every SAME-REPO `path:line` citation RESOLVES** — the file exists and has
    at least that many lines. Pure fact extraction; the trick `route_docs.py`
    already uses.
@@ -277,11 +292,17 @@ it must flag and two it must accept — and confirm it discriminates:
 > is not a qualification.
 
 **The input contract this implies.** Case 1 is undetectable unless the reviewer
-can SEE the cited text: a resolving-and-relevant pointer and a
-resolving-and-irrelevant one are observationally identical to a model that
-receives only the claim. So `gemini_review.py` must **resolve each citation and
-include a bounded window of the cited lines** alongside the claim. Without that
-the reviewer collapses to the syntax check § 5 explicitly rejects (Codex, P1).
+can SEE the cited text. So `gemini_review.py` resolves **same-repo** citations
+and includes a bounded window of the cited lines alongside the claim.
+
+**Cross-repo citations are passed as UNRESOLVED, and the reviewer is told so**
+(Codex, round 3, P1). CI has no sibling checkout — § 5 says so — and an earlier
+draft nonetheless required the script to resolve *each* citation, which is
+unsatisfiable for exactly the citations the mandate's own record leans on. The
+reviewer therefore **cannot judge relevance of cross-repo evidence and must not
+pretend to**; it reports them as unverified pointers. That is a real reduction
+in coverage and it is preferable to a reviewer that appears to check something
+it never saw.
 
 If it fails any of the four, it is not usable — loudly, not as a degraded
 score.
@@ -326,9 +347,16 @@ other.**
 
 ### The § 9 baseline, captured BEFORE rollout
 
-The ratio has nothing to move from until a baseline exists. Capture it from the
-existing record — the session cards already on `main` — before the first gated
-PR, or § 9 is unfalsifiable.
+The ratio has nothing to move from until a baseline exists — and it **cannot be
+recovered from the existing cards**, which predate the `[origin:*]` schema and
+contain none of it (Codex, round 3, P2). Reading origins back out of them means
+undocumented retrospective classification, not comparable with a structured
+post-rollout count.
+
+So the baseline is **prospective**: run Layer 1 + Layer 2 and record
+`[origin:*]` lines for a stated number of sessions **with the gate OFF**, then
+enable it. If that costs more than the measurement is worth, the honest move is
+to drop § 9's claim to be testable — not to fake a baseline.
 
 ## 7c · The trigger set
 
@@ -374,6 +402,15 @@ of the fire rule, and needs no judgement.
 > The escape hatch is explicit, not inferred: a PR labelled
 > **`provenance-not-required`** skips the gate, and the label is recorded. A
 > human opting out on the record beats a checker guessing what "routine" means.
+>
+> **The label bypass requires a CI trigger change** (Codex, round 3, P1).
+> `ci.yml` declares a bare `pull_request:` with no `types:`, so it uses the
+> default activity set, which **excludes `labeled` and `unlabeled`**. A PR could
+> pass while exempt, have the label removed, and keep the green required check
+> straight through auto-merge — never supplying provenance. The gate must add
+> `types: [opened, synchronize, reopened, labeled, unlabeled]` and re-evaluate
+> the CURRENT label state on each run. Without that trigger change the exemption
+> is a stale-able bypass and must not ship.
 
 **The known hole, stated plainly.** Path triggers fire on modification, card
 triggers fire on *acknowledged* choices. Neither fires on a decision the author
@@ -392,7 +429,13 @@ subset and no more.** It is not a guarantee and must not be described as one.
    satisfies a loose spec while detecting nothing. Required:
 
    - **Input:** the diff's changed paths, `git diff --name-only`. Base by event:
-     **PR** → the merge base. **Release** → the previous `v*` tag, with
+     **PR** → the merge base. **Release** → the gate runs on the **pre-tag
+     version-bump PR, not at tag time** (Codex, round 3, P1): a release diff
+     spans every card since the previous tag, so selecting "the latest card"
+     validates an unrelated session and selecting none makes the trigger a
+     no-op. The tag job verifies the bump PR carried a passing provenance
+     record and reds if it did not. The exporter's diff base at release is the
+     previous `v*` tag, with
      `fetch-depth: 0` added to `release.yml`'s checkout, which today requests no
      depth at all while `ci.yml:25` explicitly sets it — so the changed-path
      input is currently uncomputable at the one trigger that most needs it
@@ -405,13 +448,22 @@ subset and no more.** It is not a guarantee and must not be described as one.
 
      | Pattern (most specific first) | Affected |
      |---|---|
-     | `src/engine/templates/**` | adopters that re-render that template |
+     | `src/engine/templates/**` | **`unknown` — reds** (see note below) |
      | `src/engine/**`, `dist/bootstrap.py` | every adopter, on next upgrade |
      | `docs/program/**` | **every program repo** — canonical program law, cited not copied (`docs/program/README.md:5`); an earlier draft folded this into `docs/**` → "nobody downstream" and would have understated exactly the governance changes the trigger set exists to catch (Codex, P1) |
      | `docs/**` (kit-local) | nobody downstream |
      | `.github/workflows/**` | this repo only |
    - **Adopter set + versions:** `docs/adopters.md`, whose limits are stated
      below.
+   > **Template impact is `unknown`, not a guess** (Codex, round 3, P2). An
+   > earlier draft mapped `src/engine/templates/**` to "adopters that re-render
+   > that template" — a set NO available source can produce. `docs/adopters.md`
+   > carries versions and heartbeat state; `currency.py` fetches a config, two
+   > bootstrap paths and heartbeats. Neither records which planted templates an
+   > adopter re-renders. The exporter emits `unknown` and **reds** rather than
+   > printing an understated adopter list that reads as fact. Fix it by adding a
+   > per-template record to the registry, not by inferring one.
+
    - **Rollback:** presence of a banked artifact under `.substrate/backup/`,
      reported per affected repo — a fact about this change, not about the fleet.
    - **Reversibility:** derived from the path class (a generated artifact is
@@ -584,3 +636,34 @@ checker can compute it or it cannot.
 > or whether the mandate is now over-engineered for the frequency of decisions
 > it will actually gate — is the owner's call, and § 9's ratio is the evidence
 > that would settle it after the fact rather than before.
+
+### Codex round 3 — eight more, all eight correct
+
+| | Finding | Disposition |
+|---|---|---|
+| P1 | One citation for the WHOLE record still passes a `"general knowledge"` Q1 | `[conceded]` — per-slot grounding |
+| P1 | Three incompatible `OWNER-DEPENDENT` syntaxes across two docs | `[conceded]` — one exempting form, one non-gated hedge |
+| P1 | Record headings `## Qn ·` fail the gated `### Qn` grammar | `[conceded]` — record rewritten |
+| P1 | Reviewer told to resolve cross-repo citations CI cannot fetch | `[conceded]` — passed unresolved, reviewer told so |
+| P1 | Release trigger has no deterministic card to inspect | `[conceded]` — gate moves to the pre-tag bump PR |
+| P1 | `provenance-not-required` is stale-able: `ci.yml` omits `labeled`/`unlabeled` | `[conceded]` — trigger types required before it ships |
+| P2 | `[origin:*]` baseline unrecoverable from cards predating the schema | `[conceded]` — prospective baseline |
+| P2 | No source maps a template to the adopters that re-render it | `[conceded]` — emits `unknown` and reds |
+
+**Three rounds, 26 findings, 26 correct.** And the mandate's own representative
+record has now failed the mandate's own gate **three separate times** — vacuous
+on zero citations, then citations that resolve against nothing, then headings
+in the wrong grammar. Each fix passed the author's review and Gemini's.
+
+**But round 3's fixes NARROW rather than expand**, which is the first sign of
+convergence: the reviewer now admits it cannot judge cross-repo evidence, the
+exporter emits `unknown` instead of an understated list, the baseline becomes
+prospective instead of reconstructed, and one of two markers stops exempting
+anything. Rounds 1–2 added contract; round 3 mostly removed overreach.
+
+> **`OWNER-DEPENDENT` — the open question this creates.** Is a spec that took
+> three review rounds to become implementable the right instrument for this
+> estate, or is the honest read that a deterministic gate over prose is simply
+> expensive and the practice should ship un-gated first? § 9's ratio settles it
+> after the fact; nothing settles it before, and it is the owner's call, not a
+> reviewer's and not mine.
