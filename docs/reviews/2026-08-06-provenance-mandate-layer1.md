@@ -23,7 +23,8 @@ resolve before submission.
 | Claim | Basis |
 |---|---|
 | The estate instruments execution, not judgment | `fleet-manager:docs/findings/2026-08-05-foundation-continuation.md:101` — *"This estate instruments execution. It does not instrument judgement."* Not my inference; a prior session's, owner-reviewed. |
-| Adopters vendor pinned builds, so a promoted checker cannot red the fleet at once | Commands run 2026-08-06: `substrate.config.json` `kit_version` = 1.20.1 in fleet-manager vs 1.20.2 in the kit; `bootstrap.py` header reads `GENERATED, DO NOT EDIT` at 1.3MB; `fleet-manager:.claude/skills/upgrade-distribution/SKILL.md:24` names `gh release download` as the delivery step. |
+| Adopters vendor pinned builds, so a promoted checker cannot red the fleet at once | `docs/adopters.md:30` — the `superbot` row reads *"pin-only (no vendored dist found)"*, the one exception, which is why the registry is per-repo evidence rather than an extrapolation. Also: `substrate.config.json` `kit_version` = 1.20.1 in fleet-manager vs 1.20.2 here; `fleet-manager:.claude/skills/upgrade-distribution/SKILL.md:24` names `gh release download` as the delivery step. |
+| The registry cannot establish absence of other live linkage | `src/engine/currency.py:459` — `config_text = fetch(repo, CONFIG_RELPATH)`; the gather path fetches named FILE PATHS, never a tree walk. This is why the round-1 refutation was downgraded to `[partial]`. |
 | The advisory tier was 87%/90% of gate output | `check --strict` run on both trees, line-counted: 41/47 and 80/89. |
 | 0 of 11 adopters had a resolving boot pointer | Sweep over 11 shallow clones, 2026-08-06. |
 | Thirteen owner corrections, five owner-dependent, two confident-with-false-walls | `OWNER-DEPENDENT` Stated by the owner. I cannot enumerate or verify them; I hold no record of his corrections beyond what he reports. Flagged per § 7b rather than asserted. |
@@ -45,7 +46,7 @@ resolve before submission.
 
 Two, and both are narrower than they may read.
 
-1. **"Gating on soundness is impossible."** Paths tried: verbatim-quote matching (proposed, then defeated — a real line can refute nothing); field-presence checking (kept, but it only catches absence). **A different path I have NOT tried:** a *second* model scoring whether a disposition addresses its objection. I excluded it by argument, not by experiment — it reintroduces prose inference into the gate, which is the rule this estate just adopted. That exclusion is a judgement and could be wrong; the untried experiment is "measure whether an LLM relevance-scorer agrees with the owner on a sample of real dispositions."
+1. **"Gating on soundness is impossible."** Paths tried: verbatim-quote matching (proposed, then defeated — a real line can refute nothing); field-presence checking (kept, but it only catches absence). **A different path I have NOT tried:** a *second* model scoring whether a disposition addresses its objection. I excluded it by argument, not by experiment — it reintroduces prose inference into the gate, and `src/engine/guards.py:548` (`ADVISORY_HEURISTIC = "HEURISTIC"`) is the rule this estate adopted hours earlier to keep exactly that class out of a gate. That exclusion is a judgement and could be wrong; the untried experiment is "measure whether an LLM relevance-scorer agrees with the owner on a sample of real dispositions."
 2. **"An agent cannot self-diagnose missing tacit knowledge."** Untried path: an agent could ask the owner a targeted question *in the domains § 7b names* rather than either asserting or staying silent. That is strictly more useful than flagging and I have not specified it.
 
 ### Q4 · Consequences, and who else they affect

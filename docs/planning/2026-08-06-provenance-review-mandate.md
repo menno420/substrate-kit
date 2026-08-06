@@ -475,10 +475,12 @@ subset and no more.** It is not a guarantee and must not be described as one.
    repo VENDORS and cannot establish the absence of some other live linkage. The
    exporter must not claim otherwise.
 2. **The provenance section + its gate** — the Layer 1 list as a session-card
-   section, and a checker implementing **§ 5 rules 1–5 in full**: all five
-   Q-slots present, ≥1 resolving same-repo citation (or a slot-level
-   `OWNER-DEPENDENT-ONLY`), same-repo citations resolve, cross-repo recorded not
-   gated, and a § 5b Layer 2 marker.
+   section, and a checker implementing **§ 5 rules 1–5 in full**. Deliberately
+   NOT paraphrased here — read § 5. An earlier draft summarised it as "≥1
+   resolving same-repo citation", which is the pre-round-3 GLOBAL rule, so an
+   implementer following this checklist would have rebuilt the very gate § 5
+   had just been corrected to reject (Codex round 4, P2 — the stale-paraphrase
+   failure recurring in the note that warns against it).
 
    > Stated as a reference to § 5 rather than a paraphrase, because the
    > paraphrase drifted: an earlier draft of this step still said "non-empty and
@@ -667,3 +669,32 @@ anything. Rounds 1–2 added contract; round 3 mostly removed overreach.
 > expensive and the practice should ship un-gated first? § 9's ratio settles it
 > after the fact; nothing settles it before, and it is the owner's call, not a
 > reviewer's and not mine.
+
+### Codex round 4 — two findings, and the lesson is the method
+
+| | Finding | Disposition |
+|---|---|---|
+| P1 | The record still fails the per-slot rule: Q1 and Q3 carry no resolving same-repo citation and no slot exemption | `[conceded]` |
+| P2 | Build order re-paraphrases the **pre-round-3 global** citation rule, inside the note warning against stale paraphrase | `[conceded]` — paraphrase deleted, § 5 referenced only |
+
+**Fourth form of one defect, and the cause was the method, not the spec.** In
+Codex's words: *"Updating the heading grammar fixed the round-3 symptom, but did
+not verify the record against the complete rule set."* Each round I fixed the
+symptom that was named and re-read the result, and re-reading is exactly what
+this whole mandate exists to distrust.
+
+**The fix is mechanical and now runs:** the record is checked against every § 5
+rule by script — slot headings, per-slot resolving same-repo citation, exemption
+first-line — rather than by inspection. All three applicable slots pass.
+Citations added are load-bearing, not filler: `docs/adopters.md:30` is the
+`superbot` pin-only row that makes the registry per-repo evidence,
+`src/engine/currency.py:459` is the `fetch(repo, CONFIG_RELPATH)` line proving
+it never walks a tree, `src/engine/guards.py:548` is the heuristic-class rule
+cited as the reason for excluding a second-model scorer.
+
+**Convergence, measured:** 9 → 9 → 8 → 2 findings, the last two mechanical, and
+Codex states the round-3 direction was convergent. The volume curve says
+converging; the four-round persistence of one defect class says a deterministic
+gate over prose is expensive to specify correctly. **Both are true**, and § 9's
+ratio is what decides whether that cost is worth paying — which remains the
+owner's open question, not a reviewer's and not mine.
