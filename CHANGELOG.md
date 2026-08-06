@@ -17,6 +17,61 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **`check_boot_path` — the boot pointer chain must resolve.** The kit already had a
+  reachability checker pointing the wrong way: `check_docs`'s `[reachable]` asserts every
+  live doc is reachable FROM the read path (it catches an orphan). Nothing asserted the
+  inverse — that the read path's own targets EXIST. This walks the chain a cold session
+  walks: the agreement the router names exists, it carries a boot section, and every path
+  that section lists is on disk.
+
+  Measured across 11 adopter trees, 2026-08-06: **0 of 11 had a boot pointer that resolved
+  end to end.** Five carried the current router text pointing at an agreement with no boot
+  section; six still carried the old numbered list naming a `.claude/CLAUDE.md` the default
+  adopt only STAGES. `render.agreement_home` records that this exact dead pointer was
+  diagnosed and fixed in the template on 2026-07-12 — "verified live in 3/3 adopters". That
+  fix **moved the deadness rather than removing it**: it repointed the router at the working
+  agreement before the agreement had a list to point at, and nothing checked, so it stood
+  for 25 days. `CONSTITUTION.md.tmpl` now carries a `Boot read path` section, so the
+  destination exists for every adopter that renders it.
+
+  Ships DETERMINISTIC (in the agent's channel) but deliberately **not gate-wired**: 11 of 11
+  would red and the fix is a hand-edit per repo, since planted docs are skip-if-exists and
+  `upgrade` will not add a section to an existing agreement.
+
+### Changed
+
+- **The deterministic tier now gates — six of nine sites, and the three exceptions are the
+  interesting part.** `guards.ADVISORY_GATE_READY` promotes `template_sync`,
+  `enforcement_strength`, `folded_gate`, `fastlane_symmetry`, `recipe_applies_when` and
+  `baton_resolves` to exit-affecting. #577 deferred this citing "a fleet bomb during version
+  skew"; that reasoning was wrong and is corrected here. Adopters vendor a **pinned**
+  generated `bootstrap.py` and receive a new checker only through an explicit
+  one-repo-at-a-time upgrade PR that lands born-red with a banked rollback — a promoted
+  checker cannot red the fleet at once.
+
+  Promotion is evidence-gated, and the evidence is a `--gate-preview` sweep of all 12
+  adopter trees in `docs/adopters.md`. Three sites are held back:
+
+  - `automerge_preflight` — 2 real findings (superbot, superbot-next: an enabler whose
+    allowlist disagrees with the config it regenerates from, so an upgrade silently stops
+    arming prefixes sessions push). Real defects, but two live findings is not a clean
+    sweep, and promoting would spend the §6.4 compat guarantee that no adopter's tree goes
+    born-red on upgrade.
+  - `staged_regen` — fires on **zero** of the 12 trees and still cannot be promoted: it
+    fires three times on the **cold-adoption arc itself**, so promoting it would make every
+    NEW adoption born-red on a defect the adopt flow creates. The 12-tree sweep swept mature
+    trees and had no way to see this; the test suite caught it. **A clean sweep across
+    adopters is necessary evidence for promotion, not sufficient.**
+  - `boot_path` — see above.
+
+  Verified live: re-running `check --strict` across all 12 trees after the promotion
+  produces **0 promoted reds**.
+
+- **`check --gate-preview` counts from the census, not from the run.** It reported "N
+  deterministic sites ran" while counting only sites that had produced findings — so it
+  could never distinguish a checker that ran clean from one that never engaged, and it read
+  as coverage.
+
 - **`ADVISORY_CENSUS` — every `check` advisory classified deterministic vs heuristic.**
   The fifth pinned surface in `src/engine/guards.py`, beside the four that pin the
   ENFORCING surfaces. Those say which steps, jobs, sub-checks and hooks can red a PR;

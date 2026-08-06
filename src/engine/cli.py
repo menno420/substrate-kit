@@ -233,7 +233,14 @@ from engine.skills.skills import (
     skill_document,
     skill_relpath,
 )
-from engine.guards import ADVISORY_DETERMINISTIC, advisory_kind
+from engine.checks.check_boot_path import check_boot_path
+from engine.guards import (
+    ADVISORY_DETERMINISTIC,
+    advisory_kind,
+    deterministic_advisories,
+    gate_pending_advisories,
+    gate_ready_advisories,
+)
 from engine.stances.stances import DEFAULT_STANCE, stance_briefing, stance_names
 from engine.upgrade import UpgradeRefused, run_rollback, run_upgrade
 
@@ -1558,6 +1565,14 @@ def cmd_check(
     # not a defect, so it rides the same posture="advisory" seam below (NOT
     # _extra_check_findings) and stays off STRICT_SUBCHECKS.
     baton_freshness_advisories = check_baton_freshness(target, config)
+    # Boot-pointer chain resolution (2026-08-06): the agreement the router names
+    # exists, carries a boot section, and every path that section lists is on
+    # disk. DETERMINISTIC -- three file-presence tests and a heading match -- so
+    # it stays in the agent's channel. NOT gate-wired yet: 11 of 11 adopters
+    # would red and the fix is a hand-edit per repo (planted docs are
+    # skip-if-exists), so it waits in guards.gate_pending_advisories() for a
+    # clean --gate-preview sweep. See the checker docstring for the measurement.
+    boot_path_advisories = check_boot_path(target, config)
     if status_only:
         # --status-only: the fast lane's scoped gate (see docstring). Only the
         # control-lane checkers run — the heartbeat gate, the control-scoped
@@ -2373,6 +2388,27 @@ def cmd_check(
             findings=baton_freshness_advisories,
         )
 
+    if boot_path_advisories and not status_only:
+        # Deterministic: printed in the agent's channel like every structural
+        # finding, and recorded to guard fires exactly like its siblings. Its
+        # promotion to exit-affecting is pending a clean fleet sweep, not
+        # pending a judgement call.
+        _advisory_out(
+            heuristic_report,
+            "boot_path_advisories",
+            f"check: {len(boot_path_advisories)} boot-path advisory "
+            "warning(s) (never exit-affecting):",
+            boot_path_advisories,
+        )
+        fires_written += record_guard_fires(
+            target,
+            config.state_dir,
+            cmd="check",
+            surface="check",
+            posture="advisory",
+            findings=boot_path_advisories,
+        )
+
     log_missing: list[str] = []
     log_absent_fails = False
     if status_only:
@@ -2386,6 +2422,7 @@ def cmd_check(
         if gate_preview:
             _announce_gate_preview(heuristic_report)
         _announce_heuristic_report(heuristic_report, advisories)
+        doc_findings = _promote_gate_ready(heuristic_report, doc_findings)
         if not doc_findings:
             _emit("check: control-status check passed (--status-only).")
             _announce_fires()
@@ -2578,12 +2615,40 @@ def cmd_check(
     if gate_preview:
         _announce_gate_preview(heuristic_report)
     _announce_heuristic_report(heuristic_report, advisories)
+    doc_findings = _promote_gate_ready(heuristic_report, doc_findings)
     if not doc_findings and not log_missing and not log_absent_fails:
         _emit("check: all checks passed.")
         _announce_fires()
         return 0
     _announce_fires()
     return 1 if strict else 0
+
+
+def _promote_gate_ready(report: list, doc_findings: list) -> list:
+    """Fold the promoted deterministic findings into the exit-code set.
+
+    A site listed in :data:`guards.ADVISORY_GATE_READY` was already printed in
+    the agent's channel like any structural finding; from here it also REDS.
+    Promotion is evidence-gated, never argued: every entry in that set was
+    swept across all 12 adopter trees with ``--gate-preview`` before being
+    added (the guards.py header records what that sweep returned). Deterministic
+    sites still in ``gate_pending_advisories()`` stay visible and non-fatal.
+    """
+    promoted = [
+        finding
+        for kind, site, _header, findings in report
+        if kind == ADVISORY_DETERMINISTIC and site in gate_ready_advisories()
+        for finding in findings
+    ]
+    if not promoted:
+        return doc_findings
+    _emit(
+        f"check: {len(promoted)} promoted deterministic finding(s) count "
+        "toward the exit code (guards.ADVISORY_GATE_READY) — a structural "
+        "disagreement between two committed surfaces, not a nudge; reconcile "
+        "the surfaces rather than the message.",
+    )
+    return list(doc_findings) + promoted
 
 
 def _announce_heuristic_report(report: list, expand: bool) -> None:
@@ -2634,11 +2699,16 @@ def _announce_gate_preview(report: list) -> None:
     det = [b for b in report if b[0] == ADVISORY_DETERMINISTIC]
     hot = [(site, findings) for _k, site, _h, findings in det if findings]
     total = sum(len(f) for _s, f in hot)
+    pending = [s for s in hot if s[0] in gate_pending_advisories()]
+    # Count from the CENSUS, not from `report`. A site only reaches `report`
+    # when it produced a finding, so the old wording ("N sites ran") silently
+    # reported the number that FIRED — it could never distinguish a checker
+    # that ran clean from one that never engaged, and it read as coverage.
     _emit(
-        f"check: gate-preview — {len(det)} deterministic advisory site(s) ran; "
-        f"{len(hot)} carry findings ({total} total). Promoting them to "
-        "exit-affecting would red this tree "
-        f"{'YES' if hot else 'NO'}.",
+        f"check: gate-preview — {len(deterministic_advisories())} deterministic "
+        f"site(s) in the census; {len(hot)} carry findings here ({total} "
+        f"finding(s)). Promoting the pending ones would red this tree: "
+        f"{'YES' if pending else 'NO'}.",
     )
     for site, findings in hot:
         _emit(f"  would-red [{site}] {len(findings)} finding(s)")

@@ -605,6 +605,13 @@ ADVISORY_CENSUS: dict[str, tuple[str, str, str]] = {
         "resolves a repo-relative path/anchor cited by a Next-2 baton against "
         "the filesystem -- the file and anchor exist or they do not",
     ),
+    "boot_path_advisories": (
+        ADVISORY_DETERMINISTIC,
+        "check_boot_path",
+        "walks the boot pointer chain -- agreement exists, carries a boot "
+        "section, every path it names is on disk. Three file-presence tests "
+        "and one heading match; no prose inference anywhere in it",
+    ),
     # ── HEURISTIC: aging, counting, or inference over prose ──
     "status_advisories": (
         ADVISORY_HEURISTIC,
@@ -741,12 +748,87 @@ ADVISORY_CENSUS: dict[str, tuple[str, str, str]] = {
     ),
 }
 
-# Anchor floors: 8 deterministic + 21 heuristic advisory sites today. Shrinkage
+# Anchor floors: 9 deterministic + 21 heuristic advisory sites today. Shrinkage
 # guards in the style of EXPECTED_MIRRORS / EXPECTED_CENSUS_GATES above, so the
 # census cannot be gutted to a vacuously-green empty set; bump deliberately
 # when an advisory site is legitimately added or removed.
-EXPECTED_ADVISORY_DETERMINISTIC = 8
+EXPECTED_ADVISORY_DETERMINISTIC = 9
 EXPECTED_ADVISORY_HEURISTIC = 21
+
+
+# ── Which deterministic sites are GATE-WIRED (exit-affecting) ────────────────
+# Being DETERMINISTIC says a checker is SAFE to gate — binary, no judgement, no
+# false-positive surface. It does not say the fleet is READY for it to gate. A
+# checker whose finding is real everywhere still cannot be promoted until the
+# trees it ships to are clean, or the promotion is just a fleet-wide red with a
+# hand-edit at the end of it.
+#
+# So promotion is evidence-gated, and `check --gate-preview` is the instrument
+# that produces the evidence. Measured 2026-08-06 across all 12 adopter trees
+# in docs/adopters.md — 3 findings total:
+#
+#   * six sites fired NOWHERE (staged_regen, enforcement_strength, folded_gate,
+#     fastlane_symmetry, recipe_applies_when, baton_resolves);
+#
+# ...and then the TEST SUITE corrected the sweep, which is worth recording
+# because it is a flaw in the method and not in the data. `staged_regen` fires
+# on ZERO of the 12 trees and still cannot be promoted: it fires THREE times on
+# the COLD-ADOPTION ARC itself (`tests/test_check_engagement.py` — a fresh
+# `adopt` + `render --live` leaves .substrate/agents/*.md and
+# .substrate/claude/CLAUDE.md carrying filled-but-unrendered slots). Promoting
+# it would make every NEW adoption born-red on a defect the adopt flow creates.
+# The sweep swept MATURE trees and had no way to see that. A clean sweep across
+# adopters is necessary evidence for promotion, not sufficient — the arc a new
+# adopter walks is part of the fleet too.
+#   * template_sync fired once, on substrate-kit itself, self-inflicted by #577
+#     and fixed in the same PR that promotes it;
+#   * automerge_preflight fired on superbot and superbot-next — both REAL
+#     latent defects (an enabler whose allowlist disagrees with the config it
+#     regenerates from, so an upgrade silently stops arming prefixes sessions
+#     push).
+#
+# automerge_preflight is therefore NOT promoted, and the REASON IS THE RULE
+# rather than the finding: promotion waits on a CLEAN sweep, and two live
+# findings is not a clean sweep. The defects are real and worth fixing in those
+# two repos — at which point the next sweep returns clean and the promotion is
+# free. Promoting it now would also spend a compat guarantee the kit states out
+# loud (EAP §6.4: no adopter's existing tree goes born-red on upgrade), which is
+# not a thing to trade for two findings already recorded in a PR body.
+#
+# `boot_path` is absent for the same reason at larger scale: 11 of 11 would red,
+# and the fix
+# is a hand-edit per repo (planted docs are skip-if-exists, so `upgrade` will
+# not add the section to an existing agreement). It ships DETERMINISTIC — in the
+# agent's channel, visible, never hidden in the routed tail — and gets promoted
+# when a later sweep says the fleet has converged. Add it here then; do not add
+# it on the argument that it is "obviously right", which is what promotion
+# without a sweep always feels like.
+ADVISORY_GATE_READY: frozenset[str] = frozenset({
+    "template_sync_advisories",
+    "strength_advisories",
+    "folded_gate_advisories",
+    "fastlane_symmetry_advisories",
+    "recipe_applies_when_advisories",
+    "baton_resolves_advisories",
+})
+
+# Anchor floor: 6 of the 9 deterministic sites gate today. Bump deliberately,
+# and only behind a clean --gate-preview sweep across docs/adopters.md.
+EXPECTED_ADVISORY_GATE_READY = 6
+
+
+def gate_ready_advisories() -> frozenset[str]:
+    """Deterministic sites whose findings COUNT TOWARD THE EXIT CODE."""
+    return ADVISORY_GATE_READY
+
+
+def gate_pending_advisories() -> list[str]:
+    """Deterministic sites that are visible but not yet exit-affecting.
+
+    The waiting room: safe to gate by construction, held back until a
+    ``--gate-preview`` sweep shows the fleet would survive the promotion.
+    """
+    return [s for s in deterministic_advisories() if s not in ADVISORY_GATE_READY]
 
 
 def advisory_census() -> dict[str, tuple[str, str, str]]:
