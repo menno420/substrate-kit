@@ -8,6 +8,12 @@
 > uncommitted self-test is not evidence of anything (PR #580, P2). The plan
 > claimed "Layer 1 earned its place" while the record sat in a scratchpad no
 > reader could check — a provenance failure inside the provenance mandate.
+>
+> **Citations were then rewritten to the syntax the spec defines**, because
+> Codex found that all six used a prose prefix (`fleet-manager docs/…`) that
+> resolves against nothing — this record would have RED the gate it exists to
+> demonstrate. Same-repo citations are now bare paths (gated); cross-repo use
+> `repo:path:line` (recorded, not gated, since CI has no sibling checkout).
 
 Answered in writing before the reviewer call, per § 3. Citations verified to
 resolve before submission.
@@ -16,24 +22,24 @@ resolve before submission.
 
 | Claim | Basis |
 |---|---|
-| The estate instruments execution, not judgment | `fleet-manager docs/findings/2026-08-05-foundation-continuation.md:101` — *"This estate instruments execution. It does not instrument judgement."* Not my inference; a prior session's, owner-reviewed. |
-| Adopters vendor pinned builds, so a promoted checker cannot red the fleet at once | Commands run 2026-08-06: `substrate.config.json` `kit_version` = 1.20.1 in fleet-manager vs 1.20.2 in the kit; `bootstrap.py` header reads `GENERATED, DO NOT EDIT` at 1.3MB; `.claude/skills/upgrade-distribution/SKILL.md:24` names `gh release download` as the delivery step. |
+| The estate instruments execution, not judgment | `fleet-manager:docs/findings/2026-08-05-foundation-continuation.md:101` — *"This estate instruments execution. It does not instrument judgement."* Not my inference; a prior session's, owner-reviewed. |
+| Adopters vendor pinned builds, so a promoted checker cannot red the fleet at once | Commands run 2026-08-06: `substrate.config.json` `kit_version` = 1.20.1 in fleet-manager vs 1.20.2 in the kit; `bootstrap.py` header reads `GENERATED, DO NOT EDIT` at 1.3MB; `fleet-manager:.claude/skills/upgrade-distribution/SKILL.md:24` names `gh release download` as the delivery step. |
 | The advisory tier was 87%/90% of gate output | `check --strict` run on both trees, line-counted: 41/47 and 80/89. |
 | 0 of 11 adopters had a resolving boot pointer | Sweep over 11 shallow clones, 2026-08-06. |
 | Thirteen owner corrections, five owner-dependent, two confident-with-false-walls | **OWNER-DEPENDENT.** Stated by the owner. I cannot enumerate or verify them; I hold no record of his corrections beyond what he reports. Flagged per § 7b rather than asserted. |
 | A correlation search silently clamped instead of failing | **OWNER-DEPENDENT.** His measurement, his instrument, outside anything I ran. |
-| Gemini was wrong about the dependabot deadlock | `fleet-manager docs/findings/2026-08-05-foundation-continuation.md:243` records it. Second-hand: I did not observe that review. |
+| Gemini was wrong about the dependabot deadlock | `fleet-manager:docs/findings/2026-08-05-foundation-continuation.md:243` records it. Second-hand: I did not observe that review. |
 | Gemini overclaimed on video coverage | **OWNER-DEPENDENT.** Stated by the owner; I have no record. |
 
 ## Q2 · Which documents covering this did you read? `path:line`
 
-- `fleet-manager docs/findings/2026-08-05-foundation-continuation.md:101` — the execution/judgment split, and `:68` for the `NOT-VERIFIABLE` position I reuse in § 10.
-- `fleet-manager docs/owner-reflection-2026-07-21.md` — read in full this session; the verification-not-capability thesis and the decide-don't-ask instruction.
-- `fleet-manager .claude/hooks/route_docs.py:112` — `(REPO / d).is_file()`. This is the prior art § 5 claims to mirror, and I checked it rather than assuming: it filters routes by whether the pointer resolves, and never inspects the doc's content.
-- `substrate-kit src/engine/checks/check_session_log.py:417` — `check_added_card`, the existence-and-grammar checker § 5 leans on for the "same division, not called theatre" argument.
-- `fleet-manager docs/conventions/vertex-first-for-gemini.md` — the routing rule in § 6.
+- `fleet-manager:docs/findings/2026-08-05-foundation-continuation.md:101` — the execution/judgment split, and `:68` for the `NOT-VERIFIABLE` position I reuse in § 10.
+- `fleet-manager:docs/owner-reflection-2026-07-21.md` — read in full this session; the verification-not-capability thesis and the decide-don't-ask instruction.
+- `fleet-manager:.claude/hooks/route_docs.py:112` — `(REPO / d).is_file()`. This is the prior art § 5 claims to mirror, and I checked it rather than assuming: it filters routes by whether the pointer resolves, and never inspects the doc's content.
+- `src/engine/checks/check_session_log.py:417` — `check_added_card`, the existence-and-grammar checker § 5 leans on for the "same division, not called theatre" argument.
+- `fleet-manager:docs/conventions/vertex-first-for-gemini.md` — the routing rule in § 6.
 
-**Not read, and it bears on § 5:** `substrate-kit src/engine/checks/check_docs.py` in full. I cite its `[reachable]` behaviour from having seen it fire on my own PR today, not from reading its implementation.
+**Not read, and it bears on § 5:** `src/engine/checks/check_docs.py` in full. I cite its `[reachable]` behaviour from having seen it fire on my own PR today, not from reading its implementation.
 
 ## Q3 · Anything asserted impossible or unavailable?
 

@@ -133,13 +133,37 @@ exactly this:
 1. **All five Layer 1 slots are present**, as literal machine-detectable
    headings `### Q1` … `### Q5`, each with a non-empty body. Answering Q1 and
    dropping Q2–Q5 must red.
-2. **At least ONE resolving `path:line` citation**, unless every claim in the
-   section carries the `` `OWNER-DEPENDENT` `` marker — the single, precisely
-   defined exemption, because an owner-held fact has no citable source and
-   marking it is the honest answer.
-3. **Every `path:line` citation present RESOLVES** — the file exists and has at
-   least that many lines. Pure fact extraction, no prose inference; the trick
-   `route_docs.py` already uses.
+2. **At least ONE resolving SAME-REPO citation**, unless the slot carries the
+   literal line `` OWNER-DEPENDENT-ONLY `` as its first line — a slot-level
+   declaration, not a per-claim inference.
+3. **Every SAME-REPO `path:line` citation RESOLVES** — the file exists and has
+   at least that many lines. Pure fact extraction; the trick `route_docs.py`
+   already uses.
+4. **Cross-repo citations use `repo:path:line` and are RECORDED, NOT GATED.**
+
+> **Citation syntax, because the plan's own record failed this rule** (Codex,
+> PR #580, P1). The committed Layer 1 answers cite
+> `fleet-manager docs/findings/…:101` — a prose prefix, not a path, which
+> resolves against nothing. **Six of six citations in the mandate's own
+> representative record would have RED its own gate.** That is the second time
+> the spec's worked example failed the spec.
+>
+> - **Same-repo:** `path/from/repo/root.md:NNN`. Gated.
+> - **Cross-repo:** `repo:path:line` (e.g. `fleet-manager:docs/x.md:101`).
+>   **Recorded, never gated** — CI has no sibling checkout, and inventing one
+>   means pinning and fetching external trees to make a doc-hygiene check pass.
+>   A cross-repo citation is a pointer for a human, not evidence a machine can
+>   verify, and the gate must not pretend otherwise.
+>
+> Consequence, stated because it is a real weakening: a session whose evidence
+> is entirely in another repo satisfies rule 2 only by citing something local
+> or by declaring the slot `OWNER-DEPENDENT-ONLY`. That is the honest cost of
+> refusing to fake verification.
+
+> **The exemption is slot-level because per-claim was undecidable** (Codex, P1).
+> An earlier draft exempted a slot "unless every claim carries the marker",
+> which requires finding claim boundaries in free-form prose — nondeterministic
+> semantic classification smuggled into a gate that advertises the opposite.
 4. **A Layer 2 outcome marker exists** — see § 5b.
 5. **Commands and error strings are RECORDED but NOT GATED.** Re-executing them
    in CI is unsafe — they are stateful and possibly destructive — and
@@ -262,6 +286,14 @@ the reviewer collapses to the syntax check § 5 explicitly rejects (Codex, P1).
 If it fails any of the four, it is not usable — loudly, not as a degraded
 score.
 
+**Qualification is pinned, not perpetual** (Codex, P2). A qualification run
+certifies one *configuration*, and § 6 selects a route but no version. Each
+review record must carry the **exact model id, the prompt version, and the
+citation-window size**, and the four controls **must be re-run whenever any of
+them changes**. Without this, a model alias moving underneath the route can turn
+the reviewer into one that accepts everything — or flags everything — with no
+recorded check ever going stale.
+
 ### Where survived-vs-conceded is recorded, so § 9 can be computed
 
 **Two records, because they answer different questions** — an earlier draft
@@ -305,8 +337,11 @@ path-triggers are blind to omissions, and was not replaced. It is replaced here,
 and the blindness is stated rather than papered over.
 
 **Fires on a PATH:** a diff touching `docs/decisions.md`,
-`docs/program/rulings.md`, `CONSTITUTION.md`, `docs/planning/**`,
-`src/engine/guards.py`; or a release tag / distribution wave.
+**`docs/decisions/NNN-*.md`** (the repo's ADR shape, defined at
+`docs/house-style.md:48`, and a distinct surface from the ledger — an ADR
+avoided the trigger entirely in an earlier draft), `docs/program/**`,
+`CONSTITUTION.md`, `docs/planning/**`, `src/engine/guards.py`; or a release tag
+/ distribution wave.
 
 **Fires on a CARD TAG** — three literal headings, not prose inference:
 
@@ -325,8 +360,20 @@ and the blindness is stated rather than papered over.
 card.** Noisier, still deterministic, and strictly better than a gate nobody can
 implement.
 
-**Does not fire on:** routine commits, typo fixes, mechanical refactors,
-telemetry deltas, roster regens.
+**Does not fire on:** any diff touching none of the paths above and carrying
+none of the three tags. That is the whole exclusion rule — it is the complement
+of the fire rule, and needs no judgement.
+
+> **The semantic exclusions are GONE** (Codex, P1). An earlier draft excluded
+> "routine commits, typo fixes, mechanical refactors" — categories a checker can
+> only reach by classifying a diff, which is exactly the prose-classification
+> problem this section rejects two paragraphs earlier, and which additionally
+> collided with the path rule (a typo fix under `docs/planning/**` matched both,
+> with no precedence defined).
+>
+> The escape hatch is explicit, not inferred: a PR labelled
+> **`provenance-not-required`** skips the gate, and the label is recorded. A
+> human opting out on the record beats a checker guessing what "routine" means.
 
 **The known hole, stated plainly.** Path triggers fire on modification, card
 triggers fire on *acknowledged* choices. Neither fires on a decision the author
@@ -344,13 +391,25 @@ subset and no more.** It is not a guarantee and must not be described as one.
    and distribution mode for a docs-only edit and a breaking dist change
    satisfies a loose spec while detecting nothing. Required:
 
-   - **Input:** the diff's changed paths (authoritative: `git diff --name-only`
-     against the merge base).
-   - **Mapping, deterministic per path class:**
-     `dist/bootstrap.py` or `src/engine/**` → every adopter, on their next
-     upgrade PR · `src/engine/templates/**` → adopters that re-render that
-     template · `docs/**` (kit-local) → nobody downstream ·
-     `.github/workflows/**` → this repo only.
+   - **Input:** the diff's changed paths, `git diff --name-only`. Base by event:
+     **PR** → the merge base. **Release** → the previous `v*` tag, with
+     `fetch-depth: 0` added to `release.yml`'s checkout, which today requests no
+     depth at all while `ci.yml:25` explicitly sets it — so the changed-path
+     input is currently uncomputable at the one trigger that most needs it
+     (Codex, P1). If a base still cannot be resolved, the exporter **records
+     `base-unresolved` and reds**; it never silently reports an empty diff.
+   - **Mapping, MOST-SPECIFIC PATTERN WINS** (Codex, P2 — `src/engine/templates/**`
+     matches both the template rule and `src/engine/**`, and without precedence
+     two conforming implementations report different blast radii for the same
+     change):
+
+     | Pattern (most specific first) | Affected |
+     |---|---|
+     | `src/engine/templates/**` | adopters that re-render that template |
+     | `src/engine/**`, `dist/bootstrap.py` | every adopter, on next upgrade |
+     | `docs/program/**` | **every program repo** — canonical program law, cited not copied (`docs/program/README.md:5`); an earlier draft folded this into `docs/**` → "nobody downstream" and would have understated exactly the governance changes the trigger set exists to catch (Codex, P1) |
+     | `docs/**` (kit-local) | nobody downstream |
+     | `.github/workflows/**` | this repo only |
    - **Adopter set + versions:** `docs/adopters.md`, whose limits are stated
      below.
    - **Rollback:** presence of a banked artifact under `.substrate/backup/`,
@@ -363,9 +422,17 @@ subset and no more.** It is not a guarantee and must not be described as one.
    **it does not enumerate committed trees.** It therefore establishes what each
    repo VENDORS and cannot establish the absence of some other live linkage. The
    exporter must not claim otherwise.
-2. **The provenance section + its `path:line` gate** — the Layer 1 list as a
-   session-card section, and a checker that verifies the section is non-empty
-   and every citation resolves.
+2. **The provenance section + its gate** — the Layer 1 list as a session-card
+   section, and a checker implementing **§ 5 rules 1–5 in full**: all five
+   Q-slots present, ≥1 resolving same-repo citation (or a slot-level
+   `OWNER-DEPENDENT-ONLY`), same-repo citations resolve, cross-repo recorded not
+   gated, and a § 5b Layer 2 marker.
+
+   > Stated as a reference to § 5 rather than a paraphrase, because the
+   > paraphrase drifted: an earlier draft of this step still said "non-empty and
+   > every citation resolves" — the **pre-correction** contract — so an
+   > implementer following the build order would have rebuilt the exact
+   > zero-citation vacuous gate § 5 had just been fixed to reject (Codex, P1).
 3. **The reviewer call** (`gemini_review.py`, Vertex-routed) — un-gated on its
    RESULT, but its **occurrence is gated** by § 5b: one of
    `completed` / `attempted-failed` / `deferred` must appear on the card. An
@@ -483,3 +550,37 @@ no reader could open — a provenance failure inside the provenance mandate, of
 exactly the kind it exists to prevent. The record is now committed at
 [`../reviews/2026-08-06-provenance-mandate-layer1.md`](../reviews/2026-08-06-provenance-mandate-layer1.md),
 and all six of its citations were verified to resolve.
+
+### Codex round 2 — nine more, all nine correct
+
+Re-review on the revised spec. **Every finding was verified against the cited
+file before being accepted**; none was taken on the reviewer's word.
+
+| | Finding | Verified against | Disposition |
+|---|---|---|---|
+| P1 | Cross-repo citations resolve against nothing — **the mandate's own record would red its own gate** | this repo's tree: 6 of 6 failed | `[conceded]` — § 5 syntax + record rewritten |
+| P1 | Owner-dependent exemption needs claim-boundary detection in prose | — | `[conceded]` — slot-level declaration |
+| P1 | Program law mapped to "nobody downstream" | `docs/program/README.md:5` — binds *every* repo | `[conceded]` — own path class |
+| P1 | ADRs escape the trigger | `docs/house-style.md:48` — `docs/decisions/NNN-*.md` | `[conceded]` — glob added |
+| P1 | Build order restates the **pre-correction** gate | § 5 vs § 8 step 2 | `[conceded]` — references § 5 |
+| P1 | Semantic exclusions recreate prose classification | § 7c's own rejection of it | `[conceded]` — exclusions removed, explicit label |
+| P1 | Release events cannot compute a diff base | `release.yml:23-30` (tag/dispatch), `:39` (no depth) vs `ci.yml:25` | `[conceded]` — previous tag + `fetch-depth: 0` |
+| P2 | Overlapping engine path classes have no precedence | `src/engine/templates/**` ⊂ `src/engine/**` | `[conceded]` — most-specific wins |
+| P2 | Reviewer qualification never expires | § 6 pins a route, not a version | `[conceded]` — model/prompt/window pinned |
+
+**The first is the important one, and it is the same failure twice.** Round 1
+found the gate passing vacuously on the plan's own worked example. Round 2 found
+the plan's own committed evidence record failing the corrected gate — six of six
+citations using a prose prefix that resolves against nothing. Both times the
+spec read fine and was unimplementable; both times the author and the Gemini
+reviewer missed it.
+
+**Running total across three reviewers: 22 objections — 19 conceded, 2 partial,
+1 refuted.** The concession rate is high because Codex is finding
+implementability defects, which are not matters of judgement: either the
+checker can compute it or it cannot.
+
+> **`OWNER-DEPENDENT`:** whether this level of specification is proportionate —
+> or whether the mandate is now over-engineered for the frequency of decisions
+> it will actually gate — is the owner's call, and § 9's ratio is the evidence
+> that would settle it after the fact rather than before.
