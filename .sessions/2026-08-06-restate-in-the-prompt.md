@@ -66,6 +66,22 @@ Same reasoning as THE DISCOVERY RULE step 1 in the CAPABILITIES template.
 - `python3 src/build_bootstrap.py` → rebuilt, 1 370 234 bytes.
 - `python3 dist/bootstrap.py check --strict` → recorded at close.
 
+## ⟲ Previous-session review
+
+The card before this one closed the guard-fire telemetry loop and named the
+pattern: the kit keeps producing **signal that nobody reads at the moment it
+matters.** This is the same defect one level up — not noise burying a finding,
+but a requirement filed where the reader has no reason to look. Both are
+placement failures, and both were invisible until someone watched a session from
+the outside.
+
+Also worth carrying: `test_committed_bootstrap_is_current` **caught a real
+mistake here.** Editing `src/engine/skills/skills.py` without rebuilding
+`dist/bootstrap.py` would have shipped a skill body that no adopter received.
+That is a deterministic check doing exactly the job the classification work
+argues deterministic checks should do — which is the useful counterweight to
+this card's thesis that documentation placement is where the failures live.
+
 ## Honest nulls
 
 - **Unmeasured whether it changes behaviour.** One incident motivated it; no
