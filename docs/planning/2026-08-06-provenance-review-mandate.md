@@ -141,6 +141,26 @@ The reviewer supplies:
 > deterministic checker over PROSE is neither** — it is the category error, and
 > five review rounds demonstrated it from four angles before it was named.
 
+### ⚠ BLOCKING — the free clauses are free in COST but GLOBAL in SCOPE
+
+`MEASURED` 2026-08-06, Codex round 6, verified in this tree:
+`check_session_log.missing_markers` scans **every configured needle against
+every completed card**, and `check_added_card` calls `check_log(path, markers)`
+on any added card. `session_markers` has no conditional form.
+
+So putting the provenance and Layer 2 clauses in `session_markers` does **not**
+implement the § 7c conditional trigger set. It silently implements the
+*fallback* — **gate every session card** — in every adopter that upgrades, and
+reds unrelated work that never touched a decision surface.
+
+**This undercuts a premise of the 2026-08-06 scope decision**, which rested on
+"three of four clauses are free". They are free to run and cannot be made
+conditional by that route. The options are a conditional checker (so all four
+clauses land in `check_provenance`, and "mostly free" is no longer true), or
+accepting gate-every-card as the actual design and saying so. **Owner decision;
+not resolved here.** The table below describes the intended clauses and is not
+implementable as written until that is answered.
+
 ### The four clauses, and what each costs
 
 | Clause | Mechanism | Cost |
@@ -475,7 +495,7 @@ subset and no more.** It is not a guarantee and must not be described as one.
    repo VENDORS and cannot establish the absence of some other live linkage. The
    exporter must not claim otherwise.
 2. **The provenance section + its gate** — the Layer 1 list as a session-card
-   section, and a checker implementing **§ 5 rules 1–5 in full**. Deliberately
+   section, and a checker implementing **the four clauses in § 5's table**. Deliberately
    NOT paraphrased here — read § 5. An earlier draft summarised it as "≥1
    resolving same-repo citation", which is the pre-round-3 GLOBAL rule, so an
    implementer following this checklist would have rebuilt the very gate § 5

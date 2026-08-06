@@ -13,9 +13,14 @@
 > This is a SPLIT, not a cut — no verified-correct content was deleted. The
 > owner's reading of the growth, which reverses the authoring session's own
 > worry: *"We should not consider this as a fault in our plan, but exactly the
-> plan working as intended."* 28 findings, every one correct, means the spec
-> contained 28 real defects; had review found nothing, the document would be
-> its original size **and still broken.** Length here is the visible trace of
+> plan working as intended."* **44 Codex findings across six rounds** (9 · 9 · 8 · 2 · 6 · 10) plus four from
+> Gemini — of which one Gemini objection was refuted and two dispositions were
+> `[partial]`, everything else conceded. The count is stated per round rather
+> than as a single number because an earlier version of this line said "28, all
+> correct" and was both stale and arithmetically wrong (Codex, round 6). The
+> argument does not depend on the exact total: review found real defects at a
+> high rate, so had it found nothing the document would be its original size
+> **and still broken.** Length here is the visible trace of
 > the input's defect density — a discovery signal, not a cost signal.
 >
 > The Layer 1 answers for the plan itself are the sibling file
