@@ -171,7 +171,7 @@ def test_red_fixture_fires_through_cmd_check_never_exit_affecting(
     through ``cmd_check`` on a sham-resolved note, and the exit code is
     untouched (plan §4.3 advisory-first contract)."""
     _plant_note(tmp_path, _sham_resolve(_template()))
-    code = cmd_check(tmp_path, strict=False)
+    code = cmd_check(tmp_path, strict=False, advisories=True)
     out = capsys.readouterr().out
     assert code == 0
     assert "archive-note advisory" in out

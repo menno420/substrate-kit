@@ -18261,6 +18261,288 @@ def hook_census_notes() -> list[str]:
 # both directions. (The disarm workflow keys on the do-not-automerge LABEL, not
 # a prefix, so it is deliberately outside this symmetry.)
 
+# ── Fifth surface: the ADVISORY census (deterministic vs heuristic) ──────────
+# The four censuses above pin the ENFORCING surfaces: which steps, jobs,
+# sub-checks and hooks can red a PR. None of them says anything about the
+# surface an agent actually READS. `check --strict` emits, beside its
+# exit-affecting findings, a long tail of blocks each labelled "(never
+# exit-affecting)". Measured 2026-08-06 at HEAD: that tail is 41 of 47 output
+# lines on substrate-kit (87%) and 80 of 89 on fleet-manager (90%) -- with BOTH
+# trees exiting 0. Every tag that fired was an aging nag or a false positive
+# (13 stale-wall rows titled 'any'; nine skill-grounds rows naming `READ FIRST`
+# and a numpy expression as unresolved "commands"). No deterministic structural
+# checker fired on either tree.
+#
+# So the channel an agent consults to decide whether it is done runs at roughly
+# 1:9 signal to noise, and the noise is wrong. That is Goodhart pointed at a
+# feedback loop: an agent's default response to a warning is to try to fix it,
+# so a large permanent field of false warnings is not neutral -- it actively
+# recruits effort toward hallucinated repairs.
+#
+# The fix is NOT to gate the tail (a noisy heuristic wired hard produces an
+# agent inventing changes to satisfy a false positive, then a deadlocked PR).
+# It is to CLASSIFY it, and route by class:
+#
+#   * DETERMINISTIC -- the finding is a structural disagreement between two
+#     surfaces, or an unresolved reference. Binary, no judgement, no prose
+#     matching. A finding is a defect. These stay in the agent's channel.
+#   * HEURISTIC -- the finding is an aging nag, a count, or an inference over
+#     prose. It may be a false positive by construction. These leave the
+#     agent's channel entirely and land in the advisory report, where they are
+#     an owner-facing periodic read rather than a gate line.
+#
+# Both classes keep recording guard fires exactly as before: only stdout moves,
+# so routing is exit-neutral by construction.
+#
+# Keys are the advisory VARIABLE names in `cli.cmd_check` -- the emit sites the
+# routing governs. `tests/test_advisory_census.py` asserts bidirectional
+# set-equality against the live `_advisory_out(` call sites, so an advisory
+# block cannot ship unclassified and a census entry cannot outlive its block.
+ADVISORY_DETERMINISTIC = "DETERMINISTIC"
+ADVISORY_HEURISTIC = "HEURISTIC"
+
+ADVISORY_KINDS = (ADVISORY_DETERMINISTIC, ADVISORY_HEURISTIC)
+
+# name -> (kind, producing checker, why it is classified that way)
+ADVISORY_CENSUS: dict[str, tuple[str, str, str]] = {
+    # ── DETERMINISTIC: two surfaces disagree, or a reference does not resolve ──
+    "staged_regen_advisories": (
+        ADVISORY_DETERMINISTIC,
+        "check_staged_regen",
+        "a staged artifact still carries a literal ${slot} whose answer is "
+        "already filled in state -- a string-presence test against a recorded "
+        "value, with no judgement in it",
+    ),
+    "template_sync_advisories": (
+        ADVISORY_DETERMINISTIC,
+        "check_template_sync",
+        "set difference between a template's heading set and its local copy's; "
+        "a heading is present on one side or it is not",
+    ),
+    "automerge_advisories": (
+        ADVISORY_DETERMINISTIC,
+        "check_automerge_preflight",
+        "set comparison between the planted enabler's branch allowlist and "
+        "automerge.branch_patterns -- two committed surfaces that either agree "
+        "or do not",
+    ),
+    "strength_advisories": (
+        ADVISORY_DETERMINISTIC,
+        "check_enforcement_strength",
+        "flag comparison between the wired `check --strict` door and the "
+        "staged gate's stronger legs; both flag sets are read from committed "
+        "YAML",
+    ),
+    "folded_gate_advisories": (
+        ADVISORY_DETERMINISTIC,
+        "check_folded_gate",
+        "detects one specific structural shape in a host-folded gate (the "
+        "pre-#19 newest-by-mtime card picker); the shape is present or absent",
+    ),
+    "fastlane_symmetry_advisories": (
+        ADVISORY_DETERMINISTIC,
+        "check_fastlane_symmetry",
+        "set comparison between the prefixes the claims-only guard cards and "
+        "the prefixes the enabler arms -- the FASTLANE_PREFIX_REGISTRY "
+        "symmetry above, evaluated against a host tree",
+    ),
+    "recipe_applies_when_advisories": (
+        ADVISORY_DETERMINISTIC,
+        "check_recipe_applies_when",
+        "parses an `applies-when:` badge and reports absent/empty/malformed; "
+        "well-formedness is a grammar question, not a judgement (its HONESTY "
+        "sibling, which reads the recipe's prose, is heuristic below)",
+    ),
+    "baton_resolves_advisories": (
+        ADVISORY_DETERMINISTIC,
+        "check_baton_resolves",
+        "resolves a repo-relative path/anchor cited by a Next-2 baton against "
+        "the filesystem -- the file and anchor exist or they do not",
+    ),
+    # ── HEURISTIC: aging, counting, or inference over prose ──
+    "status_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_status_current",
+        "the wall-clock STALENESS half of the heartbeat checker (its static "
+        "gate half is exit-affecting and stays there); a heartbeat aging past "
+        "a window is a clock reading, not a defect",
+    ),
+    "adopters_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_adopters_current",
+        "the staleness half of the adopter registry, exactly like the "
+        "heartbeat above; the format half is exit-affecting and stays there",
+    ),
+    "owner_ask_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_owner_actions",
+        "judges whether a prose owner-ask is 'actionable'; the checker's own "
+        "docstring calls the match coarse",
+    ),
+    "claim_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_claims",
+        "flags a claim collision the manager adjudicates -- the checker "
+        "surfaces the tiebreak, it cannot decide it",
+    ),
+    "xref_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_capability_xref",
+        "coarse token overlap between an owner-ask and a ledger row; the call "
+        "site already says a heuristic match can never be a verdict. Measured "
+        "22 fires on fleet-manager, many byte-identical repeats",
+    ),
+    "setup_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_setup_script",
+        "detects a 'secret-shaped literal' in a host-owned script -- shape "
+        "matching over arbitrary text",
+    ),
+    "grounds_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_skill_grounds",
+        "tokenizes skill prose and asks whether the first token names a "
+        "command. Measured nine fires on fleet-manager, all false: `READ "
+        "FIRST`, `verify <out.json>`, and a numpy expression",
+    ),
+    "archive_ready_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_archive_ready",
+        "infers a sham resolution from guarded default text surviving "
+        "marker-stripping; UNVERIFIED per its own provenance header",
+    ),
+    "card_residue_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_card_residue",
+        "the same marker-stripping inference applied to session cards; the "
+        "module docstring calls itself heuristic and UNVERIFIED",
+    ),
+    "digest_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_seat_digest",
+        "seat-digest drift nudge, UNVERIFIED per its provenance header; the "
+        "fix is one regen command, not a defect to gate",
+    ),
+    "headroom_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_orientation_headroom",
+        "a GAUGE -- it fires when the boot set is NEAR the budget, not over "
+        "it. The over-budget case is check_orientation_budget, which is "
+        "exit-affecting and stays there",
+    ),
+    "model_line_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_model_line",
+        "classifies a prose Model line against a taxonomy; UNVERIFIED per its "
+        "provenance header",
+    ),
+    "outbox_advisories": (
+        ADVISORY_HEURISTIC,
+        "list_outbox",
+        "a pending-count nudge; a count is never a defect",
+    ),
+    "stale_walls_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_stale_walls",
+        "wall-clock aging of capability rows. Measured 33 fires on "
+        "fleet-manager, 13 of them titled 'any' and four 'autonomous-project' "
+        "-- the row extractor mis-parses, so even the subject is unreliable",
+    ),
+    "dateless_walls_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_dateless_walls",
+        "the complement of the ager above -- rows carrying no parseable date. "
+        "Measured 12 fires on fleet-manager, largely on section headers rather "
+        "than wall rows",
+    ),
+    "claim_provenance_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_claim_provenance",
+        "infers from prose whether a numeric table states its instrument; "
+        "PL-014 itself scopes this as a nudge, noting a hard red would flag "
+        "every existing measurement document at once",
+    ),
+    "wall_ledger_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_wall_ledger_agreement",
+        "infers disagreement between an append-log entry and a corrections "
+        "section -- two prose surfaces, compared by meaning",
+    ),
+    "recipe_signature_honesty_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_recipe_signature_honesty",
+        "cross-checks a signature token against the recipe's PROSE BODY; "
+        "whether the body 'mentions' a marker is not a binary question",
+    ),
+    "recipe_discovery_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_recipe_discovery",
+        "pattern-matches an adopter tree against a recipe signature and "
+        "suggests a read; its own docstring says discovery, not enforcement",
+    ),
+    "ungroomed_ideas_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_ungroomed_ideas",
+        "counts idea lines newer than the last groom pass; a backlog count is "
+        "a prompt to schedule work, not a defect in the tree",
+    ),
+    "baton_freshness_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_baton_freshness",
+        "infers that a baton names as still-to-build something that already "
+        "resolves -- an inference about INTENT, unlike its S4 sibling above "
+        "which only resolves a path",
+    ),
+}
+
+# Anchor floors: 8 deterministic + 21 heuristic advisory sites today. Shrinkage
+# guards in the style of EXPECTED_MIRRORS / EXPECTED_CENSUS_GATES above, so the
+# census cannot be gutted to a vacuously-green empty set; bump deliberately
+# when an advisory site is legitimately added or removed.
+EXPECTED_ADVISORY_DETERMINISTIC = 8
+EXPECTED_ADVISORY_HEURISTIC = 21
+
+
+def advisory_census() -> dict[str, tuple[str, str, str]]:
+    """The full advisory census: emit-site name -> ``(kind, checker, why)``.
+
+    Returns a copy so a consumer cannot mutate the canonical registry.
+    """
+    return dict(ADVISORY_CENSUS)
+
+
+def advisory_kind(name: str) -> str:
+    """The classification of one advisory emit site.
+
+    Unknown names classify as :data:`ADVISORY_DETERMINISTIC` — the fail-LOUD
+    default. An unclassified block keeps printing in the agent's channel, so
+    the failure mode of forgetting a census entry is noise (which the meta-test
+    catches) and never silence (which nothing would catch).
+    """
+    entry = ADVISORY_CENSUS.get(name)
+    return entry[0] if entry else ADVISORY_DETERMINISTIC
+
+
+def deterministic_advisories() -> list[str]:
+    """Emit sites that stay in the agent's feedback channel."""
+    return [k for k, v in ADVISORY_CENSUS.items() if v[0] == ADVISORY_DETERMINISTIC]
+
+
+def heuristic_advisories() -> list[str]:
+    """Emit sites routed to the advisory report, off the agent's channel."""
+    return [k for k, v in ADVISORY_CENSUS.items() if v[0] == ADVISORY_HEURISTIC]
+
+
+def advisory_checkers() -> list[str]:
+    """The producing checker of every census entry, in registry order."""
+    return [checker for _kind, checker, _why in ADVISORY_CENSUS.values()]
+
+
+def advisory_reasons() -> list[str]:
+    """The classification reason of every census entry."""
+    return [why for _kind, _checker, why in ADVISORY_CENSUS.values()]
+
+
 FASTLANE_CARDED = "carded"  # work PRs -- the guard requires a session card
 FASTLANE_CARDLESS = "card-less"  # ride the fast lane card-free by design
 
@@ -24491,6 +24773,35 @@ def _emit(line: str = "") -> None:
     sys.stdout.write(line + "\n")
 
 
+def _advisory_out(
+    report: list,
+    site: str,
+    header: str,
+    findings: list,
+) -> None:
+    """Emit one advisory block, routed by :data:`guards.ADVISORY_CENSUS`.
+
+    ``site`` is the emit-site name the census keys on. DETERMINISTIC sites
+    print inline exactly as they always have — a structural disagreement or an
+    unresolved reference belongs in the agent's channel. HEURISTIC sites are
+    appended to ``report`` instead and never reach stdout, because an ager, a
+    counter or an inference over prose can be a false positive by
+    construction, and an agent's default response to a warning is to try to
+    fix it (see the census header for the measured noise ratio).
+
+    The caller records guard fires for BOTH classes exactly as before, so this
+    moves stdout only: no finding here has ever counted toward the exit code,
+    and routing cannot change one. ``check --advisories`` prints the suppressed
+    tail in full, so nothing is lost — only relocated out of the gate channel.
+    """
+    kind = advisory_kind(site)
+    report.append((kind, site, header, list(findings)))
+    if kind == ADVISORY_DETERMINISTIC:
+        _emit(header)
+        for finding in findings:
+            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
+
+
 def _kit_root() -> Path:
     """Return the tree the guardrail protects (the kit's own checkout).
 
@@ -25351,6 +25662,8 @@ def cmd_check(
     inbox_base: Path | None = None,
     explain_wall: str | None = None,
     remediate: str | None = None,
+    advisories: bool = False,
+    gate_preview: bool = False,
 ) -> int:
     """Run every hygiene checker against ``target``.
 
@@ -25452,6 +25765,10 @@ def cmd_check(
         return _cmd_remediate(remediate)
     config = load_config(target)
     posture = "blocking" if strict else "advisory"
+    # Heuristic advisory blocks collect here instead of printing (see
+    # _advisory_out + guards.ADVISORY_CENSUS). One summary line replaces them
+    # in the gate channel; `--advisories` prints the tail in full.
+    heuristic_report: list = []
     # The control-protocol heartbeat (KL-8): static gate findings (missing /
     # heartbeat-less status.md) ride the strict loop like every checker;
     # wall-clock staleness is advisory-only and handled below — a required CI
@@ -25964,12 +26281,13 @@ def cmd_check(
         # toward the exit code (a stale heartbeat must not red a required CI
         # check on wall-clock time alone — the Stop hook and this warning are
         # the nag; the manager's dark-Project read is the consequence).
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "status_advisories",
             f"check: {len(status_advisories)} control-status advisory "
             "warning(s) (never exit-affecting):",
+            status_advisories,
         )
-        for finding in status_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -25982,12 +26300,13 @@ def cmd_check(
         # Same warn-only contract as the staleness advisory above: surfaced +
         # telemetry-recorded, never counted toward the exit code — the owner-
         # action format migrates by nag, not by locked door (ORDER 008).
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "owner_ask_advisories",
             f"check: {len(owner_ask_advisories)} owner-action advisory "
             "warning(s) (never exit-affecting):",
+            owner_ask_advisories,
         )
-        for finding in owner_ask_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26002,12 +26321,13 @@ def cmd_check(
         # is surfaced + telemetry-recorded but never counted toward the exit
         # code — the manager adjudicates the tiebreak; the checker only
         # flags the collision/drift.
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "claim_advisories",
             f"check: {len(claim_advisories)} claims advisory "
             "warning(s) (never exit-affecting):",
+            claim_advisories,
         )
-        for finding in claim_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26021,12 +26341,13 @@ def cmd_check(
         # the ledger cross-reference is a coarse token-overlap nudge —
         # surfaced + telemetry-recorded, never counted toward the exit code;
         # a heuristic match can never be a verdict.
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "xref_advisories",
             f"check: {len(xref_advisories)} capability cross-reference "
             "advisory warning(s) (never exit-affecting):",
+            xref_advisories,
         )
-        for finding in xref_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26041,12 +26362,13 @@ def cmd_check(
         # (fatal posture, missing exit 0, secret-shaped literal) is surfaced
         # + telemetry-recorded, never counted toward the exit code, so no
         # adopter's hand-rolled script can red a required check on upgrade.
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "setup_advisories",
             f"check: {len(setup_advisories)} setup-script contract advisory "
             "warning(s) (never exit-affecting):",
+            setup_advisories,
         )
-        for finding in setup_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26061,12 +26383,13 @@ def cmd_check(
         # surfaced + telemetry-recorded, never counted toward the exit code
         # — the checker is UNVERIFIED (PL-008 header) and a coarse prose
         # scan can never be a verdict.
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "grounds_advisories",
             f"check: {len(grounds_advisories)} skill-grounds advisory "
             "warning(s) (never exit-affecting):",
+            grounds_advisories,
         )
-        for finding in grounds_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26081,12 +26404,13 @@ def cmd_check(
         # artifact lagging its own filled answers is surfaced + telemetry-
         # recorded, never counted toward the exit code — the fix is one
         # regen command, not a locked door.
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "staged_regen_advisories",
             f"check: {len(staged_regen_advisories)} staged regen-lag advisory "
             "warning(s) (never exit-affecting):",
+            staged_regen_advisories,
         )
-        for finding in staged_regen_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26103,12 +26427,13 @@ def cmd_check(
         # never counted toward the exit code — the fix is one hand-sync
         # edit, and a deliberate local divergence is a judgment call no
         # locked door can adjudicate.
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "template_sync_advisories",
             f"check: {len(template_sync_advisories)} template-sync advisory "
             "warning(s) (never exit-affecting):",
+            template_sync_advisories,
         )
-        for finding in template_sync_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26125,12 +26450,13 @@ def cmd_check(
         # toward the exit code — the checker is UNVERIFIED (PL-008 header)
         # and the fix is resolving the note with live facts, not a locked
         # door.
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "archive_ready_advisories",
             f"check: {len(archive_ready_advisories)} archive-note advisory "
             "warning(s) (never exit-affecting):",
+            archive_ready_advisories,
         )
-        for finding in archive_ready_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26147,12 +26473,13 @@ def cmd_check(
         # never counted toward the exit code — the checker is UNVERIFIED
         # (PL-008 header) and the fix is replacing each surviving hint
         # wholesale with genuine session text, not a locked door.
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "card_residue_advisories",
             f"check: {len(card_residue_advisories)} session-card residue "
             "advisory warning(s) (never exit-affecting):",
+            card_residue_advisories,
         )
-        for finding in card_residue_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26167,12 +26494,13 @@ def cmd_check(
         # is surfaced + telemetry-recorded, never counted toward the exit
         # code — the checker is UNVERIFIED (PL-008 header); the fix is one
         # `bootstrap.py seat-digest` regen, not a locked door.
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "digest_advisories",
             f"check: {len(digest_advisories)} seat-digest advisory "
             "warning(s) (never exit-affecting):",
+            digest_advisories,
         )
-        for finding in digest_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26186,12 +26514,13 @@ def cmd_check(
         # near-budget boot set is a trim-early nudge — surfaced + telemetry-
         # recorded, never counted toward the exit code; the cliff itself
         # (over budget) stays the exit-affecting orientation-budget gate.
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "headroom_advisories",
             f"check: {len(headroom_advisories)} orientation-headroom advisory "
             "warning(s) (never exit-affecting):",
+            headroom_advisories,
         )
-        for finding in headroom_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26208,12 +26537,13 @@ def cmd_check(
         # the base branch requires a status context (the INERT-on-zero half),
         # so a required-check red here would be a fleet bomb during version
         # skew; that half stays owner-UI.
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "automerge_advisories",
             f"check: {len(automerge_advisories)} auto-merge-enabler advisory "
             "warning(s) (never exit-affecting):",
+            automerge_advisories,
         )
-        for finding in automerge_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26229,12 +26559,13 @@ def cmd_check(
         # nudge — surfaced + telemetry-recorded, never counted toward the
         # exit code; a hand-rolled gate is a legitimate door, and a strict
         # red here would bomb every weak-form adopter on upgrade.
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "strength_advisories",
             f"check: {len(strength_advisories)} enforcement-strength advisory "
             "warning(s) (never exit-affecting):",
+            strength_advisories,
         )
-        for finding in strength_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26250,12 +26581,13 @@ def cmd_check(
         # telemetry-recorded, never counted toward the exit code; the PL-004
         # dataset records drift verbatim either way, the lint just makes it
         # visible at check time instead of a later hand sweep.
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "model_line_advisories",
             f"check: {len(model_line_advisories)} model-line payload advisory "
             "warning(s) (never exit-affecting):",
+            model_line_advisories,
         )
-        for finding in model_line_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26270,12 +26602,13 @@ def cmd_check(
         # surfaced + telemetry-recorded, never counted toward the exit code;
         # the session-close ritual keeps its own copy of this advisory, this
         # one just makes the backlog visible at check time too.
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "outbox_advisories",
             f"check: {len(outbox_advisories)} friction-outbox advisory "
             "warning(s) (never exit-affecting):",
+            outbox_advisories,
         )
-        for finding in outbox_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26289,12 +26622,13 @@ def cmd_check(
         # stale `Generated:` stamp is a rerun-the-scan nudge — CI cannot
         # refetch (no auth to sibling repos), so time-based red here would
         # be a bomb; surfaced + telemetry-recorded, never exit-affecting.
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "adopters_advisories",
             f"check: {len(adopters_advisories)} adopter-registry advisory "
             "warning(s) (never exit-affecting):",
+            adopters_advisories,
         )
-        for finding in adopters_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26310,12 +26644,13 @@ def cmd_check(
         # host-authored workflow, so this is surfaced + telemetry-recorded but
         # NEVER counted toward the exit code (a hard red would break adopters
         # that legitimately fold their gate). Deliberately off STRICT_SUBCHECKS.
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "folded_gate_advisories",
             f"check: {len(folded_gate_advisories)} folded-gate advisory "
             "warning(s) (never exit-affecting):",
+            folded_gate_advisories,
         )
-        for finding in folded_gate_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26331,12 +26666,13 @@ def cmd_check(
         # loosen and a stale wall may already be false, but a still-real wall
         # aging out is not a defect. Surfaced + telemetry-recorded, NEVER
         # counted toward the exit code (deliberately off STRICT_SUBCHECKS).
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "stale_walls_advisories",
             f"check: {len(stale_walls_advisories)} stale-wall advisory "
             "warning(s) (never exit-affecting):",
+            stale_walls_advisories,
         )
-        for finding in stale_walls_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26353,12 +26689,13 @@ def cmd_check(
         # ledger legitimately carries an as-yet-undated wall. Surfaced +
         # telemetry-recorded, NEVER counted toward the exit code (deliberately
         # off STRICT_SUBCHECKS, the R5 stale-wall sibling's reason).
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "dateless_walls_advisories",
             f"check: {len(dateless_walls_advisories)} dateless-wall advisory "
             "warning(s) (never exit-affecting):",
+            dateless_walls_advisories,
         )
-        for finding in dateless_walls_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26374,12 +26711,13 @@ def cmd_check(
         # measurement docs predate the convention. Surfaced +
         # telemetry-recorded, NEVER counted toward the exit code (deliberately
         # off STRICT_SUBCHECKS, the dateless-wall sibling's reason).
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "claim_provenance_advisories",
             f"check: {len(claim_provenance_advisories)} claim-provenance "
             "advisory warning(s) (never exit-affecting):",
+            claim_provenance_advisories,
         )
-        for finding in claim_provenance_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26395,12 +26733,13 @@ def cmd_check(
         # nudge — a correction that landed in one place but not the other makes
         # the ledger contradict itself. Surfaced + telemetry-recorded, NEVER
         # counted toward the exit code (deliberately off STRICT_SUBCHECKS).
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "wall_ledger_advisories",
             f"check: {len(wall_ledger_advisories)} wall-ledger-disagreement "
             "advisory warning(s) (never exit-affecting):",
+            wall_ledger_advisories,
         )
-        for finding in wall_ledger_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26417,12 +26756,13 @@ def cmd_check(
         # lags its regenerated form during kit version skew). Surfaced +
         # telemetry-recorded, NEVER counted toward the exit code (deliberately
         # off STRICT_SUBCHECKS, the enabler⇄config sibling's fleet-bomb reason).
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "fastlane_symmetry_advisories",
             f"check: {len(fastlane_symmetry_advisories)} fast-lane-symmetry "
             "advisory warning(s) (never exit-affecting):",
+            fastlane_symmetry_advisories,
         )
-        for finding in fastlane_symmetry_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26438,12 +26778,13 @@ def cmd_check(
         # discovery check that matches an adopter's seam to a recipe, not a defect
         # that should fail an adopter. Surfaced + telemetry-recorded, NEVER
         # counted toward the exit code (deliberately off STRICT_SUBCHECKS).
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "recipe_applies_when_advisories",
             f"check: {len(recipe_applies_when_advisories)} recipe applies-when "
             "advisory warning(s) (never exit-affecting):",
+            recipe_applies_when_advisories,
         )
-        for finding in recipe_applies_when_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26460,12 +26801,13 @@ def cmd_check(
         # future discovery check, but it is not a defect that should fail an
         # adopter. Surfaced + telemetry-recorded, NEVER counted toward the exit
         # code (deliberately off STRICT_SUBCHECKS).
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "recipe_signature_honesty_advisories",
             f"check: {len(recipe_signature_honesty_advisories)} recipe "
             "signature-honesty advisory warning(s) (never exit-affecting):",
+            recipe_signature_honesty_advisories,
         )
-        for finding in recipe_signature_honesty_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26481,12 +26823,13 @@ def cmd_check(
         # invitation, the DISCOVERY complement to R11/S8. Never a defect that should
         # fail an adopter (discovery, not enforcement). Surfaced + telemetry-
         # recorded, NEVER counted toward the exit code (off STRICT_SUBCHECKS).
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "recipe_discovery_advisories",
             f"check: {len(recipe_discovery_advisories)} recipe discovery "
             "advisory warning(s) (never exit-affecting):",
+            recipe_discovery_advisories,
         )
-        for finding in recipe_discovery_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26501,12 +26844,13 @@ def cmd_check(
         # counting them is a "run a groom pass before claiming backlog dry" nudge,
         # not a defect that should fail an adopter. Surfaced + telemetry-recorded,
         # NEVER counted toward the exit code (deliberately off STRICT_SUBCHECKS).
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "ungroomed_ideas_advisories",
             f"check: {len(ungroomed_ideas_advisories)} un-groomed-idea "
             "advisory warning(s) (never exit-affecting):",
+            ungroomed_ideas_advisories,
         )
-        for finding in ungroomed_ideas_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26521,12 +26865,13 @@ def cmd_check(
         # a "fix the handoff pointer" nudge, not a defect that should fail an
         # adopter. Surfaced + telemetry-recorded, NEVER counted toward the exit
         # code (deliberately off STRICT_SUBCHECKS).
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "baton_resolves_advisories",
             f"check: {len(baton_resolves_advisories)} unresolved-baton "
             "advisory warning(s) (never exit-affecting):",
+            baton_resolves_advisories,
         )
-        for finding in baton_resolves_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26542,12 +26887,13 @@ def cmd_check(
         # rank already shipped — advance the baton" nudge, not a defect that
         # should fail an adopter. Surfaced + telemetry-recorded, NEVER counted
         # toward the exit code (deliberately off STRICT_SUBCHECKS).
-        _emit(
+        _advisory_out(
+            heuristic_report,
+            "baton_freshness_advisories",
             f"check: {len(baton_freshness_advisories)} stale-baton-deliverable "
             "advisory warning(s) (never exit-affecting):",
+            baton_freshness_advisories,
         )
-        for finding in baton_freshness_advisories:
-            _emit(f"  [{finding.kind}] {finding.path}: {finding.message}")
         fires_written += record_guard_fires(
             target,
             config.state_dir,
@@ -26563,6 +26909,13 @@ def cmd_check(
         # The fast lane's scoped gate never touches the session-log seam: a
         # control-only heartbeat PR carries no card by design (the lane's
         # whole point), so gating on one here would deadlock every heartbeat.
+        # The routed heuristic tail still closes out on this lane — several
+        # advisories ride both lanes (the asks and claims live in the very
+        # heartbeat files the fast lane validates), so returning without the
+        # announcement would drop them silently instead of relocating them.
+        if gate_preview:
+            _announce_gate_preview(heuristic_report)
+        _announce_heuristic_report(heuristic_report, advisories)
         if not doc_findings:
             _emit("check: control-status check passed (--status-only).")
             _announce_fires()
@@ -26752,12 +27105,75 @@ def cmd_check(
                 "flips complete. Designed hold — not a CI failure to "
                 "investigate.",
             )
+    if gate_preview:
+        _announce_gate_preview(heuristic_report)
+    _announce_heuristic_report(heuristic_report, advisories)
     if not doc_findings and not log_missing and not log_absent_fails:
         _emit("check: all checks passed.")
         _announce_fires()
         return 0
     _announce_fires()
     return 1 if strict else 0
+
+
+def _announce_heuristic_report(report: list, expand: bool) -> None:
+    """Close out the routed heuristic tail (see :func:`_advisory_out`).
+
+    Without ``--advisories`` this is ONE line naming the volume and where to
+    read it, in place of the block-per-checker field that used to dominate the
+    gate output. With it, the tail prints in full — the suppression is a
+    default, never a deletion, and the guard-fire ledger holds every finding
+    either way.
+    """
+    blocks = [b for b in report if b[0] != ADVISORY_DETERMINISTIC]
+    if not blocks:
+        return
+    total = sum(len(findings) for _k, _s, _h, findings in blocks)
+    if expand:
+        _emit(
+            f"check: {total} heuristic advisory finding(s) across "
+            f"{len(blocks)} checker(s) — off the gate channel by design "
+            "(guards.ADVISORY_CENSUS):",
+        )
+        for _kind, _site, header, findings in blocks:
+            _emit(f"  {header}")
+            for finding in findings:
+                _emit(f"    [{finding.kind}] {finding.path}: {finding.message}")
+        return
+    _emit(
+        f"check: {total} heuristic advisory finding(s) across {len(blocks)} "
+        "checker(s) held off the gate channel (aging/count/prose-inference "
+        "classes — see guards.ADVISORY_CENSUS); `check --advisories` to read "
+        "them. Never exit-affecting; all recorded to guard-fires.",
+    )
+
+
+def _announce_gate_preview(report: list) -> None:
+    """Report what promoting the DETERMINISTIC advisories would cost.
+
+    The census marks eight advisory sites deterministic — structural
+    disagreements and unresolved references, the class that is safe to gate.
+    Promoting them fleet-wide on two trees' worth of evidence would be the
+    same unverified change this whole surface exists to catch, so the promotion
+    is a measurement first: this prints, for THIS tree, exactly which
+    deterministic sites carry findings and would therefore red if they became
+    exit-affecting. Run it across the adopters, then promote on the answer.
+
+    Always informational — it never touches the exit code.
+    """
+    det = [b for b in report if b[0] == ADVISORY_DETERMINISTIC]
+    hot = [(site, findings) for _k, site, _h, findings in det if findings]
+    total = sum(len(f) for _s, f in hot)
+    _emit(
+        f"check: gate-preview — {len(det)} deterministic advisory site(s) ran; "
+        f"{len(hot)} carry findings ({total} total). Promoting them to "
+        "exit-affecting would red this tree "
+        f"{'YES' if hot else 'NO'}.",
+    )
+    for site, findings in hot:
+        _emit(f"  would-red [{site}] {len(findings)} finding(s)")
+        for finding in findings:
+            _emit(f"    [{finding.kind}] {finding.path}: {finding.message}")
 
 
 def _card_declares_in_progress(log: Path) -> bool:
@@ -28451,6 +28867,29 @@ def build_parser() -> argparse.ArgumentParser:
             "files and always exits 0; an unknown kind lists the covered kinds"
         ),
     )
+    check.add_argument(
+        "--advisories",
+        dest="advisories",
+        action="store_true",
+        help=(
+            "print the heuristic advisory tail in full. These blocks — agers, "
+            "counters, and inferences over prose (guards.ADVISORY_CENSUS) — are "
+            "held off the default gate output because an agent's response to a "
+            "warning is to try to fix it, and this class can be a false "
+            "positive by construction. Never exit-affecting either way"
+        ),
+    )
+    check.add_argument(
+        "--gate-preview",
+        dest="gate_preview",
+        action="store_true",
+        help=(
+            "report which DETERMINISTIC advisory sites carry findings in this "
+            "tree, i.e. what would red if they were promoted to "
+            "exit-affecting. Run it across the adopters to size the promotion "
+            "before making it; always exits 0"
+        ),
+    )
     return parser
 
 
@@ -28537,6 +28976,8 @@ def main(argv: list[str] | None = None) -> int:
                 inbox_base=args.inbox_base,
                 explain_wall=args.explain_wall,
                 remediate=args.remediate,
+                advisories=args.advisories,
+                gate_preview=args.gate_preview,
             )
         if args.command == "answer":
             return cmd_answer(args.target, args.slot, " ".join(args.value))

@@ -314,7 +314,7 @@ def test_advisory_never_reds_strict_check(tmp_path, capsys):
         "- **\N{BAR CHART} Model:** claude-fable-5 · high · docs-only\n"
         "💡 idea\nprevious-session review\n",
     )
-    exit_code = main(["check", "--strict", "--target", str(tmp_path)])
+    exit_code = main(["check", "--strict", "--advisories", "--target", str(tmp_path)])
     out = capsys.readouterr().out
     assert exit_code == 0
     assert "model-line payload advisory" in out

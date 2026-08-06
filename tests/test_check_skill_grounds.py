@@ -223,7 +223,7 @@ def test_cmd_check_strict_stays_green_on_unresolved_ground(tmp_path, capsys):
     doc = tmp_path / ".claude" / "skills" / "custom" / "SKILL.md"
     doc.parent.mkdir(parents=True)
     doc.write_text("# custom\n\nRun `frobnicate --explode`.\n", encoding="utf-8")
-    assert cmd_check(tmp_path, strict=True) == 0
+    assert cmd_check(tmp_path, strict=True, advisories=True) == 0
     out = capsys.readouterr().out
     assert "skill-grounds advisory" in out
     assert "skill-ground-unresolved" in out

@@ -15,6 +15,43 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **`ADVISORY_CENSUS` — every `check` advisory classified deterministic vs heuristic.**
+  The fifth pinned surface in `src/engine/guards.py`, beside the four that pin the
+  ENFORCING surfaces. Those say which steps, jobs, sub-checks and hooks can red a PR;
+  this one pins the surface an agent READS. Each of the 29 advisory emit sites is
+  classified **DETERMINISTIC** (a structural disagreement between two committed
+  surfaces, or a reference that does not resolve — binary, stays in the agent's
+  channel) or **HEURISTIC** (an ager, a counter, or an inference over prose — can be
+  a false positive by construction, routed off the channel), with the reason recorded
+  per entry. `tests/test_advisory_census.py` asserts bidirectional set-equality against
+  the live `_advisory_out(` call sites, so a checker cannot ship unclassified and a
+  census entry cannot outlive its block. Anchor floors (8 deterministic / 21 heuristic)
+  mirror `EXPECTED_MIRRORS` / `EXPECTED_CENSUS_GATES`.
+
+  Measured at HEAD 2026-08-06, both trees exiting 0: the advisory tail was **41 of 47
+  output lines on substrate-kit (87%)** and **80 of 89 on fleet-manager (90%)**. Every
+  tag that fired was an ager or a false positive — 13 stale-wall rows titled `'any'`,
+  nine skill-grounds rows naming `READ FIRST` and a numpy expression as unresolved
+  "commands". No deterministic checker fired on either tree. An agent's default
+  response to a warning is to try to fix it, so a large permanent field of false
+  warnings is not neutral: it recruits effort toward hallucinated repairs. After
+  routing, the same runs are **7 and 10 lines**, with the heuristic tail collapsed to
+  one summary line.
+
+- **`check --advisories`** — prints the routed heuristic tail in full. The suppression
+  is a default, never a deletion: guard fires are recorded for both classes exactly as
+  before, so only stdout moves and no exit code can change.
+
+- **`check --gate-preview`** — reports which DETERMINISTIC advisory sites carry findings
+  in a given tree, i.e. exactly what would red if they were promoted to exit-affecting.
+  The promotion is deliberately NOT made here: the kit ships to ~22 adopters on mixed
+  versions, and flipping checkers to hard-red on two trees' worth of evidence is the
+  same unverified change this surface exists to catch. `--gate-preview` turns that
+  decision into a measurement to run across the adopters first. It reports 0 sites
+  carrying findings on both substrate-kit and fleet-manager today.
+
 ## [1.20.2] - 2026-07-21
 
 <!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->

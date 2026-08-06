@@ -230,7 +230,7 @@ def test_cmd_check_strict_stays_green_on_unrecorded_wall(tmp_path, capsys):
     # No ledger file at all (the by-definition-unrecorded case) — strict
     # stays green because the cross-reference is advisory by contract.
     _write(tmp_path, STATUS_RELPATH, _status(RULESET_ASK))
-    assert cmd_check(tmp_path, strict=True) == 0
+    assert cmd_check(tmp_path, strict=True, advisories=True) == 0
     out = capsys.readouterr().out
     assert "owner-ask-wall-unrecorded" in out
     assert "never exit-affecting" in out
@@ -240,7 +240,7 @@ def test_cmd_check_status_only_lane_also_warns(tmp_path, capsys):
     # The asks live in the heartbeat files the control fast lane validates,
     # so the nag rides both lanes.
     _write(tmp_path, STATUS_RELPATH, _status(RULESET_ASK))
-    assert cmd_check(tmp_path, strict=True, status_only=True) == 0
+    assert cmd_check(tmp_path, strict=True, status_only=True, advisories=True) == 0
     assert "owner-ask-wall-unrecorded" in capsys.readouterr().out
 
 
@@ -502,7 +502,7 @@ def test_cmd_check_strict_stays_green_on_slice5_advisories(tmp_path, capsys):
     )
     _write(tmp_path, STATUS_RELPATH, _status(""))
     _write(tmp_path, CAPABILITIES_RELPATH, _ledger(log=log))
-    assert cmd_check(tmp_path, strict=True, status_only=True) == 0
+    assert cmd_check(tmp_path, strict=True, status_only=True, advisories=True) == 0
     out = capsys.readouterr().out
     assert "capability-log-venue-unknown" in out
     assert "never exit-affecting" in out

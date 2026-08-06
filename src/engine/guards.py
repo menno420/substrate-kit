@@ -507,6 +507,288 @@ def hook_census_notes() -> list[str]:
 # both directions. (The disarm workflow keys on the do-not-automerge LABEL, not
 # a prefix, so it is deliberately outside this symmetry.)
 
+# ── Fifth surface: the ADVISORY census (deterministic vs heuristic) ──────────
+# The four censuses above pin the ENFORCING surfaces: which steps, jobs,
+# sub-checks and hooks can red a PR. None of them says anything about the
+# surface an agent actually READS. `check --strict` emits, beside its
+# exit-affecting findings, a long tail of blocks each labelled "(never
+# exit-affecting)". Measured 2026-08-06 at HEAD: that tail is 41 of 47 output
+# lines on substrate-kit (87%) and 80 of 89 on fleet-manager (90%) -- with BOTH
+# trees exiting 0. Every tag that fired was an aging nag or a false positive
+# (13 stale-wall rows titled 'any'; nine skill-grounds rows naming `READ FIRST`
+# and a numpy expression as unresolved "commands"). No deterministic structural
+# checker fired on either tree.
+#
+# So the channel an agent consults to decide whether it is done runs at roughly
+# 1:9 signal to noise, and the noise is wrong. That is Goodhart pointed at a
+# feedback loop: an agent's default response to a warning is to try to fix it,
+# so a large permanent field of false warnings is not neutral -- it actively
+# recruits effort toward hallucinated repairs.
+#
+# The fix is NOT to gate the tail (a noisy heuristic wired hard produces an
+# agent inventing changes to satisfy a false positive, then a deadlocked PR).
+# It is to CLASSIFY it, and route by class:
+#
+#   * DETERMINISTIC -- the finding is a structural disagreement between two
+#     surfaces, or an unresolved reference. Binary, no judgement, no prose
+#     matching. A finding is a defect. These stay in the agent's channel.
+#   * HEURISTIC -- the finding is an aging nag, a count, or an inference over
+#     prose. It may be a false positive by construction. These leave the
+#     agent's channel entirely and land in the advisory report, where they are
+#     an owner-facing periodic read rather than a gate line.
+#
+# Both classes keep recording guard fires exactly as before: only stdout moves,
+# so routing is exit-neutral by construction.
+#
+# Keys are the advisory VARIABLE names in `cli.cmd_check` -- the emit sites the
+# routing governs. `tests/test_advisory_census.py` asserts bidirectional
+# set-equality against the live `_advisory_out(` call sites, so an advisory
+# block cannot ship unclassified and a census entry cannot outlive its block.
+ADVISORY_DETERMINISTIC = "DETERMINISTIC"
+ADVISORY_HEURISTIC = "HEURISTIC"
+
+ADVISORY_KINDS = (ADVISORY_DETERMINISTIC, ADVISORY_HEURISTIC)
+
+# name -> (kind, producing checker, why it is classified that way)
+ADVISORY_CENSUS: dict[str, tuple[str, str, str]] = {
+    # ── DETERMINISTIC: two surfaces disagree, or a reference does not resolve ──
+    "staged_regen_advisories": (
+        ADVISORY_DETERMINISTIC,
+        "check_staged_regen",
+        "a staged artifact still carries a literal ${slot} whose answer is "
+        "already filled in state -- a string-presence test against a recorded "
+        "value, with no judgement in it",
+    ),
+    "template_sync_advisories": (
+        ADVISORY_DETERMINISTIC,
+        "check_template_sync",
+        "set difference between a template's heading set and its local copy's; "
+        "a heading is present on one side or it is not",
+    ),
+    "automerge_advisories": (
+        ADVISORY_DETERMINISTIC,
+        "check_automerge_preflight",
+        "set comparison between the planted enabler's branch allowlist and "
+        "automerge.branch_patterns -- two committed surfaces that either agree "
+        "or do not",
+    ),
+    "strength_advisories": (
+        ADVISORY_DETERMINISTIC,
+        "check_enforcement_strength",
+        "flag comparison between the wired `check --strict` door and the "
+        "staged gate's stronger legs; both flag sets are read from committed "
+        "YAML",
+    ),
+    "folded_gate_advisories": (
+        ADVISORY_DETERMINISTIC,
+        "check_folded_gate",
+        "detects one specific structural shape in a host-folded gate (the "
+        "pre-#19 newest-by-mtime card picker); the shape is present or absent",
+    ),
+    "fastlane_symmetry_advisories": (
+        ADVISORY_DETERMINISTIC,
+        "check_fastlane_symmetry",
+        "set comparison between the prefixes the claims-only guard cards and "
+        "the prefixes the enabler arms -- the FASTLANE_PREFIX_REGISTRY "
+        "symmetry above, evaluated against a host tree",
+    ),
+    "recipe_applies_when_advisories": (
+        ADVISORY_DETERMINISTIC,
+        "check_recipe_applies_when",
+        "parses an `applies-when:` badge and reports absent/empty/malformed; "
+        "well-formedness is a grammar question, not a judgement (its HONESTY "
+        "sibling, which reads the recipe's prose, is heuristic below)",
+    ),
+    "baton_resolves_advisories": (
+        ADVISORY_DETERMINISTIC,
+        "check_baton_resolves",
+        "resolves a repo-relative path/anchor cited by a Next-2 baton against "
+        "the filesystem -- the file and anchor exist or they do not",
+    ),
+    # ── HEURISTIC: aging, counting, or inference over prose ──
+    "status_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_status_current",
+        "the wall-clock STALENESS half of the heartbeat checker (its static "
+        "gate half is exit-affecting and stays there); a heartbeat aging past "
+        "a window is a clock reading, not a defect",
+    ),
+    "adopters_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_adopters_current",
+        "the staleness half of the adopter registry, exactly like the "
+        "heartbeat above; the format half is exit-affecting and stays there",
+    ),
+    "owner_ask_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_owner_actions",
+        "judges whether a prose owner-ask is 'actionable'; the checker's own "
+        "docstring calls the match coarse",
+    ),
+    "claim_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_claims",
+        "flags a claim collision the manager adjudicates -- the checker "
+        "surfaces the tiebreak, it cannot decide it",
+    ),
+    "xref_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_capability_xref",
+        "coarse token overlap between an owner-ask and a ledger row; the call "
+        "site already says a heuristic match can never be a verdict. Measured "
+        "22 fires on fleet-manager, many byte-identical repeats",
+    ),
+    "setup_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_setup_script",
+        "detects a 'secret-shaped literal' in a host-owned script -- shape "
+        "matching over arbitrary text",
+    ),
+    "grounds_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_skill_grounds",
+        "tokenizes skill prose and asks whether the first token names a "
+        "command. Measured nine fires on fleet-manager, all false: `READ "
+        "FIRST`, `verify <out.json>`, and a numpy expression",
+    ),
+    "archive_ready_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_archive_ready",
+        "infers a sham resolution from guarded default text surviving "
+        "marker-stripping; UNVERIFIED per its own provenance header",
+    ),
+    "card_residue_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_card_residue",
+        "the same marker-stripping inference applied to session cards; the "
+        "module docstring calls itself heuristic and UNVERIFIED",
+    ),
+    "digest_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_seat_digest",
+        "seat-digest drift nudge, UNVERIFIED per its provenance header; the "
+        "fix is one regen command, not a defect to gate",
+    ),
+    "headroom_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_orientation_headroom",
+        "a GAUGE -- it fires when the boot set is NEAR the budget, not over "
+        "it. The over-budget case is check_orientation_budget, which is "
+        "exit-affecting and stays there",
+    ),
+    "model_line_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_model_line",
+        "classifies a prose Model line against a taxonomy; UNVERIFIED per its "
+        "provenance header",
+    ),
+    "outbox_advisories": (
+        ADVISORY_HEURISTIC,
+        "list_outbox",
+        "a pending-count nudge; a count is never a defect",
+    ),
+    "stale_walls_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_stale_walls",
+        "wall-clock aging of capability rows. Measured 33 fires on "
+        "fleet-manager, 13 of them titled 'any' and four 'autonomous-project' "
+        "-- the row extractor mis-parses, so even the subject is unreliable",
+    ),
+    "dateless_walls_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_dateless_walls",
+        "the complement of the ager above -- rows carrying no parseable date. "
+        "Measured 12 fires on fleet-manager, largely on section headers rather "
+        "than wall rows",
+    ),
+    "claim_provenance_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_claim_provenance",
+        "infers from prose whether a numeric table states its instrument; "
+        "PL-014 itself scopes this as a nudge, noting a hard red would flag "
+        "every existing measurement document at once",
+    ),
+    "wall_ledger_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_wall_ledger_agreement",
+        "infers disagreement between an append-log entry and a corrections "
+        "section -- two prose surfaces, compared by meaning",
+    ),
+    "recipe_signature_honesty_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_recipe_signature_honesty",
+        "cross-checks a signature token against the recipe's PROSE BODY; "
+        "whether the body 'mentions' a marker is not a binary question",
+    ),
+    "recipe_discovery_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_recipe_discovery",
+        "pattern-matches an adopter tree against a recipe signature and "
+        "suggests a read; its own docstring says discovery, not enforcement",
+    ),
+    "ungroomed_ideas_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_ungroomed_ideas",
+        "counts idea lines newer than the last groom pass; a backlog count is "
+        "a prompt to schedule work, not a defect in the tree",
+    ),
+    "baton_freshness_advisories": (
+        ADVISORY_HEURISTIC,
+        "check_baton_freshness",
+        "infers that a baton names as still-to-build something that already "
+        "resolves -- an inference about INTENT, unlike its S4 sibling above "
+        "which only resolves a path",
+    ),
+}
+
+# Anchor floors: 8 deterministic + 21 heuristic advisory sites today. Shrinkage
+# guards in the style of EXPECTED_MIRRORS / EXPECTED_CENSUS_GATES above, so the
+# census cannot be gutted to a vacuously-green empty set; bump deliberately
+# when an advisory site is legitimately added or removed.
+EXPECTED_ADVISORY_DETERMINISTIC = 8
+EXPECTED_ADVISORY_HEURISTIC = 21
+
+
+def advisory_census() -> dict[str, tuple[str, str, str]]:
+    """The full advisory census: emit-site name -> ``(kind, checker, why)``.
+
+    Returns a copy so a consumer cannot mutate the canonical registry.
+    """
+    return dict(ADVISORY_CENSUS)
+
+
+def advisory_kind(name: str) -> str:
+    """The classification of one advisory emit site.
+
+    Unknown names classify as :data:`ADVISORY_DETERMINISTIC` — the fail-LOUD
+    default. An unclassified block keeps printing in the agent's channel, so
+    the failure mode of forgetting a census entry is noise (which the meta-test
+    catches) and never silence (which nothing would catch).
+    """
+    entry = ADVISORY_CENSUS.get(name)
+    return entry[0] if entry else ADVISORY_DETERMINISTIC
+
+
+def deterministic_advisories() -> list[str]:
+    """Emit sites that stay in the agent's feedback channel."""
+    return [k for k, v in ADVISORY_CENSUS.items() if v[0] == ADVISORY_DETERMINISTIC]
+
+
+def heuristic_advisories() -> list[str]:
+    """Emit sites routed to the advisory report, off the agent's channel."""
+    return [k for k, v in ADVISORY_CENSUS.items() if v[0] == ADVISORY_HEURISTIC]
+
+
+def advisory_checkers() -> list[str]:
+    """The producing checker of every census entry, in registry order."""
+    return [checker for _kind, checker, _why in ADVISORY_CENSUS.values()]
+
+
+def advisory_reasons() -> list[str]:
+    """The classification reason of every census entry."""
+    return [why for _kind, _checker, why in ADVISORY_CENSUS.values()]
+
+
 FASTLANE_CARDED = "carded"  # work PRs -- the guard requires a session card
 FASTLANE_CARDLESS = "card-less"  # ride the fast lane card-free by design
 

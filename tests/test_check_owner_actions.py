@@ -241,7 +241,7 @@ def test_cmd_check_strict_stays_green_on_the_new_advisories(tmp_path, capsys):
         "WHERE: https://example.test/pr/7", "WHERE: go to settings"
     )
     _write(tmp_path, STATUS_RELPATH, _status("merge PR 7", block))
-    assert cmd_check(tmp_path, strict=True) == 0
+    assert cmd_check(tmp_path, strict=True, advisories=True) == 0
     out = capsys.readouterr().out
     assert "owner-action-risk-class" in out
     assert "owner-action-vague-destination" in out
@@ -282,7 +282,7 @@ def test_unreadable_heartbeat_fails_open(tmp_path):
 
 def test_cmd_check_strict_stays_green_on_unstructured_ask(tmp_path, capsys):
     _write(tmp_path, STATUS_RELPATH, _status("merge PR 7 (one click)"))
-    assert cmd_check(tmp_path, strict=True) == 0
+    assert cmd_check(tmp_path, strict=True, advisories=True) == 0
     out = capsys.readouterr().out
     assert "owner-action-fields" in out
     assert "never exit-affecting" in out
@@ -292,7 +292,7 @@ def test_cmd_check_status_only_lane_also_warns(tmp_path, capsys):
     # The asks live in the heartbeat files the control fast lane validates,
     # so the nag rides both lanes.
     _write(tmp_path, STATUS_RELPATH, _status("merge PR 7 (one click)"))
-    assert cmd_check(tmp_path, strict=True, status_only=True) == 0
+    assert cmd_check(tmp_path, strict=True, status_only=True, advisories=True) == 0
     assert "owner-action-fields" in capsys.readouterr().out
 
 

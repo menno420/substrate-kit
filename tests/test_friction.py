@@ -275,12 +275,12 @@ def test_check_advises_on_pending_outbox(tmp_path, capsys):
         "# log\n> **Status:** `complete`\n- ⚑ friction\n",
         encoding="utf-8",
     )
-    baseline_exit = main(["check", "--strict", "--target", str(root)])
+    baseline_exit = main(["check", "--strict", "--advisories", "--target", str(root)])
     baseline_out = capsys.readouterr().out
     assert "friction-outbox advisory" not in baseline_out
     main(["friction", "export", "--repo", "o/r", "--target", str(root)])
     capsys.readouterr()
-    exit_code = main(["check", "--strict", "--target", str(root)])
+    exit_code = main(["check", "--strict", "--advisories", "--target", str(root)])
     out = capsys.readouterr().out
     # Advisory-only by contract: the pending envelope changes the OUTPUT,
     # never the exit code — whatever the tree's exit was without it.
