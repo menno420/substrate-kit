@@ -614,6 +614,28 @@ owner asked for — the next session executes the prompt, not the conversation.
 3. Write it in this shape. Drop any section that would be empty; never pad.
 
    - **CONTINUE** — one line: what this session picks up.
+   - **BEFORE YOUR FIRST TOOL CALL** — **mandatory, and it goes in the
+     prompt verbatim, never as a link.** Emit this block:
+
+         BEFORE YOUR FIRST TOOL CALL — state back what you think this task
+         is. Inline in your first reply, not as a question, in a few
+         sentences: the goal in your own words, the specs and constraints it
+         implies, the scope you take it to cover, and the follow-on the
+         owner probably wants but did not spell out. Then begin. This is the
+         owner's one cheap chance to correct your aim; a first reply that
+         only announces your first action spends it.
+
+     Why in the prompt rather than a pointer: the receiving session has
+     invoked no skill yet, so a rule living in one cannot bind it. Measured
+     2026-08-06 — a session opened from one of these prompts and its whole
+     first response was *"I'll start by getting oriented — checking the
+     environment, then landing #602 as instructed."* That is a first
+     **action**, not an **understanding**; there was nothing in it the owner
+     could correct. Two traps: it is not a summary of the prompt (a plan is
+     not an understanding — say what the goal *implies* and what it probably
+     extends to), and it is not a question (state it inline and proceed;
+     blocking for approval spends the owner's attention instead of saving
+     it).
    - **WHERE THINGS STAND** — verified state only, each item checked at HEAD.
    - **READ FIRST** — 2-4 paths, most specific first. The minimum to act
      correctly, and **say that it is a floor, not a boundary**, so it cannot
