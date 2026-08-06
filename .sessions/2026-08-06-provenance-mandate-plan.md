@@ -35,14 +35,22 @@ records survived / conceded / partial as three literal tags for that reason.
 
 ## Verification
 
-- The mechanism was **run on itself**: Layer 1 answered in writing with
-  citations verified to resolve, then a Layer 2 reviewer call over Vertex
-  (credit-funded, per the standing directive).
+- The mechanism was **run on itself**: Layer 1 answered in writing first —
+  record committed at
+  [`docs/reviews/2026-08-06-provenance-mandate-layer1.md`](../docs/reviews/2026-08-06-provenance-mandate-layer1.md),
+  all six citations verified to resolve — then a Layer 2 reviewer call over
+  Vertex (credit-funded, per the standing directive). The record is committed
+  because Codex was right that an uncommitted self-test is evidence of nothing.
 - Reviewer outcome: 4 substantive objections — **2 conceded, 1 partial, 1
   refuted with evidence** — plus 3 sound follow-ups, all adopted as § 7b.
-- The refutation was checked rather than argued: `docs/adopters.md` is generated
-  from each repo's committed tree (12 rows, 11 citing a vendored dist header),
-  and `.gitmodules` is absent from all 10 sweep clones.
+- The refutation was checked rather than argued — and then **downgraded to
+  `[partial]` when Codex checked it back**. `docs/adopters.md` reads each repo's
+  own stamped `bootstrap.py` header (12 rows, 11 with a header), and
+  `.gitmodules` is now confirmed absent on **all 12**. But `currency.py` fetches
+  four file paths and **never enumerates a committed tree**, so the registry
+  cannot settle the alternate-live-path question — an earlier version of this
+  card said "generated from each repo's committed tree", which overstates what
+  it does.
 - `dist/bootstrap.py check --strict` → exit 0 post-commit.
 - The deterministic `[reachable]` checker caught this plan as an orphan before
   it landed — the tier promoted earlier today doing its job on the next PR.

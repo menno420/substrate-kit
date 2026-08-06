@@ -229,8 +229,8 @@ it has no citable source, which is the point of marking it.
 ### The out-of-bounds test for the reviewer itself (§ 7a, applied reflexively)
 
 The plan states the rule and an earlier draft did not apply it to its own
-instrument. Before `gemini_review.py` is trusted, feed it two known-bad inputs
-and confirm it **flags rather than agrees**:
+instrument. Before `gemini_review.py` is trusted, feed it **four** cases — two
+it must flag and two it must accept — and confirm it discriminates:
 
 **Known-bad — it must FLAG all of these:**
 
@@ -366,8 +366,11 @@ subset and no more.** It is not a guarantee and must not be described as one.
 2. **The provenance section + its `path:line` gate** — the Layer 1 list as a
    session-card section, and a checker that verifies the section is non-empty
    and every citation resolves.
-3. **The reviewer call** (`gemini_review.py`, Vertex-routed) — un-gated;
-   recorded on the card.
+3. **The reviewer call** (`gemini_review.py`, Vertex-routed) — un-gated on its
+   RESULT, but its **occurrence is gated** by § 5b: one of
+   `completed` / `attempted-failed` / `deferred` must appear on the card. An
+   earlier draft of this line said flatly "un-gated", which contradicted § 5b
+   the moment that section was added.
 
 Both scoped to **substrate-kit's decision surfaces first**, before any adopter
 sees them.
