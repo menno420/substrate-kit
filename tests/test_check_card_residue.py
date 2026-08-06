@@ -122,7 +122,7 @@ def test_red_fixture_fires_through_cmd_check_never_exit_affecting(
     end-to-end through ``cmd_check`` on a sham-resolved card, and the exit
     code is untouched (advisory-first contract, S4 pattern)."""
     _plant_card(tmp_path, _sham_card())
-    code = cmd_check(tmp_path, strict=False)
+    code = cmd_check(tmp_path, strict=False, advisories=True)
     out = capsys.readouterr().out
     assert code == 0
     assert "session-card residue advisory" in out

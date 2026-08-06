@@ -228,7 +228,7 @@ def test_cmd_check_strict_stays_green_on_headroom(tmp_path, capsys):
         "last-shipped: none\nblockers: none\norders: acked=001 done=001\n"
         "⚑ needs-owner: none\nnotes: none\n",
     )
-    assert cmd_check(tmp_path, strict=True) == 0
+    assert cmd_check(tmp_path, strict=True, advisories=True) == 0
     out = capsys.readouterr().out
     assert "orientation-headroom" in out
     assert "never exit-affecting" in out

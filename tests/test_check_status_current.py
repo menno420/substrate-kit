@@ -161,7 +161,7 @@ def test_cmd_check_strict_stays_green_on_stale_heartbeat(tmp_path, capsys):
     # check must not red just because time passed (the time-bomb this split
     # exists to prevent).
     _write(tmp_path, STATUS_RELPATH, _status("2020-01-01T00:00Z"))
-    assert cmd_check(tmp_path, strict=True) == 0
+    assert cmd_check(tmp_path, strict=True, advisories=True) == 0
     out = capsys.readouterr().out
     assert "status-stale" in out
     assert "never exit-affecting" in out

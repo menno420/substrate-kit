@@ -454,7 +454,7 @@ def test_cmd_check_strict_stays_green_on_order_collision(tmp_path, capsys):
         f"{DEFAULT_CLAIMS_DIR}/b.md",
         _order_bullet("claude/lane-b", "020", day=day),
     )
-    assert cmd_check(tmp_path, strict=True) == 0
+    assert cmd_check(tmp_path, strict=True, advisories=True) == 0
     out = capsys.readouterr().out
     assert "claims-order-collision" in out
     assert "never exit-affecting" in out
@@ -548,7 +548,7 @@ def test_cmd_check_strict_stays_green_on_duplicate(tmp_path, capsys):
         '"control/status-exploration.md"]}',
         encoding="utf-8",
     )
-    assert cmd_check(tmp_path, strict=True) == 0
+    assert cmd_check(tmp_path, strict=True, advisories=True) == 0
     out = capsys.readouterr().out
     assert "claims-duplicate" in out
     assert "never exit-affecting" in out
@@ -562,7 +562,7 @@ def test_cmd_check_status_only_lane_also_warns(tmp_path, capsys):
         STATUS_RELPATH,
         _status("acked=001-005 done=005 claimed-by: 005 lane-a 2026-07-10T11:00Z"),
     )
-    assert cmd_check(tmp_path, strict=True, status_only=True) == 0
+    assert cmd_check(tmp_path, strict=True, status_only=True, advisories=True) == 0
     assert "claims-stale" in capsys.readouterr().out
 
 
@@ -574,7 +574,7 @@ def test_cmd_check_strict_stays_green_on_work_claim_findings(tmp_path, capsys):
     # (badge/reachability), which is check_docs' finding, not a claims one.
     _write(tmp_path, STATUS_RELPATH, _status("acked=001 done=001"))
     _write(tmp_path, "claims/legacy-lane.md", "prose, no bullet\n")
-    assert cmd_check(tmp_path, strict=True) == 0
+    assert cmd_check(tmp_path, strict=True, advisories=True) == 0
     out = capsys.readouterr().out
     assert "claims-legacy-location" in out
     assert "claims-format" in out
@@ -594,7 +594,7 @@ def test_cmd_check_honours_configured_claims_dir(tmp_path, capsys):
         '{"claims_dir": "claims"}',
         encoding="utf-8",
     )
-    assert cmd_check(tmp_path, strict=True) == 0
+    assert cmd_check(tmp_path, strict=True, advisories=True) == 0
     out = capsys.readouterr().out
     assert "claims-stale" in out
     assert "claims-legacy-location" not in out

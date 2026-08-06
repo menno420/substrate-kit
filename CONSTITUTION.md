@@ -25,6 +25,27 @@
   owner reasons against and redirects.
 - When a doc and a source file disagree: Source code and merged PRs win; fix the doc on sight in the same session (drift older than the reconciliation marker is a bug, not a backlog item).
 
+## Boot read path
+
+Read in this order at session start; this is the one list (the router at
+`docs/AGENT_ORIENTATION.md` points here rather than repeating it) [D-0011].
+
+1. This file — the working agreement + autonomy rails.
+2. `docs/current-state.md` — the living status ledger; source and merged
+   PRs always win over it.
+3. `docs/CAPABILITIES.md` — verified session capabilities and walls. THE
+   DISCOVERY RULE lives there; append what you verify, never a limitation.
+4. `docs/program/rulings.md` — the [PL-NNN] register that binds every repo
+   in this program (cited from "Program law" below).
+
+Then `docs/AGENT_ORIENTATION.md` when a task needs a route into the deeper
+docs — it is a task router, not boot reading.
+
+Note for a session working IN this repo: the kit STAGES its Claude Code
+material at `.substrate/claude/` for a host to install and never writes a
+live `.claude/` into its own tree, so nothing here is auto-loaded. This list
+is read deliberately, not injected.
+
 ## Autonomy rails — act vs. ask
 
 - **Act** on contained, reversible, verifiable changes — including a

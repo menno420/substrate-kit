@@ -158,7 +158,7 @@ def test_findings_never_red_strict_check(tmp_path, capsys):
         tmp_path,
         "set -e\nexport MY_TOKEN=literalvalue\necho no exit zero\n",
     )
-    assert cmd_check(tmp_path, strict=True) == 0
+    assert cmd_check(tmp_path, strict=True, advisories=True) == 0
     out = capsys.readouterr().out
     assert "setup-script contract advisory" in out
     assert "setup-fatal-posture" in out
