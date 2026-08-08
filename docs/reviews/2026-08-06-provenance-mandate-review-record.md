@@ -205,3 +205,28 @@ converging; the four-round persistence of one defect class says a deterministic
 gate over prose is expensive to specify correctly. **Both are true**, and § 9's
 ratio is what decides whether that cost is worth paying — which remains the
 owner's open question, not a reviewer's and not mine.
+
+## 2026-08-07 — freeze lifted; the seven open findings dispositioned
+
+Owner authorization, fleet-manager hub session: *"You have my permission to
+review and merge PR 580 based on the recommended actions."* Before this
+disposition the mechanism was finally **run** — four controlled reviewer calls
+(a 2×2: sound/flawed input × neutral/owner framing) — and the measured record
+lives in fleet-manager `docs/findings/2026-08-06-provenance-mechanism-measured.md`.
+The headline: an unframed reviewer endorsed the known-wrong design and praised
+its specific defect; the owner-stand-in framing found real defects in both
+inputs. The framing is the load-bearing component.
+
+| finding | disposition |
+|---|---|
+| #39 `session_markers` global vs conditional (owner) | **dissolved** — v1 ships un-gated (§ 5 marker); the question does not arise |
+| #38 the hook's one-line content (owner) | **dissolved** — the payload is a procedure and the trigger is `Stop`; `UserPromptSubmit` refuted mechanically (§ 8 marker); the hook is built and chain-tested in fleet-manager |
+| ADR glob misses `NNN-*.md` | **fixed at `f96806c`** — § 7c names the ADR shape explicitly |
+| rename escapes `git diff --name-only` | **fixed this commit** — § 7c implementation note (`--name-status -M`, source path governed) |
+| § 9 denominator includes `[origin:owner]` | **fixed this commit** — § 9 marker names the exclusion; the ratio is demoted to secondary behind cost-to-falsify |
+| kit inside its own adopter set | **mooted** — exporter deferred (§ 8 marker); re-opens with it |
+| `release.yml` is downstream-facing | **mooted** — exporter deferred; re-opens with it |
+
+The annotation pass adds markers, corrects the PL-015 title pre-merge, and
+fixes the § 11 count (44, script-counted); it rewrites nothing. The record
+above this line is frozen history.

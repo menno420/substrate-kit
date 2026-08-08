@@ -120,6 +120,16 @@ The reviewer supplies:
 
 ## 5 · The gate — facts only, and it claims nothing more
 
+> **⚠ SUPERSEDED 2026-08-07 — owner decision: v1 ships UN-GATED. The gate below
+> is not built.** Round 6 removed its cheap-implementation premise
+> (`session_markers` is global, not conditional — the BLOCKING note below), and
+> the owner resolved that fork by dissolution: with no gate, the
+> global-vs-conditional question does not arise. The **principle box
+> immediately below survives as doctrine** — it is part of the retained core
+> that took zero findings across all rounds; only the enforcement mechanism is
+> dropped. Layer 1 and Layer 2 ship as practice (§ 8), their occurrence
+> recorded on the card but not gated.
+
 > ### MECHANISE FACTS. NEVER MECHANISE MEANING.
 >
 > **Facts a script settles:** does the file exist · does the line resolve · are
@@ -350,6 +360,12 @@ avoided the trigger entirely in an earlier draft), `docs/program/**`,
 `CONSTITUTION.md`, `docs/planning/**`, `src/engine/guards.py`; or a release tag
 / distribution wave.
 
+> **Implementation note, 2026-08-07 (Codex round 5, dispositioned):** any
+> implementation of this path trigger must use `git diff --name-status -M` (or
+> equivalent) and treat a rename's **source** path as governed — `--name-only`
+> drops it, so moving a governed file out of a triggered directory would escape
+> both the trigger and the impact mapping.
+
 **Fires on a CARD TAG** — three literal headings, not prose inference:
 
     ### Decision: <one line>
@@ -400,6 +416,23 @@ subset and no more.** It is not a guarantee and must not be described as one.
 
 ## 8 · Build order
 
+> **⚠ AMENDED 2026-08-07 — after the mechanism was finally RUN** (measured
+> record: fleet-manager
+> `docs/findings/2026-08-06-provenance-mechanism-measured.md`). The intro line
+> below ("ship the gate stripped…") is superseded: **v1 ships with NO gate**
+> (§ 5 marker). Step 0's trigger and payload are superseded: a framed reviewer
+> run showed **`UserPromptSubmit` fires before the agent has read, run or
+> concluded anything**, so its question has no referent — the 11/11 below
+> scored event *coverage*, not askability. The trigger is **`Stop`**; the
+> payload is a **procedure, not a one-line injection** (the one-line constraint
+> fell with the payload type); and the shape built first is the hook **running
+> the review itself** — transcript → framed reviewer call → questions as the
+> block reason — which removes agent initiative entirely. Built and
+> chain-tested live in fleet-manager (`.claude/hooks/owner_review.py`,
+> 2026-08-07) before any adopter sees it. The scoring table, the
+> no-hardcoded-frequency rule and the named gap below survive as the record
+> that got here.
+
 **Decided by the owner 2026-08-06, after five review rounds:** ship the gate
 **stripped to what a script can factually check**, claiming nothing beyond
 *"this catches an absent answer"*. Not "no gate" — a small, honest one.
@@ -440,6 +473,15 @@ subset and no more.** It is not a guarantee and must not be described as one.
    no new prompt — an agent talking itself into something across a long
    autonomous stretch. There is no factual signature for it. Left named rather
    than invented around.
+
+> **⚠ DEFERRED 2026-08-07 — specified over data the estate does not have.** Its
+> own stated limits are disqualifying for v1: template impact is `unknown` by
+> construction, `docs/adopters.md` cannot refresh in CI (agent-generated, 16
+> days stale at review time), the kit sits inside its own adopter set, and
+> `release.yml` is downstream-facing. Same test the gate failed — specifying it
+> correctly has cost more than it has returned. Rebuild only when a sourceable
+> per-template data model exists (the registry addition named in the note
+> below).
 
 1. **The blast-radius exporter** — deterministic, un-gameable, cheapest.
 
@@ -494,6 +536,9 @@ subset and no more.** It is not a guarantee and must not be described as one.
    **it does not enumerate committed trees.** It therefore establishes what each
    repo VENDORS and cannot establish the absence of some other live linkage. The
    exporter must not claim otherwise.
+> **⚠ Amended 2026-08-07:** the card **section** ships (Layer 1 as practice);
+> the **checker does not** — § 5 is superseded, v1 is un-gated.
+
 2. **The provenance section + its gate** — the Layer 1 list as a session-card
    section, and a checker implementing **the four clauses in § 5's table**. Deliberately
    NOT paraphrased here — read § 5. An earlier draft summarised it as "≥1
@@ -507,6 +552,13 @@ subset and no more.** It is not a guarantee and must not be described as one.
    > every citation resolves" — the **pre-correction** contract — so an
    > implementer following the build order would have rebuilt the exact
    > zero-citation vacuous gate § 5 had just been fixed to reject (Codex, P1).
+> **⚠ Amended 2026-08-07:** occurrence is **recorded, not gated** — v1 is
+> un-gated throughout. And the reviewer's **system prompt is the load-bearing
+> component**, measured: the same model, unframed, endorsed a known-wrong
+> design and praised its specific defect. Use the owner-stand-in prompt
+> committed verbatim in fleet-manager findings § 7, never a bare
+> "review this" call.
+
 3. **The reviewer call** (`gemini_review.py`, Vertex-routed) — un-gated on its
    RESULT, but its **occurrence is gated** by § 5b: one of
    `completed` / `attempted-failed` / `deferred` must appear on the card. An
@@ -517,6 +569,14 @@ Both scoped to **substrate-kit's decision surfaces first**, before any adopter
 sees them.
 
 ## 9 · Measurement — this is testable, unusually for a process change
+
+> **⚠ SUPERSEDED 2026-08-07 — the primary metric measured the wrong thing.**
+> Owner reframe, after the mechanism was run: the deliverable is **legibility,
+> not prevention** — reasoning made checkable by a reader who does not already
+> know the answer. The primary metric is **cost-to-falsify** (how much must the
+> reader already know to check the claim?); the ratio below is kept as a
+> secondary signal, computed with `[origin:owner]` rows excluded from the
+> denominator (Codex round 6, dispositioned).
 
 Track the **ratio of corrections originating from an instrument or reviewer
 versus from an agent re-reading its own work.**
@@ -542,7 +602,9 @@ we will know. Record the ratio, not a satisfaction judgement.
 
 ## 11 · The review record lives elsewhere
 
-Five review rounds (Gemini once, Codex four times — 34 findings, all correct)
+Seven review rounds (Gemini once, Codex six — **44 findings**: 42 inline + 2 in
+a review body, script-counted against the API; 36 fixed · 1 partial · 7 open at
+the 2026-08-06 freeze, all seven dispositioned 2026-08-07)
 are recorded in
 [`../reviews/2026-08-06-provenance-mandate-review-record.md`](../reviews/2026-08-06-provenance-mandate-review-record.md).
 

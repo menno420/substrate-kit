@@ -454,12 +454,17 @@
   recorded here rather than quietly fixed, because that is precisely the
   failure mode PL-014 exists to catch.
 
-## [PL-015] Verification by inspection is not verification
+## [PL-015] Verification is an independent check that could have failed
 
 - status: decided
 - date: 2026-08-06
-- provenance: owner ruling, 2026-08-06, drawn from two sessions running in
-  parallel and pooling their failures. **Six hub-session failures and four
+- provenance: owner ruling, 2026-08-06; **title corrected pre-merge 2026-08-07**
+  (the original — "Verification by inspection is not verification" — over-read
+  as "reading doesn't count": independent readers found nearly everything in
+  the corpus below, and three of its six failures ran something. Measured
+  record: fleet-manager
+  `docs/findings/2026-08-06-provenance-mechanism-measured.md` § 6). Drawn from
+  two sessions running in parallel and pooling their failures. **Six hub-session failures and four
   review rounds on this repo share one root cause.** Codex named it on round 4
   of substrate-kit #580 — *"updating the heading grammar fixed the round-3
   symptom, but did not verify the record against the complete rule set"* — and
@@ -481,6 +486,13 @@
   contract at once, an external reviewer, or the owner. Re-reading one's own
   output confirms only that it still reads the way it read before, which is the
   property that was never in doubt.
+
+  **And the form of the check confers nothing.** An execution that could not
+  have failed — a vacuous pass, a suppressed error, an instrument aimed at the
+  wrong contract or never tested out of bounds — is the author's assumption
+  wearing an exit code: three of the six failures mapped above ran something,
+  and verified nothing. A check verifies exactly the contract it could have
+  falsified, no more.
 
   Two corollaries, both earned:
 
