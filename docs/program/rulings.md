@@ -453,3 +453,58 @@
   shipped on an unmeasured claim about its own checker; the correction is
   recorded here rather than quietly fixed, because that is precisely the
   failure mode PL-014 exists to catch.
+
+## [PL-015] Verification is an independent check that could have failed
+
+- status: decided
+- date: 2026-08-06
+- provenance: owner ruling, 2026-08-06; **title corrected pre-merge 2026-08-07**
+  (the original — "Verification by inspection is not verification" — over-read
+  as "reading doesn't count": independent readers found nearly everything in
+  the corpus below, and three of its six failures ran something. Measured
+  record: fleet-manager
+  `docs/findings/2026-08-06-provenance-mechanism-measured.md` § 6). Drawn from
+  two sessions running in parallel and pooling their failures. **Six hub-session failures and four
+  review rounds on this repo share one root cause.** Codex named it on round 4
+  of substrate-kit #580 — *"updating the heading grammar fixed the round-3
+  symptom, but did not verify the record against the complete rule set"* — and
+  the authoring session had independently diagnosed it as *"I kept verifying by
+  inspection."* Mapped:
+
+  | claim | why it was believed | what was actually true |
+  |---|---|---|
+  | a 2,890px reverse scroll | it looked plausible | aliased on repetitive rows |
+  | a REST path recorded as agent-blocked | it read authoritative | false — never tested; the call returns 200 |
+  | "every citation resolves" | it read correct | vacuous on zero citations |
+  | a merge commit succeeded | assumed | had failed; markers staged |
+  | "100% coverage at 8 fps" | the number came back | inside the search window only |
+  | four review rounds | the fix was re-read | symptom fixed, rule set unchecked |
+
+- verdict: **If the check is "I read it and it looked right", nothing was
+  checked.** A claim is verified when something OTHER than the author's reading
+  establishes it — a command with a real exit code, a script asserting the whole
+  contract at once, an external reviewer, or the owner. Re-reading one's own
+  output confirms only that it still reads the way it read before, which is the
+  property that was never in doubt.
+
+  **And the form of the check confers nothing.** An execution that could not
+  have failed — a vacuous pass, a suppressed error, an instrument aimed at the
+  wrong contract or never tested out of bounds — is the author's assumption
+  wearing an exit code: three of the six failures mapped above ran something,
+  and verified nothing. A check verifies exactly the contract it could have
+  falsified, no more.
+
+  Two corollaries, both earned:
+
+  1. **Fix the rule set, not the named symptom.** A reviewer names one instance;
+     the defect is usually the class. After any correction, re-assert the FULL
+     contract mechanically — #580's record passed the symptom fix and failed the
+     complete rule four separate times.
+  2. **Point the script at the artifact that will actually be graded.** Round 5
+     found the authoring session validating a standalone record while the gate
+     grades the session card. A mechanical check aimed at the wrong file is
+     inspection wearing a script's costume.
+
+- see also: PL-006 (source wins / false-green) — this is its procedural half.
+  PL-014 says a measured claim carries its instrument; **PL-015 says the
+  instrument may not be the author's own eyes.**

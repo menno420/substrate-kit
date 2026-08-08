@@ -242,6 +242,14 @@ PR #1802) still renders from superbot's committed `console.json`. Steps:
 *(**Pending-only by convention** — a DONE item moves to "Recently shipped"
 on the next touch and never accretes here.)*
 
+**→ The provenance mandate (owner-specified 2026-08-06):**
+[`planning/2026-08-06-provenance-review-mandate.md`](planning/2026-08-06-provenance-review-mandate.md)
+— two instruments for the judgment half the estate does not cover: a
+deterministic **blast-radius exporter**, and a **provenance review** (a fixed
+self-answered list, then an outside reviewer that asks what a claim is based on
+rather than whether it is right). Build order is authoritative in the plan's § 8 and is NOT duplicated here — a stale copy here would silently reorder the work (Codex, PR #580). The plan carries the record of the review it was itself put
+through (§ 11) and the Codex third-perspective review that followed (§ 12), The five review rounds are split out at [`reviews/2026-08-06-provenance-mandate-review-record.md`](reviews/2026-08-06-provenance-mandate-review-record.md) (record and instruction are deliberately separate artifacts), with the Layer 1 answer record at [`reviews/2026-08-06-provenance-mandate-layer1.md`](reviews/2026-08-06-provenance-mandate-layer1.md).
+
 **→ Post-runs 6–10:** the open bench axis after run-10 is the enforcement
 *pull* — the kit induced no write-back/guard-response behavior change on
 either probe (firings bullet above; run dir PR #307). B2/B3/B4 still need
