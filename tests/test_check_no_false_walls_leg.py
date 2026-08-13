@@ -732,6 +732,26 @@ _MUST_STAY_RED = {
         '> The rule is "agents cannot merge"\n'
         "This example was superseded.\n"
     ),
+    # ── Codex round 2 (final round): an `and`-joined INDEPENDENT clause is
+    # not a mention predicate — quotation is not repudiation, in either
+    # clause order. The legitimate defect-6 clear runs through the
+    # quote-anchored attachment predicate instead. ──
+    "r3_and_joined_cue_clause_before_quoted_wall": (
+        'This failure does not reproduce and the standing rule is '
+        '"agents cannot merge".\n'
+    ),
+    "r3_and_joined_cue_clause_after_quoted_wall": (
+        'The standing rule is "agents cannot merge" and this failure does '
+        "not reproduce.\n"
+    ),
+    # A digest-fence marker is a bridge boundary: a generated (exempt) cue
+    # line must not clear an authored wall outside the fence.
+    "r3_digest_fence_marker_stops_bridge": (
+        'The standing rule is "agents cannot merge"\n'
+        "<!-- substrate-kit:skills-digest BEGIN — derived render. -->\n"
+        "This example was superseded\n"
+        "<!-- substrate-kit:skills-digest END -->\n"
+    ),
 }
 
 # Class (b): kit-generated derived-render BLOCKS are exempt from wall-scanning
@@ -1041,6 +1061,20 @@ class TestV1210WorklistDefects:
     def test_codex_round_blockquote_boundaries_both_directions(self) -> None:
         assert scan_text(_MUST_STAY_RED["r2_quoted_fence_in_blockquote"])
         assert scan_text(_MUST_STAY_RED["r2_cue_after_leaving_blockquote"])
+
+    def test_codex_final_round_and_clauses_and_digest_fences(self) -> None:
+        # `and`-joined independent clauses never clear a quoted wall …
+        assert scan_text(_MUST_STAY_RED["r3_and_joined_cue_clause_before_quoted_wall"])
+        assert scan_text(_MUST_STAY_RED["r3_and_joined_cue_clause_after_quoted_wall"])
+        # … while the quote-anchored predicate chain still does (defect 6).
+        assert scan_text(_FP_CLEAR["d6_quoted_wall_is_false_and_no_longer_applies"]) == []
+        # Digest-fence markers stop the bridge on BOTH scan modes: the
+        # authored wall reds even when the fenced cue line is exempt.
+        hits = scan_text(
+            _MUST_STAY_RED["r3_digest_fence_marker_stops_bridge"], is_render_path=True
+        )
+        assert [h.line for h in hits] == [1]
+        assert scan_text(_MUST_STAY_RED["r3_digest_fence_marker_stops_bridge"])
 
     def test_defect_2_only_the_bare_reassertion_reds(self) -> None:
         # One physical line, two matches: the QUOTED mention clears, the BARE

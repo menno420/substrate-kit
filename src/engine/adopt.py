@@ -1066,9 +1066,13 @@ def live_ci_workflow(
         # card-independence. The anchor requires the command to BE the check
         # invocation (optional interpreter token, then a bootstrap.py path,
         # then `check`), not merely to contain one.
+        # The script's BASENAME must be exactly bootstrap.py (Codex R2: a
+        # host verify script named e.g. validate_bootstrap.py check would
+        # otherwise be rewritten with a kit-specific flag it may not accept —
+        # a path prefix is allowed only through a literal '/').
         run_command = test_command
         direct_check = re.match(
-            r"^(?:\S*python[\d.]*\s+)?\S*bootstrap\.py\s+check\b",
+            r"^(?:\S*python[\d.]*\s+)?(?:\S*/)?bootstrap\.py\s+check\b",
             test_command.strip(),
         )
         if (

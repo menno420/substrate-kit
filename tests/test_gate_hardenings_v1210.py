@@ -116,6 +116,17 @@ class TestVerifyCommandSentinel:
             "--session-log .sessions/__no-card-in-diff__.md\n" in wf
         )
 
+    def test_similarly_named_host_scripts_stay_verbatim(self) -> None:
+        # Codex final round: the basename must be exactly bootstrap.py — a
+        # host script that merely ENDS in it must not receive kit flags.
+        cmd = "python3 validate_bootstrap.py check"
+        wf = live_ci_workflow(test_command=cmd)
+        assert f"          {cmd}\n" in wf
+        assert "__no-card-in-diff__" not in _step_block(
+            wf,
+            "verify suite (the interview's verify_command drives the gate's test step)",
+        )
+
     def test_command_with_its_own_session_log_stays_verbatim(self) -> None:
         cmd = "python3 bootstrap.py check --strict --session-log .sessions/x.md"
         wf = live_ci_workflow(test_command=cmd)

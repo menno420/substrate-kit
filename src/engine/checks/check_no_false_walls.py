@@ -703,19 +703,39 @@ def _mask_repudiated_wall_mentions(text: str, phrase: str) -> str:
     return out
 
 
-# The boundaries a QUOTED wall's widened cue search may NOT cross (Codex R2 on
-# the first defect-6 cut, which widened to the WHOLE line): quotation is not
-# repudiation, so 'The standing rule is "agents cannot merge", but this
-# unrelated failure does not reproduce.' must stay red — the cue belongs to a
-# contrasted, unrelated predicate. Hard separators, CONTRAST conjunctions and
-# SUBORDINATORS all stop the region; plain coordination (`and` / `so`) and
-# bare commas continue it, which is what lets defect 6's legitimate mention
-# prose ('The "…" rule is false and no longer applies.') clear.
+# The boundaries a QUOTED wall's widened cue search may NOT cross (Codex on
+# the first two defect-6 cuts — the first widened to the WHOLE line, the
+# second let bare `and` through): quotation is not repudiation, so neither
+# 'The standing rule is "agents cannot merge", but this unrelated failure
+# does not reproduce.' nor its `and`-joined form may clear off the unrelated
+# cue. EVERY conjunction, subordinator and hard separator stops the region;
+# only bare commas continue it. Defect 6's legitimate mention prose
+# ('The "…" rule is false and no longer applies.') clears via the
+# ATTACHMENT predicate below instead — a repudiation chain anchored directly
+# to the closing quote, which an independent clause can never satisfy.
 _REGION_STOP = re.compile(
     r";|—|–|:\s|\.\s|"
-    r",\s*(?:but|however|yet|though|although|whereas|while|still)\b|"
-    r"\s(?:but|however|yet|though|although|whereas|while)\s|"
+    r",\s*(?:and|but|so|however|yet|though|although|whereas|while|still)\b|"
+    r"\s(?:and|but|so|however|yet|though|although|whereas|while)\s|"
     r"\s(?:because|since|when(?:ever)?|unless|until|if|given\s+(?:the\s+fact\s+)?that)\s",
+    re.I,
+)
+
+# The mention-attachment predicate: text starting DIRECTLY after a quoted
+# wall's closing quote that characterises the mention as repudiated — an
+# optional short apposition noun ("rule" / "claim" / …), an optional copula,
+# then a repudiation predicate. Anchored at the quote, so an independent
+# clause joined by a conjunction can never satisfy it; the predicate chain
+# itself may continue across `and` ('rule is false and no longer applies')
+# because the ANCHOR, not the region, is what establishes attachment.
+_MENTION_PREDICATE = re.compile(
+    r"^\s*(?:(?:rule|claim|note|wall|framing|belief|entry|line|reading|"
+    r"wording|phrase)s?\s+)?"
+    r"(?:(?:is|was|are|were)\s+)?"
+    r"(?:false\b|wrong\b|superseded\b|retired\b|repudiated\b|obsolete\b|"
+    r"stale\b|dead\b|"
+    r"no\s+longer\s+(?:applies|holds|stands|true|binding)|"
+    r"does\s+not\s+(?:apply|stand|hold)\b)",
     re.I,
 )
 
@@ -733,6 +753,20 @@ def _mention_region(line: str, span: tuple[int, int]) -> str:
             hi = m.start()
             break
     return line[lo:hi]
+
+
+def _text_after_enclosing_quote(
+    line: str, span: tuple[int, int]
+) -> str | None:
+    """The text following the quote that encloses ``span``, or ``None`` when
+    no :data:`_WALL_QUOTE` match contains the span (defensive — callers gate
+    on :func:`_wall_is_quoted` first)."""
+    for m in _WALL_QUOTE.finditer(line):
+        for gi in (1, 2):
+            qs, qe = m.span(gi)
+            if qs != -1 and qs <= span[0] and span[1] <= qe:
+                return line[m.end() :]
+    return None
 
 
 def _clause_cleared(
@@ -848,6 +882,13 @@ def is_cleared(
         region = _mention_region(line, match_span)
         if _clause_cleared(region, line, phrase, match_span=match_span):
             return True
+        # The attachment predicate: a repudiation chain anchored directly to
+        # the closing quote ('The "…" rule is false and no longer applies.').
+        # Anchoring is what makes it safe — an independent clause joined by a
+        # conjunction never starts at the quote, so it can never satisfy this.
+        tail = _text_after_enclosing_quote(line, match_span)
+        if tail is not None and _MENTION_PREDICATE.match(tail):
+            return True
     # Tight one-line lookback for a wrapped repudiation. Gated (v1.20.2 root fix)
     # on the wall being QUOTED on its own line: only a MENTIONED wall may bridge,
     # never a BARE asserted one. Defect 4 (v1.21.0): never bridge across a
@@ -860,6 +901,8 @@ def is_cleared(
         and not _HEADING.match(prev_line)
         and not _DATED_BULLET.match(prev_line)
         and not _FENCE_DELIM.match(prev_line)
+        and not _DIGEST_FENCE_BEGIN.search(prev_line)
+        and not _DIGEST_FENCE_END.search(prev_line)
         and not _blockquote_state_differs(prev_line, line)
         and not _SENTENCE_END.search(prev_line)
         and not _CONTRAST_START.match(line)
@@ -904,12 +947,15 @@ def is_cleared(
                 or _NEW_BULLET.match(fwd)
                 or _CONTRAST_START.match(fwd)
                 # Defect 4 (v1.21.0): a fence delimiter (blockquote-prefixed
-                # ones included), or a blockquote-state CHANGE in either
-                # direction, opens a SEPARATE block — a cue inside it must
-                # not attach to the wall above (the '…"agents cannot
-                # merge"\n```\nThis example was superseded\n```' hole, its
-                # `> ```` variant, and the leaving-a-blockquote direction).
+                # ones included), a DIGEST fence marker (Codex R2: on the
+                # render path the lookforward received raw lines from inside
+                # the exempt generated block, so a generated cue could bridge
+                # back to an authored wall outside it), or a blockquote-state
+                # CHANGE in either direction, opens a SEPARATE block — a cue
+                # inside it must not attach to the wall above.
                 or _FENCE_DELIM.match(fwd)
+                or _DIGEST_FENCE_BEGIN.search(fwd)
+                or _DIGEST_FENCE_END.search(fwd)
                 or _blockquote_state_differs(fwd, line)
             ):
                 break
