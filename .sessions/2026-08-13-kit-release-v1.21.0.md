@@ -80,10 +80,17 @@ phrasing. The graduation is its own session, after the needle rule is pinned.
       **0 newly flagged**, 4 old→clear, each hand-verified as the defect-6
       quoted-mention class (three document the repro itself; the fourth is
       the seat-era grant digest fm allowlisted 2026-07-20)
-- [ ] fresh 12-adopter `--gate-preview` sweep with the NEW dist (the
-      promotion ships in this release; the 2026-08-06 sweep is stale by the
-      fm rule that one tree's zero is not evidence for twelve) — result
-      appended here before the flip
+- [x] fresh 12-adopter `--gate-preview` sweep with the NEW dist, run
+      2026-08-13 against every tree in `docs/adopters.md` at that hour's
+      HEADs — **the six PROMOTED sites carry 0 findings on 12/12 trees**, so
+      shipping the promotion reds no adopter. Every would-red row on the
+      sweep belongs to a site this release deliberately does NOT promote:
+      `boot_path` fires on 10 of 12 trees (consistent with its changelog
+      entry's 0-of-11 measurement — promoting it would red nearly the whole
+      fleet, which is exactly why it ships un-gated) and
+      `automerge_preflight` on 2 (superbot-next, superbot — the enabler
+      allowlist drift the census entry records). superbot has no vendored
+      dist (pin-only v1.0.0); the new dist ran against its tree directly.
 - [ ] `python3 src/build_release_json.py --version 1.21.0 --verify-only`
 - [ ] Codex review at the exact head SHA — findings read from
       `/pulls/{n}/comments` (inline), never the summary body alone;

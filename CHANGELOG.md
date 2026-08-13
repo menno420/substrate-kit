@@ -21,6 +21,32 @@ workflow refuses to publish a version that has no section in this file.
 
 ### Added
 
+- **Release-notes reconciliation — merges that shipped after the v1.20.2 tag without a
+  `[Unreleased]` entry, folded in at cut time** (the same reconciliation the v1.19.0
+  cut performed; each row below names its PRs):
+
+  - **`continuation-prompt` — a fifteenth kit-shipped skill, and the restate contract
+    in every generated handoff** (#573, #578). #573 ships the skill (carry a working
+    session into a fresh one: harvest decisions, verify state at HEAD, emit a
+    paste-ready prompt) together with the comprehension exception — when reading IS
+    the job, the read path is the work, not overhead. #578 makes every generated
+    handoff open with a verbatim `BEFORE YOUR FIRST TOOL CALL` restate block: the
+    session's first reply states its understanding, not its first action (measured
+    2026-08-06 — a handoff-started session's entire first reply was an announcement,
+    spending the owner's one cheap correction chance on nothing correctable).
+  - **`check_claim_provenance` — PL-013's advisory checker** (#565): a measured claim
+    carries its instrument; the checker flags measured-tagged claims whose command or
+    instrument is absent, and `remediate` gains the matching lane.
+  - **Working-agreement template: four doctrine sections** (#566, #567, #568, #572):
+    verify-before-assert; claims about the owner are asked, never inferred; the
+    agreement's own authority clause (a live owner instruction outranks the stored
+    text); and the task→skill router seeded into every adopter's agreement.
+  - **THE DISCOVERY RULE gains step 0** (#574): an owner provisioning statement is
+    already verified — act on it; probing it first is checking a source against its
+    own output.
+  - **Skill bodies gain the gate-collision clause; the grammar gains effort tiers
+    `xhigh` / `max`** (#571).
+
 - **`check_boot_path` — the boot pointer chain must resolve.** The kit already had a
   reachability checker pointing the wrong way: `check_docs`'s `[reachable]` asserts every
   live doc is reachable FROM the read path (it catches an orphan). Nothing asserted the
