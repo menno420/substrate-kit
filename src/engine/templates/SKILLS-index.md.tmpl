@@ -42,6 +42,10 @@ ${skills_index}
   Re-run the copy after an upgrade — and **diff before you copy**: it
   overwrites kit-named skills, including any local amendments a host has
   layered on them (hand-authored skills under other names are untouched).
+  The loop reads the DEFAULT state dir — if this repo's
+  `substrate.config.json` sets a custom `state_dir`, substitute it for
+  `.substrate` in the loop (staging follows the configured dir; the loop
+  cannot, because this index renders before the config is read).
 - **Precedence:** a skill's declared capability **wins over the ambient
   stance** (an invoked `session-close` may write the session log even under
   a `review` stance); stances stay advisory for anything a skill has not

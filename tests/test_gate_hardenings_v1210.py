@@ -97,6 +97,25 @@ class TestVerifyCommandSentinel:
         assert f"          {cmd}\n" in wf
         assert cmd + " --session-log" not in wf
 
+    def test_wrapped_invocations_stay_verbatim(self) -> None:
+        # Codex R2: appending after `bash -c '…'` hands the flags to bash as
+        # $0/$1 — the inner check would run bare while the step claims
+        # card-independence. Only DIRECT invocations are rewritten.
+        cmd = "bash -c 'python3 bootstrap.py check --strict'"
+        wf = live_ci_workflow(test_command=cmd)
+        assert f"          {cmd}\n" in wf
+        assert "__no-card-in-diff__" not in _step_block(
+            wf,
+            "verify suite (the interview's verify_command drives the gate's test step)",
+        )
+
+    def test_direct_invocation_without_interpreter_is_rewritten(self) -> None:
+        wf = live_ci_workflow(test_command="./bootstrap.py check --strict")
+        assert (
+            "./bootstrap.py check --strict "
+            "--session-log .sessions/__no-card-in-diff__.md\n" in wf
+        )
+
     def test_command_with_its_own_session_log_stays_verbatim(self) -> None:
         cmd = "python3 bootstrap.py check --strict --session-log .sessions/x.md"
         wf = live_ci_workflow(test_command=cmd)

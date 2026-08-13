@@ -490,12 +490,17 @@ _CLAUSE_SEP = re.compile(
     # reproduce") whose subject is ANOTHER predicate entirely; without the
     # split the cue shares the wall's clause and clears it, so a genuine
     # standing wall passes the gate whenever it sits after `because` / `when`
-    # / `unless` / `since` / `given that`. Splitting can only SHRINK a cue's
-    # reach, so this can only ADD reds, never blind the gate (the same
+    # / `unless` / `since` / `if` / `given that`. Splitting can only SHRINK a
+    # cue's reach, so this can only ADD reds, never blind the gate (the same
     # clause-boundary fix fleet-manager's checker took in fm #835, measured
-    # monotonic there across an 88,923-line corpus). Whitespace on BOTH
-    # sides, like the bare-conjunction rule above.
-    r"\s(?:because|since|when(?:ever)?|unless|until|given\s+(?:the\s+fact\s+)?that)\s",
+    # monotonic there across an 88,923-line corpus). `if` added on Codex
+    # review (same conditional class, same silent hole). Causal `as` is
+    # DELIBERATELY absent: fm's checker split it and needed a negated-
+    # complement exemption chain across three review rounds that still
+    # banked an over-exemption residual (fm #836's one open case) — that
+    # trade belongs to the checker-contract bank, not this cut. Whitespace
+    # on BOTH sides, like the bare-conjunction rule above.
+    r"\s(?:because|since|when(?:ever)?|unless|until|if|given\s+(?:the\s+fact\s+)?that)\s",
     re.I,
 )
 
@@ -655,15 +660,22 @@ def _wall_ends_line(
 # A markdown list bullet start (used as a G1 lookforward STOP boundary).
 _NEW_BULLET = re.compile(r"^\s*[-*]\s")
 
-# Defect 4 fix (v1.21.0): a fenced-code delimiter and a blockquote opener are
-# cross-line STOP boundaries too. A sentence never wraps across a ``` / ~~~
-# delimiter, and a cue inside a SEPARATE block must not attach to a wall
-# outside it ('The rule is "agents cannot merge"\n```\nThis example was
-# superseded\n```' cleared the wall through the fence). A blockquote line
-# stops the bridge only when the wall's own line is NOT blockquoted — a quote
-# block's internal wrap stays a genuine sentence continuation.
-_FENCE_DELIM = re.compile(r"^\s*(?:```|~~~)")
+# Defect 4 fix (v1.21.0): a fenced-code delimiter and a blockquote-state
+# CHANGE are cross-line STOP boundaries too. A sentence never wraps across a
+# ``` / ~~~ delimiter — including one INSIDE a blockquote, whose valid
+# Markdown form starts `> ``` ` (Codex R2: the bare pattern missed quoted
+# fences, so a quoted code-block cue bridged to the wall above). And a cue in
+# a DIFFERENT blockquote state — entering one OR leaving one (Codex R2: the
+# first cut only stopped the entering direction) — belongs to a separate
+# block; only a blockquote's INTERNAL wrap is a genuine continuation.
+_FENCE_DELIM = re.compile(r"^\s*(?:>\s?)*(?:```|~~~)")
 _BLOCKQUOTE_LINE = re.compile(r"^\s*>")
+
+
+def _blockquote_state_differs(a: str, b: str) -> bool:
+    """True when exactly one of the two lines is blockquoted — a block
+    boundary in either direction, across which no bridge may reach."""
+    return bool(_BLOCKQUOTE_LINE.match(a)) != bool(_BLOCKQUOTE_LINE.match(b))
 
 
 def _mask_repudiated_wall_mentions(text: str, phrase: str) -> str:
@@ -689,6 +701,38 @@ def _mask_repudiated_wall_mentions(text: str, phrase: str) -> str:
             ):
                 out = out[: m.start()] + " " * (m.end() - m.start()) + out[m.end() :]
     return out
+
+
+# The boundaries a QUOTED wall's widened cue search may NOT cross (Codex R2 on
+# the first defect-6 cut, which widened to the WHOLE line): quotation is not
+# repudiation, so 'The standing rule is "agents cannot merge", but this
+# unrelated failure does not reproduce.' must stay red — the cue belongs to a
+# contrasted, unrelated predicate. Hard separators, CONTRAST conjunctions and
+# SUBORDINATORS all stop the region; plain coordination (`and` / `so`) and
+# bare commas continue it, which is what lets defect 6's legitimate mention
+# prose ('The "…" rule is false and no longer applies.') clear.
+_REGION_STOP = re.compile(
+    r";|—|–|:\s|\.\s|"
+    r",\s*(?:but|however|yet|though|although|whereas|while|still)\b|"
+    r"\s(?:but|however|yet|though|although|whereas|while)\s|"
+    r"\s(?:because|since|when(?:ever)?|unless|until|if|given\s+(?:the\s+fact\s+)?that)\s",
+    re.I,
+)
+
+
+def _mention_region(line: str, span: tuple[int, int]) -> str:
+    """The contiguous stretch of ``line`` around a QUOTED wall ``span`` within
+    which a cue may attach to the mention: bounded on each side by the nearest
+    :data:`_REGION_STOP` boundary. Boundaries INSIDE the quote span are the
+    quoted phrase's own words and never split the region."""
+    lo, hi = 0, len(line)
+    for m in _REGION_STOP.finditer(line):
+        if m.end() <= span[0]:
+            lo = m.end()
+        elif m.start() >= span[1]:
+            hi = m.start()
+            break
+    return line[lo:hi]
 
 
 def _clause_cleared(
@@ -790,17 +834,20 @@ def is_cleared(
         return True
     # Defect 6 fix (v1.21.0): a QUOTED wall is a MENTION, not an assertion —
     # the same distinction that gates the cross-line bridges below. Prose
-    # ABOUT a quoted wall naturally crosses the conjunction boundaries FIX
+    # ABOUT a quoted wall naturally crosses the coordination boundaries FIX
     # A'/A'' added for bare walls ('The "agents cannot merge" rule is false
     # and no longer applies.' stranded its cue in the second clause and went
-    # red), so a quoted wall's cue search widens to its whole physical line.
-    # Bare walls keep clause-tight attachment — this cannot blind the gate to
-    # an ASSERTED wall, and each match is still graded by its own span (P3),
-    # so a bare wall sharing the line stays red on its own grading.
-    if _wall_is_quoted(line, match_span) and _clause_cleared(
-        line, line, phrase, match_span=match_span
-    ):
-        return True
+    # red), so a quoted wall's cue search widens — to its MENTION REGION,
+    # never the whole line (Codex R2): the region stops at contrast
+    # conjunctions, subordinators and hard separators, so an unrelated cue in
+    # a contrasted clause ('…, but this unrelated failure does not
+    # reproduce.') cannot clear a wall the first clause asserts via a quote.
+    # Bare walls keep clause-tight attachment; each match is still graded by
+    # its own span (P3), so a bare wall sharing the line reds on its own.
+    if match_span is not None and _wall_is_quoted(line, match_span):
+        region = _mention_region(line, match_span)
+        if _clause_cleared(region, line, phrase, match_span=match_span):
+            return True
     # Tight one-line lookback for a wrapped repudiation. Gated (v1.20.2 root fix)
     # on the wall being QUOTED on its own line: only a MENTIONED wall may bridge,
     # never a BARE asserted one. Defect 4 (v1.21.0): never bridge across a
@@ -813,9 +860,7 @@ def is_cleared(
         and not _HEADING.match(prev_line)
         and not _DATED_BULLET.match(prev_line)
         and not _FENCE_DELIM.match(prev_line)
-        and not (
-            _BLOCKQUOTE_LINE.match(prev_line) and not _BLOCKQUOTE_LINE.match(line)
-        )
+        and not _blockquote_state_differs(prev_line, line)
         and not _SENTENCE_END.search(prev_line)
         and not _CONTRAST_START.match(line)
         and _wall_starts_line(line, phrase)
@@ -858,15 +903,14 @@ def is_cleared(
                 or _DATED_BULLET.match(fwd)
                 or _NEW_BULLET.match(fwd)
                 or _CONTRAST_START.match(fwd)
-                # Defect 4 (v1.21.0): a fence delimiter, or a blockquote line
-                # under a non-blockquote wall, opens a SEPARATE block — a cue
-                # inside it must not attach to the wall above (the '…"agents
-                # cannot merge"\n```\nThis example was superseded\n```' hole).
+                # Defect 4 (v1.21.0): a fence delimiter (blockquote-prefixed
+                # ones included), or a blockquote-state CHANGE in either
+                # direction, opens a SEPARATE block — a cue inside it must
+                # not attach to the wall above (the '…"agents cannot
+                # merge"\n```\nThis example was superseded\n```' hole, its
+                # `> ```` variant, and the leaving-a-blockquote direction).
                 or _FENCE_DELIM.match(fwd)
-                or (
-                    _BLOCKQUOTE_LINE.match(fwd)
-                    and not _BLOCKQUOTE_LINE.match(line)
-                )
+                or _blockquote_state_differs(fwd, line)
             ):
                 break
             fwd_clause = _first_clause(fwd)

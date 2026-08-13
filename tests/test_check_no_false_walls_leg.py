@@ -368,10 +368,6 @@ _FP_CLEAR = {
     "d6_quoted_wall_is_false_and_no_longer_applies": (
         'The "agents cannot merge" rule is false and no longer applies.\n'
     ),
-    # The em-dash variant: cue in a separate clause, wall quoted → line-wide.
-    "d6_quoted_wall_dash_separated_cue": (
-        'The "agents cannot merge" rule — superseded by the 07-18 proof.\n'
-    ),
     # Defect 4's boundary must not break a blockquote's INTERNAL wrap: both
     # lines are blockquoted, so the bridge is a genuine sentence continuation.
     "d4_blockquote_internal_wrap_still_clears": (
@@ -706,6 +702,36 @@ _MUST_STAY_RED = {
         'The rule is "agents cannot merge"\n'
         "> This example was superseded\n"
     ),
+    # ── Codex round on the v1.21.0 cut (kit #581) — each reproduced before
+    # fixing. Quotation is not repudiation: an ASSERTED wall that happens to
+    # be quoted must not clear off an unrelated cue in a contrasted clause. ──
+    "r2_asserted_quoted_wall_contrast_cue_bleed": (
+        'The standing rule is "agents cannot merge", but this unrelated '
+        "failure does not reproduce.\n"
+    ),
+    # A subordinated cue clause after the quote must not clear it either.
+    "r2_asserted_quoted_wall_subordinated_cue_bleed": (
+        'The rule stays "agents cannot merge" because the freeze does not '
+        "reproduce.\n"
+    ),
+    # `if` is the same conditional-subordinator hole as `because` (defect 7).
+    "d7_subordinator_if_bleed": (
+        "The failure does not reproduce if agents cannot merge pull "
+        "requests.\n"
+    ),
+    # A fence delimiter INSIDE a blockquote is still a fence delimiter.
+    "r2_quoted_fence_in_blockquote": (
+        '> The rule is "agents cannot merge"\n'
+        "> ```\n"
+        "> This example was superseded\n"
+        "> ```\n"
+    ),
+    # Leaving a blockquote is a block boundary too — a plain-prose cue below
+    # a blockquoted wall belongs to a different block.
+    "r2_cue_after_leaving_blockquote": (
+        '> The rule is "agents cannot merge"\n'
+        "This example was superseded.\n"
+    ),
 }
 
 # Class (b): kit-generated derived-render BLOCKS are exempt from wall-scanning
@@ -1004,6 +1030,17 @@ class TestV1210WorklistDefects:
     def test_defect_6_valid_repudiation_with_conjunction_clears(self) -> None:
         # THE recorded false positive: v1.20.2 returned 1 hit here.
         assert scan_text(_FP_CLEAR["d6_quoted_wall_is_false_and_no_longer_applies"]) == []
+
+    def test_codex_round_quotation_is_not_repudiation(self) -> None:
+        # The widened mention region stops at contrast/subordinator
+        # boundaries, so an ASSERTED quoted wall keeps its red when the only
+        # cue on the line belongs to an unrelated, contrasted predicate.
+        assert scan_text(_MUST_STAY_RED["r2_asserted_quoted_wall_contrast_cue_bleed"])
+        assert scan_text(_MUST_STAY_RED["r2_asserted_quoted_wall_subordinated_cue_bleed"])
+
+    def test_codex_round_blockquote_boundaries_both_directions(self) -> None:
+        assert scan_text(_MUST_STAY_RED["r2_quoted_fence_in_blockquote"])
+        assert scan_text(_MUST_STAY_RED["r2_cue_after_leaving_blockquote"])
 
     def test_defect_2_only_the_bare_reassertion_reds(self) -> None:
         # One physical line, two matches: the QUOTED mention clears, the BARE

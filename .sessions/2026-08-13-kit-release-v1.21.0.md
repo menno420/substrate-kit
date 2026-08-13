@@ -92,9 +92,23 @@ phrasing. The graduation is its own session, after the needle rule is pinned.
       allowlist drift the census entry records). superbot has no vendored
       dist (pin-only v1.0.0); the new dist ran against its tree directly.
 - [ ] `python3 src/build_release_json.py --version 1.21.0 --verify-only`
-- [ ] Codex review at the exact head SHA — findings read from
-      `/pulls/{n}/comments` (inline), never the summary body alone;
-      dispositions recorded here before the flip
+- [x] Codex round 1 at head `a7f6c59` — **6 inline findings (2×P1, 4×P2),
+      every one reproduced before disposition**: P1 quoted-wall over-clear
+      `[conceded]` (line-wide widening → mention REGION stopping at
+      contrast/subordinator boundaries; quotation is not repudiation);
+      P1 subordinator gaps `[conceded]` for `if`, `[partial]` for causal
+      `as` — deliberately deferred with the fm #836 evidence (fm's own `as`
+      boundary needed a negated-complement exemption chain across three
+      review rounds and still banked an over-exemption residual; that trade
+      belongs to the checker-contract bank, stated in the code comment);
+      P2 blockquote-prefixed fences `[conceded]`; P2 leaving-a-blockquote
+      `[conceded]` (state-differs both directions); P2 `bash -c`-wrapped
+      sentinel append `[conceded]` (direct-invocation anchor); P2 custom
+      `state_dir` copy loop `[partial]` (no template slot carries state_dir;
+      all 12 registry adopters run the default; adjust-if-customized caveat
+      added). Each fix carries a fixture named `r2_*` / `d7_subordinator_if`.
+- [ ] Codex round 2 at the post-fix head — the second and final re-review
+      round `session-close` allows; result recorded here before the flip
 - [ ] three-way asset verification after publish — release record appended
       below with run id, tag SHA and sha256
 

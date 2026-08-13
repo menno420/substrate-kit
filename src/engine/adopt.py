@@ -1059,9 +1059,20 @@ def live_ci_workflow(
         # un-chained invocation is rewritten — appending to a `;`/`|`/`&&`
         # chain would attach the flag to the wrong command — and a command
         # already carrying --session-log is honored verbatim.
+        # DIRECT invocations only (Codex R2): a wrapped command like
+        # `bash -c 'python3 bootstrap.py check --strict'` must stay verbatim —
+        # appending after the closing quote hands the flags to bash as $0/$1,
+        # so the inner check would still run bare while the step claims
+        # card-independence. The anchor requires the command to BE the check
+        # invocation (optional interpreter token, then a bootstrap.py path,
+        # then `check`), not merely to contain one.
         run_command = test_command
+        direct_check = re.match(
+            r"^(?:\S*python[\d.]*\s+)?\S*bootstrap\.py\s+check\b",
+            test_command.strip(),
+        )
         if (
-            "bootstrap.py check" in test_command
+            direct_check
             and "--session-log" not in test_command
             and not re.search(r"[;|&]", test_command)
         ):
