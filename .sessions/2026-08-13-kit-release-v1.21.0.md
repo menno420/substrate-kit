@@ -1,6 +1,6 @@
 # 2026-08-13 · kit-release-v1.21.0 — the seven-defect cut
 
-> **Status:** `in-progress`
+> **Status:** `complete`
 
 - **📊 Model:** fable-5 · high · runtime bugfix
 - ⚑ Self-initiated: no — owner-directed. The 2026-08-09 ruling was *"both, in
@@ -107,12 +107,29 @@ phrasing. The graduation is its own session, after the needle rule is pinned.
       `state_dir` copy loop `[partial]` (no template slot carries state_dir;
       all 12 registry adopters run the default; adjust-if-customized caveat
       added). Each fix carries a fixture named `r2_*` / `d7_subordinator_if`.
-- [ ] Codex round 2 at the post-fix head — the second and final re-review
-      round `session-close` allows; result recorded here before the flip
-- [ ] three-way asset verification after publish — release record appended
-      below with run id, tag SHA and sha256
+- [x] Codex round 2 at head `be55d28` — **3 findings (2×P1, 1×P2), all
+      `[conceded]` and fixed**: the mention region let bare `and` through
+      (an independent clause could clear an asserted quoted wall — fixed by
+      stopping the region at ALL conjunctions and moving defect 6's
+      legitimate clear to a predicate ANCHORED at the closing quote);
+      digest-fence markers did not stop the cross-line bridges on the
+      render path (a generated exempt cue could clear an authored wall —
+      markers are now bridge boundaries); the sentinel rewrite matched any
+      `*bootstrap.py` basename (`validate_bootstrap.py check` would have
+      gained a kit flag — exact-basename anchor). Fixtures `r3_*` pin all
+      three. **Per the bounded review loop (two rounds, fm #835's
+      precedent) the round-2 fix commit `5af2f1e` is dispositioned, not
+      separately re-reviewed** — stated here and in the PR, not inferred
+      from silence.
+- [ ] three-way asset verification after publish — this card flips complete
+      at MERGE, before the publish step can run, so the release record
+      (run id, tag SHA, three-way sha256) lands in `control/status.md` per
+      the release skill's aftermath step and in fleet-manager's session
+      card — never pre-filled here.
 
-## Release record
+## Where the release record lives
 
-*(empty until the publish step actually runs — the record is appended with
-the real run id, tag SHA and three-way sha256, never pre-filled.)*
+`control/status.md` (appended after the publish + three-way verification,
+as a control-lane commit) and the fleet-manager adoption session's card.
+This card cannot carry it: the born-red flip is the merge condition, and
+publish runs on merged main.
