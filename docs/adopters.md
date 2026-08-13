@@ -5,7 +5,7 @@
 > **GENERATED — do not hand-edit** — regenerate with `python3 dist/bootstrap.py currency`
 > (agent-side: kit CI cannot auth to sibling repos, so CI validates
 > only this file's format + staleness, never refetches).
-> Generated: 2026-07-21T18:20:51Z · kit release: v1.21.0
+> Generated: 2026-08-13T15:55:41Z · kit release: v1.21.0
 >
 > Who runs which kit version — the substrate-coordinator's
 > visibility surface (inbox ORDER 003; manager research 2026-07-09).
@@ -22,29 +22,29 @@
 
 ## Registry
 
-| repo | tree (vendored dist) | config pin | self-report (`kit:` line) | engaged | verdict vs kit v1.20.2 |
+| repo | tree (vendored dist) | config pin | self-report (`kit:` line) | engaged | verdict vs kit v1.21.0 |
 |---|---|---|---|---|---|
-| menno420/substrate-kit | v1.21.0 (dist/bootstrap.py) | v1.21.0 | v1.20.2 | no | ⚠️ DRIFT · current |
-| menno420/superbot-next | v1.17.0 (bootstrap.py) | v1.17.0 | v1.17.0 | no | stale (v1.17.0 < v1.20.2) |
-| menno420/websites | v1.20.1 (bootstrap.py) | v1.20.1 | v1.20.1 | — | stale (v1.20.1 < v1.20.2) |
-| menno420/superbot | — | v1.0.0 | no `kit:` line | — | stale (v1.0.0 < v1.20.2) · pin-only (no vendored dist found) |
-| menno420/superbot-games | v1.20.1 (bootstrap.py) | v1.20.1 | status.md: v1.15.0 · status-mining.md: v1.7.1 · status-exploration.md: v1.7.1 | yes | ⚠️ DRIFT · stale (v1.20.1 < v1.20.2) |
-| menno420/trading-strategy | v1.17.0 (bootstrap.py) | v1.17.0 | v1.17.0 | — | stale (v1.17.0 < v1.20.2) |
-| menno420/gba-homebrew | v1.20.1 (bootstrap.py) | v1.20.1 | v1.20.1 | — | stale (v1.20.1 < v1.20.2) |
-| menno420/pokemon-mod-lab | v1.15.0 (bootstrap.py) | v1.15.0 | no `kit:` line | — | stale (v1.15.0 < v1.20.2) |
-| menno420/venture-lab | v1.20.1 (bootstrap.py) | v1.20.1 | v1.17.0 | — | ⚠️ DRIFT · stale (v1.20.1 < v1.20.2) |
-| menno420/fleet-manager | v1.20.1 (bootstrap.py) | v1.20.1 | no `kit:` line | — | stale (v1.20.1 < v1.20.2) |
-| menno420/idea-engine | v1.20.1 (bootstrap.py) | v1.20.1 | v1.20.1 | — | stale (v1.20.1 < v1.20.2) |
-| menno420/superbot-mineverse | v1.20.1 (bootstrap.py) | v1.20.1 | v1.20.1 | yes | stale (v1.20.1 < v1.20.2) |
+| menno420/substrate-kit | v1.21.0 (dist/bootstrap.py) | v1.21.0 | v1.21.0 | no | current |
+| menno420/superbot-next | v1.21.0 (bootstrap.py) | v1.21.0 | no `kit:` line | — | current |
+| menno420/websites | v1.20.1 (bootstrap.py) | v1.20.1 | v1.20.1 | — | stale (v1.20.1 < v1.21.0) |
+| menno420/superbot | v1.21.0 (bootstrap.py) | v1.0.0 | no `kit:` line | — | ⚠️ DRIFT · current |
+| menno420/superbot-games | v1.20.1 (bootstrap.py) | v1.20.1 | status.md: v1.15.0 · status-mining.md: v1.7.1 · status-exploration.md: v1.7.1 | yes | ⚠️ DRIFT · stale (v1.20.1 < v1.21.0) |
+| menno420/trading-strategy | v1.17.0 (bootstrap.py) | v1.17.0 | v1.17.0 | — | stale (v1.17.0 < v1.21.0) |
+| menno420/gba-homebrew | v1.20.1 (bootstrap.py) | v1.20.1 | v1.20.1 | — | stale (v1.20.1 < v1.21.0) |
+| menno420/pokemon-mod-lab | v1.15.0 (bootstrap.py) | v1.15.0 | no `kit:` line | — | stale (v1.15.0 < v1.21.0) |
+| menno420/venture-lab | v1.20.1 (bootstrap.py) | v1.20.1 | v1.20.1 | — | stale (v1.20.1 < v1.21.0) |
+| menno420/fleet-manager | v1.21.0 (bootstrap.py) | v1.21.0 | no `kit:` line | — | current |
+| menno420/idea-engine | v1.20.1 (bootstrap.py) | v1.20.1 | v1.20.1 | — | stale (v1.20.1 < v1.21.0) |
+| menno420/superbot-mineverse | v1.20.1 (bootstrap.py) | v1.20.1 | no `kit:` line | — | stale (v1.20.1 < v1.21.0) |
 
 ## Drift report
 
 Tree and self-report disagree below — reconcile at the SOURCE (the adopter's own heartbeat / pin), never by hand-editing this file:
 
+- **menno420/superbot** — tree-internal: vendored dist says v1.21.0 but substrate.config.json pins v1.0.0
 - **menno420/superbot-games** — self-report vs tree: control/status.md claims v1.15.0 but the tree says v1.20.1
 - **menno420/superbot-games** — self-report vs tree: control/status-mining.md claims v1.7.1 but the tree says v1.20.1
 - **menno420/superbot-games** — self-report vs tree: control/status-exploration.md claims v1.7.1 but the tree says v1.20.1
-- **menno420/venture-lab** — self-report vs tree: control/status.md claims v1.17.0 but the tree says v1.20.1
 
 ## Row protocol
 
