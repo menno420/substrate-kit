@@ -107,6 +107,103 @@ workflow refuses to publish a version that has no section in this file.
   decision into a measurement to run across the adopters first. It reports 0 sites
   carrying findings on both substrate-kit and fleet-manager today.
 
+- **Three substrate-gate hardenings, upstreamed from fleet-manager's hand-carried
+  carve-outs (fm #833)** — every kit upgrade regenerated the kit-owned workflow and
+  silently dropped them, so the host re-applied all three by hand each time; shipping
+  them in the generator ends that re-apply tax for every adopter:
+
+  1. the **claims-only fast-lane guard reads `github.head_ref` via an `env:` block**,
+     never direct `${{ }}` interpolation into the shell program. A branch name is
+     chosen by the PR author, git refnames accept shell metacharacters, and GitHub
+     expands `${{ }}` before bash parses — so a crafted head could `exit 0` past the
+     very guard that closes the #451 card-less-merge race (Codex P1, fm #833).
+  2. a planted **`repo checkers` extension step** runs the host-owned
+     `scripts/repo_checks.sh` when present and self-skips otherwise (the pytest step's
+     own pattern). Host checkers hand-added into the kit-owned gate were dropped at
+     every regen — at fleet-manager the gate stayed green while running neither of its
+     two repo checkers; now the kit owns the workflow, the host owns the script, and
+     the regen can never drop the wiring again.
+  3. a single un-chained **`bootstrap.py check` verify_command gains the explicit
+     absent-card `--session-log` sentinel**. Bare, on a push run for main, no card
+     differs and the engine falls back to newest-by-CHECKOUT-MTIME card selection —
+     arbitrary in CI — which redded a valid main push off a historical `in-progress`
+     card (Codex P2, fm #833). Card gating stays the session-gate step's job, with
+     explicit diff-based selection; chained commands are honored verbatim.
+
+- **The `enforcement-required-unverified` NOTE no longer claims the rules API is
+  "403-walled to agents".** Same class as the seed retraction below, in the gate's
+  own output: the endpoint reads (and writes) fine over the direct-credential path
+  (`GET`/`PUT /repos/{o}/{r}/rulesets/{id}` both 200, measured 2026-08-06 at
+  fleet-manager, re-verified from the effective-rules endpoint after the write).
+  The honest scope — this stdlib-only engine makes no network calls — is what the
+  NOTE now says, plus the exact endpoint a session can read instead.
+
+- **The capability seed retracts three walls that were route quirks** — *tag push /
+  release create 403*, *branch deletion 403 on every path*, and *`api.github.com`
+  blocked, MCP-tools-only*. All three recorded the PROXIED route's 403s as platform
+  walls; fleet-manager's 2026-08-11 audit refuted each with live calls over the
+  direct-credential path. The seed now records them as the route facts they were,
+  under the standing rule the scanner itself enforces: a route quirk is not a wall.
+  (Without this, every upgrade's seed refresh could re-seed the false walls an
+  adopter's append log had already refuted — the fm re-apply table's second row.)
+
+### Fixed
+
+- **All seven defects from fleet-manager's v1.20.2 review are closed**
+  (`fleet-manager docs/findings/2026-08-09-substrate-kit-defects.md` — found by Codex
+  reading the vendored dist on fm #833, independently classified on fm #835: five
+  behaviours new in v1.20.2 — defects 1, 2, 4, 6, 7 — and two long-standing — 3, 5).
+  In the worklist's own fix order:
+
+  - **Defect 7 — the false NEGATIVE on the required gate: a subordinator is now a
+    clause boundary.** `The failure does not reproduce because agents cannot merge
+    pull requests.` returned 0 hits — the cue's subject is another predicate, but
+    `because` / `when` / `unless` / `since` / `given that` did not split the clause,
+    so the cue cleared a wall it never characterised, silently, on the gate whose one
+    job is catching walls. Splitting can only shrink a cue's reach, so the fix can
+    only ADD reds (the same clause-boundary fix fleet-manager's own checker took in
+    fm #835, measured monotonic there).
+  - **Defect 6 — the conjunction false positive: a QUOTED wall's cue search widens to
+    its whole line.** `The "agents cannot merge" rule is false and no longer
+    applies.` was rejected: v1.20.2's (deliberate, still-correct) conjunction boundary
+    stranded the cue in the second clause. A quoted wall is a MENTION, not an
+    assertion — the distinction the cross-line bridges already gate on — so prose
+    about a quoted wall may cross the boundaries that protect bare walls. Bare walls
+    keep clause-tight attachment.
+  - **Defect 2 — occurrence-level attachment.** `"agents cannot merge" was
+    superseded, agents cannot merge` cleared BOTH occurrences: the cue characterises
+    the quoted mention, never the bare re-assertion sharing the clause. Before a bare
+    wall's cue search, predicate-attached quoted mentions of the same capability are
+    masked out, so the second, genuine assertion reds.
+  - **Defect 3 — the deploy family regex matched `redeploy` and never `deploy`.**
+    `\bre?deploy\b` is literal `r` + optional `e` + `deploy`; `(?:re)?deploy` is what
+    was meant. A deploy wall therefore had NO family, and any unrelated repudiation
+    (empty-family cues bypass the disjoint-family gate) could clear it:
+    `Merging is not walled, agents cannot deploy` returned 0 hits.
+  - **Defect 4 — a fence delimiter / foreign blockquote stops the cross-line
+    bridges.** A cue inside a separate block attached to the quoted wall above it
+    (`The rule is "agents cannot merge"` + a fenced `This example was superseded`
+    cleared). A blockquote's INTERNAL wrap is still a genuine continuation.
+  - **Defect 1 — the derived-render exemption is fence-scoped.** The whole-file
+    render-marker early return also exempted authored prose OUTSIDE the digest
+    fences, so a wall hand-added to `docs/seat-digest.md` escaped the scan entirely —
+    on exactly the file adopters are told never to edit. Only the fenced blocks are
+    exempt now (sound because their source docs are independently scanned); the
+    marker exempts nothing.
+  - **Defect 5 — the SKILLS-index template taught `skills --build` as the install.**
+    It only STAGES: no kit command writes a live `.claude/` tree, so a fresh adopter
+    following the index ended with everything staged, nothing invocable, and both
+    commands exiting 0. The index now states the staging-only contract and documents
+    the host's copy loop — with the diff-before-copy warning, because the copy
+    overwrites local amendments to kit-named skills.
+
+  Corpus A/B against v1.20.2 (93,811 markdown lines across substrate-kit +
+  fleet-manager): **0 newly-flagged lines** — the closed holes disturb no live
+  adopter text — and **4 old-flags→new-clears**, each hand-verified as the defect-6
+  mention class (three are documentation of the repro itself; the fourth is a
+  quoted-refusal-strings grant digest fleet-manager had already allowlisted as
+  not-a-wall in 2026-07-20, now cleared structurally instead).
+
 ## [1.20.2] - 2026-07-21
 
 <!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->

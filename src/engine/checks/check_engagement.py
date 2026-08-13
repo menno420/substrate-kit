@@ -346,18 +346,25 @@ def check_enforcement_strength(target: Path, config: Any) -> list[Finding]:
 def required_unverified_note(target: Path, config: Any) -> str | None:
     """The ``enforcement-required-unverified`` honesty NOTE (idea layer 2).
 
-    Whether the wired check is a REQUIRED status check is owner-UI state —
-    invisible in-tree and 403-walled to agents (issue #36 report 3; proven:
-    superbot-next #51/#68 merged with red non-required legs). The checker
-    cannot confirm it today (no rules-API probe in a stdlib-only engine), so
-    it says so honestly: one NOTE line whenever a CI door exists — either a
-    workflow running ``check --strict`` or an accepted ``native_gate``
-    declaration — naming the context expected to be required
-    (``native_gate.required_context`` on the native path, else
-    ``automerge.required_context``). NOTE-only by the idea's contract, like
-    the ``enforcement-native`` acceptance NOTE it rides beside: honesty
-    output on a green path, never telemetry, never exit-affecting. ``None``
-    when no door exists (the unwired finding owns that conversation).
+    Whether the wired check is a REQUIRED status check is branch-protection
+    state — invisible in-tree (issue #36 report 3; proven: superbot-next
+    #51/#68 merged with red non-required legs). THIS stdlib-only engine makes
+    no network calls, so the checker cannot confirm it and says so honestly:
+    one NOTE line whenever a CI door exists — either a workflow running
+    ``check --strict`` or an accepted ``native_gate`` declaration — naming
+    the context expected to be required (``native_gate.required_context`` on
+    the native path, else ``automerge.required_context``). NOTE-only by the
+    idea's contract, like the ``enforcement-native`` acceptance NOTE it rides
+    beside: honesty output on a green path, never telemetry, never
+    exit-affecting. ``None`` when no door exists (the unwired finding owns
+    that conversation).
+
+    The NOTE's old wording claimed the rulesets API is "403-walled to
+    agents". That was a wall, and it was false: the endpoint reads (and
+    writes) fine over the direct-credential path — measured 2026-08-06 at
+    fleet-manager, ``GET``/``PUT /repos/{o}/{r}/rulesets/{id}`` both 200,
+    re-verified from the effective-rules endpoint after the write. The
+    honest scope is only that THIS engine does not probe the network.
     """
     wired = _enforcement_wired(target)
     workflow, exists = _native_gate_declared(target, config)
@@ -379,9 +386,11 @@ def required_unverified_note(target: Path, config: Any) -> str | None:
     )
     return (
         f"enforcement-required-unverified — whether {named} is a REQUIRED "
-        "status check on the base branch is owner-UI state this gate cannot "
-        "read (rules API; 403-walled to agents) — owner glance: Settings → "
-        "Rules → required status checks; inference recipes: "
+        "status check on the base branch is branch-protection state this "
+        "stdlib-only gate does not probe (no network calls; the rulesets "
+        "API itself reads fine agent-side over the direct-credential path, "
+        "measured 2026-08-06) — verify via GET /repos/{owner}/{repo}/rules/"
+        "branches/{branch}, or owner glance: Settings → Rules; recipes: "
         "docs/CAPABILITIES.md."
     )
 

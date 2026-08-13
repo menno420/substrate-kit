@@ -340,8 +340,11 @@ def test_adopt_plants_the_digest_and_records_its_hash(tmp_path):
     path = root / _DIGEST_REL
     assert path.is_file()
     text = path.read_text(encoding="utf-8")
-    # Rendered from the just-planted ledger, not a placeholder.
-    assert "workflow_dispatch" in text
+    # Rendered from the just-planted ledger, not a placeholder. (Anchored on
+    # a surviving seed wall row — v1.21.0 retracted the tag-push/branch-
+    # deletion/api.github.com rows the old "workflow_dispatch" anchor lived
+    # in; they were proxied-route quirks recorded as walls, refuted 2026-08-11.)
+    assert "owner-click actions" in text
     assert grammar.SKILLS_DIGEST_BEGIN_PREFIX in text
     assert doc_is_untouched(backend, _DIGEST_REL, text)
     # Fresh plant is byte-identical to the shared render path (the drift
