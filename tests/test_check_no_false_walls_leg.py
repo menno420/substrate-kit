@@ -362,6 +362,17 @@ _FP_CLEAR = {
         '> The "the owner merges" claim\n'
         "> was a false standing wall, now repudiated.\n"
     ),
+    # ── Defect 6 (v1.21.0): a QUOTED wall is a mention — prose about it may
+    # cross the conjunction boundaries that protect BARE walls. This exact
+    # shape was the recorded v1.20.2 false positive (worklist defect 6). ──
+    "d6_quoted_wall_is_false_and_no_longer_applies": (
+        'The "agents cannot merge" rule is false and no longer applies.\n'
+    ),
+    # Defect 4's boundary must not break a blockquote's INTERNAL wrap: both
+    # lines are blockquoted, so the bridge is a genuine sentence continuation.
+    "d4_blockquote_internal_wrap_still_clears": (
+        '> The "agents cannot merge" rule\n> was superseded.\n'
+    ),
 }
 
 # The adversarial-review MUST-RED set (fm ORDER 048): every genuine STANDING
@@ -642,21 +653,116 @@ _MUST_STAY_RED = {
         "seat-digest`.\n\n"
         "agents cannot merge their own PRs.\n"
     ),
+    # ── Defect 7 (v1.21.0, FIX A''): a SUBORDINATOR is a clause boundary — a
+    # cue whose subject is another predicate must not clear the wall after
+    # `because`/`when`/`unless`/`since`/`given that`. The first entry is the
+    # recorded false NEGATIVE on the required gate (worklist defect 7). ──
+    "d7_subordinator_because_bleed": (
+        "The failure does not reproduce because agents cannot merge pull "
+        "requests.\n"
+    ),
+    "d7_subordinator_when_bleed": (
+        "The freeze does not reproduce when agents cannot merge to main.\n"
+    ),
+    "d7_subordinator_unless_bleed": (
+        "The wall does not reproduce unless agents cannot merge in prod.\n"
+    ),
+    "d7_subordinator_since_bleed": (
+        "The failure does not reproduce since agents cannot merge pull "
+        "requests.\n"
+    ),
+    "d7_subordinator_given_that_bleed": (
+        "The failure does not reproduce given that agents cannot merge pull "
+        "requests.\n"
+    ),
+    # ── Defect 2 (v1.21.0): occurrence-level attachment — the cue clears the
+    # QUOTED mention it characterises, never a BARE re-assertion sharing the
+    # clause. ──
+    "d2_bare_reassertion_after_repudiated_quote": (
+        '"agents cannot merge" was superseded, agents cannot merge\n'
+    ),
+    "d2_bare_reassertion_after_false_quote": (
+        'The prior false "agents cannot merge" note aside, agents cannot '
+        "merge\n"
+    ),
+    # ── Defect 3 (v1.21.0): plain `deploy` now carries the deploy family, so
+    # an unrelated merge repudiation is family-gated away from a deploy wall. ──
+    "d3_deploy_wall_unrelated_merge_cue_bleed": (
+        "Merging is not walled, agents cannot deploy\n"
+    ),
+    # ── Defect 4 (v1.21.0): a cue inside a SEPARATE block (fence/blockquote)
+    # must not attach to the quoted wall above it. ──
+    "d4_cue_inside_fence_after_quoted_wall": (
+        'The rule is "agents cannot merge"\n'
+        "```\n"
+        "This example was superseded\n"
+        "```\n"
+    ),
+    "d4_cue_inside_blockquote_after_quoted_wall": (
+        'The rule is "agents cannot merge"\n'
+        "> This example was superseded\n"
+    ),
+    # ── Codex round on the v1.21.0 cut (kit #581) — each reproduced before
+    # fixing. Quotation is not repudiation: an ASSERTED wall that happens to
+    # be quoted must not clear off an unrelated cue in a contrasted clause. ──
+    "r2_asserted_quoted_wall_contrast_cue_bleed": (
+        'The standing rule is "agents cannot merge", but this unrelated '
+        "failure does not reproduce.\n"
+    ),
+    # A subordinated cue clause after the quote must not clear it either.
+    "r2_asserted_quoted_wall_subordinated_cue_bleed": (
+        'The rule stays "agents cannot merge" because the freeze does not '
+        "reproduce.\n"
+    ),
+    # `if` is the same conditional-subordinator hole as `because` (defect 7).
+    "d7_subordinator_if_bleed": (
+        "The failure does not reproduce if agents cannot merge pull "
+        "requests.\n"
+    ),
+    # A fence delimiter INSIDE a blockquote is still a fence delimiter.
+    "r2_quoted_fence_in_blockquote": (
+        '> The rule is "agents cannot merge"\n'
+        "> ```\n"
+        "> This example was superseded\n"
+        "> ```\n"
+    ),
+    # Leaving a blockquote is a block boundary too — a plain-prose cue below
+    # a blockquoted wall belongs to a different block.
+    "r2_cue_after_leaving_blockquote": (
+        '> The rule is "agents cannot merge"\n'
+        "This example was superseded.\n"
+    ),
+    # ── Codex round 2 (final round): an `and`-joined INDEPENDENT clause is
+    # not a mention predicate — quotation is not repudiation, in either
+    # clause order. The legitimate defect-6 clear runs through the
+    # quote-anchored attachment predicate instead. ──
+    "r3_and_joined_cue_clause_before_quoted_wall": (
+        'This failure does not reproduce and the standing rule is '
+        '"agents cannot merge".\n'
+    ),
+    "r3_and_joined_cue_clause_after_quoted_wall": (
+        'The standing rule is "agents cannot merge" and this failure does '
+        "not reproduce.\n"
+    ),
+    # A digest-fence marker is a bridge boundary: a generated (exempt) cue
+    # line must not clear an authored wall outside the fence.
+    "r3_digest_fence_marker_stops_bridge": (
+        'The standing rule is "agents cannot merge"\n'
+        "<!-- substrate-kit:skills-digest BEGIN — derived render. -->\n"
+        "This example was superseded\n"
+        "<!-- substrate-kit:skills-digest END -->\n"
+    ),
 }
 
-# Class (b) (v1.20.2): kit-generated derived-render files/blocks are exempt from
-# wall-scanning because their SOURCE docs are scanned independently. Kept in a
-# separate dict (they exercise scan_text like _FP_CLEAR, but the mechanism is
-# file/block exemption, not clause clearing).
+# Class (b): kit-generated derived-render BLOCKS are exempt from wall-scanning
+# because their SOURCE docs are scanned independently. Kept in a separate dict
+# (they exercise scan_text like _FP_CLEAR, but the mechanism is block
+# exemption, not clause clearing). Defect 1 (v1.21.0): the exemption is the
+# FENCED BLOCKS only — the v1.20.2 whole-file header-marker early return also
+# exempted authored prose OUTSIDE the fences, so a wall hand-added to the
+# render file escaped the scan entirely; the marker now exempts nothing.
 _RENDER_EXEMPT_CLEAR = {
-    # Whole-file exemption via the seat-digest header marker.
-    "b_header_marked_file": (
-        "> Generated by substrate-kit — a **derived render**, never a copy.\n"
-        "> NEVER edit this file: regenerate with `python3 bootstrap.py "
-        "seat-digest`.\n\n"
-        "agents cannot merge their own PRs.\n"
-    ),
-    # Block exemption via the digest fence (no whole-file header present).
+    # Block exemption via the digest fence.
     "b_fenced_block": (
         "# skill index\n\n"
         "<!-- substrate-kit:walls-digest BEGIN — derived render, kit-generated; "
@@ -665,6 +771,20 @@ _RENDER_EXEMPT_CLEAR = {
         "<!-- substrate-kit:walls-digest END -->\n"
     ),
 }
+
+# Defect 1 (v1.21.0) MUST-RED on the render path itself: a header-marked
+# render file whose wall sits OUTSIDE the digest fences. The fenced block
+# stays exempt; the authored tail must red.
+_RENDER_AUTHORED_WALL_OUTSIDE_FENCE = (
+    "> Generated by substrate-kit — a **derived render**, never a copy.\n"
+    "> NEVER edit this file: regenerate with `python3 bootstrap.py "
+    "seat-digest`.\n\n"
+    "<!-- substrate-kit:walls-digest BEGIN — derived render, kit-generated; "
+    "never edit. -->\n"
+    "agents cannot merge their own PRs.\n"
+    "<!-- substrate-kit:walls-digest END -->\n\n"
+    "agents cannot merge their own PRs.\n"
+)
 
 
 class TestClearingVocabulary:
@@ -851,8 +971,8 @@ class TestClearingVocabulary:
         assert scan_text(_FP_CLEAR["g2_does_not_reproduce"]) == []
         assert scan_text(_FP_CLEAR["c_dated_bullet_same_continuation_line_g2"]) == []
 
-    # ── Class (b) (v1.20.2): kit-generated derived-render exemption ──
-    def test_render_exempt_files_and_blocks_clear_on_the_render_path(self) -> None:
+    # ── Class (b): kit-generated derived-render exemption (fence-scoped) ──
+    def test_render_exempt_blocks_clear_on_the_render_path(self) -> None:
         # The exemption fires only for the KNOWN render path (FIX B) — modelled
         # by scan_text(..., is_render_path=True). Off the render path it does not.
         for name, text in _RENDER_EXEMPT_CLEAR.items():
@@ -864,13 +984,25 @@ class TestClearingVocabulary:
                 f"render-exempt {name!r} must STILL red off the render path"
             )
 
+    def test_authored_wall_outside_fence_reds_on_the_render_path(self) -> None:
+        # Defect 1 (v1.21.0): the v1.20.2 whole-file marker early return made
+        # this exact shape return [] — authored prose outside the fences
+        # escaped the scan on the one file adopters are told never to edit.
+        hits = scan_text(_RENDER_AUTHORED_WALL_OUTSIDE_FENCE, is_render_path=True)
+        assert [h.line for h in hits] == [8], (
+            "the wall OUTSIDE the fences must red on the render path (and the "
+            f"fenced copy on line 5 must stay exempt), got: {hits}"
+        )
+
     def test_render_exemption_is_render_path_gated_not_marker_blanket(
         self, tmp_path: Path
     ) -> None:
         # FIX B: an author cannot blanket-exempt a real doc by pasting the render
-        # marker. A CAPABILITIES.md-shaped file bearing the marker + a genuine
-        # wall must still RED through the engine leg (it is NOT the render path);
-        # the real docs/seat-digest.md (which IS the render path) clears.
+        # marker or a digest fence. A CAPABILITIES.md-shaped file bearing the
+        # marker + a genuine wall must RED through the engine leg (it is NOT the
+        # render path) — and since defect 1's fix, the SAME text planted AT the
+        # render path reds too: the wall sits outside any fence, and only
+        # fenced blocks are exempt there.
         _plant(
             tmp_path,
             "docs/CAPABILITIES.md",
@@ -880,15 +1012,16 @@ class TestClearingVocabulary:
         assert [f.path for f in findings] == ["docs/CAPABILITIES.md"], (
             "render marker on a non-render doc must not exempt it"
         )
-        # The same marker text, planted AT the render path, clears.
         (tmp_path / "docs" / "CAPABILITIES.md").unlink()
         _plant(
             tmp_path,
             "docs/seat-digest.md",
             _MUST_STAY_RED["b_render_marker_on_capabilities_doc_still_reds"],
         )
-        assert check_no_false_walls(tmp_path, Config()) == [], (
-            "the marker on the known render path (docs/seat-digest.md) exempts it"
+        findings = check_no_false_walls(tmp_path, Config())
+        assert [f.path for f in findings] == ["docs/seat-digest.md"], (
+            "an unfenced wall on the render path must red (defect 1) — the "
+            "whole-file marker exemption is gone"
         )
 
     def test_normal_doc_and_wall_outside_fence_still_red(self, tmp_path: Path) -> None:
@@ -898,6 +1031,68 @@ class TestClearingVocabulary:
             tmp_path, "docs/d.md", _MUST_STAY_RED["b_no_render_marker_still_scanned"]
         )
         assert check_no_false_walls(tmp_path, Config())
+
+
+class TestV1210WorklistDefects:
+    """Named pins for the seven-defect worklist that drove v1.21.0
+    (fleet-manager ``docs/findings/2026-08-09-substrate-kit-defects.md``).
+    The must-red / must-clear matrices above exercise every fixture; these
+    assertions pin the headline SHAPES with their defect numbers so a future
+    regression names the defect it reopens. Defect 1 is pinned by the render
+    tests above; defect 5 (the SKILLS-index install teaching) is a template
+    contract, pinned in tests/test_skills_index_install_contract.py."""
+
+    def test_defect_7_wall_after_because_stays_red(self) -> None:
+        # THE false negative on the required gate: v1.20.2 returned [] here.
+        hits = scan_text(_MUST_STAY_RED["d7_subordinator_because_bleed"])
+        assert hits, "a wall after `because` must red — the cue is not its"
+
+    def test_defect_6_valid_repudiation_with_conjunction_clears(self) -> None:
+        # THE recorded false positive: v1.20.2 returned 1 hit here.
+        assert scan_text(_FP_CLEAR["d6_quoted_wall_is_false_and_no_longer_applies"]) == []
+
+    def test_codex_round_quotation_is_not_repudiation(self) -> None:
+        # The widened mention region stops at contrast/subordinator
+        # boundaries, so an ASSERTED quoted wall keeps its red when the only
+        # cue on the line belongs to an unrelated, contrasted predicate.
+        assert scan_text(_MUST_STAY_RED["r2_asserted_quoted_wall_contrast_cue_bleed"])
+        assert scan_text(_MUST_STAY_RED["r2_asserted_quoted_wall_subordinated_cue_bleed"])
+
+    def test_codex_round_blockquote_boundaries_both_directions(self) -> None:
+        assert scan_text(_MUST_STAY_RED["r2_quoted_fence_in_blockquote"])
+        assert scan_text(_MUST_STAY_RED["r2_cue_after_leaving_blockquote"])
+
+    def test_codex_final_round_and_clauses_and_digest_fences(self) -> None:
+        # `and`-joined independent clauses never clear a quoted wall …
+        assert scan_text(_MUST_STAY_RED["r3_and_joined_cue_clause_before_quoted_wall"])
+        assert scan_text(_MUST_STAY_RED["r3_and_joined_cue_clause_after_quoted_wall"])
+        # … while the quote-anchored predicate chain still does (defect 6).
+        assert scan_text(_FP_CLEAR["d6_quoted_wall_is_false_and_no_longer_applies"]) == []
+        # Digest-fence markers stop the bridge on BOTH scan modes: the
+        # authored wall reds even when the fenced cue line is exempt.
+        hits = scan_text(
+            _MUST_STAY_RED["r3_digest_fence_marker_stops_bridge"], is_render_path=True
+        )
+        assert [h.line for h in hits] == [1]
+        assert scan_text(_MUST_STAY_RED["r3_digest_fence_marker_stops_bridge"])
+
+    def test_defect_2_only_the_bare_reassertion_reds(self) -> None:
+        # One physical line, two matches: the QUOTED mention clears, the BARE
+        # re-assertion reds — and the ≤1-finding-per-line contract holds.
+        hits = scan_text(_MUST_STAY_RED["d2_bare_reassertion_after_repudiated_quote"])
+        assert [h.line for h in hits] == [1]
+
+    def test_defect_3_deploy_family_matches_plain_deploy(self) -> None:
+        from engine.checks.check_no_false_walls import _capability_families
+
+        assert "deploy" in _capability_families("agents cannot deploy")
+        assert "deploy" in _capability_families("redeployment is walled")
+
+    def test_defect_4_fence_and_blockquote_stop_the_bridge(self) -> None:
+        assert scan_text(_MUST_STAY_RED["d4_cue_inside_fence_after_quoted_wall"])
+        assert scan_text(_MUST_STAY_RED["d4_cue_inside_blockquote_after_quoted_wall"])
+        # …but a blockquote's INTERNAL wrap is still a genuine continuation.
+        assert scan_text(_FP_CLEAR["d4_blockquote_internal_wrap_still_clears"]) == []
         assert scan_text(
             _MUST_STAY_RED["b_wall_outside_fence_still_reds"], is_render_path=True
         )

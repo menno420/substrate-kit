@@ -38,6 +38,7 @@ from engine.guards import (
     ADOPTER_CONTROL_STATUS_GATE,
     ADOPTER_INBOX_APPEND_GATE,
     ADOPTER_PYTEST_SUITE,
+    ADOPTER_REPO_CHECKERS,
     ADOPTER_SUBSTRATE_GATE,
 )
 from engine.hooks.settings import full_settings_template, hooks_fill_table
@@ -1003,6 +1004,21 @@ def live_ci_workflow(
     installs only when the command mentions it. ``test_command=None``
     keeps #403's hardened fallback byte-identical — adopters whose slot
     does not qualify see zero gate churn.
+
+    **Three v1.21.0 hardenings, all upstreamed from fleet-manager's fm #833
+    carve-outs** (hand-fixes to the generated file that every regen dropped —
+    the re-apply tax this upstreaming ends): (1) the claims-only guard reads
+    ``github.head_ref`` via an ``env:`` block, never direct interpolation — a
+    PR author controls the branch name, git accepts shell metacharacters in
+    refnames, and ``${{ }}`` expands before bash parses, so an interpolated
+    name could ``exit 0`` past the guard (Codex P1); (2) a planted
+    ``repo checkers`` extension step runs the host-owned
+    ``scripts/repo_checks.sh`` when present and self-skips otherwise, so host
+    checkers live OUTSIDE the kit-owned file and survive regen; (3) a single
+    un-chained ``bootstrap.py check`` verify_command gains the explicit
+    absent-card ``--session-log`` sentinel, because CI checkout flattens
+    mtimes and the engine's newest-by-mtime fallback once redded a valid
+    main push off a historical in-progress card (Codex P2).
     """
     if test_command is None:
         test_step = (
@@ -1032,6 +1048,42 @@ def live_ci_workflow(
             if "pytest" in test_command
             else ""
         )
+        # fm #833 (Codex P2), upstreamed v1.21.0: a bare `bootstrap.py check`
+        # verify_command on a `push` run for main has no differing card, so
+        # the engine falls back to newest-by-CHECKOUT-MTIME card selection —
+        # arbitrary in CI — and a historical `in-progress` card can red a
+        # valid main push (observed live at fleet-manager). An explicitly
+        # named ABSENT card is ADVISORY by the engine contract, and card
+        # gating is the session-gate step's job (explicit diff-based
+        # selection), so this step is made card-independent. Only a single
+        # un-chained invocation is rewritten — appending to a `;`/`|`/`&&`
+        # chain would attach the flag to the wrong command — and a command
+        # already carrying --session-log is honored verbatim.
+        # DIRECT invocations only (Codex R2): a wrapped command like
+        # `bash -c 'python3 bootstrap.py check --strict'` must stay verbatim —
+        # appending after the closing quote hands the flags to bash as $0/$1,
+        # so the inner check would still run bare while the step claims
+        # card-independence. The anchor requires the command to BE the check
+        # invocation (optional interpreter token, then a bootstrap.py path,
+        # then `check`), not merely to contain one.
+        # The script's BASENAME must be exactly bootstrap.py (Codex R2: a
+        # host verify script named e.g. validate_bootstrap.py check would
+        # otherwise be rewritten with a kit-specific flag it may not accept —
+        # a path prefix is allowed only through a literal '/').
+        run_command = test_command
+        direct_check = re.match(
+            r"^(?:\S*python[\d.]*\s+)?(?:\S*/)?bootstrap\.py\s+check\b",
+            test_command.strip(),
+        )
+        if (
+            direct_check
+            and "--session-log" not in test_command
+            and not re.search(r"[;|&]", test_command)
+        ):
+            run_command = (
+                f"{test_command} --session-log "
+                f"{sessions_dir}/__no-card-in-diff__.md"
+            )
         test_step = (
             "      - name: verify suite (the interview's verify_command drives "
             "the gate's test step)\n"
@@ -1045,13 +1097,18 @@ def live_ci_workflow(
             "        # here (the command need not touch tests/ at all). Change it\n"
             "        # via `bootstrap.py answer verify_command \"...\"` and the\n"
             "        # next adopt/upgrade regen. Full lane only: control/**\n"
-            "        # heartbeat PRs never pay the suite.\n"
+            "        # heartbeat PRs never pay the suite. A single un-chained\n"
+            "        # `bootstrap.py check` command gains the absent-card\n"
+            "        # sentinel — in CI the newest-by-mtime card fallback is\n"
+            "        # arbitrary (checkout flattens mtimes) and once redded a\n"
+            "        # valid main push off a historical in-progress card;\n"
+            "        # card gating belongs to the session-gate step above.\n"
             "        run: |\n"
             "          if [ -f requirements.txt ]; then\n"
             f"            {interpreter} -m pip install --quiet -r requirements.txt\n"
             "          fi\n"
             f"{pytest_install}"
-            f"          {test_command}\n"
+            f"          {run_command}\n"
         )
     return (
         "# substrate-kit enforcement gate (LIVE — installed by "
@@ -1156,18 +1213,35 @@ def live_ci_workflow(
         "        # (its real work + its session card) is on the FULL lane, so\n"
         "        # it never reaches this step — by construction this fires\n"
         "        # only on the pure-claim `claude/*` diff it exists to reject.\n"
+        "        #\n"
+        "        # The `env:` indirection is load-bearing (fm #833, Codex P1):\n"
+        "        # a branch name is chosen by the PR AUTHOR and git accepts\n"
+        "        # names containing shell metacharacters, so interpolating\n"
+        '        # `${{ github.head_ref }}` straight into the script lets a\n'
+        "        # head like `claude/\";exit${IFS}0;#` close the assignment\n"
+        "        # and run an early successful exit — making this very guard\n"
+        "        # pass and re-opening the #451 hole it exists to close.\n"
+        "        # GitHub expands `${{ }}` BEFORE bash parses the script, so\n"
+        "        # quoting inside the script cannot help; the value must\n"
+        "        # arrive as an environment variable, which bash never\n"
+        "        # re-parses.\n"
+        "        env:\n"
+        "          HEAD_REF: ${{ github.head_ref }}\n"
+        "          BASE_REF: ${{ github.base_ref }}\n"
+        "          EVENT_BEFORE: ${{ github.event.before }}\n"
+        "          EVENT_SHA: ${{ github.sha }}\n"
         "        run: |\n"
-        '          head_ref="${{ github.head_ref }}"\n'
+        '          head_ref="$HEAD_REF"\n'
         '          case "$head_ref" in\n'
         "            claude/*) ;;\n"
         '            *) echo "guard N/A — head \'$head_ref\' is not a '
         "claude/* branch (claim/* and others ride the fast lane card-less by "
         'design)."; exit 0 ;;\n'
         "          esac\n"
-        '          if [ -n "${{ github.base_ref }}" ]; then\n'
-        '            range="origin/${{ github.base_ref }}...HEAD"\n'
+        '          if [ -n "$BASE_REF" ]; then\n'
+        '            range="origin/$BASE_REF...HEAD"\n'
         "          else\n"
-        '            range="${{ github.event.before }}..${{ github.sha }}"\n'
+        '            range="$EVENT_BEFORE..$EVENT_SHA"\n'
         "          fi\n"
         '          changed="$(git diff --name-only "$range" 2>/dev/null '
         '|| true)"\n'
@@ -1194,6 +1268,24 @@ def live_ci_workflow(
         "        if: steps.lane.outputs.control_only != 'true'\n"
         "        with:\n"
         '          python-version: "3.x"\n'
+        f"      - name: {ADOPTER_REPO_CHECKERS}\n"
+        "        if: steps.lane.outputs.control_only != 'true'\n"
+        "        # Host-owned checkers used to be hand-added into THIS file and\n"
+        "        # silently dropped at every regen: the v1.20.1→v1.20.2 upgrade\n"
+        "        # dropped the step running fleet-manager's two repo checkers,\n"
+        "        # leaving the gate green while running neither (fm #833). This\n"
+        "        # planted extension point ends that re-apply tax — the kit owns\n"
+        "        # this workflow, the HOST owns scripts/repo_checks.sh, and the\n"
+        "        # regen can never drop it again. Same pattern as the pytest\n"
+        "        # step below: always planted, self-skips when absent, so the\n"
+        "        # step self-heals the moment the host script arrives.\n"
+        "        run: |\n"
+        "          if [ -f scripts/repo_checks.sh ]; then\n"
+        "            bash scripts/repo_checks.sh\n"
+        "          else\n"
+        '            echo "no scripts/repo_checks.sh — repo checkers step '
+        'skipped (self-heals when it arrives)."\n'
+        "          fi\n"
         f"      - name: {ADOPTER_SUBSTRATE_GATE}\n"
         "        if: steps.lane.outputs.control_only != 'true'\n"
         "        # Gate on the session cards THIS PR/push touches (CI flattens\n"
@@ -1717,11 +1809,14 @@ def branch_sweep_workflow(
         "# token authentication\" recursion guard), so a closed-event\n"
         "# cleanup would never fire for exactly the merges that need it.\n"
         "#\n"
-        "# WHY A WORKFLOW, NOT THE AGENT: agent-side branch deletion is\n"
-        "# historically 403-walled in fleet sessions (capability ledger\n"
-        "# OA-10 — classifier + proxy deny every delete path). This\n"
+        "# WHY A WORKFLOW, NOT THE AGENT: spent branches accumulate whether\n"
+        "# or not any session is running, and a sweep needs no agent\n"
+        "# present. (The capability ledger's OA-10 entry once recorded\n"
+        "# agent-side deletion as 403-walled; RETRACTED 2026-08-11 —\n"
+        "# deletion works over the direct-credential path. The schedule\n"
+        "# stands on the two rationales above, not on that wall.) This\n"
         "# workflow, running with the repo's own GITHUB_TOKEN, is the\n"
-        "# sanctioned path around that wall.\n"
+        "# sanctioned path for unattended cleanup.\n"
         "#\n"
         "# WHAT IT DELETES — a ref must pass EVERY rule, in order:\n"
         f"#   1. matches a sweep pattern ({patterns_note});\n"

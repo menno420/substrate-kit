@@ -913,8 +913,9 @@ def test_live_ci_workflow_carries_the_control_fast_lane():
     assert "grep -v '^control/'" in text
     assert 'control_only=$control_only" >> "$GITHUB_OUTPUT"' in text
     # Every heavy step is conditioned on the lane verdict (setup-python,
-    # the substrate gate, and the pytest suite).
-    assert text.count("if: steps.lane.outputs.control_only != 'true'") == 3
+    # the repo-checkers extension point, the substrate gate, and the pytest
+    # suite).
+    assert text.count("if: steps.lane.outputs.control_only != 'true'") == 4
     # And no live paths-ignore key anywhere — the short-circuit IS the skip
     # (the word appears only in the warning comment).
     assert "paths-ignore:" not in text
@@ -1673,9 +1674,11 @@ def test_branch_sweep_workflow_shape():
     # Kit ownership is declared in the file itself, routing host edits away.
     assert "KIT-OWNED" in text
     assert "SEPARATE workflow" in text
-    # The OA-10 provenance note: agent-side branch deletion is 403-walled;
-    # this workflow is the sanctioned path around that wall.
+    # The OA-10 provenance note survives as a RETRACTED record (the 403
+    # wall was refuted 2026-08-11 — deletion works over the direct-credential
+    # path); the workflow stands on the bot-actor/auto-delete rationale.
     assert "OA-10" in text
+    assert "RETRACTED 2026-08-11" in text
     assert "sanctioned path" in text
 
 

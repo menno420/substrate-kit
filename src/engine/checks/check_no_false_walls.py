@@ -42,12 +42,15 @@ positive that reds CI is worse than a rare miss):
     pool.execute" — the patterns require an agent-capability subject + a
     GitHub/merge/deploy/infra object, so a bare "must not" over a code noun
     never trips.
-  * GENUINE walls that DO stand and are dated — ref/branch DELETION 403,
-    tag-push / release 403, repo Settings / rulesets / secrets / env-var
-    provisioning = owner: these survive because each carries a
-    ``LAST-VERIFIED`` / dated marker. The verb list EXCLUDES read / create /
-    access / provision / write precisely because those collide with genuine
-    standing walls.
+  * GENUINE walls that DO stand and are dated — console-only provisioning
+    (environment/project creation, plan/seat settings): these survive because
+    each carries a ``LAST-VERIFIED`` / dated marker. The verb list EXCLUDES
+    read / create / access / provision / write precisely because those collide
+    with genuine standing walls. (The ref-deletion / tag-push 403 rows that
+    used to sit in this list were RETRACTED 2026-08-11 — fleet-manager's
+    append log measured all three working over the direct-PAT path; the 403s
+    were the proxied route, not a wall. The verb-scoping rationale stands on
+    the collision principle, not on those rows.)
   * MISSING-CREDENTIAL owner-INPUT requests — "needs a Stripe account from the
     owner" is a missing input, not a capability wall.
   * dated ledger records, repudiation lines (``no standing …``, ``NOT a wall``,
@@ -93,19 +96,20 @@ _GEN2_HISTORICAL = re.compile(r"gen2/[^/]*(?:queue|proposal)[^/]*\.md$", re.I)
 # snapshots, walkthroughs) — skipped wholesale.
 _DATED_FILENAME = re.compile(r"\d{4}-\d{2}-\d{2}")
 
-# ── Class (b) (v1.20.2): kit-generated derived-render exemption ────────────────
+# ── Class (b): kit-generated derived-render exemption (fence-scoped) ──────────
 #
-# A file (or a fenced block within one) that the kit RENDERS from an
-# independently-scanned source (docs/SKILLS.md + docs/CAPABILITIES.md — the
-# seat-digest render) carries a render marker. Re-scanning the render is
-# redundant (the SOURCE is already in the scan set and flags any real wall at
-# its true home) and can re-red a wall phrase that only APPEARS in the render.
-# Exempt by MARKER, never by path or content — a normal doc without the marker
-# is still scanned. Sound ONLY because the source docs stay scanned.
-_RENDER_FILE_MARKER = re.compile(
-    r"never\s+edit\s+this\s+file[:\s].{0,80}?regenerate\s+with[^\n]*?seat-digest",
-    re.I,
-)
+# A fenced block the kit RENDERS from an independently-scanned source
+# (docs/SKILLS.md + docs/CAPABILITIES.md — the seat-digest render) is exempt:
+# re-scanning the render is redundant (the SOURCE is already in the scan set
+# and flags any real wall at its true home) and can re-red a wall phrase that
+# only APPEARS in the render. Defect 1 fix (v1.21.0): the exemption is the
+# FENCED BLOCKS only, never the whole file — v1.20.2's whole-file early
+# return (keyed on a "never edit this file" marker) also exempted authored
+# prose OUTSIDE the fences, so a wall hand-added to the render file escaped
+# the scan entirely. Only lines between the BEGIN/END markers are skipped
+# now; everything else in the render file is scanned like any other doc.
+# Still gated to the known render path (FIX B) — a marker or fence pasted
+# into a normal doc exempts nothing.
 _DIGEST_FENCE_BEGIN = re.compile(
     r"<!--\s*substrate-kit:[\w-]*digest\s+BEGIN\b.*?-->", re.I
 )
@@ -431,7 +435,11 @@ _CAP_FAMILY_PATTERNS: tuple[tuple[str, "re.Pattern[str]"], ...] = (
             re.I,
         ),
     ),
-    ("deploy", re.compile(r"\bre?deploy(?:s|ed|ing|ment)?\b", re.I)),
+    # Defect 3 fix (v1.21.0): `\bre?deploy\b` was literal `r` + optional `e` +
+    # `deploy` — it matched `redeploy`/`rdeploy` and NEVER plain `deploy`, so a
+    # deploy wall had no family and any unrelated repudiation could clear it
+    # (empty-family cues are not family-gated). `(?:re)?` is what was meant.
+    ("deploy", re.compile(r"\b(?:re)?deploy(?:s|ed|ing|ment)?\b", re.I)),
     ("push", re.compile(r"\bpush(?:es|ed|ing)?\b", re.I)),
     (
         "branch",
@@ -475,7 +483,24 @@ _CLAUSE_SEP = re.compile(
     # boundary too. Whitespace on BOTH sides is required, so a conjunction that
     # ends a wrapped line ("… no longer applies and\n<continuation>") is NOT a
     # split (it stays a genuine sentence continuation for the lookback).
-    r"\s(?:and|but|so|yet|however|though|although|whereas|while)\s",
+    r"\s(?:and|but|so|yet|however|though|although|whereas|while)\s|"
+    # FIX A'' (v1.21.0, defect 7 — a false NEGATIVE on the required gate): a
+    # SUBORDINATOR is a clause boundary too. "The failure does not reproduce
+    # because agents cannot merge pull requests." carries a cue ("does not
+    # reproduce") whose subject is ANOTHER predicate entirely; without the
+    # split the cue shares the wall's clause and clears it, so a genuine
+    # standing wall passes the gate whenever it sits after `because` / `when`
+    # / `unless` / `since` / `if` / `given that`. Splitting can only SHRINK a
+    # cue's reach, so this can only ADD reds, never blind the gate (the same
+    # clause-boundary fix fleet-manager's checker took in fm #835, measured
+    # monotonic there across an 88,923-line corpus). `if` added on Codex
+    # review (same conditional class, same silent hole). Causal `as` is
+    # DELIBERATELY absent: fm's checker split it and needed a negated-
+    # complement exemption chain across three review rounds that still
+    # banked an over-exemption residual (fm #836's one open case) — that
+    # trade belongs to the checker-contract bank, not this cut. Whitespace
+    # on BOTH sides, like the bare-conjunction rule above.
+    r"\s(?:because|since|when(?:ever)?|unless|until|if|given\s+(?:the\s+fact\s+)?that)\s",
     re.I,
 )
 
@@ -635,6 +660,114 @@ def _wall_ends_line(
 # A markdown list bullet start (used as a G1 lookforward STOP boundary).
 _NEW_BULLET = re.compile(r"^\s*[-*]\s")
 
+# Defect 4 fix (v1.21.0): a fenced-code delimiter and a blockquote-state
+# CHANGE are cross-line STOP boundaries too. A sentence never wraps across a
+# ``` / ~~~ delimiter — including one INSIDE a blockquote, whose valid
+# Markdown form starts `> ``` ` (Codex R2: the bare pattern missed quoted
+# fences, so a quoted code-block cue bridged to the wall above). And a cue in
+# a DIFFERENT blockquote state — entering one OR leaving one (Codex R2: the
+# first cut only stopped the entering direction) — belongs to a separate
+# block; only a blockquote's INTERNAL wrap is a genuine continuation.
+_FENCE_DELIM = re.compile(r"^\s*(?:>\s?)*(?:```|~~~)")
+_BLOCKQUOTE_LINE = re.compile(r"^\s*>")
+
+
+def _blockquote_state_differs(a: str, b: str) -> bool:
+    """True when exactly one of the two lines is blockquoted — a block
+    boundary in either direction, across which no bridge may reach."""
+    return bool(_BLOCKQUOTE_LINE.match(a)) != bool(_BLOCKQUOTE_LINE.match(b))
+
+
+def _mask_repudiated_wall_mentions(text: str, phrase: str) -> str:
+    """Blank `"…" was superseded` / `false "…"` spans naming THIS capability.
+
+    Defect 2 fix (v1.21.0) — occurrence-level attachment: in
+    ``'"agents cannot merge" was superseded, agents cannot merge'`` the cue
+    characterises the QUOTED mention, yet the clause-wide cue search also
+    cleared the second, BARE re-assertion. Before a BARE wall's cue search,
+    any quoted-mention-plus-predicate span whose quoted content names the same
+    capability family (or contains the wall phrase itself) is blanked, so its
+    cue cannot double as the bare wall's clearance. Only predicate-attached
+    mentions are masked — an unrelated quote leaves the text untouched, and a
+    QUOTED wall match never reaches this path (it clears via its own
+    mention-scoped rules)."""
+    fams = _capability_families(phrase)
+    out = text
+    for pat in (_QUOTE_THEN_FALSE, _FALSE_QUOTE):
+        for m in pat.finditer(text):
+            quoted = m.group(1)
+            if phrase.lower() in quoted.lower() or (
+                fams and not fams.isdisjoint(_capability_families(quoted))
+            ):
+                out = out[: m.start()] + " " * (m.end() - m.start()) + out[m.end() :]
+    return out
+
+
+# The boundaries a QUOTED wall's widened cue search may NOT cross (Codex on
+# the first two defect-6 cuts — the first widened to the WHOLE line, the
+# second let bare `and` through): quotation is not repudiation, so neither
+# 'The standing rule is "agents cannot merge", but this unrelated failure
+# does not reproduce.' nor its `and`-joined form may clear off the unrelated
+# cue. EVERY conjunction, subordinator and hard separator stops the region;
+# only bare commas continue it. Defect 6's legitimate mention prose
+# ('The "…" rule is false and no longer applies.') clears via the
+# ATTACHMENT predicate below instead — a repudiation chain anchored directly
+# to the closing quote, which an independent clause can never satisfy.
+_REGION_STOP = re.compile(
+    r";|—|–|:\s|\.\s|"
+    r",\s*(?:and|but|so|however|yet|though|although|whereas|while|still)\b|"
+    r"\s(?:and|but|so|however|yet|though|although|whereas|while)\s|"
+    r"\s(?:because|since|when(?:ever)?|unless|until|if|given\s+(?:the\s+fact\s+)?that)\s",
+    re.I,
+)
+
+# The mention-attachment predicate: text starting DIRECTLY after a quoted
+# wall's closing quote that characterises the mention as repudiated — an
+# optional short apposition noun ("rule" / "claim" / …), an optional copula,
+# then a repudiation predicate. Anchored at the quote, so an independent
+# clause joined by a conjunction can never satisfy it; the predicate chain
+# itself may continue across `and` ('rule is false and no longer applies')
+# because the ANCHOR, not the region, is what establishes attachment.
+_MENTION_PREDICATE = re.compile(
+    r"^\s*(?:(?:rule|claim|note|wall|framing|belief|entry|line|reading|"
+    r"wording|phrase)s?\s+)?"
+    r"(?:(?:is|was|are|were)\s+)?"
+    r"(?:false\b|wrong\b|superseded\b|retired\b|repudiated\b|obsolete\b|"
+    r"stale\b|dead\b|"
+    r"no\s+longer\s+(?:applies|holds|stands|true|binding)|"
+    r"does\s+not\s+(?:apply|stand|hold)\b)",
+    re.I,
+)
+
+
+def _mention_region(line: str, span: tuple[int, int]) -> str:
+    """The contiguous stretch of ``line`` around a QUOTED wall ``span`` within
+    which a cue may attach to the mention: bounded on each side by the nearest
+    :data:`_REGION_STOP` boundary. Boundaries INSIDE the quote span are the
+    quoted phrase's own words and never split the region."""
+    lo, hi = 0, len(line)
+    for m in _REGION_STOP.finditer(line):
+        if m.end() <= span[0]:
+            lo = m.end()
+        elif m.start() >= span[1]:
+            hi = m.start()
+            break
+    return line[lo:hi]
+
+
+def _text_after_enclosing_quote(
+    line: str, span: tuple[int, int]
+) -> str | None:
+    """The text following the quote that encloses ``span``, or ``None`` when
+    no :data:`_WALL_QUOTE` match contains the span (defensive — callers gate
+    on :func:`_wall_is_quoted` first)."""
+    for m in _WALL_QUOTE.finditer(line):
+        for gi in (1, 2):
+            qs, qe = m.span(gi)
+            if qs != -1 and qs <= span[0] and span[1] <= qe:
+                return line[m.end() :]
+    return None
+
 
 def _clause_cleared(
     clause: str,
@@ -654,7 +787,16 @@ def _clause_cleared(
     (:func:`_wall_is_quoted`), which supersedes the earlier strong/weak cue
     restriction: once a bridge is only attempted for a quoted wall, the full cue
     set is safe to run on the rejoined clause."""
-    scrubbed = _EMPHASIS.sub("", clause)
+    masked = clause
+    if match_span is not None and not _wall_is_quoted(line, match_span):
+        # Defect 2 (v1.21.0): a BARE wall's cue search must not be satisfied
+        # by a cue attached to a QUOTED mention of the same capability in the
+        # clause — blank those mention+predicate spans first (before the
+        # emphasis scrub, so backtick-quoted mentions still carry their
+        # delimiters when the mask patterns run). A QUOTED match never takes
+        # this path: its clearing is mention-scoped by design.
+        masked = _mask_repudiated_wall_mentions(clause, phrase)
+    scrubbed = _EMPHASIS.sub("", masked)
     if _DATED_LINE.search(clause):
         return True
     # FIX A (v1.20.2) hardening: a cue in this clause clears the wall ONLY when
@@ -724,15 +866,44 @@ def is_cleared(
     )
     if _clause_cleared(clause, line, phrase, match_span=match_span):
         return True
+    # Defect 6 fix (v1.21.0): a QUOTED wall is a MENTION, not an assertion —
+    # the same distinction that gates the cross-line bridges below. Prose
+    # ABOUT a quoted wall naturally crosses the coordination boundaries FIX
+    # A'/A'' added for bare walls ('The "agents cannot merge" rule is false
+    # and no longer applies.' stranded its cue in the second clause and went
+    # red), so a quoted wall's cue search widens — to its MENTION REGION,
+    # never the whole line (Codex R2): the region stops at contrast
+    # conjunctions, subordinators and hard separators, so an unrelated cue in
+    # a contrasted clause ('…, but this unrelated failure does not
+    # reproduce.') cannot clear a wall the first clause asserts via a quote.
+    # Bare walls keep clause-tight attachment; each match is still graded by
+    # its own span (P3), so a bare wall sharing the line reds on its own.
+    if match_span is not None and _wall_is_quoted(line, match_span):
+        region = _mention_region(line, match_span)
+        if _clause_cleared(region, line, phrase, match_span=match_span):
+            return True
+        # The attachment predicate: a repudiation chain anchored directly to
+        # the closing quote ('The "…" rule is false and no longer applies.').
+        # Anchoring is what makes it safe — an independent clause joined by a
+        # conjunction never starts at the quote, so it can never satisfy this.
+        tail = _text_after_enclosing_quote(line, match_span)
+        if tail is not None and _MENTION_PREDICATE.match(tail):
+            return True
     # Tight one-line lookback for a wrapped repudiation. Gated (v1.20.2 root fix)
     # on the wall being QUOTED on its own line: only a MENTIONED wall may bridge,
-    # never a BARE asserted one.
+    # never a BARE asserted one. Defect 4 (v1.21.0): never bridge across a
+    # fence delimiter, nor from a blockquote onto a non-blockquote wall line —
+    # a cue in a separate block is not this sentence's continuation.
     if (
         prev_line is not None
         and prev_line.strip()
         and _wall_is_quoted(line, match_span)
         and not _HEADING.match(prev_line)
         and not _DATED_BULLET.match(prev_line)
+        and not _FENCE_DELIM.match(prev_line)
+        and not _DIGEST_FENCE_BEGIN.search(prev_line)
+        and not _DIGEST_FENCE_END.search(prev_line)
+        and not _blockquote_state_differs(prev_line, line)
         and not _SENTENCE_END.search(prev_line)
         and not _CONTRAST_START.match(line)
         and _wall_starts_line(line, phrase)
@@ -775,6 +946,17 @@ def is_cleared(
                 or _DATED_BULLET.match(fwd)
                 or _NEW_BULLET.match(fwd)
                 or _CONTRAST_START.match(fwd)
+                # Defect 4 (v1.21.0): a fence delimiter (blockquote-prefixed
+                # ones included), a DIGEST fence marker (Codex R2: on the
+                # render path the lookforward received raw lines from inside
+                # the exempt generated block, so a generated cue could bridge
+                # back to an authored wall outside it), or a blockquote-state
+                # CHANGE in either direction, opens a SEPARATE block — a cue
+                # inside it must not attach to the wall above.
+                or _FENCE_DELIM.match(fwd)
+                or _DIGEST_FENCE_BEGIN.search(fwd)
+                or _DIGEST_FENCE_END.search(fwd)
+                or _blockquote_state_differs(fwd, line)
             ):
                 break
             fwd_clause = _first_clause(fwd)
@@ -847,17 +1029,18 @@ def scan_text(text: str, *, is_render_path: bool = False) -> list[RawHit]:
 
     ``is_render_path`` (FIX B, v1.20.2) enables the class (b) generated-render
     exemption ONLY when the file being scanned IS the kit's known render path
-    (``docs/seat-digest.md`` per :func:`seat_digest_relpath`). The render marker
-    / digest fence is NOT honoured on any other file — an author cannot
-    blanket-exempt a real doc (``CONSTITUTION.md`` / ``CAPABILITIES.md``) by
-    pasting the marker; the exemption is sound only because the render's SOURCE
-    docs are independently scanned, which is guaranteed only for that one path.
+    (``docs/seat-digest.md`` per :func:`seat_digest_relpath`). The digest fence
+    is NOT honoured on any other file — an author cannot blanket-exempt a real
+    doc (``CONSTITUTION.md`` / ``CAPABILITIES.md``) by pasting the fence; the
+    exemption is sound only because the render's SOURCE docs are independently
+    scanned, which is guaranteed only for that one path. Defect 1 fix
+    (v1.21.0): the exemption is FENCE-SCOPED — v1.20.2 additionally returned
+    early on a whole-file render marker, which exempted authored prose OUTSIDE
+    the fences too, so a wall hand-added to the render file escaped the scan
+    entirely (its docstring justified the exemption by the sources being
+    scanned, which never covered hand-added text). Lines outside the BEGIN/END
+    fences now scan like any other doc.
     """
-    # Class (b): the whole known-render file is exempt (its source docs are
-    # scanned independently). Marker gated to the render path (FIX B).
-    if is_render_path and _RENDER_FILE_MARKER.search(text):
-        return []
-
     hits: list[RawHit] = []
     in_historical = False
     in_digest_fence = False

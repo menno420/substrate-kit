@@ -51,6 +51,13 @@ ADOPTER_PYTEST_SUITE = (
     "self-skips when tests/ is absent)"
 )
 ADOPTER_SUBSTRATE_GATE = "substrate gate (docs + session-log required)"
+# Adopter-only extension point (v1.21.0) — no kit-quality mirror by design:
+# the step's CONTENT is host-owned (scripts/repo_checks.sh), so there is no
+# kit guard for it to mirror. It exists because host checkers hand-added into
+# the kit-owned gate were silently dropped at every regen (fm #833).
+ADOPTER_REPO_CHECKERS = (
+    "repo checkers (host-owned scripts/repo_checks.sh; self-skips when absent)"
+)
 
 
 # ── sentinels ────────────────────────────────────────────────────────────────
