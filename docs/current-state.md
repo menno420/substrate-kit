@@ -26,19 +26,59 @@
 > to restore K0 orientation headroom. Rows below are the condensed ledger;
 > the archive + run dirs + CHANGELOG are the full record.
 
+## Reconcile — current truth (2026-08-28) — READ THIS FIRST
+
+*(This block supersedes every dated section below where they disagree. Live
+ledgers `control/status.md` + [`docs/adopters.md`](adopters.md) and the tree
+win over all of them. Written by the OD-24 review round's session 3; the
+itemized falsehoods it corrects are in fleet-manager's
+`docs/findings/2026-08-28-kit-tree-truth-pass.md`.)*
+
+- **The kit is at v1.21.0** (cut + published 2026-08-13, PR #581; three-way
+  sha256 verified). Fixes merged since ride `main` **unreleased** — latest
+  kit #587 (2026-08-28: `docs/NEXT-TASKS.md` superseded into a routed
+  pointer; the false-negative family in `check_no_false_walls` fixed). The
+  next cut is owner-paced.
+- **0 open PRs** (2026-08-28). PR #552 **MERGED 2026-08-04** — every record
+  below still calling it "parked for owner ratification" is superseded.
+- **The kit's live worklist is fleet-manager's**
+  `docs/findings/2026-08-13-substrate-kit-v1210-followups.md`, routed via
+  [`docs/NEXT-TASKS.md`](NEXT-TASKS.md) (kit #587). An owner-directed
+  **review round (OD-24)** is in progress; its thread lives at fm
+  `docs/repos/substrate-kit/README.md`.
+- **Adopters:** per the generated registry [`docs/adopters.md`](adopters.md)
+  (regen kit #586, 2026-08-14): 9 of 12 rows current at v1.21.0; the scan
+  roster `docs/fleet-repos.txt` omits five real adopters (sim-lab,
+  superbot-idle, product-forge, spider-swing, couch-legend), so the registry
+  undercounts the estate. The rollout of the remaining rows is owner-paced.
+- **The owner-gate stack P4/P5/P10/P11/P13 is EAP-console-era historical**
+  (the console closed 2026-07-21). P10's substance is **done**: the live
+  rules on `main` require exactly one check — `kit-quality` — with
+  strict-up-to-date off (`GET /repos/menno420/substrate-kit/rules/branches/main`,
+  verified 2026-08-28). The "Pending owner action" and "Owner gates"
+  sections below are historical snapshots, not asks.
+- Releases go **only** via `release.yml` `workflow_dispatch`;
+  `dist/bootstrap.py` is generated from `src/engine/`; `kit-quality` is the
+  one required check. (Unchanged — restated here so the block orients alone.)
+
 ## SEAT CLOSED — 2026-07-21
 
-The Self Improvement seat is closed as of 2026-07-21. Kit is at **v1.20.2** (tag
-commit `4712ebf`); the v1.20.x adopter wave brought 7 of 10 tracked repos current;
-the only open PR is #552 (parked for owner ratification). The full handover — what
+The Self Improvement seat is closed as of 2026-07-21. Kit is at ~~**v1.20.2**
+(tag commit `4712ebf`)~~ **v1.21.0 since 2026-08-13 — see the reconcile block
+above**; the v1.20.x adopter wave brought 7 of 10 tracked repos current;
+~~the only open PR is #552 (parked for owner ratification)~~ **#552 merged
+2026-08-04; 0 open PRs as of 2026-08-28**. The full handover — what
 shipped, current true state, continuation items, and an owner walkthrough — is
-**[docs/PROJECT-CLOSEOUT.md](PROJECT-CLOSEOUT.md)**. Read that first.
+**[docs/PROJECT-CLOSEOUT.md](PROJECT-CLOSEOUT.md)** (a dated 2026-07-21
+record; the reconcile block above wins where they disagree).
 
-## Fresh-start reconciliation (2026-07-17) — READ THIS FIRST
+## Fresh-start reconciliation (2026-07-17) — dated snapshot
 
-*(This block is the current truth; the dated sections below it are a
-historical snapshot and are superseded where they disagree. Live ledgers
-`control/status.md` + [`docs/adopters.md`](adopters.md) win over both.)*
+*(~~This block is the current truth~~ **Superseded 2026-08-28 — the
+reconcile block at the top is the current truth**; this block and the dated
+sections below it are historical snapshots, superseded where they disagree.
+Live ledgers `control/status.md` + [`docs/adopters.md`](adopters.md) win
+over both.)*
 
 - **EAP read-only cutover: 2026-07-21.** The Claude Code Projects EAP goes
   **read-only on 2026-07-21**; the autonomous Project seats + routine wakes
@@ -242,7 +282,14 @@ PR #1802) still renders from superbot's committed `console.json`. Steps:
 *(**Pending-only by convention** — a DONE item moves to "Recently shipped"
 on the next touch and never accretes here.)*
 
-**→ The provenance mandate (owner-specified 2026-08-06):**
+**→ The live worklist and the review round (2026-08-28):** the kit's next
+work is fleet-manager's
+`docs/findings/2026-08-13-substrate-kit-v1210-followups.md` in its restated
+order (the work-destroyer rows lead), under the OD-24 review round — thread
+at fm `docs/repos/substrate-kit/README.md`. Route via
+[`docs/NEXT-TASKS.md`](NEXT-TASKS.md).
+
+**→ The provenance mandate (owner-specified 2026-08-06, kit-side open plan):**
 [`planning/2026-08-06-provenance-review-mandate.md`](planning/2026-08-06-provenance-review-mandate.md)
 — two instruments for the judgment half the estate does not cover: a
 deterministic **blast-radius exporter**, and a **provenance review** (a fixed
