@@ -5392,6 +5392,24 @@ _QUOTE_THEN_FALSE = re.compile(
     r"(?:based\s+on\s+a\s+false[^.\n]*?\bwall\b|a\s+false\s+standing\s+wall|superseded)",
     re.I,
 )
+# Worklist row 17 fix (post-v1.21.0): dated-record markers adjacent to a
+# QUOTED wall mention are mention-attached exactly like the false/superseded
+# predicates above, and must be maskable before a BARE wall's clearing checks
+# run — otherwise `"agents cannot merge" SUPERSEDED 2026-08-14, agents cannot
+# merge` clears its bare reassertion off the mention's marker. Case semantics
+# mirror :data:`_DATED_LINE` (no ``re.I``): the uppercase tokens are the
+# canonical markers, lowercase ``verified`` only with its date.
+_DATED_BEFORE_QUOTE = re.compile(
+    r"(?:\bLAST-VERIFIED\b|\bSUPERSEDED\b|\bverified\s+\d{4}-\d{2}-\d{2})"
+    r"(?:\s+\d{4}-\d{2}-\d{2})?\s*[:·]?\s*"
+    r"[\"“'`]([^\"”'`\n]*)[\"”'`]"
+)
+_QUOTE_THEN_DATED = re.compile(
+    r"[\"“'`]([^\"”'`\n]*)[\"”'`]"
+    r"\s*(?:[—–-]\s*)?(?:\(?\s*(?:was|is)\s+)?"
+    r"(?:\bLAST-VERIFIED\b|\bSUPERSEDED\b|\bverified\s+\d{4}-\d{2}-\d{2})"
+    r"(?:\s+\d{4}-\d{2}-\d{2})?"
+)
 
 # Markdown emphasis / code markers stripped before running the CLEARING cues so
 # a bolded repudiation ("they do **not** establish …") still matches. Only the
@@ -5675,7 +5693,11 @@ def _mask_repudiated_wall_mentions(text: str, phrase: str) -> str:
     mention-scoped rules)."""
     fams = _capability_families(phrase)
     out = text
-    for pat in (_QUOTE_THEN_FALSE, _FALSE_QUOTE):
+    # Row 17 fix: the dated-marker mention patterns join the false/superseded
+    # ones — a `SUPERSEDED` / `LAST-VERIFIED` / dated-verify marker attached
+    # to a quoted mention is that mention's record, never the bare
+    # reassertion's clearance.
+    for pat in (_QUOTE_THEN_FALSE, _FALSE_QUOTE, _QUOTE_THEN_DATED, _DATED_BEFORE_QUOTE):
         for m in pat.finditer(text):
             quoted = m.group(1)
             if phrase.lower() in quoted.lower() or (
@@ -5720,6 +5742,34 @@ _MENTION_PREDICATE = re.compile(
     r"does\s+not\s+(?:apply|stand|hold)\b)",
     re.I,
 )
+# Worklist row 13 fix (post-v1.21.0): a repudiation that is QUALIFIED and then
+# REASSERTED in the same sentence is not a repudiation — `The "agents cannot
+# merge" rule is false in staging but true in production` narrows the wall, it
+# does not retire it. The defect-6 mention paths (region + anchored predicate)
+# cleared on the leading predicate alone and never read the contrast half, so
+# a standing wall stayed green — a false NEGATIVE, the expensive direction by
+# this checker's own doctrine. A contrast conjunction followed by a truth
+# affirmation anywhere in the rest of the mention's sentence now withholds
+# those two clears. Monotonic toward red: it only suppresses clears, so it can
+# never blind the gate.
+_PREDICATE_REASSERTION = re.compile(
+    r"\b(?:but|yet|however|though|although|whereas|while|except)\b"
+    r"[^.\n]{0,60}?"
+    r"\b(?:true|holds?|stands?|applies|binds?|binding|remains?|"
+    r"still\s+(?:blocks?|holds?|stands?|applies)|in\s+(?:force|effect))\b",
+    re.I,
+)
+# The sentence the mention's tail belongs to — a reassertion beyond the first
+# sentence terminator is a new sentence's business, not this mention's.
+_SENTENCE_SPLIT = re.compile(r"[.!?](?:\s|$)")
+
+
+def _reasserted_after_mention(tail: str) -> bool:
+    """True when the text after a quoted wall's closing quote re-asserts the
+    wall inside the same sentence (`… is false in staging but true in
+    production`). Gates the defect-6 mention clears in :func:`is_cleared`."""
+    sentence = _SENTENCE_SPLIT.split(tail, 1)[0]
+    return bool(_PREDICATE_REASSERTION.search(sentence))
 
 
 def _mention_region(line: str, span: tuple[int, int]) -> str:
@@ -5843,10 +5893,24 @@ def is_cleared(
     """
     if in_dated_block or in_historical:
         return True
+    # Row 17 fix: a BARE wall is graded against the line with every
+    # mention-attached repudiation/dated span already blanked — the clause is
+    # extracted from the MASKED line, so `FALSE "agents cannot merge", agents
+    # cannot merge` no longer clears its bare reassertion off the mention's
+    # FALSE label (the `_DATED_LINE` / `_FALSE_LABEL` checks inside
+    # :func:`_clause_cleared` previously read the raw clause and the mask
+    # never reached them). Masking is length-preserving, so ``match_span``
+    # offsets stay valid; a QUOTED wall keeps the raw line — its mention
+    # clears by the mention-scoped rules below.
+    graded_line = line
+    if match_span is not None and not _wall_is_quoted(line, match_span):
+        graded_line = _mask_repudiated_wall_mentions(line, phrase)
     clause = (
-        _clause_at(line, match_span[0]) if match_span is not None else _clause_containing(line, phrase)
+        _clause_at(graded_line, match_span[0])
+        if match_span is not None
+        else _clause_containing(graded_line, phrase)
     )
-    if _clause_cleared(clause, line, phrase, match_span=match_span):
+    if _clause_cleared(clause, graded_line, phrase, match_span=match_span):
         return True
     # Defect 6 fix (v1.21.0): a QUOTED wall is a MENTION, not an assertion —
     # the same distinction that gates the cross-line bridges below. Prose
@@ -5861,16 +5925,24 @@ def is_cleared(
     # Bare walls keep clause-tight attachment; each match is still graded by
     # its own span (P3), so a bare wall sharing the line reds on its own.
     if match_span is not None and _wall_is_quoted(line, match_span):
-        region = _mention_region(line, match_span)
-        if _clause_cleared(region, line, phrase, match_span=match_span):
-            return True
-        # The attachment predicate: a repudiation chain anchored directly to
-        # the closing quote ('The "…" rule is false and no longer applies.').
-        # Anchoring is what makes it safe — an independent clause joined by a
-        # conjunction never starts at the quote, so it can never satisfy this.
+        # Row 13 fix: both mention clears below are withheld when the same
+        # sentence re-asserts the wall after the mention ("… is false in
+        # staging but true in production") — the region stops at the contrast
+        # conjunction, so without this gate the reassertion was invisible to
+        # the very clears it disqualifies.
         tail = _text_after_enclosing_quote(line, match_span)
-        if tail is not None and _MENTION_PREDICATE.match(tail):
-            return True
+        reasserted = tail is not None and _reasserted_after_mention(tail)
+        if not reasserted:
+            region = _mention_region(line, match_span)
+            if _clause_cleared(region, line, phrase, match_span=match_span):
+                return True
+            # The attachment predicate: a repudiation chain anchored directly
+            # to the closing quote ('The "…" rule is false and no longer
+            # applies.'). Anchoring is what makes it safe — an independent
+            # clause joined by a conjunction never starts at the quote, so it
+            # can never satisfy this.
+            if tail is not None and _MENTION_PREDICATE.match(tail):
+                return True
     # Tight one-line lookback for a wrapped repudiation. Gated (v1.20.2 root fix)
     # on the wall being QUOTED on its own line: only a MENTIONED wall may bridge,
     # never a BARE asserted one. Defect 4 (v1.21.0): never bridge across a
@@ -6028,12 +6100,28 @@ def scan_text(text: str, *, is_render_path: bool = False) -> list[RawHit]:
     in_digest_fence = False
     prev_line: str | None = None
     lines = text.splitlines()
+    # Worklist row 18 fix (post-v1.21.0): the fence exemption fails CLOSED. A
+    # BEGIN marker exempts the lines under it only when its END exists further
+    # down (next fence marker being an END) — an unterminated BEGIN (merge
+    # conflict, hand edit, forged marker) previously exempted every remaining
+    # line of the render path from the strict scan, and the drift check that
+    # would notice is advisory-only. Scanning the orphaned region can only ADD
+    # reds, the self-announcing direction.
+    terminated_begins: set[int] = set()
+    if is_render_path:
+        open_idx: int | None = None
+        for j, fence_line in enumerate(lines):
+            if _DIGEST_FENCE_BEGIN.search(fence_line):
+                open_idx = j
+            elif _DIGEST_FENCE_END.search(fence_line) and open_idx is not None:
+                terminated_begins.add(open_idx)
+                open_idx = None
     for i, line in enumerate(lines, start=1):
         # Class (b): skip lines inside a kit-generated derived-render fence
         # (<!-- substrate-kit:*-digest BEGIN … --> … <!-- … END -->) — but only
-        # on the known render path (FIX B).
+        # on the known render path (FIX B), and only under a TERMINATED BEGIN.
         if is_render_path and _DIGEST_FENCE_BEGIN.search(line):
-            in_digest_fence = True
+            in_digest_fence = (i - 1) in terminated_begins
             prev_line = line
             continue
         if is_render_path and _DIGEST_FENCE_END.search(line):
