@@ -57,9 +57,12 @@ itemized falsehoods it corrects are in fleet-manager's
   strict-up-to-date off (`GET /repos/menno420/substrate-kit/rules/branches/main`,
   verified 2026-08-28). The "Pending owner action" and "Owner gates"
   sections below are historical snapshots, not asks.
-- Releases go **only** via `release.yml` `workflow_dispatch`;
-  `dist/bootstrap.py` is generated from `src/engine/`; `kit-quality` is the
-  one required check. (Unchanged — restated here so the block orients alone.)
+- Releases publish via `release.yml`, which has **two supported triggers**
+  (its own header): a hand-pushed `v*` tag — owner-side canonical — and
+  `workflow_dispatch`, the **only agent-runnable path** (the session git
+  proxy 403s tag pushes; live-hit at v1.0.0). `dist/bootstrap.py` is
+  generated from `src/engine/`; `kit-quality` is the one required check.
+  (Unchanged — restated here so the block orients alone.)
 
 ## SEAT CLOSED — 2026-07-21
 
