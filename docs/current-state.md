@@ -35,10 +35,10 @@ itemized falsehoods it corrects are in fleet-manager's
 `docs/findings/2026-08-28-kit-tree-truth-pass.md`.)*
 
 - **The kit is at v1.21.0** (cut + published 2026-08-13, PR #581; three-way
-  sha256 verified). Fixes merged since ride `main` **unreleased** — latest
-  kit #587 (2026-08-28: `docs/NEXT-TASKS.md` superseded into a routed
-  pointer; the false-negative family in `check_no_false_walls` fixed). The
-  next cut is owner-paced.
+  sha256 verified). Fixes merged since ride `main` **unreleased** — kit #587
+  (2026-08-28: `docs/NEXT-TASKS.md` superseded into a routed pointer; the
+  false-negative family in `check_no_false_walls` fixed) and this reconcile
+  itself, kit #588 (2026-08-28, records only). The next cut is owner-paced.
 - **0 open PRs** (2026-08-28). PR #552 **MERGED 2026-08-04** — every record
   below still calling it "parked for owner ratification" is superseded.
 - **The kit's live worklist is fleet-manager's**
