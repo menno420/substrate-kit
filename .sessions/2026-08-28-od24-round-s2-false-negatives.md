@@ -106,6 +106,22 @@ dispositions, AGENTS.md.
   computed first and gates that path too. Suite 2183 passed; corpus A/B
   re-run: 0/0 on both trees.
 
+- **R2 on head `6dacdaf`: 6 inline findings (5 P1 · 1 P2) — 6 `[conceded]`,
+  0 survived, each reproduced by execution and pinned in
+  `TestCodexRound2Pins`:** (1) the whole-span negation check
+  over-suppressed — "not retired AND remains" reasserts, so negation scope
+  is now token-directed and sealed by coordination; (2) the single-quoted
+  mention path (bare, since `_WALL_QUOTE` excludes single quotes) bypassed
+  the reassertion gate — an enclosing mention span now gates it with the
+  tail starting after the mention; (3) digest fences now pair BY NAME (a
+  walls END no longer terminates a skills BEGIN); (4) entering an orphan
+  region clears inherited historical state; (5) the reassertion family
+  check reads the whole contrast segment, not the truncated match; (6)
+  nevertheless/nonetheless joined the contrast list. Suite 2189 passed;
+  corpus A/B: 0/0 on both trees. **This exhausts the two-re-review cap:
+  the next round's outcome lands with any open findings named, per the
+  close discipline.**
+
 ## Friction → guard candidates (adjacent shapes, deliberately not fixed here)
 
 Uncovered clearing-grammar shapes found while proving the fixes — all

@@ -1457,3 +1457,63 @@ class TestCodexRound1Pins:
         assert scan_text(
             'FALSE "agents cannot merge" in staging but true in production.\n'
         )
+
+
+# ── Codex round 2 on kit #587: six conceded findings, each pinned ─────────────
+
+
+class TestCodexRound2Pins:
+    """Codex R2 (head 6dacdaf) returned six findings — five P1, one P2 —
+    every one reproduced by execution before its fix."""
+
+    def test_negation_sealed_by_coordination_reasserts(self) -> None:
+        # `not retired AND remains in force` — the coordination seals the
+        # negation's scope; the reassertion stands and the wall reds.
+        assert scan_text(
+            'The "agents cannot merge" rule is false in staging, '
+            "but it is not retired and remains in force in production.\n"
+        )
+
+    def test_single_quoted_mention_clears_are_reassertion_gated(self) -> None:
+        # A single-quoted mention grades bare (_WALL_QUOTE excludes single
+        # quotes) — its restored clearing path must not bypass the gate.
+        assert scan_text(
+            "FALSE 'agents cannot merge' in staging but true in production.\n"
+        )
+        assert scan_text(
+            "'agents cannot merge' was superseded in staging "
+            "but remains in production.\n"
+        )
+
+    def test_fences_pair_by_marker_name(self) -> None:
+        # A walls-digest END does not terminate a skills-digest BEGIN.
+        text = (
+            "<!-- substrate-kit:skills-digest BEGIN v=1 -->\n"
+            "agents cannot merge\n"
+            "<!-- substrate-kit:walls-digest END -->\n"
+        )
+        assert [h.line for h in scan_text(text, is_render_path=True)] == [2]
+
+    def test_orphan_region_clears_inherited_historical_state(self) -> None:
+        # A pre-fence historical heading must not exempt orphaned lines.
+        text = (
+            "## Append log\n"
+            "<!-- substrate-kit:skills-digest BEGIN v=1 -->\n"
+            "## Live rules\n"
+            "agents cannot merge\n"
+        )
+        assert [h.line for h in scan_text(text, is_render_path=True)] == [4]
+
+    def test_family_check_reads_the_whole_contrast_segment(self) -> None:
+        # The capability may be named after the truth token — "another wall
+        # remains in force for deploys" is not this wall's reassertion.
+        assert scan_text(
+            'The "agents cannot merge" rule is false and no longer applies, '
+            "but another wall remains in force for deploys.\n"
+        ) == []
+
+    def test_nevertheless_and_nonetheless_are_contrasts(self) -> None:
+        assert scan_text(
+            'The "agents cannot merge" rule is false in staging; '
+            "nevertheless, it remains in force in production.\n"
+        )

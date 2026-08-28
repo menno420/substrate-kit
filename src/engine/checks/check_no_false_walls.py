@@ -111,10 +111,10 @@ _DATED_FILENAME = re.compile(r"\d{4}-\d{2}-\d{2}")
 # Still gated to the known render path (FIX B) — a marker or fence pasted
 # into a normal doc exempts nothing.
 _DIGEST_FENCE_BEGIN = re.compile(
-    r"<!--\s*substrate-kit:[\w-]*digest\s+BEGIN\b.*?-->", re.I
+    r"<!--\s*substrate-kit:([\w-]*digest)\s+BEGIN\b.*?-->", re.I
 )
 _DIGEST_FENCE_END = re.compile(
-    r"<!--\s*substrate-kit:[\w-]*digest\s+END\b.*?-->", re.I
+    r"<!--\s*substrate-kit:([\w-]*digest)\s+END\b.*?-->", re.I
 )
 
 # ── Shared grammar fragments for the generalized capability-wall class ─────────
@@ -776,6 +776,21 @@ def _mask_repudiated_wall_mentions(
     return out
 
 
+def _enclosing_mention_span(
+    line: str, match_span: tuple[int, int]
+) -> tuple[int, int] | None:
+    """The span of a repudiated/dated mention-pattern match that CONTAINS the
+    graded occurrence, or ``None``. Codex R2: `_WALL_QUOTE` deliberately
+    excludes single quotes, so a single-quoted mention (`FALSE 'agents
+    cannot merge' …`) grades through the BARE path — its clears must still
+    be reassertion-gated, and this span is where its tail starts."""
+    for pat in (_QUOTE_THEN_FALSE, _FALSE_QUOTE, _QUOTE_THEN_DATED, _DATED_BEFORE_QUOTE):
+        for m in pat.finditer(line):
+            if m.start() <= match_span[0] and match_span[1] <= m.end():
+                return m.start(), m.end()
+    return None
+
+
 # The boundaries a QUOTED wall's widened cue search may NOT cross (Codex on
 # the first two defect-6 cuts — the first widened to the WHOLE line, the
 # second let bare `and` through): quotation is not repudiation, so neither
@@ -811,32 +826,51 @@ _MENTION_PREDICATE = re.compile(
     r"does\s+not\s+(?:apply|stand|hold)\b)",
     re.I,
 )
-# Worklist row 13 fix (post-v1.21.0): a repudiation that is QUALIFIED and then
-# REASSERTED in the same sentence is not a repudiation — `The "agents cannot
-# merge" rule is false in staging but true in production` narrows the wall, it
-# does not retire it. The defect-6 mention paths (region + anchored predicate)
-# cleared on the leading predicate alone and never read the contrast half, so
-# a standing wall stayed green — a false NEGATIVE, the expensive direction by
-# this checker's own doctrine. A contrast conjunction followed by a truth
-# affirmation anywhere in the rest of the mention's sentence now withholds
-# those two clears. Monotonic toward red: it only suppresses clears, so it can
-# never blind the gate.
-_PREDICATE_REASSERTION = re.compile(
-    r"\b(?:but|yet|however|though|although|whereas|while|except)\b"
-    r"[^.\n]{0,60}?"
+# Worklist row 13 fix (post-v1.21.0; reworked across Codex R1/R2): a
+# repudiation that is QUALIFIED and then REASSERTED in the same sentence is
+# not a repudiation — `The "agents cannot merge" rule is false in staging but
+# true in production` narrows the wall, it does not retire it. The defect-6
+# mention paths cleared on the leading predicate alone and never read the
+# contrast half, so a standing wall stayed green — a false NEGATIVE, the
+# expensive direction by this checker's own doctrine. Detection: a CONTRAST
+# transition (the bridge grammar's own word list — R2 added
+# nevertheless/nonetheless) followed within a bounded window by a truth
+# token, where (R1) the token is not under a negation and (R2) the negation
+# must actually govern it — "not retired AND remains" reasserts, because the
+# coordination seals the negation off — and (R2) the family check reads the
+# WHOLE contrast segment, not the truncated match, so "…but another wall
+# remains in force for deploys" is recognisably about a different capability.
+_CONTRAST_TRANSITION = re.compile(
+    r"\b(?:but|yet|however|though|although|whereas|while|except|"
+    r"nevertheless|nonetheless)\b",
+    re.I,
+)
+_TRUTH_TOKEN = re.compile(
     r"\b(?:true|holds?|stands?|applies|binds?|binding|remains?|"
     r"still\s+(?:blocks?|holds?|stands?|applies)|in\s+(?:force|effect))\b",
     re.I,
 )
-# Negation scope over the whole conjunction→token span (adversarial round 2,
-# reworked on Codex R1): "but it no longer holds" / "but it doesn't hold" /
-# "but it cannot remain in force" are SECOND repudiations, not reassertions.
-# Lookbehinds on the token alone cannot see phrase scope — the engine
-# backtracks past an excluded `remain` to an unguarded `in force` — so a
-# negation word ANYWHERE in the matched span disqualifies it instead.
 _REASSERTION_NEGATION = re.compile(
     r"\b(?:not|never|no\s+longer|cannot|nor)\b|n['’]t\b", re.I
 )
+# A coordinator between the negation and the token seals the negation's
+# scope: in "not retired and remains in force", `not` governs `retired`,
+# never `remains`.
+_NEGATION_SEAL = re.compile(r"\b(?:and|or)\b|[,;]", re.I)
+
+
+def _token_negated(segment: str, tok_start: int) -> bool:
+    """True when the truth token at ``tok_start`` in ``segment`` sits under a
+    negation: the nearest preceding negation word governs it unless a
+    coordinator intervenes or the gap exceeds a short reach."""
+    look = segment[:tok_start]
+    last = None
+    for m in _REASSERTION_NEGATION.finditer(look):
+        last = m
+    if last is None:
+        return False
+    between = look[last.end():]
+    return len(between) <= 24 and not _NEGATION_SEAL.search(between)
 # The sentence the mention's tail belongs to — a reassertion beyond the first
 # sentence terminator is a new sentence's business, not this mention's. The
 # guards keep an ASCII ellipsis ("false... but true") and a dotted
@@ -858,13 +892,20 @@ def _reasserted_after_mention(tail: str, phrase: str) -> bool:
     production")."""
     sentence = _SENTENCE_SPLIT.split(tail, 1)[0]
     wall_fams = _capability_families(phrase)
-    for m in _PREDICATE_REASSERTION.finditer(sentence):
-        if _REASSERTION_NEGATION.search(m.group(0)):
+    for cm in _CONTRAST_TRANSITION.finditer(sentence):
+        segment = sentence[cm.end():]
+        # R2: the family check reads the whole contrast segment — a segment
+        # about a DIFFERENT capability's wall is not this mention's
+        # reassertion, and the capability may be named after the token.
+        seg_fams = _capability_families(segment)
+        if wall_fams and seg_fams and seg_fams.isdisjoint(wall_fams):
             continue
-        re_fams = _capability_families(m.group(0))
-        if wall_fams and re_fams and re_fams.isdisjoint(wall_fams):
-            continue
-        return True
+        for tm in _TRUTH_TOKEN.finditer(segment):
+            if tm.start() > 60:
+                break
+            if _token_negated(segment, tm.start()):
+                continue
+            return True
     return False
 
 
@@ -1009,6 +1050,14 @@ def is_cleared(
     # reassertion looks like.
     quoted_wall = match_span is not None and _wall_is_quoted(line, match_span)
     tail = _text_after_enclosing_quote(line, match_span) if quoted_wall else None
+    # Codex R2: a single-quoted mention grades through the bare path (its
+    # occurrence is not _WALL_QUOTE-quoted) — its mention-scoped clears are
+    # reassertion-gated too, with the tail starting after the whole mention.
+    mention_span = None
+    if match_span is not None and not quoted_wall:
+        mention_span = _enclosing_mention_span(line, match_span)
+        if mention_span is not None:
+            tail = line[mention_span[1]:]
     if (
         tail is not None
         and next_lines
@@ -1047,9 +1096,9 @@ def is_cleared(
         clause = _clause_at(line, match_span[0])
     else:
         clause = _clause_containing(line, phrase)
-    if not (quoted_wall and reasserted) and _clause_cleared(
-        clause, graded_line, phrase, match_span=match_span
-    ):
+    if not (
+        (quoted_wall or mention_span is not None) and reasserted
+    ) and _clause_cleared(clause, graded_line, phrase, match_span=match_span):
         return True
     # Defect 6 fix (v1.21.0): a QUOTED wall is a MENTION, not an assertion —
     # the same distinction that gates the cross-line bridges below. Prose
@@ -1233,6 +1282,7 @@ def scan_text(text: str, *, is_render_path: bool = False) -> list[RawHit]:
     in_historical = False
     in_digest_fence = False
     in_orphan_region = False
+    fence_name: str | None = None
     prev_line: str | None = None
     lines = text.splitlines()
     # Worklist row 18 fix (post-v1.21.0): the fence exemption fails CLOSED. A
@@ -1245,24 +1295,44 @@ def scan_text(text: str, *, is_render_path: bool = False) -> list[RawHit]:
     terminated_begins: set[int] = set()
     if is_render_path:
         open_idx: int | None = None
+        open_name: str | None = None
         for j, fence_line in enumerate(lines):
-            if _DIGEST_FENCE_BEGIN.search(fence_line):
-                open_idx = j
-            elif _DIGEST_FENCE_END.search(fence_line) and open_idx is not None:
+            bm = _DIGEST_FENCE_BEGIN.search(fence_line)
+            if bm:
+                open_idx, open_name = j, bm.group(1).lower()
+                continue
+            em = _DIGEST_FENCE_END.search(fence_line)
+            # Codex R2: fences pair BY NAME — a walls-digest END does not
+            # terminate a skills-digest BEGIN; a cross-name END left the
+            # damaged region exempt, the exact fail-open row 18 closes.
+            if em and open_idx is not None and em.group(1).lower() == open_name:
                 terminated_begins.add(open_idx)
-                open_idx = None
+                open_idx = open_name = None
     for i, line in enumerate(lines, start=1):
         # Class (b): skip lines inside a kit-generated derived-render fence
         # (<!-- substrate-kit:*-digest BEGIN … --> … <!-- … END -->) — but only
         # on the known render path (FIX B), and only under a TERMINATED BEGIN.
-        if is_render_path and _DIGEST_FENCE_BEGIN.search(line):
+        bm = _DIGEST_FENCE_BEGIN.search(line) if is_render_path else None
+        if bm:
             in_digest_fence = (i - 1) in terminated_begins
+            fence_name = bm.group(1).lower() if in_digest_fence else None
             in_orphan_region = not in_digest_fence
+            if in_orphan_region:
+                # Codex R2: entering an orphan region clears INHERITED
+                # historical state — the fail-closed scan is defeated if a
+                # pre-fence `## Append log` still exempts the orphaned
+                # generated lines.
+                in_historical = False
             prev_line = line
             continue
-        if is_render_path and _DIGEST_FENCE_END.search(line):
-            in_digest_fence = False
-            in_orphan_region = False
+        em = _DIGEST_FENCE_END.search(line) if is_render_path else None
+        if em:
+            # Codex R2: only the OPEN fence's own name closes it — a
+            # cross-name END inside an honored fence is generated content,
+            # and one in an orphan region cannot close what it never opened.
+            if in_digest_fence and em.group(1).lower() == fence_name:
+                in_digest_fence = False
+                fence_name = None
             prev_line = line
             continue
         if in_digest_fence:
