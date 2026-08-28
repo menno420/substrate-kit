@@ -43,7 +43,9 @@ dispositions, AGENTS.md.
   open, routed to the round).
 - Rows 13/17/18 fixed in `src/engine/checks/check_no_false_walls.py`;
   named regression pins in `tests/test_check_no_false_walls_leg.py`
-  (`TestPostV1210FalseNegatives`, 11 cases); dist regenerated via
+  (`TestPostV1210FalseNegatives`, 12 cases — an earlier draft of this card
+  said 11, caught by the verification pass — plus
+  `TestRound2AdversarialHardening`, 8); dist regenerated via
   `python3 src/build_bootstrap.py`.
 
 ## Verify
@@ -60,13 +62,62 @@ dispositions, AGENTS.md.
   scripts/preflight.py` OK — 9 legs green (real exit 0).
 - Corpus A/B, published dist vs fixed engine, over every scanned live file
   in this tree (41) and fleet-manager's (220): **0 newly-flagged, 0
-  newly-cleared lines** — the fixes are corpus-neutral where they should be.
+  newly-cleared lines** — the fixes are corpus-neutral where they should be
+  (re-run after round 2 below; still 0/0).
+- **Pre-push adversarial round (four independent verifier lanes executing
+  counterexamples against the published asset and the fixed engine; ~380
+  distinct inputs including a 3,000-doc fence fuzz): two REAL regressions
+  found and fixed, two design holes closed.** (1) The first cut's mask
+  blanked clause separators inside mention spans, merging clauses — a cue
+  the raw line isolated cleared a bare wall v1.21.0 flagged (two shapes:
+  `…"wall" — SUPERSEDED…, does not reproduce` and cue-before-quote via
+  `based on a false … wall` swallowing ` and `); clause bounds now come
+  from the RAW line and are sliced out of the masked copy. (2) The dated
+  mask patterns over-masked a wall's OWN dated record when a quoted name
+  merely shared the capability family (`the "push mirror" LAST-VERIFIED…`
+  went red); they now mask only when the quoted content is itself a wall.
+  (3) The reassertion gate read `but it no longer holds` as a reassertion
+  (negation-blind) and gated affirmations about OTHER capabilities'
+  walls; it is now negation-aware and family-gated, covers the cross-line
+  bridges, and the sentence split survives `...`/`e.g.`. (4) Row 18's
+  orphan-region scan let a generated `## Append log` heading set
+  historical state that leaked past a later well-formed pair (4 of 3,000
+  fuzz docs); orphan-region lines never establish document state. The
+  paren/middot bare-date mention forms (`"…" (2026-08-14), <bare wall>` —
+  pre-existing, not a regression) joined the mask in the same round.
 
 ## Friction → guard candidates (adjacent shapes, deliberately not fixed here)
 
-Two uncovered clearing-grammar shapes found while proving the fixes — both
-outside rows 13/17/18's repro set, left for a future worklist row rather
-than widened into this PR:
+Uncovered clearing-grammar shapes found while proving the fixes — all
+outside rows 13/17/18's repro set and all **pre-existing on v1.21.0** (each
+verified green-on-both, so none is this PR's regression), left for a future
+worklist row rather than widened into this PR:
+
+- **Empty-family comma-cue baseline** — `agents cannot merge, does not
+  reproduce anyway.` clears on both versions: a plain comma never splits
+  clauses, so a capability-agnostic cue beside a bare wall clears it. The
+  row-17 fix inherits this boundary (a second unrelated cue in the same
+  comma stretch still clears a bare reassertion after the mask removes the
+  mention's marker).
+- **FALSE-label family-blindness** — `FALSE "agents cannot deploy", agents
+  cannot merge` clears the merge wall on both versions: `_FALSE_LABEL` is
+  not family-gated, so a FALSE-labelled mention of a DIFFERENT capability
+  clears a comma-adjacent bare wall.
+- **Reassertion shapes outside the contrast-conjunction list** — `and true
+  in production`, semicolon/em-dash/colon continuations, reassertion
+  BEFORE the mention, relative clauses, >60-char gaps; and a dotted title
+  (`per Dr. Smith's audit but true…`) still ends the inspected sentence
+  early. All green on both versions.
+- **Fence-marker-line prose and cross-variant pairing** — wall text sharing
+  a physical line with a fence marker is never scanned, and a
+  skills-digest BEGIN accepts a walls-digest END; both faithful to
+  v1.21.0's loop semantics.
+- **A but-clause about the RECORD gates a repudiation** — `…is false and no
+  longer applies, but the dated ledger row remains.` reds at HEAD (green on
+  v1.21.0): the reassertion gate cannot tell an affirmation about the
+  ledger entry from one about the wall when no capability is named. NEW at
+  HEAD, deliberate cheap-direction trade, 0 live corpus hits — recorded as
+  the one known new false-positive class this PR accepts.
 
 - **Apposition-severed mention cue** — `The "agents cannot merge" claim was
   superseded, agents cannot merge` still clears the bare reassertion: the

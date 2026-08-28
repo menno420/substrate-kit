@@ -425,7 +425,11 @@ _DATED_BEFORE_QUOTE = re.compile(
 _QUOTE_THEN_DATED = re.compile(
     r"[\"“'`]([^\"”'`\n]*)[\"”'`]"
     r"\s*(?:[—–-]\s*)?(?:\(?\s*(?:was|is)\s+)?"
-    r"(?:\bLAST-VERIFIED\b|\bSUPERSEDED\b|\bverified\s+\d{4}-\d{2}-\d{2})"
+    # The bare paren/middot date forms _DATED_LINE recognises join the token
+    # markers (adversarial round 2): '"…" (2026-08-14), <bare wall>' cleared
+    # its reassertion exactly like the SUPERSEDED shape.
+    r"(?:\bLAST-VERIFIED\b|\bSUPERSEDED\b|\bverified\s+\d{4}-\d{2}-\d{2}|"
+    r"\(\s*\d{4}-\d{2}-\d{2}\s*\)|·\s*\d{4}-\d{2}-\d{2})"
     r"(?:\s+\d{4}-\d{2}-\d{2})?"
 )
 
@@ -556,6 +560,23 @@ class RawHit(NamedTuple):
     rule: str
 
 
+def _clause_span_at(line: str, idx: int) -> tuple[int, int]:
+    """The ``(lo, hi)`` bounds of the clause of ``line`` spanning offset
+    ``idx`` — split on strong separators (:data:`_CLAUSE_SEP`). Returned as a
+    span so a caller can slice the SAME bounds out of a masked copy of the
+    line (row 17, adversarial round 2): clause structure always comes from
+    the RAW line, so blanking a separator inside a masked mention span can
+    never merge two clauses and hand a foreign cue to a bare wall."""
+    lo, hi = 0, len(line)
+    for m in _CLAUSE_SEP.finditer(line):
+        if m.start() <= idx:
+            lo = m.end()  # a separator ends the clause before the offset
+        else:
+            hi = m.start()  # …and the next separator ends the offset's clause
+            break
+    return lo, hi
+
+
 def _clause_at(line: str, idx: int) -> str:
     """Return the CLAUSE of ``line`` that spans character offset ``idx``.
 
@@ -566,13 +587,7 @@ def _clause_at(line: str, idx: int) -> str:
     (not phrase-find-based) so a SECOND occurrence of a repeated phrase is graded
     in its OWN clause, not the first occurrence's (P3 position-awareness).
     """
-    lo, hi = 0, len(line)
-    for m in _CLAUSE_SEP.finditer(line):
-        if m.start() <= idx:
-            lo = m.end()  # a separator ends the clause before the offset
-        else:
-            hi = m.start()  # …and the next separator ends the offset's clause
-            break
+    lo, hi = _clause_span_at(line, idx)
     return line[lo:hi]
 
 
@@ -714,14 +729,30 @@ def _mask_repudiated_wall_mentions(text: str, phrase: str) -> str:
     # Row 17 fix: the dated-marker mention patterns join the false/superseded
     # ones — a `SUPERSEDED` / `LAST-VERIFIED` / dated-verify marker attached
     # to a quoted mention is that mention's record, never the bare
-    # reassertion's clearance.
-    for pat in (_QUOTE_THEN_FALSE, _FALSE_QUOTE, _QUOTE_THEN_DATED, _DATED_BEFORE_QUOTE):
+    # reassertion's clearance. The dated patterns are gated tighter
+    # (adversarial round 2): they mask only when the quoted content IS a wall
+    # assertion (contains the phrase, or matches the blocklist itself) — a
+    # quoted string that merely NAMES the capability ('the "push mirror"
+    # LAST-VERIFIED …') is the wall's own dated record, and masking it
+    # un-dated a genuine record. The false/superseded patterns keep the wider
+    # family gate they shipped with in v1.21.0.
+    for pat, wall_only in (
+        (_QUOTE_THEN_FALSE, False),
+        (_FALSE_QUOTE, False),
+        (_QUOTE_THEN_DATED, True),
+        (_DATED_BEFORE_QUOTE, True),
+    ):
         for m in pat.finditer(text):
             quoted = m.group(1)
-            if phrase.lower() in quoted.lower() or (
-                fams and not fams.isdisjoint(_capability_families(quoted))
+            if wall_only:
+                if not (phrase.lower() in quoted.lower() or match_blocklist(quoted)):
+                    continue
+            elif not (
+                phrase.lower() in quoted.lower()
+                or (fams and not fams.isdisjoint(_capability_families(quoted)))
             ):
-                out = out[: m.start()] + " " * (m.end() - m.start()) + out[m.end() :]
+                continue
+            out = out[: m.start()] + " " * (m.end() - m.start()) + out[m.end() :]
     return out
 
 
@@ -773,21 +804,41 @@ _MENTION_PREDICATE = re.compile(
 _PREDICATE_REASSERTION = re.compile(
     r"\b(?:but|yet|however|though|although|whereas|while|except)\b"
     r"[^.\n]{0,60}?"
+    # Negation-aware (adversarial round 2): "but it no longer holds" is a
+    # SECOND repudiation, not a reassertion — a truth token directly under a
+    # negation must not fire (fixed-width lookbehinds; re.I covers them).
+    r"(?<!no longer )(?<!not )(?<!never )"
     r"\b(?:true|holds?|stands?|applies|binds?|binding|remains?|"
     r"still\s+(?:blocks?|holds?|stands?|applies)|in\s+(?:force|effect))\b",
     re.I,
 )
 # The sentence the mention's tail belongs to — a reassertion beyond the first
-# sentence terminator is a new sentence's business, not this mention's.
-_SENTENCE_SPLIT = re.compile(r"[.!?](?:\s|$)")
+# sentence terminator is a new sentence's business, not this mention's. The
+# guards keep an ASCII ellipsis ("false... but true") and a dotted
+# abbreviation ("e.g.") from ending the sentence early (adversarial round 2);
+# single-word titles ("Dr.") remain an accepted residual, recorded.
+_SENTENCE_SPLIT = re.compile(r"(?<!\.)(?<!\.[A-Za-z])[.!?](?:\s|$)")
 
 
-def _reasserted_after_mention(tail: str) -> bool:
+def _reasserted_after_mention(tail: str, phrase: str) -> bool:
     """True when the text after a quoted wall's closing quote re-asserts the
     wall inside the same sentence (`… is false in staging but true in
-    production`). Gates the defect-6 mention clears in :func:`is_cleared`."""
+    production`). Gates the defect-6 mention clears in :func:`is_cleared`.
+
+    Family-gated like the file's other bridges (adversarial round 2): an
+    affirmation naming a DIFFERENT capability family (`…, but the deploy
+    wall remains`) is about another rule and does not disqualify this
+    mention's repudiation. An affirmation naming no family at all still
+    gates — that is the row-13 repro's own shape ("but true in
+    production")."""
     sentence = _SENTENCE_SPLIT.split(tail, 1)[0]
-    return bool(_PREDICATE_REASSERTION.search(sentence))
+    wall_fams = _capability_families(phrase)
+    for m in _PREDICATE_REASSERTION.finditer(sentence):
+        re_fams = _capability_families(m.group(0))
+        if wall_fams and re_fams and re_fams.isdisjoint(wall_fams):
+            continue
+        return True
+    return False
 
 
 def _mention_region(line: str, span: tuple[int, int]) -> str:
@@ -923,11 +974,17 @@ def is_cleared(
     graded_line = line
     if match_span is not None and not _wall_is_quoted(line, match_span):
         graded_line = _mask_repudiated_wall_mentions(line, phrase)
-    clause = (
-        _clause_at(graded_line, match_span[0])
-        if match_span is not None
-        else _clause_containing(graded_line, phrase)
-    )
+        # Clause BOUNDS from the RAW line, sliced out of the masked line
+        # (adversarial round 2): the mask blanks whole mention spans, and a
+        # span may contain a clause separator — deriving bounds from the
+        # masked line merged clauses and handed cues to bare walls they were
+        # separated from.
+        lo, hi = _clause_span_at(line, match_span[0])
+        clause = graded_line[lo:hi]
+    elif match_span is not None:
+        clause = _clause_at(line, match_span[0])
+    else:
+        clause = _clause_containing(line, phrase)
     if _clause_cleared(clause, graded_line, phrase, match_span=match_span):
         return True
     # Defect 6 fix (v1.21.0): a QUOTED wall is a MENTION, not an assertion —
@@ -942,14 +999,16 @@ def is_cleared(
     # reproduce.') cannot clear a wall the first clause asserts via a quote.
     # Bare walls keep clause-tight attachment; each match is still graded by
     # its own span (P3), so a bare wall sharing the line reds on its own.
-    if match_span is not None and _wall_is_quoted(line, match_span):
-        # Row 13 fix: both mention clears below are withheld when the same
-        # sentence re-asserts the wall after the mention ("… is false in
-        # staging but true in production") — the region stops at the contrast
-        # conjunction, so without this gate the reassertion was invisible to
-        # the very clears it disqualifies.
-        tail = _text_after_enclosing_quote(line, match_span)
-        reasserted = tail is not None and _reasserted_after_mention(tail)
+    # Row 13 fix: every mention-based clear below — the region/predicate
+    # pair AND the cross-line bridges, which are equally quoted-wall-only —
+    # is withheld when the same sentence re-asserts the wall after the
+    # mention ("… is false in staging but true in production"): the region
+    # stops at the contrast conjunction, so without this gate the
+    # reassertion was invisible to the very clears it disqualifies.
+    quoted_wall = match_span is not None and _wall_is_quoted(line, match_span)
+    tail = _text_after_enclosing_quote(line, match_span) if quoted_wall else None
+    reasserted = tail is not None and _reasserted_after_mention(tail, phrase)
+    if quoted_wall:
         if not reasserted:
             region = _mention_region(line, match_span)
             if _clause_cleared(region, line, phrase, match_span=match_span):
@@ -970,6 +1029,7 @@ def is_cleared(
         prev_line is not None
         and prev_line.strip()
         and _wall_is_quoted(line, match_span)
+        and not reasserted
         and not _HEADING.match(prev_line)
         and not _DATED_BULLET.match(prev_line)
         and not _FENCE_DELIM.match(prev_line)
@@ -1005,6 +1065,7 @@ def is_cleared(
     if (
         next_lines
         and _wall_is_quoted(line, match_span)
+        and not reasserted
         and _wall_ends_line(line, phrase, match_span)
         and not _SENTENCE_END.search(line)
     ):
@@ -1116,6 +1177,7 @@ def scan_text(text: str, *, is_render_path: bool = False) -> list[RawHit]:
     hits: list[RawHit] = []
     in_historical = False
     in_digest_fence = False
+    in_orphan_region = False
     prev_line: str | None = None
     lines = text.splitlines()
     # Worklist row 18 fix (post-v1.21.0): the fence exemption fails CLOSED. A
@@ -1140,10 +1202,12 @@ def scan_text(text: str, *, is_render_path: bool = False) -> list[RawHit]:
         # on the known render path (FIX B), and only under a TERMINATED BEGIN.
         if is_render_path and _DIGEST_FENCE_BEGIN.search(line):
             in_digest_fence = (i - 1) in terminated_begins
+            in_orphan_region = not in_digest_fence
             prev_line = line
             continue
         if is_render_path and _DIGEST_FENCE_END.search(line):
             in_digest_fence = False
+            in_orphan_region = False
             prev_line = line
             continue
         if in_digest_fence:
@@ -1151,7 +1215,14 @@ def scan_text(text: str, *, is_render_path: bool = False) -> list[RawHit]:
             continue
 
         heading = _HEADING.match(line)
-        if heading:
+        # An orphaned fence region's lines are scanned for WALLS but never
+        # establish document state (adversarial round 2): a heading inside
+        # generated content could otherwise flip `in_historical` and exempt
+        # authored prose after a later well-formed pair — the same
+        # generated-text-must-not-blanket-exempt principle as FIX B, and
+        # consistent with terminated fences, whose headings were always
+        # skipped.
+        if heading and not in_orphan_region:
             in_historical = bool(_HISTORICAL_HEADING.search(heading.group(1)))
 
         # A dated append-log bullet ("- 2026-07-16 · …") clears ONLY its own

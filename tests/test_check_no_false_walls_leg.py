@@ -1299,3 +1299,100 @@ class TestPostV1210FalseNegatives:
     def test_row18_fence_still_ignored_off_render_path(self) -> None:
         # FIX B unchanged: fences exempt nothing on a normal doc.
         assert scan_text(self._TERMINATED, is_render_path=False)
+
+
+# ── Round-2 hardening: adversarial-verification counterexamples ───────────────
+
+
+class TestRound2AdversarialHardening:
+    """Pins from the pre-push adversarial verification of the row-13/17/18
+    fixes (four independent verifier lanes executing counterexamples against
+    the published v1.21.0 asset and the fixed engine). Each red case here
+    either regressed under the first cut of the fixes or was a hole the
+    lanes proved by execution; each green case is prose the first cut
+    wrongly redded."""
+
+    # ── Row 13's gate, negation- and family-aware ──
+
+    def test_double_repudiation_is_not_a_reassertion(self) -> None:
+        # 'but it no longer holds' is a SECOND repudiation — the first cut
+        # read 'holds' as a truth token and redded a doubly-cleared mention.
+        assert scan_text(
+            'The "agents cannot merge" rule is false, '
+            "but it no longer holds anywhere.\n"
+        ) == []
+
+    def test_family_disjoint_affirmation_does_not_gate(self) -> None:
+        # An affirmation about a DIFFERENT capability's wall is not this
+        # mention's reassertion (mirrors the file's other family gates).
+        assert scan_text(
+            'The "agents cannot merge" rule is false and no longer applies, '
+            "but the deploy wall remains.\n"
+        ) == []
+
+    def test_ellipsis_and_abbreviation_do_not_end_the_sentence(self) -> None:
+        # ASCII '...' and dotted abbreviations kept the reassertion out of
+        # the inspected sentence — both now red.
+        assert scan_text(
+            'The "agents cannot merge" rule is false... but true in production.\n'
+        )
+        assert scan_text(
+            'The "agents cannot merge" rule is false, e.g. in staging, '
+            "but true in production.\n"
+        )
+
+    def test_reasserted_mention_cannot_clear_via_lookback_bridge(self) -> None:
+        # The cross-line bridges are mention clears too — a reasserted
+        # quoted wall must not clear off a previous line's cue.
+        text = (
+            "That claim no longer applies and the\n"
+            '"agents cannot merge" is false in staging but true in production.\n'
+        )
+        assert [h.line for h in scan_text(text)] == [2]
+
+    # ── Row 17's mask: raw-line clause bounds + is-a-wall gate ──
+
+    def test_masked_separator_cannot_merge_clauses(self) -> None:
+        # The mention span contains a clause separator; blanking it must not
+        # hand the far clause's cue to the bare wall (red on v1.21.0, and
+        # red again after the bounds fix).
+        assert scan_text(
+            'agents cannot merge queue items "agents cannot merge" — '
+            "SUPERSEDED 2026-08-14, does not reproduce anyway.\n"
+        )
+        assert scan_text(
+            'the old "agents cannot merge" was based on a false and '
+            "long-retired wall, agents cannot merge\n"
+        )
+
+    def test_dated_mask_requires_the_quote_to_be_a_wall(self) -> None:
+        # A quoted string that merely NAMES the capability is the wall's own
+        # dated record — masking it un-dated a genuine record.
+        assert scan_text(
+            'agents cannot push to the "push mirror" LAST-VERIFIED 2026-08-14.\n'
+        ) == []
+        assert scan_text(
+            'verified 2026-08-14 "merge blocked" agents cannot merge draft PRs\n'
+        ) == []
+
+    def test_paren_and_middot_date_mentions_join_the_mask(self) -> None:
+        # _DATED_LINE's bare paren/middot date forms cleared a bare
+        # reassertion exactly like the SUPERSEDED shape (no clause-separator
+        # accident saves these).
+        assert scan_text('"agents cannot merge" (2026-08-14), agents cannot merge\n')
+        assert scan_text('"agents cannot merge" · 2026-08-14, agents cannot merge\n')
+
+    # ── Row 18: orphan-region content never establishes document state ──
+
+    def test_orphan_region_heading_cannot_exempt_later_prose(self) -> None:
+        text = (
+            "## Live rules\n"
+            "<!-- substrate-kit:skills-digest BEGIN v=1 -->\n"
+            "## Append log\n"
+            "<!-- substrate-kit:walls-digest BEGIN v=1 -->\n"
+            "generated bullet.\n"
+            "<!-- substrate-kit:walls-digest END -->\n"
+            "agents cannot merge pull requests.\n"
+        )
+        hits = scan_text(text, is_render_path=True)
+        assert [h.line for h in hits] == [7]
