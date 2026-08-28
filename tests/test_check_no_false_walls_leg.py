@@ -1396,3 +1396,64 @@ class TestRound2AdversarialHardening:
         )
         hits = scan_text(text, is_render_path=True)
         assert [h.line for h in hits] == [7]
+
+
+# ── Codex round 1 on kit #587: five conceded findings, each pinned ────────────
+
+
+class TestCodexRound1Pins:
+    """Codex R1 on the false-negative-family PR (kit #587, head e54664a)
+    returned five findings — four P1, one P2 — every one reproduced by
+    execution before its fix. Red cases are false negatives the review
+    closed; green cases are regressions of the first two cuts it caught."""
+
+    def test_f1_wrapped_reassertion_reds(self) -> None:
+        # The reassertion tail now extends across a wrapped line.
+        text = (
+            'The "agents cannot merge" rule is false in staging but\n'
+            "true in production.\n"
+        )
+        assert scan_text(text)
+
+    def test_f2_contracted_and_modal_negations_clear(self) -> None:
+        # "doesn't hold" / "cannot remain in force" are second repudiations;
+        # negation scope is judged over the whole matched span, not by
+        # token lookbehinds (the engine backtracks past an excluded token
+        # to an unguarded one).
+        assert scan_text(
+            'The "agents cannot merge" rule is false, '
+            "but it doesn't hold anywhere.\n"
+        ) == []
+        assert scan_text(
+            'The "agents cannot merge" rule is false, '
+            "but it cannot remain in force.\n"
+        ) == []
+
+    def test_f3_single_quoted_mentions_keep_clearing(self) -> None:
+        # A single-quoted mention grades through the bare path (_WALL_QUOTE
+        # excludes single quotes); the mask must never blank the span
+        # holding the occurrence being graded.
+        assert scan_text("FALSE 'agents cannot merge' — corrected 2026-07-18.\n") == []
+        assert scan_text("'agents cannot merge' SUPERSEDED 2026-08-14.\n") == []
+        # …while a bare reassertion OUTSIDE the single-quoted mention reds.
+        assert scan_text("FALSE 'agents cannot merge', agents cannot merge\n")
+
+    def test_f4_unrelated_mention_stays_unmasked(self) -> None:
+        # Masking a merge mention while grading a DEPLOY wall stripped the
+        # family evidence and let the orphaned `was superseded` clear it;
+        # the mask now requires family/phrase relation on every branch.
+        assert scan_text(
+            'LAST-VERIFIED 2026-08-14: "agents cannot merge" was superseded, '
+            "sessions cannot deploy\n"
+        )
+
+    def test_f5_first_clause_clear_is_reassertion_gated(self) -> None:
+        # Mention-scoped cues at the FIRST clause-clear (cue-in-clause,
+        # FALSE-covers) bypassed the row-13 gate.
+        assert scan_text(
+            'The "agents cannot merge" was superseded in staging '
+            "but remains in production.\n"
+        )
+        assert scan_text(
+            'FALSE "agents cannot merge" in staging but true in production.\n'
+        )

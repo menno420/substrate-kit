@@ -711,7 +711,9 @@ def _blockquote_state_differs(a: str, b: str) -> bool:
     return bool(_BLOCKQUOTE_LINE.match(a)) != bool(_BLOCKQUOTE_LINE.match(b))
 
 
-def _mask_repudiated_wall_mentions(text: str, phrase: str) -> str:
+def _mask_repudiated_wall_mentions(
+    text: str, phrase: str, match_span: tuple[int, int] | None = None
+) -> str:
     """Blank `"…" was superseded` / `false "…"` spans naming THIS capability.
 
     Defect 2 fix (v1.21.0) — occurrence-level attachment: in
@@ -744,12 +746,30 @@ def _mask_repudiated_wall_mentions(text: str, phrase: str) -> str:
     ):
         for m in pat.finditer(text):
             quoted = m.group(1)
-            if wall_only:
-                if not (phrase.lower() in quoted.lower() or match_blocklist(quoted)):
-                    continue
-            elif not (
+            # Codex R1 (F3): never blank the span holding the occurrence
+            # being graded — the mask removes OTHER mentions' cues, and a
+            # single-quoted mention (`FALSE 'agents cannot merge'`) is not
+            # _WALL_QUOTE-quoted, so it grades through the bare path;
+            # blanking its own span stripped the very label that clears it.
+            if (
+                match_span is not None
+                and m.start() <= match_span[0]
+                and match_span[1] <= m.end()
+            ):
+                continue
+            # Family/phrase relation, both branches (Codex R1, F4): a
+            # mention of an UNRELATED capability must stay unmasked — its
+            # quote is the family evidence that makes the cue-family
+            # conflict check refuse the orphaned trailing cue; blanking the
+            # quote and leaving `was superseded` behind cleared a different
+            # capability's bare wall.
+            if not (
                 phrase.lower() in quoted.lower()
                 or (fams and not fams.isdisjoint(_capability_families(quoted)))
+            ):
+                continue
+            if wall_only and not (
+                phrase.lower() in quoted.lower() or match_blocklist(quoted)
             ):
                 continue
             out = out[: m.start()] + " " * (m.end() - m.start()) + out[m.end() :]
@@ -804,13 +824,18 @@ _MENTION_PREDICATE = re.compile(
 _PREDICATE_REASSERTION = re.compile(
     r"\b(?:but|yet|however|though|although|whereas|while|except)\b"
     r"[^.\n]{0,60}?"
-    # Negation-aware (adversarial round 2): "but it no longer holds" is a
-    # SECOND repudiation, not a reassertion — a truth token directly under a
-    # negation must not fire (fixed-width lookbehinds; re.I covers them).
-    r"(?<!no longer )(?<!not )(?<!never )"
     r"\b(?:true|holds?|stands?|applies|binds?|binding|remains?|"
     r"still\s+(?:blocks?|holds?|stands?|applies)|in\s+(?:force|effect))\b",
     re.I,
+)
+# Negation scope over the whole conjunction→token span (adversarial round 2,
+# reworked on Codex R1): "but it no longer holds" / "but it doesn't hold" /
+# "but it cannot remain in force" are SECOND repudiations, not reassertions.
+# Lookbehinds on the token alone cannot see phrase scope — the engine
+# backtracks past an excluded `remain` to an unguarded `in force` — so a
+# negation word ANYWHERE in the matched span disqualifies it instead.
+_REASSERTION_NEGATION = re.compile(
+    r"\b(?:not|never|no\s+longer|cannot|nor)\b|n['’]t\b", re.I
 )
 # The sentence the mention's tail belongs to — a reassertion beyond the first
 # sentence terminator is a new sentence's business, not this mention's. The
@@ -834,6 +859,8 @@ def _reasserted_after_mention(tail: str, phrase: str) -> bool:
     sentence = _SENTENCE_SPLIT.split(tail, 1)[0]
     wall_fams = _capability_families(phrase)
     for m in _PREDICATE_REASSERTION.finditer(sentence):
+        if _REASSERTION_NEGATION.search(m.group(0)):
+            continue
         re_fams = _capability_families(m.group(0))
         if wall_fams and re_fams and re_fams.isdisjoint(wall_fams):
             continue
@@ -971,9 +998,44 @@ def is_cleared(
     # never reached them). Masking is length-preserving, so ``match_span``
     # offsets stay valid; a QUOTED wall keeps the raw line — its mention
     # clears by the mention-scoped rules below.
+    # Row 13 fix: the reassertion verdict is computed FIRST, because every
+    # mention-scoped clear — the first clause-clear's _false_quote_covers /
+    # _FALSE_LABEL paths included (Codex R1, F5), the region/predicate pair,
+    # and the cross-line bridges — must be withheld when the same sentence
+    # re-asserts the wall after its mention. The tail extends across a
+    # wrapped line (Codex R1, F1: `…is false in staging but\ntrue in
+    # production.`) under the G1 lookforward's block boundaries — minus the
+    # contrast-start stop, since a wrapped contrast is exactly what a
+    # reassertion looks like.
+    quoted_wall = match_span is not None and _wall_is_quoted(line, match_span)
+    tail = _text_after_enclosing_quote(line, match_span) if quoted_wall else None
+    if (
+        tail is not None
+        and next_lines
+        and not _SENTENCE_END.search(line)
+    ):
+        for fwd in next_lines[:2]:
+            if (
+                not fwd.strip()
+                or _HEADING.match(fwd)
+                or _DATED_BULLET.match(fwd)
+                or _NEW_BULLET.match(fwd)
+                or _FENCE_DELIM.match(fwd)
+                or _DIGEST_FENCE_BEGIN.search(fwd)
+                or _DIGEST_FENCE_END.search(fwd)
+                or _blockquote_state_differs(fwd, line)
+            ):
+                break
+            tail = tail + " " + fwd
+            if _SENTENCE_END.search(fwd):
+                break
+    reasserted = tail is not None and _reasserted_after_mention(tail, phrase)
+
     graded_line = line
-    if match_span is not None and not _wall_is_quoted(line, match_span):
-        graded_line = _mask_repudiated_wall_mentions(line, phrase)
+    if match_span is not None and not quoted_wall:
+        graded_line = _mask_repudiated_wall_mentions(
+            line, phrase, match_span=match_span
+        )
         # Clause BOUNDS from the RAW line, sliced out of the masked line
         # (adversarial round 2): the mask blanks whole mention spans, and a
         # span may contain a clause separator — deriving bounds from the
@@ -985,7 +1047,9 @@ def is_cleared(
         clause = _clause_at(line, match_span[0])
     else:
         clause = _clause_containing(line, phrase)
-    if _clause_cleared(clause, graded_line, phrase, match_span=match_span):
+    if not (quoted_wall and reasserted) and _clause_cleared(
+        clause, graded_line, phrase, match_span=match_span
+    ):
         return True
     # Defect 6 fix (v1.21.0): a QUOTED wall is a MENTION, not an assertion —
     # the same distinction that gates the cross-line bridges below. Prose
@@ -999,15 +1063,6 @@ def is_cleared(
     # reproduce.') cannot clear a wall the first clause asserts via a quote.
     # Bare walls keep clause-tight attachment; each match is still graded by
     # its own span (P3), so a bare wall sharing the line reds on its own.
-    # Row 13 fix: every mention-based clear below — the region/predicate
-    # pair AND the cross-line bridges, which are equally quoted-wall-only —
-    # is withheld when the same sentence re-asserts the wall after the
-    # mention ("… is false in staging but true in production"): the region
-    # stops at the contrast conjunction, so without this gate the
-    # reassertion was invisible to the very clears it disqualifies.
-    quoted_wall = match_span is not None and _wall_is_quoted(line, match_span)
-    tail = _text_after_enclosing_quote(line, match_span) if quoted_wall else None
-    reasserted = tail is not None and _reasserted_after_mention(tail, phrase)
     if quoted_wall:
         if not reasserted:
             region = _mention_region(line, match_span)

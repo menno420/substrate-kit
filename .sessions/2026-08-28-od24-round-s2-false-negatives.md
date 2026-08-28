@@ -86,6 +86,26 @@ dispositions, AGENTS.md.
   paren/middot bare-date mention forms (`"…" (2026-08-14), <bare wall>` —
   pre-existing, not a regression) joined the mask in the same round.
 
+## Codex review (kit #587)
+
+- **R1 on head `e54664a`: 5 inline findings (4 P1 · 1 P2) — 5 `[conceded]`,
+  0 survived, each reproduced by execution before its fix and pinned in
+  `TestCodexRound1Pins`:** (1) the reassertion tail missed wrapped lines —
+  now extended under the G1 block boundaries minus the contrast stop;
+  (2) contracted/modal negations (`doesn't hold`, `cannot remain in
+  force`) read as reassertions — negation is now judged over the whole
+  matched span (token lookbehinds could not see phrase scope: the engine
+  backtracks past an excluded token to an unguarded one); (3) the mask
+  blanked single-quoted mentions' own spans (single quotes are not
+  `_WALL_QUOTE`-quoted, so they grade through the bare path) — the span
+  holding the graded occurrence is never masked now; (4) masking an
+  unrelated capability's mention stripped the family evidence and let the
+  orphaned `was superseded` clear a deploy wall — every mask branch now
+  requires family/phrase relation; (5) the first clause-clear's
+  mention-scoped cues bypassed the reassertion gate — the verdict is now
+  computed first and gates that path too. Suite 2183 passed; corpus A/B
+  re-run: 0/0 on both trees.
+
 ## Friction → guard candidates (adjacent shapes, deliberately not fixed here)
 
 Uncovered clearing-grammar shapes found while proving the fixes — all
