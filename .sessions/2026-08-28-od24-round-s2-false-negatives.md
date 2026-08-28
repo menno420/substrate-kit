@@ -1,6 +1,8 @@
 # 2026-08-28 — OD-24 review round session 2: worklist pointer + false negatives 13/17/18
 
-> **Status:** `in-progress` — born-red hold; flip is the deliberate last step.
+> **Status:** `complete` — landed after three Codex rounds (5+6 conceded and
+> fixed; R3's 4 conceded and routed to the fm worklist — the cap's land
+> condition).
 
 - **📊 Model:** fable-5 · high · runtime bugfix
 - **📍 Venue:** cloud-container
@@ -121,6 +123,24 @@ dispositions, AGENTS.md.
   corpus A/B: 0/0 on both trees. **This exhausts the two-re-review cap:
   the next round's outcome lands with any open findings named, per the
   close discipline.**
+
+- **R3 on head `28d4729`: 4 inline findings (2 P1 · 2 P2) — 4 `[conceded —
+  deferred]`, each verified real by execution, NONE fixed in this PR.** The
+  two-re-review cap is spent, and the round tally (5 → 6 → 4) is the
+  measured non-convergence pattern the cap exists for (each round probes
+  the previous round's new grammar). The four, verified 2026-08-28: (1) an
+  `or`-coordinated negated complement pair reads as affirmative — new FP,
+  cheap direction; (2) a later `whereas <other-capability>` clause
+  suppresses the family gate over a real earlier reassertion — FN; (3) the
+  truth-token vocabulary omits direct state predicates (`active`,
+  `enforced`, `operative`, `valid`) — FN; (4) the cross-line tail treats a
+  Markdown table row as prose continuation — new FP. None fires on either
+  live tree (corpus A/B at this head: 0 newly-flagged, 0 newly-cleared).
+  **Routed to the fm worklist as a new row in the same fm batch** — the
+  round's own mechanism for dist defects — rather than looped here.
+- **Flip exemption taken, per the close discipline:** the reviewed SHA is
+  `28d4729` (R3's `Reviewed commit`), and the only commit after it is this
+  card's own close-out and badge flip — nothing reviewable changed.
 
 ## Friction → guard candidates (adjacent shapes, deliberately not fixed here)
 
