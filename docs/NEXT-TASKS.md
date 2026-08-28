@@ -1,99 +1,36 @@
-# substrate-kit — Next tasks (fresh-start, 2026-07-17)
+# substrate-kit — next tasks (superseded: the worklist lives in fleet-manager)
 
-> **Status:** `living-ledger`
+> **Status:** `reference` · superseded as a plan 2026-08-28 (kit #587, the
+> OD-24 review round's session 2)
 >
-> The clean next-task set after the 2026-07-17 fresh-start cleanup, ordered
-> by leverage. Written so a freshly-recreated Project seat boots straight
-> onto real work. Live truth wins: `control/status.md` +
-> [`adopters.md`](adopters.md) are the heartbeat; this file is the plan.
-> Context: the EAP goes read-only **2026-07-21**, the auto-mode classifier
-> froze agent self-merge/arm/ready-flip ~**2026-07-15**, and the owner is
-> **recreating the Projects** — so these tasks assume an owner-live or
-> post-relaunch seat, not the retired autonomous-routine apparatus.
+> **The kit's live worklist is fleet-manager's
+> [`docs/findings/2026-08-13-substrate-kit-v1210-followups.md`](https://github.com/menno420/fleet-manager/blob/main/docs/findings/2026-08-13-substrate-kit-v1210-followups.md)**
+> — 34 rows of dist/template defects found by Codex across the v1.21.0
+> adoption wave, with the fix order restated at its tail (the false
+> negatives lead). The round's running thread is fleet-manager's
+> [`docs/repos/substrate-kit/README.md`](https://github.com/menno420/fleet-manager/blob/main/docs/repos/substrate-kit/README.md).
+> Start any kit session from those two; this file exists so the kit's own
+> tree routes there (it routed nowhere until 2026-08-28 — fm genesis dig,
+> gap #5).
+>
+> Releases are cut only via `release.yml` `workflow_dispatch`, and the
+> adopter rollout is **owner-paced** — fixes land on `main`; a cut is its
+> own owner-said-go session.
 
-## 1 — Distribute v1.18.0 to the ~15 adopter repos (TOP PRIORITY)
+## What the 2026-07-17 plan this file used to carry became
 
-**The headline undelivered artifact.** v1.18.0 is released + verified (tag
-`v1.18.0`, sha256 three-way PASS) and the registry [`adopters.md`](adopters.md)
-already reads v1.18.0 — but **no adopter tree has actually been upgraded**.
-Every adopter is still on v1.17.0-or-older (9 repos at v1.17.0:
-`superbot-next`, `websites`, `superbot-games`, `trading-strategy`,
-`gba-homebrew`, `venture-lab`, `fleet-manager`, `idea-engine`,
-`superbot-mineverse`; `pokemon-mod-lab` at v1.15.0; `superbot` pin-only at
-v1.0.0). The registry-vs-tree gap is exactly what made the old
-"distribution COMPLETE" reading false.
+The previous body (preserved in git history at
+[`8ae4199`](https://github.com/menno420/substrate-kit/blob/8ae419971eddec1b401a54c18daa19aecce38a1d/docs/NEXT-TASKS.md))
+was written for a Project-seat relaunch that never happened and had gone
+actively false — its top priority was distributing **v1.18.0**, while
+v1.21.0 has been cut, published and distributed since 2026-08-13. Its six
+tasks, terminally:
 
-**Mechanism — one upgrade PR per adopter, run IN that adopter's own session**
-(kit-lab has zero write access to adopters, KF-2 — the upgrade must run in a
-session scoped to each adopter repo):
-
-1. In the adopter repo, run the kit's upgrade verb:
-   `python3 dist/bootstrap.py upgrade` (or `bootstrap.py.new upgrade`) — it
-   archive-firsts to `.substrate/backup/`, re-vendors the new
-   `dist/bootstrap.py`, and writes `.substrate/upgrade-report.md`.
-2. Bump that repo's `substrate.config.json` pin `kit_version`
-   1.17.0 → 1.18.0 (or its current pin → 1.18.0).
-3. Open ONE **ready** PR per adopter and land it on green — via a merge call
-   (MCP/REST), by arming native auto-merge, or by letting the server-side
-   merge-on-green workflow land it (see the merge doctrine note in
-   `CONSTITUTION.md` / current-state § Review rhythm).
-
-This is an **upgrade** (re-vendor + pin bump), NOT a `bootstrap render`
-(that only fills interview slots) and NOT a single kit-side version-bump PR.
-Distribution is complete only when every adopter **tree** — not just the
-registry — is at v1.18.0.
-
-## 2 — Propagate the merge-doctrine template fix
-
-The fleet-wide merge doctrine lives in
-`src/engine/templates/CONSTITUTION.md.tmpl`. The correct doctrine (automode
-OFF): **agents open PRs READY and merge their own green PRs directly** — via a
-merge call (MCP/REST), by arming native auto-merge, or by letting the
-server-side merge-on-green workflow land them; a mergeable green PR is never
-routed to the owner, and a one-off merge refusal is venue-specific, not a
-standing wall. That template is vendored into `dist/bootstrap.py`, so **every
-adopter picks up the doctrine automatically on its v1.18.0 upgrade (task #1)** —
-verify the clause is present and accurate in each adopter's regenerated
-`CONSTITUTION.md` after upgrade. The paired scaffolding
-(`auto-merge-enabler.yml` / `auto-merge-disarm.yml`) is intentionally NOT
-deleted here — arming on green is one sanctioned landing path; retire it only if
-a recreated project drops auto-merge entirely (owner call).
-
-> **Flag (2026-07-18):** the template on `main` still carries the earlier
-> FALSE "agents do NOT ready-flip / arm / REST-merge — classifier-denied"
-> wording (lines ~78–83). It is out of scope for this docs-only PR; the
-> `.tmpl` correction ships in its own PR.
-
-## 3 — Fix the kit's own self-pin drift — ✅ DONE (PR #438, 2026-07-17)
-
-Resolved by merged PR #438: `substrate.config.json` `kit_version` now tracks
-the release (bumped `1.0.0` → `1.18.0`), and `scripts/cut_release.py` writes it
-as a third synced version-home so it advances at every cut. `currency` no longer
-emits a self-`⚠️ DRIFT` row — [`adopters.md`](adopters.md) reads substrate-kit as
-`current`. Downstream reconciliation (registry regen) landed in PR #440.
-
-## 4 — Reconcile or retire `current-state.md`
-
-The 2026-07-17 fresh-start block at the top of
-[`current-state.md`](current-state.md) now carries the true state, but the
-dated sections below it (EAP-console gate stack P4/P5/P10/P11/P13, the
-2026-07-12 snapshot) are historical. Either finish reconciling them to
-reality or formally retire `current-state.md` in favour of
-`control/status.md` + [`adopters.md`](adopters.md) as the live ledgers, so a
-recreated seat boots on true state.
-
-## 5 — Curate the overnight veto menu into the backlog
-
-[`planning/2026-07-16-overnight-veto-menu.md`](planning/2026-07-16-overnight-veto-menu.md)
-is a 23-proposal owner veto menu drafted to become the next clean task set.
-Get owner vetoes, then promote the buildable-S survivors (dogfood
-branch-sweep of spent `claude/*` refs, adopters-staleness self-signal
-advisory, landing-protocol doctrine consolidation, planning-doc index,
-prune the four ~530B 2026-07-06/07 rebuild briefs).
-
-## 6 — Advance the grounded-skills measurement program
-
-[`planning/2026-07-12-grounded-skills-program.md`](planning/2026-07-12-grounded-skills-program.md)
-— harness merged (#386), protocol pre-registered, measurement window
-~2026-07-19..26. The kit's next genuine capability bet, independent of the
-retired autonomy apparatus.
+| task | state |
+|---|---|
+| 1 — distribute v1.18.0 | spent — superseded by the v1.21.0 wave (fm #853–#858, 2026-08-13/14) |
+| 2 — merge-doctrine template fix | shipped — `src/engine/templates/CONSTITUTION.md.tmpl:113-116` carries the corrected doctrine and repudiates the old wall (verified against the tree, 2026-08-28) |
+| 3 — self-pin drift | done per the old body's own record (kit #438) |
+| 4 — reconcile or retire `current-state.md` | **still open** — `docs/current-state.md:31` still says v1.20.2 (verified 2026-08-28); belongs to the review round |
+| 5 — overnight veto menu | stale, owner-gated then and now; the menu is `planning/2026-07-16-overnight-veto-menu.md` |
+| 6 — grounded-skills measurement | ran 2026-07-19 — the fleet-grounding self-measurement returned a negative (12%→10%, fm genesis dig §4); the program did not continue |

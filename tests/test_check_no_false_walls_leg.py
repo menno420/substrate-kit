@@ -1187,3 +1187,333 @@ class TestFalseWallRidesGenericAllowlist:
         rc = cmd_check(tmp_path, strict=True)
         out = capsys.readouterr().out
         assert rc == 1 and "[false-wall:" in out
+
+
+# ── Post-v1.21.0: the false-negative family (fm worklist rows 13/17/18) ───────
+
+
+class TestPostV1210FalseNegatives:
+    """Named pins for the false-negative family of fleet-manager's v1.21.0
+    follow-up worklist (``docs/findings/2026-08-13-substrate-kit-v1210-followups.md``,
+    rows 13, 17, 18 — the top of its restated fix order). Each red case below
+    was reproduced returning [] against the PUBLISHED v1.21.0 asset
+    (sha256 ``8807a00e…``) before the fix; the paired green cases pin the
+    legitimate clears the fixes must not take with them."""
+
+    # ── Row 13: qualified reassertion after a mention predicate ──
+
+    def test_row13_qualified_reassertion_stays_red(self) -> None:
+        # v1.21.0: the anchored mention predicate matched `rule is false` and
+        # never read the contrast half — a standing wall stayed green.
+        assert scan_text(
+            'The "agents cannot merge" rule is false in staging '
+            "but true in production.\n"
+        )
+
+    def test_row13_reassertion_gates_region_cues_too(self) -> None:
+        # The same sentence-level reassertion withholds the widened
+        # mention-region clear, not only the anchored predicate.
+        assert scan_text(
+            'The "agents cannot merge" rule is wrong in staging '
+            "but still applies in production.\n"
+        )
+
+    def test_row13_plain_repudiation_still_clears(self) -> None:
+        # Defect 6's legitimate case is untouched: predicate chain over `and`.
+        assert scan_text(
+            'The "agents cannot merge" rule is false and no longer applies.\n'
+        ) == []
+
+    def test_row13_reassertion_in_next_sentence_does_not_gate(self) -> None:
+        # The reassertion gate is same-sentence only — a following sentence
+        # asserting an unrelated truth must not un-clear the mention. (The
+        # follow-on sentence here names no wall and no capability.)
+        assert scan_text(
+            'The "agents cannot merge" rule is false. '
+            "But the backup rule is still true for exports.\n"
+        ) == []
+
+    # ── Row 17: mention-attached markers must not clear a bare reassertion ──
+
+    def test_row17_false_label_bare_reassertion_reds(self) -> None:
+        # v1.21.0: _FALSE_LABEL read the raw clause, so the mention's FALSE
+        # label cleared the bare re-assertion sharing the clause.
+        hits = scan_text('FALSE "agents cannot merge", agents cannot merge\n')
+        assert [h.line for h in hits] == [1]
+
+    def test_row17_dated_supersession_bare_reassertion_reds(self) -> None:
+        # v1.21.0: _DATED_LINE read the raw clause — same hole, dated marker.
+        assert scan_text(
+            '"agents cannot merge" SUPERSEDED 2026-08-14, agents cannot merge\n'
+        )
+        assert scan_text(
+            '"agents cannot merge" LAST-VERIFIED 2026-08-14, agents cannot merge\n'
+        )
+
+    def test_row17_mention_only_forms_still_clear(self) -> None:
+        # The mention-scoped clears survive: a FALSE-labelled or dated QUOTED
+        # mention with no bare reassertion stays green.
+        assert scan_text('FALSE "agents cannot merge" — corrected 2026-07-18.\n') == []
+        assert scan_text('"agents cannot merge" SUPERSEDED 2026-08-14.\n') == []
+
+    def test_row17_genuine_dated_record_still_clears(self) -> None:
+        # A dated append-log bullet is still a record, not a wall.
+        assert scan_text(
+            "- 2026-07-16 · agents cannot merge over the proxied path today\n"
+        ) == []
+
+    # ── Row 18: the digest-fence exemption fails CLOSED ──
+
+    _UNTERMINATED = (
+        "<!-- substrate-kit:skills-digest BEGIN v=1 -->\n"
+        "agents cannot merge\n"
+    )
+    _TERMINATED = (
+        "<!-- substrate-kit:skills-digest BEGIN v=1 -->\n"
+        "agents cannot merge\n"
+        "<!-- substrate-kit:skills-digest END -->\n"
+    )
+
+    def test_row18_unterminated_begin_fence_scans(self) -> None:
+        # v1.21.0: a BEGIN with no END exempted every remaining line of the
+        # render path — fails open (merge conflict, hand edit, forged marker).
+        hits = scan_text(self._UNTERMINATED, is_render_path=True)
+        assert [h.line for h in hits] == [2]
+
+    def test_row18_terminated_fence_still_exempts(self) -> None:
+        assert scan_text(self._TERMINATED, is_render_path=True) == []
+
+    def test_row18_second_terminated_fence_still_exempts_after_orphan(self) -> None:
+        # An orphaned first BEGIN scans its region; a later well-formed pair
+        # keeps its exemption.
+        text = (
+            "<!-- substrate-kit:skills-digest BEGIN v=1 -->\n"
+            "agents cannot merge\n"
+            "<!-- substrate-kit:walls-digest BEGIN v=1 -->\n"
+            "agents cannot deploy\n"
+            "<!-- substrate-kit:walls-digest END -->\n"
+        )
+        hits = scan_text(text, is_render_path=True)
+        assert [h.line for h in hits] == [2]
+
+    def test_row18_fence_still_ignored_off_render_path(self) -> None:
+        # FIX B unchanged: fences exempt nothing on a normal doc.
+        assert scan_text(self._TERMINATED, is_render_path=False)
+
+
+# ── Round-2 hardening: adversarial-verification counterexamples ───────────────
+
+
+class TestRound2AdversarialHardening:
+    """Pins from the pre-push adversarial verification of the row-13/17/18
+    fixes (four independent verifier lanes executing counterexamples against
+    the published v1.21.0 asset and the fixed engine). Each red case here
+    either regressed under the first cut of the fixes or was a hole the
+    lanes proved by execution; each green case is prose the first cut
+    wrongly redded."""
+
+    # ── Row 13's gate, negation- and family-aware ──
+
+    def test_double_repudiation_is_not_a_reassertion(self) -> None:
+        # 'but it no longer holds' is a SECOND repudiation — the first cut
+        # read 'holds' as a truth token and redded a doubly-cleared mention.
+        assert scan_text(
+            'The "agents cannot merge" rule is false, '
+            "but it no longer holds anywhere.\n"
+        ) == []
+
+    def test_family_disjoint_affirmation_does_not_gate(self) -> None:
+        # An affirmation about a DIFFERENT capability's wall is not this
+        # mention's reassertion (mirrors the file's other family gates).
+        assert scan_text(
+            'The "agents cannot merge" rule is false and no longer applies, '
+            "but the deploy wall remains.\n"
+        ) == []
+
+    def test_ellipsis_and_abbreviation_do_not_end_the_sentence(self) -> None:
+        # ASCII '...' and dotted abbreviations kept the reassertion out of
+        # the inspected sentence — both now red.
+        assert scan_text(
+            'The "agents cannot merge" rule is false... but true in production.\n'
+        )
+        assert scan_text(
+            'The "agents cannot merge" rule is false, e.g. in staging, '
+            "but true in production.\n"
+        )
+
+    def test_reasserted_mention_cannot_clear_via_lookback_bridge(self) -> None:
+        # The cross-line bridges are mention clears too — a reasserted
+        # quoted wall must not clear off a previous line's cue.
+        text = (
+            "That claim no longer applies and the\n"
+            '"agents cannot merge" is false in staging but true in production.\n'
+        )
+        assert [h.line for h in scan_text(text)] == [2]
+
+    # ── Row 17's mask: raw-line clause bounds + is-a-wall gate ──
+
+    def test_masked_separator_cannot_merge_clauses(self) -> None:
+        # The mention span contains a clause separator; blanking it must not
+        # hand the far clause's cue to the bare wall (red on v1.21.0, and
+        # red again after the bounds fix).
+        assert scan_text(
+            'agents cannot merge queue items "agents cannot merge" — '
+            "SUPERSEDED 2026-08-14, does not reproduce anyway.\n"
+        )
+        assert scan_text(
+            'the old "agents cannot merge" was based on a false and '
+            "long-retired wall, agents cannot merge\n"
+        )
+
+    def test_dated_mask_requires_the_quote_to_be_a_wall(self) -> None:
+        # A quoted string that merely NAMES the capability is the wall's own
+        # dated record — masking it un-dated a genuine record.
+        assert scan_text(
+            'agents cannot push to the "push mirror" LAST-VERIFIED 2026-08-14.\n'
+        ) == []
+        assert scan_text(
+            'verified 2026-08-14 "merge blocked" agents cannot merge draft PRs\n'
+        ) == []
+
+    def test_paren_and_middot_date_mentions_join_the_mask(self) -> None:
+        # _DATED_LINE's bare paren/middot date forms cleared a bare
+        # reassertion exactly like the SUPERSEDED shape (no clause-separator
+        # accident saves these).
+        assert scan_text('"agents cannot merge" (2026-08-14), agents cannot merge\n')
+        assert scan_text('"agents cannot merge" · 2026-08-14, agents cannot merge\n')
+
+    # ── Row 18: orphan-region content never establishes document state ──
+
+    def test_orphan_region_heading_cannot_exempt_later_prose(self) -> None:
+        text = (
+            "## Live rules\n"
+            "<!-- substrate-kit:skills-digest BEGIN v=1 -->\n"
+            "## Append log\n"
+            "<!-- substrate-kit:walls-digest BEGIN v=1 -->\n"
+            "generated bullet.\n"
+            "<!-- substrate-kit:walls-digest END -->\n"
+            "agents cannot merge pull requests.\n"
+        )
+        hits = scan_text(text, is_render_path=True)
+        assert [h.line for h in hits] == [7]
+
+
+# ── Codex round 1 on kit #587: five conceded findings, each pinned ────────────
+
+
+class TestCodexRound1Pins:
+    """Codex R1 on the false-negative-family PR (kit #587, head e54664a)
+    returned five findings — four P1, one P2 — every one reproduced by
+    execution before its fix. Red cases are false negatives the review
+    closed; green cases are regressions of the first two cuts it caught."""
+
+    def test_f1_wrapped_reassertion_reds(self) -> None:
+        # The reassertion tail now extends across a wrapped line.
+        text = (
+            'The "agents cannot merge" rule is false in staging but\n'
+            "true in production.\n"
+        )
+        assert scan_text(text)
+
+    def test_f2_contracted_and_modal_negations_clear(self) -> None:
+        # "doesn't hold" / "cannot remain in force" are second repudiations;
+        # negation scope is judged over the whole matched span, not by
+        # token lookbehinds (the engine backtracks past an excluded token
+        # to an unguarded one).
+        assert scan_text(
+            'The "agents cannot merge" rule is false, '
+            "but it doesn't hold anywhere.\n"
+        ) == []
+        assert scan_text(
+            'The "agents cannot merge" rule is false, '
+            "but it cannot remain in force.\n"
+        ) == []
+
+    def test_f3_single_quoted_mentions_keep_clearing(self) -> None:
+        # A single-quoted mention grades through the bare path (_WALL_QUOTE
+        # excludes single quotes); the mask must never blank the span
+        # holding the occurrence being graded.
+        assert scan_text("FALSE 'agents cannot merge' — corrected 2026-07-18.\n") == []
+        assert scan_text("'agents cannot merge' SUPERSEDED 2026-08-14.\n") == []
+        # …while a bare reassertion OUTSIDE the single-quoted mention reds.
+        assert scan_text("FALSE 'agents cannot merge', agents cannot merge\n")
+
+    def test_f4_unrelated_mention_stays_unmasked(self) -> None:
+        # Masking a merge mention while grading a DEPLOY wall stripped the
+        # family evidence and let the orphaned `was superseded` clear it;
+        # the mask now requires family/phrase relation on every branch.
+        assert scan_text(
+            'LAST-VERIFIED 2026-08-14: "agents cannot merge" was superseded, '
+            "sessions cannot deploy\n"
+        )
+
+    def test_f5_first_clause_clear_is_reassertion_gated(self) -> None:
+        # Mention-scoped cues at the FIRST clause-clear (cue-in-clause,
+        # FALSE-covers) bypassed the row-13 gate.
+        assert scan_text(
+            'The "agents cannot merge" was superseded in staging '
+            "but remains in production.\n"
+        )
+        assert scan_text(
+            'FALSE "agents cannot merge" in staging but true in production.\n'
+        )
+
+
+# ── Codex round 2 on kit #587: six conceded findings, each pinned ─────────────
+
+
+class TestCodexRound2Pins:
+    """Codex R2 (head 6dacdaf) returned six findings — five P1, one P2 —
+    every one reproduced by execution before its fix."""
+
+    def test_negation_sealed_by_coordination_reasserts(self) -> None:
+        # `not retired AND remains in force` — the coordination seals the
+        # negation's scope; the reassertion stands and the wall reds.
+        assert scan_text(
+            'The "agents cannot merge" rule is false in staging, '
+            "but it is not retired and remains in force in production.\n"
+        )
+
+    def test_single_quoted_mention_clears_are_reassertion_gated(self) -> None:
+        # A single-quoted mention grades bare (_WALL_QUOTE excludes single
+        # quotes) — its restored clearing path must not bypass the gate.
+        assert scan_text(
+            "FALSE 'agents cannot merge' in staging but true in production.\n"
+        )
+        assert scan_text(
+            "'agents cannot merge' was superseded in staging "
+            "but remains in production.\n"
+        )
+
+    def test_fences_pair_by_marker_name(self) -> None:
+        # A walls-digest END does not terminate a skills-digest BEGIN.
+        text = (
+            "<!-- substrate-kit:skills-digest BEGIN v=1 -->\n"
+            "agents cannot merge\n"
+            "<!-- substrate-kit:walls-digest END -->\n"
+        )
+        assert [h.line for h in scan_text(text, is_render_path=True)] == [2]
+
+    def test_orphan_region_clears_inherited_historical_state(self) -> None:
+        # A pre-fence historical heading must not exempt orphaned lines.
+        text = (
+            "## Append log\n"
+            "<!-- substrate-kit:skills-digest BEGIN v=1 -->\n"
+            "## Live rules\n"
+            "agents cannot merge\n"
+        )
+        assert [h.line for h in scan_text(text, is_render_path=True)] == [4]
+
+    def test_family_check_reads_the_whole_contrast_segment(self) -> None:
+        # The capability may be named after the truth token — "another wall
+        # remains in force for deploys" is not this wall's reassertion.
+        assert scan_text(
+            'The "agents cannot merge" rule is false and no longer applies, '
+            "but another wall remains in force for deploys.\n"
+        ) == []
+
+    def test_nevertheless_and_nonetheless_are_contrasts(self) -> None:
+        assert scan_text(
+            'The "agents cannot merge" rule is false in staging; '
+            "nevertheless, it remains in force in production.\n"
+        )
