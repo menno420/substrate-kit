@@ -13,7 +13,9 @@
 > tree routes there (it routed nowhere until 2026-08-28 — fm genesis dig,
 > gap #5).
 >
-> Releases are cut only via `release.yml` `workflow_dispatch`, and the
+> Releases publish via `release.yml` — two supported triggers (its header):
+> a hand-pushed `v*` tag (owner-side canonical) or `workflow_dispatch`, the
+> only **agent-runnable** path (the session git proxy 403s tag pushes). The
 > adopter rollout is **owner-paced** — fixes land on `main`; a cut is its
 > own owner-said-go session.
 
@@ -31,6 +33,6 @@ tasks, terminally:
 | 1 — distribute v1.18.0 | spent — superseded by the v1.21.0 wave (fm #853–#858, 2026-08-13/14) |
 | 2 — merge-doctrine template fix | shipped — `src/engine/templates/CONSTITUTION.md.tmpl:113-116` carries the corrected doctrine and repudiates the old wall (verified against the tree, 2026-08-28) |
 | 3 — self-pin drift | done per the old body's own record (kit #438) |
-| 4 — reconcile or retire `current-state.md` | **still open** — `docs/current-state.md:31` still says v1.20.2 (verified 2026-08-28); belongs to the review round |
+| 4 — reconcile or retire `current-state.md` | **reconciled 2026-08-28** (kit #588, the round's session 3) — the dated reconcile block at the top of `docs/current-state.md` is the current truth; the old headline's v1.20.2/#552 claims are corrected in place |
 | 5 — overnight veto menu | stale, owner-gated then and now; the menu is `planning/2026-07-16-overnight-veto-menu.md` |
 | 6 — grounded-skills measurement | ran 2026-07-19 — the fleet-grounding self-measurement returned a negative (12%→10%, fm genesis dig §4); the program did not continue |
