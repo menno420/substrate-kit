@@ -384,7 +384,18 @@ def build() -> str:
     lines.extend(body)
     lines.append("")
     lines.append("_TEMPLATES = {")
-    for tpath in sorted(TEMPLATES_ROOT.glob("*")):
+    # Explicit string key, not native Path comparison: WindowsPath sorts
+    # case-insensitively (Windows paths are case-insensitive) while
+    # PosixPath sorts by raw ordinal bytes — the same 26 filenames land in
+    # a genuinely different order per OS, so a build committed from Windows
+    # never matches a CI-fresh build on Linux even though every individual
+    # template's content is byte-identical. Found 2026-09-01: a Windows
+    # build passed every local check (including a byte-for-byte compare
+    # against a fresh in-place rebuild) while failing
+    # test_committed_bootstrap_is_current on Linux CI, because the local
+    # check was comparing Windows-order against Windows-order, and CI
+    # compares Windows-order-committed against Linux-order-fresh.
+    for tpath in sorted(TEMPLATES_ROOT.glob("*"), key=lambda p: p.name):
         lines.append(f"    {tpath.name!r}: {tpath.read_text(encoding='utf-8')!r},")
     lines.append("}")
     lines.append("")

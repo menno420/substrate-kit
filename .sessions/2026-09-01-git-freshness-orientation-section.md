@@ -57,20 +57,43 @@ before reading anything else whether its working tree matches origin.
   silent with no remote configured, and present even at `observe`/minimal
   depth.
 
-## A mistake this card corrects
+## Two mistakes this card corrects
 
-First push forgot `python3 src/build_bootstrap.py` — edited `src/engine/hooks/session_start.py`
-without regenerating `dist/bootstrap.py`, which failed
-`test_committed_bootstrap_is_current` in CI (kit-quality, and its
-"Cold-adoption smoke" alias job that reports the same result verbatim — one
-root cause, not two). Rebuilt and committed; local re-run confirms clean
-past that point. Also found and ruled out: `test_module_order_covers_every_engine_module`
-fails identically on an unmodified checkout (confirmed via `git stash`) — a
-Windows path-separator artifact (`ENGINE_ROOT.rglob` yields backslash paths
-locally, `MODULE_ORDER` is written forward-slash; their real CI runs on
-Linux where this wouldn't reproduce), same class as the pre-existing
-`test_handoff_pushes_newest_card_with_status_and_slots` failure already
-noted below. Neither is caused by or fixed by this PR.
+**First:** forgot `python3 src/build_bootstrap.py` — edited
+`src/engine/hooks/session_start.py` without regenerating `dist/bootstrap.py`,
+which failed `test_committed_bootstrap_is_current` in CI (kit-quality, and
+its "Cold-adoption smoke" alias job that reports the same result verbatim —
+one root cause, not two). Rebuilt and committed.
+
+**Second, and the one actually worth keeping:** the rebuild *still* failed
+the same test on CI even though it matched a fresh in-place rebuild
+byte-for-byte locally. Root cause: `src/build_bootstrap.py`'s template
+embedding did `sorted(TEMPLATES_ROOT.glob("*"))` — sorting `Path` objects
+natively, which is **platform-dependent**: `WindowsPath` compares
+case-insensitively (Windows filesystems are case-insensitive), `PosixPath`
+compares by raw ordinal bytes. The same 26 template filenames land in a
+genuinely different order per OS (confirmed directly:
+`sorted(Path(n) for n in names)` vs `sorted(PurePosixPath(n) for n in
+names)` on the same 6-name sample diverge at the 2nd element). A `dist/`
+built on Windows can therefore never match a CI-fresh Linux build, even
+though every individual template's content is byte-identical and a
+same-OS rebuild check would report clean — which is exactly what happened
+twice locally before this was found. Fixed with an explicit string sort key
+(`key=lambda p: p.name`), which is what should have been there — ordinal
+string comparison is the one sort that behaves the same on every OS.
+Rebuilt after the fix; `test_committed_bootstrap_is_current` now passes.
+
+Also found and ruled out, unrelated to either mistake above:
+`test_module_order_covers_every_engine_module` fails identically on an
+unmodified checkout (confirmed via `git stash`) — a *different* Windows
+path artifact (`ENGINE_ROOT.rglob` yields backslash-separated paths
+locally via `str(p.relative_to(...))`, `MODULE_ORDER` is written
+forward-slash; a set-membership test, not a sort, and their real CI runs on
+Linux where this wouldn't reproduce), same class of bug as the sort-order
+one but in a *test*, not in shipped code — not fixed here, flagged as a
+worthwhile follow-up. Same status for the pre-existing
+`test_handoff_pushes_newest_card_with_status_and_slots` failure noted
+below. Neither blocks this PR's actual (Linux) CI.
 
 ## Why this PR is not on auto-merge
 
