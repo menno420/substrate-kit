@@ -57,6 +57,21 @@ before reading anything else whether its working tree matches origin.
   silent with no remote configured, and present even at `observe`/minimal
   depth.
 
+## A mistake this card corrects
+
+First push forgot `python3 src/build_bootstrap.py` — edited `src/engine/hooks/session_start.py`
+without regenerating `dist/bootstrap.py`, which failed
+`test_committed_bootstrap_is_current` in CI (kit-quality, and its
+"Cold-adoption smoke" alias job that reports the same result verbatim — one
+root cause, not two). Rebuilt and committed; local re-run confirms clean
+past that point. Also found and ruled out: `test_module_order_covers_every_engine_module`
+fails identically on an unmodified checkout (confirmed via `git stash`) — a
+Windows path-separator artifact (`ENGINE_ROOT.rglob` yields backslash paths
+locally, `MODULE_ORDER` is written forward-slash; their real CI runs on
+Linux where this wouldn't reproduce), same class as the pre-existing
+`test_handoff_pushes_newest_card_with_status_and_slots` failure already
+noted below. Neither is caused by or fixed by this PR.
+
 ## Why this PR is not on auto-merge
 
 Unlike a same-repo consolidation PR the owner scoped directly, this changes
