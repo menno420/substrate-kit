@@ -57,7 +57,7 @@ before reading anything else whether its working tree matches origin.
   silent with no remote configured, and present even at `observe`/minimal
   depth.
 
-## Two mistakes this card corrects
+## Three mistakes this card corrects
 
 **First:** forgot `python3 src/build_bootstrap.py` — edited
 `src/engine/hooks/session_start.py` without regenerating `dist/bootstrap.py`,
@@ -83,7 +83,18 @@ twice locally before this was found. Fixed with an explicit string sort key
 string comparison is the one sort that behaves the same on every OS.
 Rebuilt after the fix; `test_committed_bootstrap_is_current` now passes.
 
-Also found and ruled out, unrelated to either mistake above:
+**Third:** the section as first written called `subprocess.run` directly,
+which the "Engine lint bans (§3.2 item 3 — no print/assert/subprocess)" CI
+step (`ruff check src/engine/`, `TID251`) correctly failed — I'd read
+`git_truth.py`'s own carve-out comment earlier in this same session and
+still didn't apply it to my own code the first time. Refactored to the
+sanctioned seam: `from engine.lib.git_truth import make_runner`, one
+`run = make_runner(root, timeout=...)`, four `run([...])` calls instead of
+four raw `subprocess.run(...)` calls — the exact pattern `stop_check.py`
+already uses for the same reason (ORDER 022's carve-out). `ruff check
+src/engine/` now passes; rebuilt again.
+
+Also found and ruled out, unrelated to any mistake above:
 `test_module_order_covers_every_engine_module` fails identically on an
 unmodified checkout (confirmed via `git stash`) — a *different* Windows
 path artifact (`ENGINE_ROOT.rglob` yields backslash-separated paths

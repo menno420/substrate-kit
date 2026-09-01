@@ -30,13 +30,13 @@ silently-dropped section rather than a slow session start.
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 from typing import Any
 
 from engine.economy.engine import economy_gauges
 from engine.interview.interview import pending_questions, session_questions
 from engine.lib.config import Config
+from engine.lib.git_truth import make_runner
 from engine.lib.modes import (
     active_practices,
     orientation_depth,
@@ -63,12 +63,11 @@ _ORI_STANDARD_LESSON_CAP = 3
 # proposal (11) — observe imposes nothing else.
 _ORI_MINIMAL_SECTIONS = frozenset({1, 2, 3, 7, 11})
 
-# Bounds every git subprocess call in the freshness section — an unreachable
-# or slow remote must degrade to a silently-dropped section, never a slow
-# session start (fetch gets longer, everything else is a local git-metadata
-# read and stays fast).
+# Bounds every call the freshness section's make_runner() issues (git_truth
+# applies one timeout per runner instance to every call it makes) — an
+# unreachable or slow remote must degrade to a silently-dropped section,
+# never a slow session start.
 _GIT_FETCH_TIMEOUT_S = 8
-_GIT_LOCAL_TIMEOUT_S = 3
 
 
 def _ori_status_header(state: dict[str, Any], config: Config) -> str:
@@ -130,41 +129,27 @@ def _ori_git_freshness(root: Path) -> str:
     if not (root / ".git").exists():
         return ""
     try:
-        remotes = subprocess.run(
-            ["git", "remote"],
-            cwd=root, capture_output=True, text=True,
-            timeout=_GIT_LOCAL_TIMEOUT_S, check=False,
-        )
-        if remotes.returncode != 0 or not remotes.stdout.strip():
+        run = make_runner(root, timeout=_GIT_FETCH_TIMEOUT_S)
+
+        rc, out, _err = run(["remote"])
+        if rc != 0 or not out.strip():
             return ""
-        remote = remotes.stdout.splitlines()[0].strip()
+        remote = out.splitlines()[0].strip()
 
-        branch = subprocess.run(
-            ["git", "symbolic-ref", "--short", "HEAD"],
-            cwd=root, capture_output=True, text=True,
-            timeout=_GIT_LOCAL_TIMEOUT_S, check=False,
-        )
-        if branch.returncode != 0 or not branch.stdout.strip():
+        rc, out, _err = run(["symbolic-ref", "--short", "HEAD"])
+        if rc != 0 or not out.strip():
             return ""  # detached HEAD — skip rather than guess a branch
-        branch_name = branch.stdout.strip()
+        branch_name = out.strip()
 
-        fetch = subprocess.run(
-            ["git", "fetch", "--quiet", remote, branch_name],
-            cwd=root, capture_output=True, text=True,
-            timeout=_GIT_FETCH_TIMEOUT_S, check=False,
-        )
-        if fetch.returncode != 0:
+        rc, _out, _err = run(["fetch", "--quiet", remote, branch_name])
+        if rc != 0:
             return ""  # offline / unreachable / no auth — fail open
 
         upstream = f"{remote}/{branch_name}"
-        counts = subprocess.run(
-            ["git", "rev-list", "--left-right", "--count", f"HEAD...{upstream}"],
-            cwd=root, capture_output=True, text=True,
-            timeout=_GIT_LOCAL_TIMEOUT_S, check=False,
-        )
-        if counts.returncode != 0:
+        rc, out, _err = run(["rev-list", "--left-right", "--count", f"HEAD...{upstream}"])
+        if rc != 0:
             return ""  # no such upstream ref — nothing to compare against
-        parts = counts.stdout.split()
+        parts = out.split()
         if len(parts) != 2:
             return ""
         ahead, behind = int(parts[0]), int(parts[1])
@@ -185,8 +170,13 @@ def _ori_git_freshness(root: Path) -> str:
             "`git pull` (or re-clone, if local changes make a pull awkward) "
             "before treating file contents as the repo's current state."
         )
-    except (OSError, subprocess.SubprocessError, ValueError):
-        return ""  # fail open — a freshness check must never block a session
+    except (OSError, ValueError):
+        # fail open — a freshness check must never block a session. Git
+        # process failures already degrade to rc != 0 inside make_runner
+        # (subprocess errors caught there, never raised here); this catches
+        # what's left: a filesystem race on the `.git` check, or a
+        # malformed `rev-list --left-right --count` output.
+        return ""
 
 
 def _ori_stance(state: dict[str, Any]) -> str:
