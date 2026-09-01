@@ -1,9 +1,40 @@
 """Tests for the SessionStart orientation composer (plan §5.B, Lane B7)."""
 
+import subprocess
+
 from engine.hooks.session_start import compose_orientation
 from engine.lib.config import Config, save_config
 from engine.lib.state import JsonStateBackend, default_state
 from engine.loop.reflections import REFLECTIONS_FILENAME, add_reflection
+
+
+def _git(args, cwd):
+    subprocess.run(
+        ["git", *args], cwd=cwd, check=True, capture_output=True, text=True,
+    )
+
+
+def _git_identity(cwd):
+    _git(["config", "user.email", "test@example.com"], cwd)
+    _git(["config", "user.name", "Test"], cwd)
+
+
+def _bare_remote_with_clone(tmp_path, name):
+    """Return (remote_path, clone_path) — an initialized bare repo with one
+    commit already pushed, and a fresh clone of it."""
+    remote = tmp_path / f"{name}-remote.git"
+    _git(["init", "--quiet", "--bare", "-b", "main", str(remote)], tmp_path)
+    seed = tmp_path / f"{name}-seed"
+    _git(["clone", "--quiet", str(remote), str(seed)], tmp_path)
+    _git_identity(seed)
+    (seed / "f.txt").write_text("0\n", encoding="utf-8")
+    _git(["add", "."], seed)
+    _git(["commit", "--quiet", "-m", "seed"], seed)
+    _git(["push", "--quiet", "origin", "main"], seed)
+    clone = tmp_path / f"{name}-clone"
+    _git(["clone", "--quiet", str(remote), str(clone)], tmp_path)
+    _git_identity(clone)
+    return remote, seed, clone
 
 
 def _init(root, *, mode="guided", config=None, **overrides):
@@ -333,3 +364,78 @@ def test_empty_backend_fails_open(tmp_path):
     backend = JsonStateBackend(tmp_path / config.state_dir / "state.json")
     text = compose_orientation(tmp_path, config, backend)
     assert "# Session orientation" in text
+
+
+# ---------------------------------------------------------------------------
+# Git-freshness section
+# ---------------------------------------------------------------------------
+
+
+def test_git_freshness_silent_outside_a_repo(tmp_path):
+    # No .git directory at all — every other test above relies on this too;
+    # made explicit here so a regression fails with a direct message.
+    config, backend = _init(tmp_path)
+    text = compose_orientation(tmp_path, config, backend)
+    assert "Clone freshness" not in text
+
+
+def test_git_freshness_silent_when_in_sync(tmp_path):
+    _remote, _seed, clone = _bare_remote_with_clone(tmp_path, "sync")
+    config, backend = _init(clone)
+    text = compose_orientation(clone, config, backend)
+    assert "Clone freshness" not in text
+
+
+def test_git_freshness_reports_behind(tmp_path):
+    _remote, seed, clone = _bare_remote_with_clone(tmp_path, "behind")
+    # A second push lands on the remote after `clone` was made.
+    (seed / "f.txt").write_text("1\n", encoding="utf-8")
+    _git(["add", "."], seed)
+    _git(["commit", "--quiet", "-m", "second"], seed)
+    _git(["push", "--quiet", "origin", "main"], seed)
+
+    config, backend = _init(clone)
+    text = compose_orientation(clone, config, backend)
+    assert "Clone freshness" in text
+    assert "1 commit behind" in text
+    assert "origin/main" in text
+    assert "not current before this line ran" in text
+
+
+def test_git_freshness_reports_ahead(tmp_path):
+    _remote, _seed, clone = _bare_remote_with_clone(tmp_path, "ahead")
+    (clone / "g.txt").write_text("local\n", encoding="utf-8")
+    _git(["add", "."], clone)
+    _git(["commit", "--quiet", "-m", "unpushed local work"], clone)
+
+    config, backend = _init(clone)
+    text = compose_orientation(clone, config, backend)
+    assert "Clone freshness" in text
+    assert "1 commit ahead" in text
+    assert "not yet pushed" in text
+
+
+def test_git_freshness_silent_with_no_remote(tmp_path):
+    repo = tmp_path / "solo"
+    repo.mkdir()
+    _git(["init", "--quiet", "-b", "main", str(repo)], tmp_path)
+    _git_identity(repo)
+    (repo / "f.txt").write_text("0\n", encoding="utf-8")
+    _git(["add", "."], repo)
+    _git(["commit", "--quiet", "-m", "solo"], repo)
+
+    config, backend = _init(repo)
+    text = compose_orientation(repo, config, backend)
+    assert "Clone freshness" not in text
+
+
+def test_git_freshness_included_at_minimal_depth(tmp_path):
+    _remote, seed, clone = _bare_remote_with_clone(tmp_path, "minimal")
+    (seed / "f.txt").write_text("1\n", encoding="utf-8")
+    _git(["add", "."], seed)
+    _git(["commit", "--quiet", "-m", "second"], seed)
+    _git(["push", "--quiet", "origin", "main"], seed)
+
+    config, backend = _init(clone, mode="observe")
+    text = compose_orientation(clone, config, backend)
+    assert "Clone freshness" in text
