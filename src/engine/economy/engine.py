@@ -20,7 +20,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any, NamedTuple
 
-from engine.checks.check_orientation_budget import _ob_boot_paths
+from engine.checks.check_orientation_budget import orientation_boot_paths
 from engine.lib.atomicio import atomic_write_text
 from engine.lib.config import Config
 
@@ -171,11 +171,11 @@ def _eco_route_budget(root: Path, config: Config) -> tuple[int, int]:
     """Return (value, cap) for the boot-route word budget.
 
     Value sums word counts over the boot set resolved by the orientation
-    checker's own ``_ob_boot_paths`` (ONE resolver for both consumers — the
+    checker's own ``orientation_boot_paths`` (ONE resolver for every consumer — the
     gauge once resolved everything under docs_root and undercounted
     root-level boot docs to 0); cap is ``orientation["budget_words"]``.
     """
-    value = sum(_eco_wc(path) for path in _ob_boot_paths(root, config))
+    value = sum(_eco_wc(path) for path in orientation_boot_paths(root, config))
     cap = int(config.orientation.get("budget_words", 7000))
     return value, cap
 

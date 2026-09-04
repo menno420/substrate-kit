@@ -37,6 +37,7 @@ from engine.economy.engine import economy_gauges
 from engine.interview.interview import pending_questions, session_questions
 from engine.lib.config import Config
 from engine.lib.git_truth import make_runner
+from engine.lib.profiles import profile_for_config
 from engine.lib.modes import (
     active_practices,
     orientation_depth,
@@ -179,12 +180,12 @@ def _ori_git_freshness(root: Path) -> str:
         return ""
 
 
-def _ori_stance(state: dict[str, Any]) -> str:
+def _ori_stance(state: dict[str, Any], config: Config) -> str:
     """Render section 4 — the active stance briefing ('' when no stance set)."""
     stance = state.get("stance")
     if not stance:
         return ""
-    return stance_briefing(str(stance))
+    return stance_briefing(str(stance), profile_for_config(config).omit_plan_dests)
 
 
 def _ori_user_style(state: dict[str, Any]) -> str:
@@ -299,7 +300,7 @@ def compose_orientation(root: Path, config: Config, backend: Any) -> str:
         (1, lambda: _ori_status_header(state, config)),
         (2, lambda: _ori_handoff(root, config)),
         (3, lambda: _ori_git_freshness(root)),
-        (4, lambda: _ori_stance(state)),
+        (4, lambda: _ori_stance(state, config)),
         (5, lambda: _ori_user_style(state)),
         (6, lambda: _ori_lessons(root, config, depth)),
         (7, lambda: _ori_triggers(root, config, state)),

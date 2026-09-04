@@ -63,6 +63,7 @@ from engine.adopt import (
     _branch_sweep_params,
     _merge_model_doctrine,
     adopt,
+    adoption_plan,
     archive_dist,
     automerge_enabler_workflow,
     branch_sweep_workflow,
@@ -80,6 +81,11 @@ from engine.grammar import (
 )
 from engine.lib.atomicio import atomic_write_text
 from engine.lib.config import KIT_VERSION, Config, save_config
+from engine.lib.profiles import (
+    UnknownProfileError,
+    profile_for_config,
+    resolve_profile,
+)
 from engine.lib.state import STATE_SCHEMA_VERSION
 from engine.loop.telemetry import MODEL_LINE_NEEDLE
 from engine.render import agreement_home, build_context, load_templates, render
@@ -158,7 +164,11 @@ def verify_against_release_json(running: Path, release_json: Path) -> list[str]:
     return [f"verified: sha256 + version against {release_json.name}"]
 
 
-def _upgrade_context(root: Path, backend: Any) -> dict[str, str]:
+def _upgrade_context(
+    root: Path,
+    backend: Any,
+    config: Any | None = None,
+) -> dict[str, str]:
     """Build the render context exactly the way adopt does.
 
     ``agreement_home`` uses the same existence rule as :func:`_doc_plan`
@@ -167,7 +177,7 @@ def _upgrade_context(root: Path, backend: Any) -> dict[str, str]:
     here would misclassify an untouched ``docs/AGENT_ORIENTATION.md`` as
     diverged.
     """
-    context = build_context(backend.data)
+    context = build_context(backend.data, config)
     context.setdefault("integration_mode", str(backend.get("mode", "guided")))
     context.setdefault("agreement_home", agreement_home(root))
     return context
@@ -190,8 +200,15 @@ def _normalize_dates(text: str) -> str:
 
 
 def _doc_plan(root: Path, config: Config) -> list[tuple[str, str]]:
-    """Return (template, planted relpath) pairs the diff report covers."""
-    plan = [(tpl, _adopt_dest(rel, config)) for tpl, rel in ADOPT_PLAN]
+    """Return (template, planted relpath) pairs the diff report covers.
+
+    Profile-filtered (``adoption_plan``): a destination the install's adoption
+    shape deliberately omits is not a planted doc, so classifying it would
+    report it `missing` on EVERY upgrade — with a note promising the adopt pass
+    will replant it, which that pass correctly will not. A permanent, untrue
+    line in the upgrade report is how a shape gets quietly undone by hand.
+    """
+    plan = [(tpl, _adopt_dest(rel, config)) for tpl, rel in adoption_plan(config)]
     if (root / ".claude" / "CLAUDE.md").exists():
         plan.append(("CLAUDE.md.tmpl", ".claude/CLAUDE.md"))
     return plan
@@ -210,7 +227,7 @@ def classify_planted_docs(
     diverged docs with old templates available — the template@old→new delta,
     both rendered through the *current* slot context for a readable diff).
     """
-    context = _upgrade_context(root, backend)
+    context = _upgrade_context(root, backend, config)
     templates = new_templates if new_templates is not None else load_templates()
     rows: list[dict[str, str]] = []
     for template_name, rel in _doc_plan(root, config):
@@ -298,7 +315,7 @@ def apply_doc_improvements(
     planted docs are never auto-edited without ``--apply-docs``, and never
     when the consumer diverged).
     """
-    context = _upgrade_context(root, backend)
+    context = _upgrade_context(root, backend, config)
     templates = new_templates if new_templates is not None else load_templates()
     lines: list[str] = []
     for row in rows:
@@ -470,7 +487,7 @@ def refresh_capability_seed(
         return [
             f"capability-seed: {rel} unreadable — fence refresh skipped.",
         ]
-    context = _upgrade_context(root, backend)
+    context = _upgrade_context(root, backend, config)
     templates = new_templates if new_templates is not None else load_templates()
     if CAPABILITIES_TEMPLATE not in templates:
         return []
@@ -559,6 +576,18 @@ def refresh_seat_digest(
     hash (the file is kit-owned wholly, unlike the consumer-owned ledger).
     Missing file → nothing here (the adopt pass replants it).
     """
+    # Same gate as `cmd_check` and `cmd_seat_digest`: a shape that plants no
+    # digest must not have one REGENERATED under it either. Without this, a
+    # default install that moved to a sparse profile the way `cmd_init`'s
+    # refusal describes had its retained docs/seat-digest.md refreshed on the
+    # next upgrade — or, if hand-edited, was told to run the one command the
+    # profile gate now refuses. Three call sites, one declaration.
+    profile = profile_for_config(config)
+    if not profile.plant_seat_digest:
+        return [
+            f"seat-digest: skipped — the {profile.name!r} adoption profile "
+            "plants no seat digest.",
+        ]
     rel = seat_digest_relpath(config)
     path = root / rel
     if not path.is_file():
@@ -567,7 +596,7 @@ def refresh_seat_digest(
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return [f"seat-digest: {rel} unreadable — refresh skipped."]
-    context = _upgrade_context(root, backend)
+    context = _upgrade_context(root, backend, config)
     fresh = seat_digest_text(
         root,
         config,
@@ -811,6 +840,24 @@ def newest_banked_archive(
     return archived, meta.get("from_version")
 
 
+def _require_known_profile(root: Path, config: Config) -> None:
+    """Refuse an install whose persisted profile this kit does not ship.
+
+    The strict half of the reader/writer split, hoisted to every write flow's
+    front door. ``UnknownProfileError`` is a ``ValueError``; it is re-raised as
+    ``UpgradeRefused`` so the CLI reports it the way it reports every other
+    pre-flight refusal, rather than as a traceback out of the middle of a
+    half-finished upgrade.
+    """
+    try:
+        resolve_profile(config.adoption_profile)
+    except UnknownProfileError as exc:
+        raise UpgradeRefused(
+            f"{exc} — refusing to upgrade before any write; fix "
+            "`adoption_profile` in substrate.config.json first.",
+        ) from exc
+
+
 def run_apply_docs_posthoc(
     root: Path,
     config: Config,
@@ -831,6 +878,7 @@ def run_apply_docs_posthoc(
     actionable message and nothing written (never a crash, never an impossible
     command).
     """
+    _require_known_profile(root, config)
     report: list[str] = []
     archived, from_version = newest_banked_archive(root, config)
     if archived is None:
@@ -904,8 +952,15 @@ def run_upgrade(
 ) -> list[str]:
     """Execute the §4.3 upgrade flow; return the report lines.
 
-    Raises :class:`UpgradeRefused` when release.json verification fails.
+    Raises :class:`UpgradeRefused` when release.json verification fails, or
+    when the persisted ``adoption_profile`` names a shape this kit does not
+    ship — checked HERE, before any write. `adopt` (step 6) resolves strictly
+    too, but by the time it runs this flow has already archived state, possibly
+    applied document changes, refreshed derived files and replaced the vendored
+    bootstrap; raising there left a PARTIALLY UPGRADED repository. A refusal is
+    only safe at a point where nothing has happened yet.
     """
+    _require_known_profile(root, config)
     # Post-hoc --apply-docs (idea upgrade-apply-docs-single-shot-window): when
     # the vendored dist is ALREADY at the running version there is no pending
     # transition, but a prior upgrade that skipped --apply-docs banked the

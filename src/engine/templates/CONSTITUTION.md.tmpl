@@ -71,18 +71,7 @@
 
 ## Boot read path
 
-Read in this order at session start. **This is the one list** — the task router
-at `docs/AGENT_ORIENTATION.md` points here rather than repeating it, so a boot
-set can never exist in two places that disagree.
-
-1. This file — the working agreement + autonomy rails.
-2. `docs/current-state.md` — the living status ledger. Source and merged PRs
-   always win over it.
-3. `docs/CAPABILITIES.md` — verified session capabilities and walls. THE
-   DISCOVERY RULE lives there: append what you verify, never a limitation.
-
-Then `docs/AGENT_ORIENTATION.md` when a task needs a route into the deeper
-docs — it is a router, not boot reading.
+${boot_read_path}
 
 <!-- Keep every path above resolvable: check_boot_path asserts this section
      exists and that each path it names is on disk. A boot pointer into a

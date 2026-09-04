@@ -105,17 +105,29 @@ def is_out_of_stance(name: str, action: str) -> bool:
     return action not in stance["tools"]
 
 
-def stance_briefing(name: str) -> str:
+def stance_briefing(name: str, omit: frozenset[str] = frozenset()) -> str:
     """Return the orientation block injected for the active stance.
 
     The reading-route + tool-scope + output contract, formatted for injection into
     session orientation (alongside the user-style block and reflection buffer).
+
+    ``omit`` names planted destinations the install's adoption profile does not
+    plant (plan-relative, e.g. ``docs/architecture.md``); routes to them are
+    dropped. Without it, the first thing a sparse install tells a booting
+    session to read is a list of documents that do not exist — a dead pointer
+    in the boot path itself, which is the one place the kit measured the cost
+    of (0 of 11 adopter trees resolved, 2026-08-06). A stance whose whole route
+    is omitted says so rather than printing an empty line.
     """
     stance = _BY_NAME.get(name)
     if stance is None:
         choices = ", ".join(stance_names())
         return f"Unknown stance {name!r} (choose from {choices})."
-    route = " -> ".join(stance["reading_route"])
+    kept = [doc for doc in stance["reading_route"] if f"docs/{doc}" not in omit]
+    route = " -> ".join(kept) if kept else (
+        "(this install's adoption profile plants no generic doc set — read "
+        "this repository's own orientation documents)"
+    )
     tools = ", ".join(stance["tools"])
     return (
         f"Stance: {stance['name']} — {stance['role']}\n"

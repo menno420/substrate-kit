@@ -35,7 +35,7 @@ pytest.importorskip("engine.adopt")
 
 from engine.adopt import ADOPT_PLAN, adopt
 from engine.checks.check_docs import run_doc_checks
-from engine.lib.config import Config
+from engine.lib.config import Config, new_config
 from engine.lib.state import JsonStateBackend, default_state
 from engine.render import build_context, load_templates, render
 
@@ -142,8 +142,20 @@ def test_orientation_routes_the_routines_doc():
     orientation = _template("AGENT_ORIENTATION.md.tmpl")
     assert "`docs/ROUTINES.md`" in orientation
     assert "trigger/routine" in _flat(orientation)
-    claude = _template("CLAUDE.md.tmpl")
+    # The agreement's half of the wiring now lives in the engine-computed
+    # `agreement_boot_tail` (profile-aware since the adoption-profile change),
+    # so assert against what an adopter actually RECEIVES rather than against
+    # where the bytes are stored: the DEFAULT shape must still carry the link,
+    # because it still plants the doc the link keeps out of orphan findings.
+    claude = render(_template("CLAUDE.md.tmpl"), dict(build_context({})))
     assert "`docs/ROUTINES.md`" in claude
+    # ...and the sparse shape must NOT, because it plants no such doc: a link
+    # to an unplanted file is the dead pointer this wiring exists to prevent.
+    hub = render(
+        _template("CLAUDE.md.tmpl"),
+        dict(build_context({}, new_config("hub"))),
+    )
+    assert "`docs/ROUTINES.md`" not in hub
 
 
 def test_planted_routines_doc_is_reachable(tmp_path):

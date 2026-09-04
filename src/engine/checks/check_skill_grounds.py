@@ -51,8 +51,9 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Any
 
-from engine.adopt import ADOPT_PLAN
+from engine.adopt import ADOPT_PLAN, adoption_plan
 from engine.checks.check_docs import Finding
 from engine.skills.skills import SKILLS
 
@@ -181,6 +182,24 @@ _KIT_SHIPPED_PATHS = _KIT_REPO_PATHS | _WAVE_TRANSIENT_PATHS | _ADOPTER_PLANTED_
 
 _KNOWN_PATHS = _KIT_SHIPPED_PATHS | {dest for _tmpl, dest in ADOPT_PLAN}
 
+
+def _known_paths(config: Any | None) -> frozenset[str]:
+    """Return the grounded-by-construction path set for one install's shape.
+
+    "Grounded by construction" means *the kit plants this, so a skill body may
+    name it before it exists*. That claim is only true for the docs the install's
+    ADOPTION PROFILE actually plants: on a shape that omits ``docs/ROUTINES.md``,
+    treating a skill's reference to it as grounded turns a real dead pointer into
+    a silent pass — the exact false-green this checker exists to prevent, one
+    level up. ``config`` omitted keeps the historical full-plan set, so every
+    existing caller and test is unchanged.
+    """
+    if config is None:
+        return frozenset(_KNOWN_PATHS)
+    return frozenset(
+        _KIT_SHIPPED_PATHS | {dest for _tmpl, dest in adoption_plan(config)},
+    )
+
 # State-dir artifacts the kit itself writes/stages, grounded by construction
 # even when absent (they appear only after an upgrade / ``skills --build`` /
 # a backup): the upgrade report (engine.upgrade.UPGRADE_REPORT_FILENAME),
@@ -193,7 +212,12 @@ _STATE_DIR_ARTIFACTS = frozenset({"upgrade-report.md"})
 _STATE_DIR_PREFIXES = ("backup/", "skills/")
 
 
-def _unresolved(span: str, target: Path, state_dir: str) -> bool:
+def _unresolved(
+    span: str,
+    target: Path,
+    state_dir: str,
+    known_paths: frozenset[str] | None = None,
+) -> bool:
     """True when ``span``'s first token is command/path-shaped and resolves nowhere.
 
     Every ambiguous shape returns False (fail open — no verdict); see the
@@ -216,7 +240,9 @@ def _unresolved(span: str, target: Path, state_dir: str) -> bool:
         if rest in _STATE_DIR_ARTIFACTS or rest.startswith(_STATE_DIR_PREFIXES):
             return False  # kit-written runtime artifacts — grounded by class
         # any other state-dir path falls through to the existence lanes
-    if first in _EXECUTABLES or first in _KNOWN_PATHS:
+    if first in _EXECUTABLES or first in (
+        _KNOWN_PATHS if known_paths is None else known_paths
+    ):
         return False
     if (target / first).exists():
         return False
@@ -263,6 +289,7 @@ def check_skill_grounds(
     *,
     skills: list[dict] | None = None,
     state_dir: str = ".substrate",
+    config: Any | None = None,
 ) -> list[Finding]:
     """Return advisory ``skill-ground-unresolved`` findings for ``target``.
 
@@ -273,11 +300,12 @@ def check_skill_grounds(
     unreadable files and on every ambiguous span shape.
     """
     skill_set = SKILLS if skills is None else skills
+    known_paths = _known_paths(config)
     findings: list[Finding] = []
     for skill in skill_set:
         rel = f"skills/{skill['name']}/SKILL.md"
         for span in _spans(skill.get("body", "")):
-            if _unresolved(span, target, state_dir):
+            if _unresolved(span, target, state_dir, known_paths):
                 findings.append(
                     Finding(
                         rel,
@@ -290,7 +318,7 @@ def check_skill_grounds(
                     ),
                 )
         for ground in skill.get("grounds", []):
-            if _unresolved(ground, target, state_dir):
+            if _unresolved(ground, target, state_dir, known_paths):
                 findings.append(
                     Finding(
                         rel,
@@ -308,7 +336,7 @@ def check_skill_grounds(
             continue  # fail open — an unreadable file is not a verdict
         rel = str(doc.relative_to(target)) if doc.is_relative_to(target) else str(doc)
         for span in _spans(text):
-            if _unresolved(span, target, state_dir):
+            if _unresolved(span, target, state_dir, known_paths):
                 findings.append(
                     Finding(
                         rel,

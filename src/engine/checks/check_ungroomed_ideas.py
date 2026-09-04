@@ -44,6 +44,13 @@ from engine.checks.check_docs import Finding
 _PLANNING_RELDIR = "docs/planning"
 _SESSIONS_RELDIR = ".sessions"
 
+
+def _sessions_reldir(config) -> str:
+    """Return the install's session-card directory (the historical default when
+    unset, absent, or not a usable string — this checker fails open)."""
+    value = getattr(config, "sessions_dir", None)
+    return str(value).strip("/") if value else _SESSIONS_RELDIR
+
 # The 💡 character — one occurrence on a line marks that line as an un-groomed
 # session idea (the Q-0089 session-idea flag).
 _IDEA_CHAR = "\N{ELECTRIC LIGHT BULB}"  # 💡
@@ -69,9 +76,16 @@ def check_ungroomed_ideas(target: Path, config=None) -> list[Finding]:
     """Advisory: count 💡 session-idea lines on cards newer than the newest groom doc.
 
     Advisory only — the caller wires this on posture="advisory" and never counts
-    it toward the exit code. Input-gated + fail-open. config accepted for
-    signature parity with the other advisory checks; unused today."""
-    sessions_dir = target / _SESSIONS_RELDIR
+    it toward the exit code. Input-gated + fail-open.
+
+    ``config`` supplies the card directory. It used to be accepted for signature
+    parity and ignored, which was invisible while every install kept cards in
+    the historical hidden location: on an install whose ``sessions_dir`` is
+    anywhere else the probe found no directory, input-gated itself off, and
+    reported "no pending ideas" for a repo full of them — a silent false
+    negative, which is the worst shape an advisory can take."""
+    reldir = _sessions_reldir(config)
+    sessions_dir = target / reldir
     if not sessions_dir.is_dir():
         return []  # input-gated: no session cards shipped here
 
@@ -111,7 +125,13 @@ def check_ungroomed_ideas(target: Path, config=None) -> list[Finding]:
     plural = "s" if idea_lines != 1 else ""
     return [
         Finding(
-            f"{_SESSIONS_RELDIR}/",
+            # The RESOLVED directory, not the historical constant: the scan was
+            # fixed to read the configured location while the finding kept
+            # reporting `.sessions/`, so a real finding discovered under
+            # `sessions/` was printed — and recorded in guard telemetry, and
+            # fingerprinted for the allowlist — against a path that does not
+            # exist on that install.
+            f"{reldir}/",
             UNGROOMED_IDEAS_KIND,
             f"{idea_lines} un-groomed \N{ELECTRIC LIGHT BULB} idea line{plural} on "
             f"session card{plural} newer than the newest groom doc "

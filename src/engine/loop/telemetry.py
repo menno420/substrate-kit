@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 import re
+from contextlib import contextmanager
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -41,8 +42,12 @@ from engine.grammar import (
     MODEL_TASK_CLASSES,
     parse_model_payload,
 )
+from engine.lib.atomicio import atomic_write_text
 
 GUARD_FIRES_FILENAME = "guard-fires.jsonl"
+# Sidecar lock suffix. Created only for a CAPPED ledger (see _fires_lock),
+# so an install on the default uncapped policy never gains the file.
+LOCK_SUFFIX = ".lock"
 MODEL_USAGE_RELPATH = "telemetry/model-usage.jsonl"
 
 # Guard-fire dedupe window (seconds): a re-run of the same guard over the
@@ -73,9 +78,100 @@ _parse_model_payload = parse_model_payload
 _DATE_PREFIX_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
 
 
-def guard_fires_path(root: Path, state_dir: str) -> Path:
-    """Return the guard-fire JSONL path for one install."""
-    return root / state_dir / GUARD_FIRES_FILENAME
+def guard_fires_path(
+    root: Path,
+    state_dir: str,
+    policy: dict | None = None,
+) -> Path:
+    """Return the guard-fire JSONL path for one install.
+
+    ``policy`` is a resolved ``telemetry.guard_fires`` mapping
+    (:func:`engine.lib.config.guard_fires_policy`). Its ``path`` axis, when
+    non-empty, names a repo-relative home that replaces the historical
+    ``<state_dir>/guard-fires.jsonl``; an absolute or parent-escaping value is
+    ignored rather than honored, because a telemetry key must never become a
+    write primitive pointed outside the repo. Omitting ``policy`` keeps the
+    pre-policy behavior exactly.
+    """
+    rel = str((policy or {}).get("path") or "").strip()
+    fallback = root / state_dir / GUARD_FIRES_FILENAME
+    if not rel or any(ch in rel for ch in "\n\r"):
+        # A newline cannot be escaped in a gitignore line and would split every
+        # downstream consumer's idea of "one path" in half.
+        return fallback
+    candidate = Path(rel)
+    if candidate.is_absolute():
+        return fallback
+    target = root / candidate
+    # CONTAINMENT IS RESOLVED, NOT PARSED. Rejecting absolute paths and literal
+    # ".." components is a guess about the string; it says nothing about the
+    # filesystem. An intermediate component that is a SYMLINK escapes both
+    # tests — measured: a `telemetry` symlink pointing outside the repo plus
+    # `path: "telemetry/fires.jsonl"` had `check` appending the ledger into the
+    # external directory. `resolve()` follows the links and answers the
+    # question actually being asked: does this write land inside the repo?
+    try:
+        resolved = target.resolve()
+        base = root.resolve()
+    except OSError:
+        return fallback
+    if resolved == base or base not in resolved.parents:
+        # `resolved == base` is the ``path: "."`` case: the "ledger" would BE
+        # the repository directory, and its sidecar lock a SIBLING of the repo
+        # — a write outside the tree from a config key that never named one.
+        return fallback
+    if resolved.is_dir():
+        return fallback
+    return target
+
+
+# How far past its cap a ledger may drift before a trim runs. Trimming is a
+# full-file rewrite, so doing it on every append once the cap is reached would
+# turn an append-only feed into a rewrite-per-record one; with slack the
+# rewrite amortizes to one per ``_ROTATE_SLACK`` records while the file never
+# exceeds ``max_records + _ROTATE_SLACK`` lines.
+_ROTATE_SLACK = 128
+
+
+def _trim_guard_fires(path: Path, max_records: int) -> int:
+    """Trim ``path`` to its newest ``max_records`` lines; return lines dropped.
+
+    Returns 0 — having changed nothing — when no cap is set, when the file is
+    still inside its cap plus :data:`_ROTATE_SLACK`, or when anything at all
+    goes wrong. This is the ONE full-file rewrite either telemetry feed
+    performs; it happens only under an explicit positive cap, it is atomic
+    (write-temp-then-replace, via :func:`engine.lib.atomicio.atomic_write_text`)
+    so a crash mid-trim cannot leave a half-file, and it fails open like every
+    other write on this path.
+    """
+    if max_records <= 0:
+        return 0
+    try:
+        lines = _records(path.read_text(encoding="utf-8"))
+    except OSError:
+        return 0
+    if len(lines) <= max_records + _ROTATE_SLACK:
+        return 0
+    kept = lines[-max_records:]
+    try:
+        atomic_write_text(path, "\n".join(kept) + "\n")
+    except OSError:
+        return 0
+    return len(lines) - len(kept)
+
+
+def _records(text: str) -> list[str]:
+    """Split a JSONL ledger into RECORDS — on newline only, never splitlines().
+
+    The writer joins on ``"\n"`` and dumps with ``ensure_ascii=False``, which
+    leaves U+2028, U+2029, U+0085 and several C0 characters raw inside string
+    values. ``str.splitlines()`` treats every one of them as a line break, so a
+    single record carrying one in a finding's message would be read as two:
+    the cap would count the wrong unit, and a trim slicing at that boundary
+    would write back half a record. Splitting on the writer's own separator
+    makes read and write agree by construction.
+    """
+    return [line for line in text.split("\n") if line]
 
 
 def _append_jsonl(path: Path, record: dict) -> None:
@@ -84,6 +180,65 @@ def _append_jsonl(path: Path, record: dict) -> None:
     line = json.dumps(record, ensure_ascii=False, sort_keys=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(line + "\n")
+
+
+def guard_fires_lock_path(path: Path) -> Path:
+    """Return the sidecar lock file guarding a CAPPED ledger's rewrites."""
+    return path.with_name(path.name + LOCK_SUFFIX)
+
+
+@contextmanager
+def _fires_lock(path: Path, max_records: int):
+    """Serialise appends against trims — for CAPPED ledgers only.
+
+    The race this closes: a trim reads the ledger, another process appends a
+    record, and the trim then replaces the file with its now-stale snapshot.
+    Atomic replacement prevents a torn file; it does not prevent that append
+    from being lost, because the two writers never agreed on a turn.
+
+    Three deliberate constraints:
+
+    - **Capped ledgers only.** With no cap there is no rewrite, so there is no
+      race — and no lock, and no lock file. An install on the default policy
+      keeps exactly the code path and exactly the tree it had before this
+      existed; the mechanism is confined to installs that asked for a cap.
+    - **A sidecar file, not the ledger.** The trim replaces the ledger's inode
+      (that is what makes it atomic), and a lock held on a replaced inode
+      protects nothing — a late appender would write into an unlinked file. The
+      lock therefore lives on a path whose inode never changes.
+    - **Fail-open, like everything on this path.** ``fcntl`` is POSIX-only and
+      the lock file may be unwritable; either way telemetry degrades to the
+      pre-lock behaviour rather than raising into a check.
+    """
+    if max_records <= 0:
+        yield
+        return
+    handle = None
+    flock = None
+    try:
+        import fcntl  # noqa: PLC0415 — POSIX-only; a module-level import would
+        # break the generated single file on a platform without it, and this
+        # path must degrade rather than fail.
+
+        flock = fcntl
+        lock_path = guard_fires_lock_path(path)
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        handle = lock_path.open("a+")
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+    except Exception:  # noqa: BLE001 — telemetry fails open by contract
+        if handle is not None:
+            handle.close()
+        handle = None
+    try:
+        yield
+    finally:
+        if handle is not None:
+            try:
+                if flock is not None:
+                    flock.flock(handle.fileno(), flock.LOCK_UN)
+            except Exception:  # noqa: BLE001 — fail open on release too
+                pass
+            handle.close()
 
 
 def _recent_fire_keys(path: Path, now: datetime) -> set[tuple[str, str, str]]:
@@ -98,7 +253,7 @@ def _recent_fire_keys(path: Path, now: datetime) -> set[tuple[str, str, str]]:
     """
     keys: set[tuple[str, str, str]] = set()
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
+        lines = _records(path.read_text(encoding="utf-8"))
     except OSError:
         return keys
     for line in lines[-_GUARD_FIRES_DEDUPE_SCAN:]:
@@ -139,6 +294,7 @@ def record_guard_fires(
     findings: list,
     verdict: str | None = None,
     reason: str | None = None,
+    policy: dict | None = None,
 ) -> int:
     """Append one §5.3 record per finding; return how many were written.
 
@@ -168,38 +324,80 @@ def record_guard_fires(
     try:
         if not (root / state_dir).is_dir():
             return 0
-        path = guard_fires_path(root, state_dir)
+        if policy is not None and not policy.get("enabled", True):
+            return 0
+        path = guard_fires_path(root, state_dir, policy)
         now = datetime.now(timezone.utc)
         ts = now.isoformat(timespec="seconds")
-        recent = _recent_fire_keys(path, now) if verdict is None else set()
-        written = 0
-        for finding in findings:
-            if verdict is None:
-                key = (str(finding.kind), str(finding.path), str(finding.message))
-                if key in recent:
-                    continue
-                recent.add(key)
-            record = {
-                "ts": ts,
-                "guard": str(finding.kind),
-                "cmd": cmd,
-                "surface": surface,
-                "posture": posture,
-                "finding": {
-                    "path": str(finding.path),
-                    "kind": str(finding.kind),
-                    "message": str(finding.message),
-                },
-                "verdict": verdict,
-                "reason": reason,
-                "judge": None,
-                "outcome": None,
-            }
-            _append_jsonl(path, record)
-            written += 1
-        return written
+        cap = int((policy or {}).get("max_records") or 0)
+        with _fires_lock(path, cap):
+            return _write_fires(
+                path,
+                findings,
+                cap,
+                ts=ts,
+                now=now,
+                cmd=cmd,
+                surface=surface,
+                posture=posture,
+                verdict=verdict,
+                reason=reason,
+            )
     except Exception:  # noqa: BLE001 — telemetry fails open by contract
         return 0
+
+
+def _write_fires(
+    path: Path,
+    findings: list,
+    max_records: int,
+    *,
+    ts: str,
+    now: datetime,
+    cmd: str,
+    surface: str,
+    posture: str,
+    verdict: str | None,
+    reason: str | None,
+) -> int:
+    """Append the records and trim, with the caller holding the lock.
+
+    Split out of :func:`record_guard_fires` so the dedupe READ happens inside
+    the same critical section as the appends and the trim: reading the recent
+    keys outside it would let two concurrent runs each decide a finding is new.
+    """
+    recent = _recent_fire_keys(path, now) if verdict is None else set()
+    written = 0
+    for finding in findings:
+        if verdict is None:
+            key = (str(finding.kind), str(finding.path), str(finding.message))
+            if key in recent:
+                continue
+            recent.add(key)
+        record = {
+            "ts": ts,
+            "guard": str(finding.kind),
+            "cmd": cmd,
+            "surface": surface,
+            "posture": posture,
+            "finding": {
+                "path": str(finding.path),
+                "kind": str(finding.kind),
+                "message": str(finding.message),
+            },
+            "verdict": verdict,
+            "reason": reason,
+            "judge": None,
+            "outcome": None,
+        }
+        _append_jsonl(path, record)
+        written += 1
+    if written:
+        # Trim AFTER the appends, never before: a cap must never cost a record
+        # this run produced. No-ops when no cap is configured, so the default
+        # feed stays strictly append-only.
+        _trim_guard_fires(path, max_records)
+    return written
 
 
 def parse_model_line(text: str) -> dict | None:

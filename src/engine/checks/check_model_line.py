@@ -79,7 +79,9 @@ from engine.grammar import (
     MODEL_EFFORT_UNRECORDED,
     MODEL_EFFORT_VALUES,
     MODEL_LINE_NEEDLE,
+    DEFAULT_SESSIONS_DIRNAME,
     MODEL_LINE_TAUGHT_FORMAT,
+    model_line_fix_path,
     MODEL_TASK_CLASSES,
     parse_model_payload,
 )
@@ -112,19 +114,25 @@ MODEL_LINE_LINT_WINDOW = 10
 
 # The loud fix-path tail every finding carries — quotes the taught byte-form
 # verbatim so the fix is a copy-edit, never a re-derivation.
-_FIX_PATH = (
-    f"fix the card's line to the taught form `{MODEL_LINE_TAUGHT_FORMAT}` "
-    "(family-level model · effort · PL-004 task class; see .sessions/README.md)"
-)
+# The historical fix tail, retained as the module-level default so a caller
+# without a config in scope still emits the pre-profile advice byte for byte.
+# `check_model_line` has the real `sessions_dir` and passes it through, so an
+# install whose cards live somewhere visible is not sent to a README that only
+# exists on the hidden default layout.
+_FIX_PATH = model_line_fix_path()
 
 
-def model_line_findings(text: str) -> list[tuple[str, str]]:
+def model_line_findings(
+    text: str,
+    sessions_dir: str = DEFAULT_SESSIONS_DIRNAME,
+) -> list[tuple[str, str]]:
     """Lint one completed card's text; return ``(kind, message)`` pairs.
 
     Returns ``[]`` when the card carries no needle at all — marker PRESENCE
     is the session-log gate's job (``missing_markers``), not this lint's;
     double-reporting the same miss would be advisory noise.
     """
+    fix_path = model_line_fix_path(sessions_dir)
     stripped = _CODE_SPAN_RE.sub("", _FENCE_RE.sub("", text))
     candidates = [
         line
@@ -149,7 +157,7 @@ def model_line_findings(text: str) -> list[tuple[str, str]]:
                 "valid three-field payload (needs two `\N{MIDDLE DOT}` "
                 "separators: model \N{MIDDLE DOT} effort \N{MIDDLE DOT} "
                 "task-class) — the telemetry harvest records NOTHING from "
-                f"this card; {_FIX_PATH}",
+                f"this card; {fix_path}",
             ),
         ]
     findings: list[tuple[str, str]] = []
@@ -161,7 +169,7 @@ def model_line_findings(text: str) -> list[tuple[str, str]]:
                 f"model segment {model!r} looks like an exact model-ID token "
                 "— record the family-level model name only (e.g. `fable-5`, "
                 "`opus-4.8`), never an exact model ID, dated or not (fleet "
-                f"reporting bar, ORDER 012); {_FIX_PATH}",
+                f"reporting bar, ORDER 012); {fix_path}",
             ),
         )
     effort = last_valid["effort"]
@@ -172,7 +180,7 @@ def model_line_findings(text: str) -> list[tuple[str, str]]:
                 "model-line-effort",
                 f"effort segment {effort!r} is not one of the taxonomy "
                 f"values ({known}) — the PL-004 dataset records it verbatim; "
-                f"{_FIX_PATH}",
+                f"{fix_path}",
             ),
         )
     task_class = last_valid["task_class"]
@@ -184,7 +192,7 @@ def model_line_findings(text: str) -> list[tuple[str, str]]:
                 f"task-class segment {task_class!r} does not prefix-match "
                 f"any of the {len(MODEL_TASK_CLASSES)} PL-004 classes "
                 f"({known}) — the PL-004 dataset records it verbatim; "
-                f"{_FIX_PATH}",
+                f"{fix_path}",
             ),
         )
     return findings
@@ -226,6 +234,6 @@ def check_model_line(
         rel = f"{sessions_dir}/{card.name}"
         findings.extend(
             Finding(path=rel, kind=kind, message=message)
-            for kind, message in model_line_findings(text)
+            for kind, message in model_line_findings(text, sessions_dir)
         )
     return findings

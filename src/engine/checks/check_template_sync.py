@@ -59,7 +59,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from engine.adopt import ADOPT_PLAN, _adopt_dest
+from engine.adopt import _adopt_dest, adoption_plan
 from engine.checks.check_docs import Finding
 
 # Where the kit repo keeps the template sources. Presence of a pair's
@@ -155,12 +155,19 @@ def check_template_sync(target: Path, config: Any) -> list[Finding]:
     Self-gating: pairs whose template source or destination is absent from
     the tree contribute nothing, so the scan is a no-op everywhere except
     the kit's own repo (the only tree carrying ``src/engine/templates/``).
+
+    Profile-filtered: a pair a shape deliberately omits is not "missing" and
+    is never scanned. Absence-based skipping would reach the same silence
+    here by accident, but silence-by-accident and silence-by-declaration
+    stop agreeing the moment a host hand-writes a file at an omitted path —
+    at which point the template compare would resume against a doc this
+    tree's shape says the kit does not own.
     """
     templates_root = target / TEMPLATES_RELPATH
     if not templates_root.is_dir():
         return []
     findings: list[Finding] = []
-    for template_name, plan_rel in ADOPT_PLAN:
+    for template_name, plan_rel in adoption_plan(config):
         dest_rel = _adopt_dest(plan_rel, config)
         if not dest_rel.endswith(".md") or dest_rel in LIVE_TRAFFIC_DESTS:
             continue
