@@ -43,9 +43,19 @@ from engine.guards import (
 )
 from engine.hooks.settings import full_settings_template, hooks_fill_table
 from engine.lib.atomicio import atomic_write_text
-from engine.lib.config import KIT_VERSION, Config, save_config
+from engine.lib.config import (
+    KIT_VERSION,
+    Config,
+    guard_fires_policy,
+    save_config,
+)
+from engine.lib.profiles import profile_for_config
 from engine.lib.guardrail import assert_safe_target
-from engine.loop.telemetry import MODEL_LINE_NEEDLE
+from engine.loop.telemetry import (
+    GUARD_FIRES_FILENAME,
+    MODEL_LINE_NEEDLE,
+    guard_fires_path,
+)
 from engine.render import (
     agreement_home,
     build_context,
@@ -153,6 +163,28 @@ ADOPT_PLAN: list[tuple[str, str]] = [
     # (advisory-only); skip-if-exists keeps every hand-rolled script.
     ("env-setup.sh.tmpl", "scripts/env-setup.sh"),
 ]
+
+def adoption_plan(config: Config) -> list[tuple[str, str]]:
+    """Return :data:`ADOPT_PLAN` filtered by the install's adoption profile.
+
+    THE accessor. ``ADOPT_PLAN`` is the ``default`` profile's plan and stays
+    exported unchanged; every consumer that needs to know *what this tree was
+    planted with* — the plant loop here, ``check_engagement``'s unrendered
+    scan, ``check_template_sync``'s heading compare, ``check_skill_grounds``'s
+    grounded-by-construction set — reads this instead, so a shape that plants
+    fewer docs can never leave a consumer asserting over files that were never
+    meant to exist.
+
+    Entries are returned in plan order with plan-relative destinations; the
+    caller still applies :func:`_adopt_dest`'s ``docs_root`` remap, because the
+    profile is a statement about WHICH docs, never about where a host keeps
+    them.
+    """
+    profile = profile_for_config(config)
+    if not profile.omit_plan_dests:
+        return list(ADOPT_PLAN)
+    return [pair for pair in ADOPT_PLAN if not profile.omits(pair[1])]
+
 
 # State key holding {planted relpath: sha256 hex} for every doc the kit last
 # wrote (planted by adopt, or re-rendered in place by `render --live`).
@@ -2254,61 +2286,118 @@ def _search_hygiene_surfaces(
     return ((".ignore", ignore_entries), (".gitattributes", attr_entries))
 
 
+def _merge_marked_entries(
+    root: Path,
+    relpath: str,
+    marker: str,
+    entries: tuple[str, ...],
+    report: list[str],
+    *,
+    label: str,
+) -> None:
+    """Append-only merge of ``entries`` into ``root/relpath`` under ``marker``.
+
+    The one mechanism behind every line-oriented control file the kit adds to
+    (``.ignore``, ``.gitattributes``, ``.gitignore``): the clobber hazard is
+    real — each of those carries host policy — so existing lines are preserved
+    byte-for-byte, already-present entries are never duplicated (idempotent
+    across every adopt/upgrade pass), and whatever is appended sits under one
+    marker comment naming its provenance. Unreadable file → skip + report,
+    never destroy. ``label`` names the entry class in the report line.
+    """
+    if not entries:
+        return
+    path = root / relpath
+    existing = ""
+    if path.is_file():
+        try:
+            existing = path.read_text(encoding="utf-8")
+        except OSError:
+            report.append(
+                f"skipped: {relpath} (unreadable — left untouched; "
+                f"{label} entries not merged)",
+            )
+            return
+    present = {line.strip() for line in existing.splitlines()}
+    missing = [entry for entry in entries if entry not in present]
+    if not missing:
+        report.append(f"kept: {relpath} ({label} entries already present)")
+        return
+    chunk = ""
+    if existing:
+        if not existing.endswith("\n"):
+            chunk += "\n"
+        chunk += "\n"
+    if marker not in present:
+        chunk += marker + "\n"
+    chunk += "\n".join(missing) + "\n"
+    atomic_write_text(path, existing + chunk)
+    noun = "entry" if len(missing) == 1 else "entries"
+    if existing:
+        report.append(
+            f"merged: {relpath} ({len(missing)} {label} {noun} "
+            "appended; existing content preserved)",
+        )
+    else:
+        report.append(f"planted: {relpath} ({len(missing)} {label} {noun})")
+
+
 def _plant_search_hygiene(
     root: Path,
     config: Config,
     vendored_relpath: str,
     report: list[str],
 ) -> None:
-    """Merge the search-hygiene entries into ``.ignore``/``.gitattributes``.
-
-    Append-only merge (the clobber hazard is real: a host `.gitattributes`
-    or `.ignore` carries host policy): existing lines are preserved
-    byte-for-byte, already-present entries are never duplicated (idempotent
-    across adopt/upgrade passes), and appended entries sit under one marker
-    comment naming their provenance. Unreadable file → skip + report,
-    never destroy.
-    """
+    """Merge the search-hygiene entries into ``.ignore``/``.gitattributes``."""
     for relpath, entries in _search_hygiene_surfaces(config, vendored_relpath):
-        if not entries:
-            continue
-        path = root / relpath
-        existing = ""
-        if path.is_file():
-            try:
-                existing = path.read_text(encoding="utf-8")
-            except OSError:
-                report.append(
-                    f"skipped: {relpath} (unreadable — left untouched; "
-                    "search-hygiene entries not merged)",
-                )
-                continue
-        present = {line.strip() for line in existing.splitlines()}
-        missing = [entry for entry in entries if entry not in present]
-        if not missing:
-            report.append(
-                f"kept: {relpath} (search-hygiene entries already present)",
-            )
-            continue
-        chunk = ""
-        if existing:
-            if not existing.endswith("\n"):
-                chunk += "\n"
-            chunk += "\n"
-        if SEARCH_HYGIENE_MARKER not in present:
-            chunk += SEARCH_HYGIENE_MARKER + "\n"
-        chunk += "\n".join(missing) + "\n"
-        atomic_write_text(path, existing + chunk)
-        noun = "entry" if len(missing) == 1 else "entries"
-        if existing:
-            report.append(
-                f"merged: {relpath} ({len(missing)} search-hygiene {noun} "
-                "appended; existing content preserved)",
-            )
-        else:
-            report.append(
-                f"planted: {relpath} ({len(missing)} search-hygiene {noun})",
-            )
+        _merge_marked_entries(
+            root,
+            relpath,
+            SEARCH_HYGIENE_MARKER,
+            entries,
+            report,
+            label="search-hygiene",
+        )
+
+
+TELEMETRY_IGNORE_MARKER = (
+    "# substrate-kit telemetry (planted by adopt/upgrade; the kit only ever "
+    "APPENDS missing entries — existing content above is host-owned)"
+)
+
+
+def _plant_telemetry_ignore(root: Path, config: Config, report: list[str]) -> None:
+    """Keep an UNTRACKED guard-fire ledger out of git, for shapes that ask.
+
+    The founding plan's KF-11 default is a TRACKED ledger — committed, never
+    gitignored — and this function does nothing at all for it: no entry, no
+    ``.gitignore`` created, no report line beyond the merge's own. It fires
+    only when the install's resolved policy sets ``tracked`` false, and then
+    only ever APPENDS a root-anchored entry through the same idempotent merge
+    the search-hygiene plant uses.
+
+    What it deliberately does NOT do: touch git's index. A repository that has
+    already committed its ledger keeps that history — untracking a committed
+    file is a host decision with a commit attached to it, not something an
+    adopt pass may do behind the host's back. This decides what a FRESH tree is
+    born with, which is exactly what K5 is about.
+    """
+    policy = guard_fires_policy(config)
+    if policy["tracked"]:
+        return
+    ledger = guard_fires_path(root, config.state_dir, policy)
+    try:
+        rel = ledger.relative_to(root).as_posix()
+    except ValueError:  # pragma: no cover — guard_fires_path stays in-repo
+        return
+    _merge_marked_entries(
+        root,
+        ".gitignore",
+        TELEMETRY_IGNORE_MARKER,
+        ("/" + rel,),
+        report,
+        label="telemetry",
+    )
 
 
 def adopt(
@@ -2362,8 +2451,19 @@ def adopt(
     """
     include_claude = include_claude or wire_enforcement
     assert_safe_target(root, kit_root)
+    profile = profile_for_config(config)
     if lane is not None:
         validate_lane_name(lane)
+        # A lane IS a control-bus concept: it names this Project's heartbeat on
+        # a shared bus. A shape that plants no bus has nothing to name, so the
+        # combination is incoherent rather than merely unusual — refuse it here
+        # instead of planting a lone control/status-<lane>.md into a tree whose
+        # profile says there is no control room.
+        if profile.omits(SINGLE_HEARTBEAT_RELPATH):
+            raise ValueError(
+                f"--lane is a control-bus concept and the {profile.name!r} "
+                "adoption profile plants no control/ bus; adopt without --lane",
+            )
     templates = load_templates()
     report: list[str] = []
 
@@ -2394,7 +2494,7 @@ def adopt(
         if not dist_file.is_absolute():
             dist_file = root / bootstrap_path
         archive_dist(root, config, dist_file, report)
-    context = build_context(backend.data)
+    context = build_context(backend.data, config)
     # The live integration mode is state, not a slot — render it truthfully.
     context.setdefault("integration_mode", str(backend.get("mode", "guided")))
     # The boot pointer is state too: only this run knows whether
@@ -2407,7 +2507,7 @@ def adopt(
 
     # (1) Plant the live docs — never clobber; a doc with unfilled ${slots}
     # is planted under the loud UNRENDERED banner (visible, never inert).
-    for template_name, plan_rel in ADOPT_PLAN:
+    for template_name, plan_rel in adoption_plan(config):
         rel = _adopt_dest(plan_rel, config)
         if lane is not None and template_name == "control-status.md.tmpl":
             # Lane-aware adopt: the heartbeat is the ONE per-Project file on
@@ -2433,10 +2533,16 @@ def adopt(
     # drift — upgrade refreshes it via refresh_seat_digest (kit-written
     # copies only) and `bootstrap.py seat-digest` regenerates on demand;
     # check_seat_digest (advisory) byte-compares it against a fresh render.
-    digest_rel = seat_digest_relpath(config)
-    digest_text = seat_digest_text(root, config, context)
-    if _adopt_plant(root / digest_rel, digest_rel, digest_text, report):
-        record_doc_hash(backend, digest_rel, digest_text)
+    # A shape that plants neither of the digest's inputs (the skills index and
+    # the capability ledger) must not plant the render of them — it would be a
+    # generated doc about two absent docs. `profile.plant_seat_digest` is the
+    # declaration, not a check on which files happen to exist, so the decision
+    # reads the same at adopt, upgrade and refresh time.
+    if profile.plant_seat_digest:
+        digest_rel = seat_digest_relpath(config)
+        digest_text = seat_digest_text(root, config, context)
+        if _adopt_plant(root / digest_rel, digest_rel, digest_text, report):
+            record_doc_hash(backend, digest_rel, digest_text)
 
     # (2) Session-log scaffolding. A pre-existing README (skip-if-exists
     # keeps it) still receives the model-attribution doctrine append-only
@@ -2455,6 +2561,10 @@ def adopt(
     # (3b) Search hygiene (queued kit fix 5): keep the vendored dist + the
     # backup bank out of repo-wide search — merged, never clobbered.
     _plant_search_hygiene(root, config, bootstrap_path, report)
+    # (3c) K5: an untracked ledger needs the ignore entry from birth —
+    # a no-op under the tracked default, so no existing adopter's
+    # .gitignore is touched.
+    _plant_telemetry_ignore(root, config, report)
 
     # (4) Stage the .claude material under <state_dir> (regenerated each run).
     state_base = root / config.state_dir

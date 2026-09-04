@@ -41,6 +41,7 @@ from engine.grammar import (
     MODEL_TASK_CLASSES,
     parse_model_payload,
 )
+from engine.lib.atomicio import atomic_write_text
 
 GUARD_FIRES_FILENAME = "guard-fires.jsonl"
 MODEL_USAGE_RELPATH = "telemetry/model-usage.jsonl"
@@ -73,9 +74,62 @@ _parse_model_payload = parse_model_payload
 _DATE_PREFIX_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
 
 
-def guard_fires_path(root: Path, state_dir: str) -> Path:
-    """Return the guard-fire JSONL path for one install."""
+def guard_fires_path(
+    root: Path,
+    state_dir: str,
+    policy: dict | None = None,
+) -> Path:
+    """Return the guard-fire JSONL path for one install.
+
+    ``policy`` is a resolved ``telemetry.guard_fires`` mapping
+    (:func:`engine.lib.config.guard_fires_policy`). Its ``path`` axis, when
+    non-empty, names a repo-relative home that replaces the historical
+    ``<state_dir>/guard-fires.jsonl``; an absolute or parent-escaping value is
+    ignored rather than honored, because a telemetry key must never become a
+    write primitive pointed outside the repo. Omitting ``policy`` keeps the
+    pre-policy behavior exactly.
+    """
+    rel = str((policy or {}).get("path") or "").strip()
+    if rel:
+        candidate = Path(rel)
+        if not candidate.is_absolute() and ".." not in candidate.parts:
+            return root / candidate
     return root / state_dir / GUARD_FIRES_FILENAME
+
+
+# How far past its cap a ledger may drift before a trim runs. Trimming is a
+# full-file rewrite, so doing it on every append once the cap is reached would
+# turn an append-only feed into a rewrite-per-record one; with slack the
+# rewrite amortizes to one per ``_ROTATE_SLACK`` records while the file never
+# exceeds ``max_records + _ROTATE_SLACK`` lines.
+_ROTATE_SLACK = 128
+
+
+def _trim_guard_fires(path: Path, max_records: int) -> int:
+    """Trim ``path`` to its newest ``max_records`` lines; return lines dropped.
+
+    Returns 0 — having changed nothing — when no cap is set, when the file is
+    still inside its cap plus :data:`_ROTATE_SLACK`, or when anything at all
+    goes wrong. This is the ONE full-file rewrite either telemetry feed
+    performs; it happens only under an explicit positive cap, it is atomic
+    (write-temp-then-replace, via :func:`engine.lib.atomicio.atomic_write_text`)
+    so a crash mid-trim cannot leave a half-file, and it fails open like every
+    other write on this path.
+    """
+    if max_records <= 0:
+        return 0
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return 0
+    if len(lines) <= max_records + _ROTATE_SLACK:
+        return 0
+    kept = lines[-max_records:]
+    try:
+        atomic_write_text(path, "\n".join(kept) + "\n")
+    except OSError:
+        return 0
+    return len(lines) - len(kept)
 
 
 def _append_jsonl(path: Path, record: dict) -> None:
@@ -139,6 +193,7 @@ def record_guard_fires(
     findings: list,
     verdict: str | None = None,
     reason: str | None = None,
+    policy: dict | None = None,
 ) -> int:
     """Append one §5.3 record per finding; return how many were written.
 
@@ -168,7 +223,9 @@ def record_guard_fires(
     try:
         if not (root / state_dir).is_dir():
             return 0
-        path = guard_fires_path(root, state_dir)
+        if policy is not None and not policy.get("enabled", True):
+            return 0
+        path = guard_fires_path(root, state_dir, policy)
         now = datetime.now(timezone.utc)
         ts = now.isoformat(timespec="seconds")
         recent = _recent_fire_keys(path, now) if verdict is None else set()
@@ -197,6 +254,11 @@ def record_guard_fires(
             }
             _append_jsonl(path, record)
             written += 1
+        if written:
+            # Trim AFTER the appends, never before: a cap must never cost a
+            # record this run produced. No-ops when no cap is configured, so
+            # the default feed stays strictly append-only.
+            _trim_guard_fires(path, int((policy or {}).get("max_records") or 0))
         return written
     except Exception:  # noqa: BLE001 — telemetry fails open by contract
         return 0

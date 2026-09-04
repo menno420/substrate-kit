@@ -4,6 +4,8 @@ import build_bootstrap
 from engine.interview.question_bank import QUESTIONS
 from engine.lib.config import KIT_VERSION
 from engine.render import (
+    agreement_boot_tail,
+    boot_read_path,
     ENGINE_CONTEXT_KEYS,
     agreement_home,
     build_context,
@@ -32,6 +34,14 @@ def test_build_context_from_slot_values():
         "project_name": "Demo",
         "kit_version": KIT_VERSION,
         "skills_index": skills_index_table(),
+        # Engine-injected on EVERY path, empty when no config declares an
+        # owner-context home — an engine key that is not injected
+        # unconditionally strands its template slot (ENGINE_CONTEXT_KEYS).
+        "owner_context_pointer": "",
+        # Same rule: the boot list follows the adoption shape, and a
+        # config-less render gets the historical (default-shape) block.
+        "boot_read_path": boot_read_path(),
+        "agreement_boot_tail": agreement_boot_tail(),
     }
 
 

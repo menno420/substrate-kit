@@ -30,6 +30,12 @@ DIST_PATH = KIT_ROOT / "dist" / "bootstrap.py"
 # Dependency order: a module appears after everything it references.
 MODULE_ORDER = (
     "lib/atomicio.py",
+    # Before lib/config.py: the adoption-profile records config imports
+    # (Config.adoption_profile's default, new_config's resolution). Pure
+    # stdlib, no engine references — the dist strips intra-package import
+    # lines, so a module must be concatenated before its consumer or the
+    # name is undefined at single-file runtime.
+    "lib/profiles.py",
     "lib/config.py",
     "lib/state.py",
     "lib/guardrail.py",

@@ -2,7 +2,9 @@
 
 > **Status:** `in-progress`
 
-- **📊 Model:** opus-5 · high · feature
+- **📊 Model:** opus-5 · xhigh · feature
+- **📍 Venue:** cloud-container
+- **🔗 Session:** [session_01Y3DjrdYmx4ahPkvdZnWNNm](https://claude.ai/code/session_01Y3DjrdYmx4ahPkvdZnWNNm) · "Fleet Manager substrate-kit implementation"
 
 💡 Session idea: **five "the hub needs a different shape" requirements were
 one missing abstraction, not five flags.** `ADOPT_PLAN` was already a data

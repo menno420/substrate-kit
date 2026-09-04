@@ -420,6 +420,28 @@ MODEL_LINE_TAUGHT_FORMAT = (
     "- **\N{BAR CHART} Model:** <model> \N{MIDDLE DOT} <effort> "
     "\N{MIDDLE DOT} <task-class>"
 )
+# The default sessions dir, used ONLY as this module's fallback so a caller
+# with no config in scope still emits the historical advice byte-for-byte.
+# The real value is ``Config.sessions_dir``; every caller that has it passes it.
+DEFAULT_SESSIONS_DIRNAME = ".sessions"
+
+
+def model_line_fix_path(sessions_dir: str = DEFAULT_SESSIONS_DIRNAME) -> str:
+    """Return the shared "fix the line to the taught form" advice tail.
+
+    Four findings across two checkers carried this sentence as four copies of
+    one literal, each ending "see .sessions/README.md" — correct for every
+    adopter until :data:`engine.lib.config.Config.sessions_dir` moved, and then
+    wrong in the one place a session looks when a card is rejected. One home,
+    parameterized: the message names the README that this install actually has.
+    """
+    return (
+        f"fix the card's line to the taught form `{MODEL_LINE_TAUGHT_FORMAT}` "
+        "(family-level model \N{MIDDLE DOT} effort \N{MIDDLE DOT} PL-004 task "
+        f"class; see {sessions_dir}/README.md)"
+    )
+
+
 # The 9 PL-004 task classes, verbatim (docs/program/rulings.md): the 8
 # founding Q-0248 classes + `feature build` (the PL-010 amendment).
 MODEL_TASK_CLASSES = (

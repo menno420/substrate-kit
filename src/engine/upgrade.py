@@ -158,7 +158,11 @@ def verify_against_release_json(running: Path, release_json: Path) -> list[str]:
     return [f"verified: sha256 + version against {release_json.name}"]
 
 
-def _upgrade_context(root: Path, backend: Any) -> dict[str, str]:
+def _upgrade_context(
+    root: Path,
+    backend: Any,
+    config: Any | None = None,
+) -> dict[str, str]:
     """Build the render context exactly the way adopt does.
 
     ``agreement_home`` uses the same existence rule as :func:`_doc_plan`
@@ -167,7 +171,7 @@ def _upgrade_context(root: Path, backend: Any) -> dict[str, str]:
     here would misclassify an untouched ``docs/AGENT_ORIENTATION.md`` as
     diverged.
     """
-    context = build_context(backend.data)
+    context = build_context(backend.data, config)
     context.setdefault("integration_mode", str(backend.get("mode", "guided")))
     context.setdefault("agreement_home", agreement_home(root))
     return context
@@ -210,7 +214,7 @@ def classify_planted_docs(
     diverged docs with old templates available — the template@old→new delta,
     both rendered through the *current* slot context for a readable diff).
     """
-    context = _upgrade_context(root, backend)
+    context = _upgrade_context(root, backend, config)
     templates = new_templates if new_templates is not None else load_templates()
     rows: list[dict[str, str]] = []
     for template_name, rel in _doc_plan(root, config):
@@ -298,7 +302,7 @@ def apply_doc_improvements(
     planted docs are never auto-edited without ``--apply-docs``, and never
     when the consumer diverged).
     """
-    context = _upgrade_context(root, backend)
+    context = _upgrade_context(root, backend, config)
     templates = new_templates if new_templates is not None else load_templates()
     lines: list[str] = []
     for row in rows:
@@ -470,7 +474,7 @@ def refresh_capability_seed(
         return [
             f"capability-seed: {rel} unreadable — fence refresh skipped.",
         ]
-    context = _upgrade_context(root, backend)
+    context = _upgrade_context(root, backend, config)
     templates = new_templates if new_templates is not None else load_templates()
     if CAPABILITIES_TEMPLATE not in templates:
         return []
@@ -567,7 +571,7 @@ def refresh_seat_digest(
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return [f"seat-digest: {rel} unreadable — refresh skipped."]
-    context = _upgrade_context(root, backend)
+    context = _upgrade_context(root, backend, config)
     fresh = seat_digest_text(
         root,
         config,

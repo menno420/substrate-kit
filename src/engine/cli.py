@@ -164,10 +164,17 @@ from engine.lib.config import (
     KIT_VERSION,
     Config,
     config_path,
+    guard_fires_policy,
     load_config,
+    new_config,
     save_config,
 )
 from engine.lib.guardrail import UnsafeTargetError, assert_safe_target
+from engine.lib.profiles import (
+    DEFAULT_PROFILE_NAME,
+    PROFILE_NAMES,
+    UnknownProfileError,
+)
 from engine.lib.modes import actuators_may_apply, triggers_mandate
 from engine.lib.state import JsonStateBackend, default_state
 from engine.loop.archive import ensure_archive_draft
@@ -212,6 +219,7 @@ from engine.loop.telemetry import (
     GUARD_FIRES_FILENAME,
     harvest_model_usage,
     reconcile_model_usage,
+    guard_fires_path,
     record_guard_fires,
 )
 from engine.loop.triggers import check_triggers, mandatory_questions, trigger_block
@@ -302,14 +310,32 @@ def _state_path(root: Path, config: Config) -> Path:
     return root / config.state_dir / "state.json"
 
 
-def cmd_init(target: Path) -> int:
-    """Create config + state under ``target`` if absent; never clobber."""
+def cmd_init(target: Path, profile: str | None = None) -> int:
+    """Create config + state under ``target`` if absent; never clobber.
+
+    ``profile`` names the adoption SHAPE a NEW install is born in
+    (:mod:`engine.lib.profiles`); it is written into ``substrate.config.json``
+    along with that shape's config defaults, once. On an EXISTING install it is
+    read-only: a name matching what the config already declares is accepted (so
+    re-running the same command stays idempotent), and a DIFFERENT name is
+    refused rather than applied — re-shaping an adopted tree would mean
+    unplanting files the host may have edited, which is a migration, not an
+    init.
+    """
     assert_safe_target(target, _kit_root())
     target.mkdir(parents=True, exist_ok=True)
     if config_path(target).exists():
         config = load_config(target)
+        if profile and profile != config.adoption_profile:
+            _emit(
+                f"init: REFUSED — this install already declares adoption "
+                f"profile {config.adoption_profile!r}; --profile {profile!r} "
+                "would re-shape an adopted tree. Edit `adoption_profile` in "
+                "substrate.config.json deliberately if that is the intent.",
+            )
+            return 2
     else:
-        config = Config()
+        config = new_config(profile)
         save_config(target, config)
     state_path = _state_path(target, config)
     if state_path.exists():
@@ -468,7 +494,7 @@ def cmd_render(target: Path, live: bool = False) -> int:
     if not backend.data:
         _emit(f"render: no state at {target} (run init first).")
         return 1
-    context = build_context(backend.data)
+    context = build_context(backend.data, config)
     # Engine-computed boot pointer (ORDER 015): same rule as adopt, so a
     # staged/live render never strands ${agreement_home} as an unfilled slot.
     context.setdefault("agreement_home", agreement_home(target))
@@ -508,7 +534,7 @@ def cmd_skills(target: Path, build: bool) -> int:
             _emit(f"    capabilities: {caps}")
         return 0
     backend = JsonStateBackend(_state_path(target, config))
-    context = build_context(backend.data) if backend.data else {}
+    context = build_context(backend.data, config) if backend.data else {}
     out_base = target / config.state_dir
     leftover_total = 0
     for skill in SKILLS:
@@ -540,7 +566,7 @@ def cmd_agents(target: Path, build: bool) -> int:
             _emit(f"  {agent['name']} — {agent['description']}")
         return 0
     backend = JsonStateBackend(_state_path(target, config))
-    context = build_context(backend.data) if backend.data else {}
+    context = build_context(backend.data, config) if backend.data else {}
     out_base = target / config.state_dir
     leftover_total = 0
     for agent in AGENTS:
@@ -718,13 +744,15 @@ def cmd_hook(target: Path, event: str) -> int:
         warnings = handler(target)
         kind = _HOOK_GUARD_KINDS.get(event)
         if warnings and kind:
+            hook_config = load_config(target)
             record_guard_fires(
                 target,
-                load_config(target).state_dir,
+                hook_config.state_dir,
                 cmd=f"hook {event}",
                 surface="hook",
                 posture="advisory",
                 findings=[Finding("", kind, warning) for warning in warnings],
+                policy=guard_fires_policy(hook_config),
             )
         return 0
     except Exception:  # noqa: BLE001 — hooks fail open by contract, always 0
@@ -1304,7 +1332,11 @@ def cmd_check(
     # nowhere is a drift nudge for the session, never a required-check red
     # (UNVERIFIED per its provenance header; graduation is a later,
     # deliberate step). Full lane only: skills are not control-lane traffic.
-    grounds_advisories = check_skill_grounds(target, state_dir=config.state_dir)
+    grounds_advisories = check_skill_grounds(
+        target,
+        state_dir=config.state_dir,
+        config=config,
+    )
     # Staged-artifact regen-lag scan (ORDER 019 item 6, idea
     # staged-artifact-regen-lag-checker-2026-07-12): advisory-only by
     # contract, like every nudge above — a staged artifact still carrying a
@@ -1360,7 +1392,7 @@ def cmd_check(
     digest_advisories = check_seat_digest(
         target,
         config,
-        context=build_context(digest_backend.data) if digest_backend.data else {},
+        context=build_context(digest_backend.data, config) if digest_backend.data else {},
     )
     # K0 headroom gauge (PR #308, the nightcap-card 💡 spec): advisory-only
     # by contract, like every nudge above — the boot set nearing (but not
@@ -1668,7 +1700,11 @@ def cmd_check(
                     ),
                     miss,
                 )
-                for miss in check_added_card(card_path, config.session_markers)
+                for miss in check_added_card(
+                    card_path,
+                    config.session_markers,
+                    config.sessions_dir,
+                )
             ]
         else:
             _emit(
@@ -1692,7 +1728,11 @@ def cmd_check(
                 "exist — nothing to simulate (advisory).",
             )
         else:
-            sim_misses = check_added_card(sim_path, config.session_markers)
+            sim_misses = check_added_card(
+                sim_path,
+                config.session_markers,
+                config.sessions_dir,
+            )
             if not sim_misses:
                 _emit(
                     f"check: simulate-added-card {simulate_added_card} — the "
@@ -1724,13 +1764,38 @@ def cmd_check(
     # sessions were reverting. Aggregate every call site's written count and
     # say so once, at the end of the run, on every return path.
     fires_written = 0
+    # The install's resolved telemetry policy: one read, carried to every
+    # record_guard_fires call in this run so the ledger's four axes cannot
+    # disagree between two call sites of the same check.
+    fires_policy = guard_fires_policy(config)
+    fires_rel = guard_fires_path(target, config.state_dir, fires_policy)
+    try:
+        fires_rel_name = fires_rel.relative_to(target).as_posix()
+    except ValueError:  # pragma: no cover — guard_fires_path stays in-repo
+        fires_rel_name = f"{config.state_dir}/{GUARD_FIRES_FILENAME}"
 
     def _announce_fires() -> None:
-        if fires_written:
+        # The advice half of K5: under the KF-11 tracked default the ledger is
+        # a committed file and a silent append leaves a "mystery" dirty tree
+        # sessions were reverting (PR #328's card) — so the run says commit it.
+        # Under an UNTRACKED policy that sentence would be actively wrong: the
+        # file is gitignored by construction, there is no delta to commit, and
+        # telling a session otherwise is how a policy gets quietly undone.
+        if not fires_written:
+            return
+        cap = fires_policy["max_records"]
+        capped = f", newest {cap} kept" if cap else ""
+        if fires_policy["tracked"]:
             _emit(
                 f"check: {fires_written} guard-fire record(s) appended to "
-                f"{config.state_dir}/{GUARD_FIRES_FILENAME} — telemetry "
-                "ledger; commit the delta with your session (do not revert).",
+                f"{fires_rel_name} — telemetry ledger{capped}; commit the "
+                "delta with your session (do not revert).",
+            )
+        else:
+            _emit(
+                f"check: {fires_written} guard-fire record(s) appended to "
+                f"{fires_rel_name} — telemetry ledger{capped}; UNTRACKED by "
+                "this install's policy (nothing to commit).",
             )
 
     if suppressed:
@@ -1742,6 +1807,7 @@ def cmd_check(
             fires_written += record_guard_fires(
                 target,
                 config.state_dir,
+                policy=fires_policy,
                 cmd="check",
                 surface="check",
                 posture=posture,
@@ -1756,6 +1822,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture=posture,
@@ -1776,6 +1843,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -1795,6 +1863,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -1816,6 +1885,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -1836,6 +1906,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -1857,6 +1928,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -1878,6 +1950,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -1899,6 +1972,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -1922,6 +1996,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -1945,6 +2020,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -1968,6 +2044,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -1989,6 +2066,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2009,6 +2087,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2032,6 +2111,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2054,6 +2134,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2076,6 +2157,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2097,6 +2179,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2117,6 +2200,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2139,6 +2223,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2161,6 +2246,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2184,6 +2270,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2206,6 +2293,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2228,6 +2316,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2251,6 +2340,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2273,6 +2363,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2296,6 +2387,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2318,6 +2410,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2339,6 +2432,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2360,6 +2454,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2382,6 +2477,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2403,6 +2499,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="advisory",
@@ -2520,6 +2617,7 @@ def cmd_check(
             fires_written += record_guard_fires(
                 target,
                 config.state_dir,
+                policy=fires_policy,
                 cmd="check",
                 surface="check",
                 posture="advisory",
@@ -2555,6 +2653,7 @@ def cmd_check(
         fires_written += record_guard_fires(
             target,
             config.state_dir,
+            policy=fires_policy,
             cmd="check",
             surface="check",
             posture="blocking" if (strict or require_session_log) else "advisory",
@@ -3104,6 +3203,7 @@ def cmd_adopt(
     include_claude: bool,
     wire_enforcement: bool = False,
     lane: str | None = None,
+    profile: str | None = None,
 ) -> int:
     """Adopt the workflow into ``target``: init, plant the docs, stage the packs.
 
@@ -3115,10 +3215,16 @@ def cmd_adopt(
     heartbeat plants as ``control/status-<lane>.md`` and is declared in
     ``heartbeat_files``; the rest of the bus is shared, never re-planted.
     """
-    rc = cmd_init(target)
+    try:
+        rc = cmd_init(target, profile)
+    except UnknownProfileError as exc:
+        _emit(f"adopt: REFUSED — {exc}")
+        return 2
     if rc != 0:
         return rc
     config = load_config(target)
+    if config.adoption_profile != DEFAULT_PROFILE_NAME:
+        _emit(f"adopt: adoption profile {config.adoption_profile!r}.")
     backend = JsonStateBackend(_state_path(target, config))
     try:
         lines = adopt(
@@ -3652,7 +3758,7 @@ def cmd_seat_digest(target: Path, *, venues: list[str] | None = None) -> int:
     else:
         venue_tuple = SEAT_DIGEST_DEFAULT_VENUES
     backend = JsonStateBackend(_state_path(target, config))
-    context = build_context(backend.data) if backend.data else {}
+    context = build_context(backend.data, config) if backend.data else {}
     text = seat_digest_text(target, config, context, venues=venue_tuple)
     atomic_write_text(path, text)
     if backend.data:
@@ -3718,7 +3824,7 @@ def cmd_heartbeat(
             )
             return 2
         backend = JsonStateBackend(_state_path(target, config))
-        context = build_context(backend.data) if backend.data else {}
+        context = build_context(backend.data, config) if backend.data else {}
         project_name = context.get("project_name") or target.resolve().name
         new_text = full_status(
             project_name,
@@ -3954,6 +4060,20 @@ def build_parser() -> argparse.ArgumentParser:
     ):
         child = sub.add_parser(name, help=helptext)
         child.add_argument("--target", type=Path, default=Path.cwd())
+        if name == "init":
+            child.add_argument(
+                    "--profile",
+        metavar="NAME",
+        default=None,
+        choices=PROFILE_NAMES,
+        help=(
+            "the adoption SHAPE a NEW install is born in: "
+            f"{' | '.join(PROFILE_NAMES)} (default: 'default', the historical "
+            "shape). Recorded in substrate.config.json and honored by every "
+            "later upgrade/render; refused on an install that already declares "
+            "a different one"
+        ),
+            )
     adopt_p = sub.add_parser("adopt", help="plant the workflow docs + stage the packs")
     adopt_p.add_argument(
         "--include-claude",
@@ -3977,6 +4097,19 @@ def build_parser() -> argparse.ArgumentParser:
             "adopt as a named lane in a SHARED multi-Project repo: plant "
             "control/status-NAME.md as this Project's heartbeat (declared in "
             "heartbeat_files) and share the rest of the control/ bus"
+        ),
+    )
+    adopt_p.add_argument(
+        "--profile",
+        metavar="NAME",
+        default=None,
+        choices=PROFILE_NAMES,
+        help=(
+            "the adoption SHAPE a NEW install is born in: "
+            f"{' | '.join(PROFILE_NAMES)} (default: 'default', the historical "
+            "shape). Recorded in substrate.config.json and honored by every "
+            "later upgrade/render; refused on an install that already declares "
+            "a different one"
         ),
     )
     adopt_p.add_argument("--target", type=Path, default=Path.cwd())
@@ -4441,7 +4574,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.simulate is not None:
             return cmd_simulate(args.simulate, args.mode)
         if args.command == "init":
-            return cmd_init(args.target)
+            try:
+                return cmd_init(args.target, args.profile)
+            except UnknownProfileError as exc:
+                _emit(f"init: REFUSED — {exc}")
+                return 2
         if args.command == "status":
             return cmd_status(args.target)
         if args.command == "ask":
@@ -4562,6 +4699,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.include_claude,
                 wire_enforcement=args.wire_enforcement,
                 lane=args.lane,
+                profile=args.profile,
             )
         if args.command == "upgrade":
             return cmd_upgrade(

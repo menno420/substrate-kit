@@ -30,7 +30,9 @@ from engine.grammar import (
     MODEL_EFFORT_UNRECORDED,
     MODEL_EFFORT_VALUES,
     MODEL_LINE_NEEDLE,
+    DEFAULT_SESSIONS_DIRNAME,
     MODEL_LINE_TAUGHT_FORMAT,
+    model_line_fix_path,
     MODEL_TASK_CLASSES,
     parse_model_payload,
 )
@@ -292,7 +294,10 @@ def _last_model_payload(text: str) -> dict | None:
     return last_valid
 
 
-def _task_class_findings_for_card(text: str) -> list[str]:
+def _task_class_findings_for_card(
+    text: str,
+    sessions_dir: str = DEFAULT_SESSIONS_DIRNAME,
+) -> list[str]:
     """The EXIT-AFFECTING PL-004 task-class check for a single ADDED card (R13).
 
     The fleet-wide payload lint (:func:`engine.checks.check_model_line.
@@ -321,14 +326,15 @@ def _task_class_findings_for_card(text: str) -> list[str]:
     return [
         f"an off-taxonomy `{MODEL_LINE_NEEDLE}` task-class {task_class!r} on "
         f"this added card — it does not prefix-match any of the "
-        f"{len(MODEL_TASK_CLASSES)} PL-004 classes ({known}); fix this card's "
-        f"line to the taught form `{MODEL_LINE_TAUGHT_FORMAT}` (family-level "
-        "model \N{MIDDLE DOT} effort \N{MIDDLE DOT} PL-004 task class; see "
-        ".sessions/README.md)"
+        f"{len(MODEL_TASK_CLASSES)} PL-004 classes ({known}); "
+        + model_line_fix_path(sessions_dir)
     ]
 
 
-def _exact_model_id_findings_for_card(text: str) -> list[str]:
+def _exact_model_id_findings_for_card(
+    text: str,
+    sessions_dir: str = DEFAULT_SESSIONS_DIRNAME,
+) -> list[str]:
     """The EXIT-AFFECTING exact-model-ID check for a single ADDED card (R14).
 
     The sibling of :func:`_task_class_findings_for_card`, one segment over: the
@@ -362,13 +368,15 @@ def _exact_model_id_findings_for_card(text: str) -> list[str]:
         f"an exact-model-ID `{MODEL_LINE_NEEDLE}` model segment {model!r} on "
         "this added card — record the family-level model name only (e.g. "
         "`fable-5`, `opus-4.8`), never an exact model ID, dated or not (fleet "
-        f"reporting bar, ORDER 012); fix this card's line to the taught form "
-        f"`{MODEL_LINE_TAUGHT_FORMAT}` (family-level model \N{MIDDLE DOT} "
-        "effort \N{MIDDLE DOT} PL-004 task class; see .sessions/README.md)"
+        "reporting bar, ORDER 012); "
+        + model_line_fix_path(sessions_dir)
     ]
 
 
-def _effort_findings_for_card(text: str) -> list[str]:
+def _effort_findings_for_card(
+    text: str,
+    sessions_dir: str = DEFAULT_SESSIONS_DIRNAME,
+) -> list[str]:
     """The EXIT-AFFECTING effort-tier check for a single ADDED card (R15).
 
     The third sibling of :func:`_task_class_findings_for_card` (R13) and
@@ -407,14 +415,16 @@ def _effort_findings_for_card(text: str) -> list[str]:
     known = " | ".join(MODEL_EFFORT_VALUES)
     return [
         f"an off-taxonomy `{MODEL_LINE_NEEDLE}` effort {effort!r} on this added "
-        f"card — it is not one of the taxonomy tiers ({known}); fix this card's "
-        f"line to the taught form `{MODEL_LINE_TAUGHT_FORMAT}` (family-level "
-        "model \N{MIDDLE DOT} effort \N{MIDDLE DOT} PL-004 task class; see "
-        ".sessions/README.md)"
+        f"card — it is not one of the taxonomy tiers ({known}); "
+        + model_line_fix_path(sessions_dir)
     ]
 
 
-def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[str]:
+def check_added_card(
+    path: Path,
+    markers: Sequence[Mapping[str, str]],
+    sessions_dir: str = DEFAULT_SESSIONS_DIRNAME,
+) -> list[str]:
     """Grade a card newly ADDED by a PR (the gate's added-card lane).
 
     The venture-lab #15 false-green class: the generated gate exempts an
@@ -483,9 +493,9 @@ def check_added_card(path: Path, markers: Sequence[Mapping[str, str]]) -> list[s
     # exactly like an unflipped born-red badge; a missing/malformed line stays
     # silent (fail-open — the marker checks own that case).
     findings = check_log(path, markers)
-    findings.extend(_task_class_findings_for_card(text))
-    findings.extend(_exact_model_id_findings_for_card(text))
-    findings.extend(_effort_findings_for_card(text))
+    findings.extend(_task_class_findings_for_card(text, sessions_dir))
+    findings.extend(_exact_model_id_findings_for_card(text, sessions_dir))
+    findings.extend(_effort_findings_for_card(text, sessions_dir))
     return findings
 
 

@@ -80,6 +80,7 @@ from engine.grammar import (
     MODEL_EFFORT_VALUES,
     MODEL_LINE_NEEDLE,
     MODEL_LINE_TAUGHT_FORMAT,
+    model_line_fix_path,
     MODEL_TASK_CLASSES,
     parse_model_payload,
 )
@@ -112,10 +113,7 @@ MODEL_LINE_LINT_WINDOW = 10
 
 # The loud fix-path tail every finding carries — quotes the taught byte-form
 # verbatim so the fix is a copy-edit, never a re-derivation.
-_FIX_PATH = (
-    f"fix the card's line to the taught form `{MODEL_LINE_TAUGHT_FORMAT}` "
-    "(family-level model · effort · PL-004 task class; see .sessions/README.md)"
-)
+_FIX_PATH = model_line_fix_path()
 
 
 def model_line_findings(text: str) -> list[tuple[str, str]]:

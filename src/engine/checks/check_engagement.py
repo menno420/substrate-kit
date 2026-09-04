@@ -63,7 +63,11 @@ import re
 from pathlib import Path
 from typing import Any
 
-from engine.adopt import ADOPT_PLAN, UNRENDERED_BANNER_FIRST_LINE, _adopt_dest
+from engine.adopt import (
+    UNRENDERED_BANNER_FIRST_LINE,
+    _adopt_dest,
+    adoption_plan,
+)
 from engine.checks.check_docs import Finding
 from engine.render import find_placeholders, find_placeholders_outside_code
 
@@ -94,14 +98,16 @@ def scan_relpaths(config: Any) -> list[str]:
 
     Public on purpose: ``render --live`` iterates this SAME list, so the
     render verb and the engagement gate can never disagree about whose job a
-    planted file is. The run-2 gap (idea render-live-claude-md-gap-2026-07-09)
+    planted file is. Profile-filtered (``adoption_plan``) for the same
+    reason: a shape that never plants a doc must not have the gate reason
+    about it, and ``render --live`` must not go looking for it. The run-2 gap (idea render-live-claude-md-gap-2026-07-09)
     was exactly that disagreement — the gate counted ``.claude/CLAUDE.md``'s
     unrendered banner/slots as strict-RED while the render path skipped the
     file, stranding every fresh adopter mid-checklist.
     """
     relpaths = [
         _adopt_dest(plan_rel, config)
-        for _, plan_rel in ADOPT_PLAN
+        for _, plan_rel in adoption_plan(config)
         # Shell plants are excluded from the unrendered/render-live surface
         # (EAP §6.5): shell `${VAR}` syntax is not an interview slot — a
         # host's hand-rolled scripts/env-setup.sh would false-red as
