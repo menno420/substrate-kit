@@ -94,7 +94,10 @@ def guard_fires_path(
     pre-policy behavior exactly.
     """
     rel = str((policy or {}).get("path") or "").strip()
-    if rel:
+    # A newline in the path cannot be escaped in a gitignore line and would
+    # split every downstream consumer's idea of "one path" in half, so it is
+    # rejected at the gate rather than patched per consumer.
+    if rel and not any(ch in rel for ch in "\n\r"):
         candidate = Path(rel)
         if not candidate.is_absolute() and ".." not in candidate.parts:
             return root / candidate
@@ -123,7 +126,7 @@ def _trim_guard_fires(path: Path, max_records: int) -> int:
     if max_records <= 0:
         return 0
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
+        lines = _records(path.read_text(encoding="utf-8"))
     except OSError:
         return 0
     if len(lines) <= max_records + _ROTATE_SLACK:
@@ -134,6 +137,20 @@ def _trim_guard_fires(path: Path, max_records: int) -> int:
     except OSError:
         return 0
     return len(lines) - len(kept)
+
+
+def _records(text: str) -> list[str]:
+    """Split a JSONL ledger into RECORDS — on newline only, never splitlines().
+
+    The writer joins on ``"\n"`` and dumps with ``ensure_ascii=False``, which
+    leaves U+2028, U+2029, U+0085 and several C0 characters raw inside string
+    values. ``str.splitlines()`` treats every one of them as a line break, so a
+    single record carrying one in a finding's message would be read as two:
+    the cap would count the wrong unit, and a trim slicing at that boundary
+    would write back half a record. Splitting on the writer's own separator
+    makes read and write agree by construction.
+    """
+    return [line for line in text.split("\n") if line]
 
 
 def _append_jsonl(path: Path, record: dict) -> None:
@@ -215,7 +232,7 @@ def _recent_fire_keys(path: Path, now: datetime) -> set[tuple[str, str, str]]:
     """
     keys: set[tuple[str, str, str]] = set()
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
+        lines = _records(path.read_text(encoding="utf-8"))
     except OSError:
         return keys
     for line in lines[-_GUARD_FIRES_DEDUPE_SCAN:]:

@@ -174,6 +174,7 @@ from engine.lib.profiles import (
     DEFAULT_PROFILE_NAME,
     PROFILE_NAMES,
     UnknownProfileError,
+    profile_for_config,
 )
 from engine.lib.modes import actuators_may_apply, triggers_mandate
 from engine.lib.state import JsonStateBackend, default_state
@@ -406,7 +407,7 @@ def cmd_stance(target: Path, name: str | None) -> int:
         return 1
     if name is None:
         active = backend.data.get("stance", DEFAULT_STANCE)
-        _emit(stance_briefing(active))
+        _emit(stance_briefing(active, profile_for_config(config).omit_plan_dests))
         _emit(f"  available: {', '.join(stance_names())}")
         return 0
     if name not in stance_names():
@@ -414,7 +415,7 @@ def cmd_stance(target: Path, name: str | None) -> int:
         return 2
     backend.set("stance", name)
     _emit(f"stance: set to {name}.")
-    _emit(stance_briefing(name))
+    _emit(stance_briefing(name, profile_for_config(config).omit_plan_dests))
     return 0
 
 
@@ -1792,10 +1793,19 @@ def cmd_check(
                 "delta with your session (do not revert).",
             )
         else:
+            # NOT "nothing to commit": that asserts a fact about git this line
+            # never checked. `adopt` deliberately never touches git's index, so
+            # an install that flips `tracked` to false on a ledger it ALREADY
+            # committed keeps a tracked file — and under a cap the next trim
+            # shows up as a large uncommitted DELETION while this line calls it
+            # nothing. Say only what is known, and name the one-time remedy.
             _emit(
                 f"check: {fires_written} guard-fire record(s) appended to "
-                f"{fires_rel_name} — telemetry ledger{capped}; UNTRACKED by "
-                "this install's policy (nothing to commit).",
+                f"{fires_rel_name} — telemetry ledger{capped}; this install's "
+                "policy says UNTRACKED, so it is gitignored from birth and "
+                "there is no delta to commit. If this repository committed the "
+                f"ledger before the policy changed, `git rm --cached "
+                f"{fires_rel_name}` once — the kit never edits git's index.",
             )
 
     if suppressed:
@@ -3749,6 +3759,19 @@ def cmd_seat_digest(target: Path, *, venues: list[str] | None = None) -> int:
     guard-fire log, it never CREATES state in an uninitialized tree.
     """
     config = load_config(target)
+    profile = profile_for_config(config)
+    if not profile.plant_seat_digest:
+        # `adopt` gates the digest on the profile; the on-demand verb did not,
+        # so one `seat-digest` call re-created the very doc a sparse shape
+        # exists to not have — a profile undone by a verb. Refuses in the shape
+        # cmd_heartbeat established for "no control/ bus here".
+        _emit(
+            f"seat-digest: refused — the {profile.name!r} adoption profile "
+            "plants no seat digest, because it plants neither of the documents "
+            "the digest renders (the skills index and the capability ledger). "
+            "Writing one here would be a generated doc about two absent docs.",
+        )
+        return 2
     rel = seat_digest_relpath(config)
     path = target / rel
     if venues:

@@ -234,6 +234,24 @@ HUB_PROFILE = AdoptionProfile(
     # absent docs.
     plant_seat_digest=False,
     config_defaults={
+        # The boot set a shape that plants no docs is born with. The kit's
+        # shipped default names two documents this shape guarantees it will
+        # never plant, and leaving it alone was wrong: a bare hub is clean only
+        # while it stays EMPTY. The moment it writes its own state document —
+        # which is exactly what "declare your own folders" tells it to do —
+        # `check_orientation_budget` engages on the doc that exists and reds,
+        # EXIT-AFFECTING, on the one that never will (MEASURED: 3 findings
+        # bare, 4 with an `orientation-missing` for docs/AGENT_ORIENTATION.md
+        # once docs/current-state.md is created).
+        #
+        # Empty is NOT the fix: with no read-path roots the hub's own state
+        # document becomes an orphan under `check_reachable` instead — one
+        # false red traded for another (measured both ways). Naming the one
+        # entry a hub plausibly writes keeps the boot-set gate real, keeps
+        # orphan detection working, and is a config key the adopter re-points
+        # if it files its state document elsewhere. That is configuration, not
+        # a rename.
+        "readpath_docs": ["current-state.md"],
         # K3: visible, not hidden. `sessions_dir` was already the seam — this
         # only changes which value the shape is born with, so a hub never needs
         # the rename that made this a birth-time requirement.
@@ -11606,7 +11624,10 @@ def guard_fires_path(
     pre-policy behavior exactly.
     """
     rel = str((policy or {}).get("path") or "").strip()
-    if rel:
+    # A newline in the path cannot be escaped in a gitignore line and would
+    # split every downstream consumer's idea of "one path" in half, so it is
+    # rejected at the gate rather than patched per consumer.
+    if rel and not any(ch in rel for ch in "\n\r"):
         candidate = Path(rel)
         if not candidate.is_absolute() and ".." not in candidate.parts:
             return root / candidate
@@ -11635,7 +11656,7 @@ def _trim_guard_fires(path: Path, max_records: int) -> int:
     if max_records <= 0:
         return 0
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
+        lines = _records(path.read_text(encoding="utf-8"))
     except OSError:
         return 0
     if len(lines) <= max_records + _ROTATE_SLACK:
@@ -11646,6 +11667,20 @@ def _trim_guard_fires(path: Path, max_records: int) -> int:
     except OSError:
         return 0
     return len(lines) - len(kept)
+
+
+def _records(text: str) -> list[str]:
+    """Split a JSONL ledger into RECORDS — on newline only, never splitlines().
+
+    The writer joins on ``"\n"`` and dumps with ``ensure_ascii=False``, which
+    leaves U+2028, U+2029, U+0085 and several C0 characters raw inside string
+    values. ``str.splitlines()`` treats every one of them as a line break, so a
+    single record carrying one in a finding's message would be read as two:
+    the cap would count the wrong unit, and a trim slicing at that boundary
+    would write back half a record. Splitting on the writer's own separator
+    makes read and write agree by construction.
+    """
+    return [line for line in text.split("\n") if line]
 
 
 def _append_jsonl(path: Path, record: dict) -> None:
@@ -11727,7 +11762,7 @@ def _recent_fire_keys(path: Path, now: datetime) -> set[tuple[str, str, str]]:
     """
     keys: set[tuple[str, str, str]] = set()
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
+        lines = _records(path.read_text(encoding="utf-8"))
     except OSError:
         return keys
     for line in lines[-_GUARD_FIRES_DEDUPE_SCAN:]:
@@ -15330,17 +15365,29 @@ def is_out_of_stance(name: str, action: str) -> bool:
     return action not in stance["tools"]
 
 
-def stance_briefing(name: str) -> str:
+def stance_briefing(name: str, omit: frozenset[str] = frozenset()) -> str:
     """Return the orientation block injected for the active stance.
 
     The reading-route + tool-scope + output contract, formatted for injection into
     session orientation (alongside the user-style block and reflection buffer).
+
+    ``omit`` names planted destinations the install's adoption profile does not
+    plant (plan-relative, e.g. ``docs/architecture.md``); routes to them are
+    dropped. Without it, the first thing a sparse install tells a booting
+    session to read is a list of documents that do not exist — a dead pointer
+    in the boot path itself, which is the one place the kit measured the cost
+    of (0 of 11 adopter trees resolved, 2026-08-06). A stance whose whole route
+    is omitted says so rather than printing an empty line.
     """
     stance = _BY_NAME.get(name)
     if stance is None:
         choices = ", ".join(stance_names())
         return f"Unknown stance {name!r} (choose from {choices})."
-    route = " -> ".join(stance["reading_route"])
+    kept = [doc for doc in stance["reading_route"] if f"docs/{doc}" not in omit]
+    route = " -> ".join(kept) if kept else (
+        "(this install's adoption profile plants no generic doc set — read "
+        "this repository's own orientation documents)"
+    )
     tools = ", ".join(stance["tools"])
     return (
         f"Stance: {stance['name']} — {stance['role']}\n"
@@ -16692,12 +16739,12 @@ def _ori_git_freshness(root: Path) -> str:
         return ""
 
 
-def _ori_stance(state: dict[str, Any]) -> str:
+def _ori_stance(state: dict[str, Any], config: Config) -> str:
     """Render section 4 — the active stance briefing ('' when no stance set)."""
     stance = state.get("stance")
     if not stance:
         return ""
-    return stance_briefing(str(stance))
+    return stance_briefing(str(stance), profile_for_config(config).omit_plan_dests)
 
 
 def _ori_user_style(state: dict[str, Any]) -> str:
@@ -16812,7 +16859,7 @@ def compose_orientation(root: Path, config: Config, backend: Any) -> str:
         (1, lambda: _ori_status_header(state, config)),
         (2, lambda: _ori_handoff(root, config)),
         (3, lambda: _ori_git_freshness(root)),
-        (4, lambda: _ori_stance(state)),
+        (4, lambda: _ori_stance(state, config)),
         (5, lambda: _ori_user_style(state)),
         (6, lambda: _ori_lessons(root, config, depth)),
         (7, lambda: _ori_triggers(root, config, state)),
@@ -22656,13 +22703,19 @@ def _plant_telemetry_ignore(root: Path, config: Config, report: list[str]) -> No
     except ValueError:  # pragma: no cover — guard_fires_path stays in-repo
         return
     entry = _gitignore_literal(rel)
-    # A capped ledger also has a sidecar lock file (engine.loop.telemetry
-    # _fires_lock); an untracked ledger's lock is untracked with it. An
-    # UNCAPPED policy creates no lock file, so no entry is planted for one.
-    entries = (entry,)
+    # The two artifacts ride DIFFERENT axes, and conflating them left a
+    # tracked+capped install with an unignored lock file in `git status`:
+    #   - the LEDGER is ignored when `tracked` is false — a host decision about
+    #     a file that carries data;
+    #   - its sidecar LOCK exists whenever `max_records` is positive
+    #     (engine.loop.telemetry._fires_lock) and is machine state that is
+    #     never worth committing under any policy.
+    entries = ()
+    if not policy["tracked"]:
+        entries += (entry,)
     if policy["max_records"] > 0:
         entries += (_gitignore_literal(rel + LOCK_SUFFIX),)
-    if not policy["tracked"]:
+    if entries:
         _merge_marked_entries(
             root,
             ".gitignore",
@@ -22671,26 +22724,32 @@ def _plant_telemetry_ignore(root: Path, config: Config, report: list[str]) -> No
             report,
             label="telemetry",
         )
-        _report_stale_telemetry_ignores(root, report, keep=entry)
-        return
-    # Tracked policy: nothing to plant, but a leftover from a previous policy
-    # would silently defeat it.
-    _report_stale_telemetry_ignores(root, report, keep=None)
+    _report_stale_telemetry_ignores(root, report, keep=entries)
 
 
 def _report_stale_telemetry_ignores(
     root: Path,
     report: list[str],
     *,
-    keep: str | None,
+    keep: tuple[str, ...],
 ) -> None:
     """Report kit-planted ledger-ignore lines the current policy contradicts.
 
-    Only lines under :data:`TELEMETRY_IGNORE_MARKER` are considered — host-owned
-    content above it is never read as the kit's business. Reporting, never
-    editing: a ``.gitignore`` line is host policy, and the honest move when the
-    kit's own earlier line now contradicts the kit's own current advice is to
-    name it and let the host delete it in one commit.
+    Scans ONLY the lines below :data:`TELEMETRY_IGNORE_MARKER` — host-owned
+    content above it is never read as the kit's business, which is the promise
+    the planted marker itself makes to the host. (It previously said that and
+    then comprehended over the whole file, so a host's own unrelated ignore
+    line could be reported as the kit's stale leftover.)
+
+    Every line below the marker was planted by this function's sibling, so
+    membership in ``keep`` — the entries the CURRENT policy wants — is the whole
+    test. Matching on the ledger's default FILENAME instead would have missed
+    every install that moved the ledger via the ``path`` axis, which is exactly
+    the case a stale entry is most likely to arise from.
+
+    Reporting, never editing: a ``.gitignore`` line is host policy, and the
+    honest move when the kit's own earlier line contradicts the kit's own
+    current advice is to name it and let the host remove it deliberately.
     """
     path = root / ".gitignore"
     if not path.is_file():
@@ -22699,17 +22758,15 @@ def _report_stale_telemetry_ignores(
         lines = path.read_text(encoding="utf-8").splitlines()
     except OSError:
         return
-    if TELEMETRY_IGNORE_MARKER not in {line.strip() for line in lines}:
+    stripped = [line.strip() for line in lines]
+    if TELEMETRY_IGNORE_MARKER not in stripped:
         return
+    below = stripped[stripped.index(TELEMETRY_IGNORE_MARKER) + 1 :]
+    wanted = set(keep)
     stale = [
-        line.strip()
-        for line in lines
-        if line.strip().startswith("/")
-        and (
-            line.strip().endswith(GUARD_FIRES_FILENAME)
-            or line.strip().endswith(GUARD_FIRES_FILENAME + LOCK_SUFFIX)
-        )
-        and not line.strip().startswith(str(keep or "\0"))
+        line
+        for line in below
+        if line.startswith("/") and line not in wanted
     ]
     for line in sorted(set(stale)):
         report.append(
@@ -26928,7 +26985,7 @@ def cmd_stance(target: Path, name: str | None) -> int:
         return 1
     if name is None:
         active = backend.data.get("stance", DEFAULT_STANCE)
-        _emit(stance_briefing(active))
+        _emit(stance_briefing(active, profile_for_config(config).omit_plan_dests))
         _emit(f"  available: {', '.join(stance_names())}")
         return 0
     if name not in stance_names():
@@ -26936,7 +26993,7 @@ def cmd_stance(target: Path, name: str | None) -> int:
         return 2
     backend.set("stance", name)
     _emit(f"stance: set to {name}.")
-    _emit(stance_briefing(name))
+    _emit(stance_briefing(name, profile_for_config(config).omit_plan_dests))
     return 0
 
 
@@ -28314,10 +28371,19 @@ def cmd_check(
                 "delta with your session (do not revert).",
             )
         else:
+            # NOT "nothing to commit": that asserts a fact about git this line
+            # never checked. `adopt` deliberately never touches git's index, so
+            # an install that flips `tracked` to false on a ledger it ALREADY
+            # committed keeps a tracked file — and under a cap the next trim
+            # shows up as a large uncommitted DELETION while this line calls it
+            # nothing. Say only what is known, and name the one-time remedy.
             _emit(
                 f"check: {fires_written} guard-fire record(s) appended to "
-                f"{fires_rel_name} — telemetry ledger{capped}; UNTRACKED by "
-                "this install's policy (nothing to commit).",
+                f"{fires_rel_name} — telemetry ledger{capped}; this install's "
+                "policy says UNTRACKED, so it is gitignored from birth and "
+                "there is no delta to commit. If this repository committed the "
+                f"ledger before the policy changed, `git rm --cached "
+                f"{fires_rel_name}` once — the kit never edits git's index.",
             )
 
     if suppressed:
@@ -30271,6 +30337,19 @@ def cmd_seat_digest(target: Path, *, venues: list[str] | None = None) -> int:
     guard-fire log, it never CREATES state in an uninitialized tree.
     """
     config = load_config(target)
+    profile = profile_for_config(config)
+    if not profile.plant_seat_digest:
+        # `adopt` gates the digest on the profile; the on-demand verb did not,
+        # so one `seat-digest` call re-created the very doc a sparse shape
+        # exists to not have — a profile undone by a verb. Refuses in the shape
+        # cmd_heartbeat established for "no control/ bus here".
+        _emit(
+            f"seat-digest: refused — the {profile.name!r} adoption profile "
+            "plants no seat digest, because it plants neither of the documents "
+            "the digest renders (the skills index and the capability ledger). "
+            "Writing one here would be a generated doc about two absent docs.",
+        )
+        return 2
     rel = seat_digest_relpath(config)
     path = target / rel
     if venues:

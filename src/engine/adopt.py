@@ -2436,13 +2436,19 @@ def _plant_telemetry_ignore(root: Path, config: Config, report: list[str]) -> No
     except ValueError:  # pragma: no cover — guard_fires_path stays in-repo
         return
     entry = _gitignore_literal(rel)
-    # A capped ledger also has a sidecar lock file (engine.loop.telemetry
-    # _fires_lock); an untracked ledger's lock is untracked with it. An
-    # UNCAPPED policy creates no lock file, so no entry is planted for one.
-    entries = (entry,)
+    # The two artifacts ride DIFFERENT axes, and conflating them left a
+    # tracked+capped install with an unignored lock file in `git status`:
+    #   - the LEDGER is ignored when `tracked` is false — a host decision about
+    #     a file that carries data;
+    #   - its sidecar LOCK exists whenever `max_records` is positive
+    #     (engine.loop.telemetry._fires_lock) and is machine state that is
+    #     never worth committing under any policy.
+    entries = ()
+    if not policy["tracked"]:
+        entries += (entry,)
     if policy["max_records"] > 0:
         entries += (_gitignore_literal(rel + LOCK_SUFFIX),)
-    if not policy["tracked"]:
+    if entries:
         _merge_marked_entries(
             root,
             ".gitignore",
@@ -2451,26 +2457,32 @@ def _plant_telemetry_ignore(root: Path, config: Config, report: list[str]) -> No
             report,
             label="telemetry",
         )
-        _report_stale_telemetry_ignores(root, report, keep=entry)
-        return
-    # Tracked policy: nothing to plant, but a leftover from a previous policy
-    # would silently defeat it.
-    _report_stale_telemetry_ignores(root, report, keep=None)
+    _report_stale_telemetry_ignores(root, report, keep=entries)
 
 
 def _report_stale_telemetry_ignores(
     root: Path,
     report: list[str],
     *,
-    keep: str | None,
+    keep: tuple[str, ...],
 ) -> None:
     """Report kit-planted ledger-ignore lines the current policy contradicts.
 
-    Only lines under :data:`TELEMETRY_IGNORE_MARKER` are considered — host-owned
-    content above it is never read as the kit's business. Reporting, never
-    editing: a ``.gitignore`` line is host policy, and the honest move when the
-    kit's own earlier line now contradicts the kit's own current advice is to
-    name it and let the host delete it in one commit.
+    Scans ONLY the lines below :data:`TELEMETRY_IGNORE_MARKER` — host-owned
+    content above it is never read as the kit's business, which is the promise
+    the planted marker itself makes to the host. (It previously said that and
+    then comprehended over the whole file, so a host's own unrelated ignore
+    line could be reported as the kit's stale leftover.)
+
+    Every line below the marker was planted by this function's sibling, so
+    membership in ``keep`` — the entries the CURRENT policy wants — is the whole
+    test. Matching on the ledger's default FILENAME instead would have missed
+    every install that moved the ledger via the ``path`` axis, which is exactly
+    the case a stale entry is most likely to arise from.
+
+    Reporting, never editing: a ``.gitignore`` line is host policy, and the
+    honest move when the kit's own earlier line contradicts the kit's own
+    current advice is to name it and let the host remove it deliberately.
     """
     path = root / ".gitignore"
     if not path.is_file():
@@ -2479,17 +2491,15 @@ def _report_stale_telemetry_ignores(
         lines = path.read_text(encoding="utf-8").splitlines()
     except OSError:
         return
-    if TELEMETRY_IGNORE_MARKER not in {line.strip() for line in lines}:
+    stripped = [line.strip() for line in lines]
+    if TELEMETRY_IGNORE_MARKER not in stripped:
         return
+    below = stripped[stripped.index(TELEMETRY_IGNORE_MARKER) + 1 :]
+    wanted = set(keep)
     stale = [
-        line.strip()
-        for line in lines
-        if line.strip().startswith("/")
-        and (
-            line.strip().endswith(GUARD_FIRES_FILENAME)
-            or line.strip().endswith(GUARD_FIRES_FILENAME + LOCK_SUFFIX)
-        )
-        and not line.strip().startswith(str(keep or "\0"))
+        line
+        for line in below
+        if line.startswith("/") and line not in wanted
     ]
     for line in sorted(set(stale)):
         report.append(

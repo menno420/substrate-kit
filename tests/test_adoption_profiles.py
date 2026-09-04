@@ -768,8 +768,13 @@ def test_cold_hub_adoption_through_the_generated_dist(tmp_path):
         assert absent not in checked.stdout, absent
     # K5's advice half: a session on this install is not told to commit a delta
     # that its own .gitignore guarantees does not exist.
-    assert "UNTRACKED by this install's policy" in checked.stdout
-    assert "commit the delta" not in checked.stdout
+    assert "policy says UNTRACKED" in checked.stdout
+    assert "no delta to commit" in checked.stdout
+    assert "commit the delta with your session" not in checked.stdout
+    # ...and it does not assert a git fact it never checked: the remedy for an
+    # install that committed the ledger BEFORE the policy changed is named,
+    # because adopt deliberately never touches git's index.
+    assert "git rm --cached" in checked.stdout
     # ...and the ledger really is ignored by git, not merely named in a file.
     status = subprocess.run(
         ["git", "status", "--porcelain", "--ignored=no"],
@@ -1094,3 +1099,198 @@ def test_codex_p1_the_hub_skill_pack_gap_is_pinned_not_hidden(tmp_path):
         if w.startswith(("docs/", "control/"))
     }
     assert not def_named, sorted(def_named)
+
+
+# --------------------------------------------------------------------------
+# Adversarial review (43 agents, 37 findings, 14 survived refutation)
+# --------------------------------------------------------------------------
+
+
+def test_adv_a_hub_that_writes_its_own_state_doc_does_not_red(tmp_path):
+    """The finding that overturned an earlier judgement of mine.
+
+    I had left ``readpath_docs`` at the shipped default because a hub plants no
+    docs, so nothing engages. That is true only while the hub stays EMPTY. The
+    moment it writes its own state document — exactly what "declare your own
+    folders" tells it to do — ``check_orientation_budget`` engages on the doc
+    that exists and reds, EXIT-AFFECTING, on the one the shape guarantees it
+    will never plant.
+    """
+    hub = new_config("hub")
+    assert hub.readpath_docs == ["current-state.md"]
+    assert "docs/AGENT_ORIENTATION.md" in HUB_PROFILE.omit_plan_dests
+
+    # Exercised END TO END through the built artifact, not by calling the
+    # checker directly: `cmd_check` engages it only when at least one
+    # CONFIGURED boot doc exists, and that gate is half the behaviour. A direct
+    # call bypasses it and measures the wrong thing (it did, on the first
+    # draft of this test).
+    root = _cold_repo(tmp_path)
+    assert _run(root, "adopt", "--profile", "hub").returncode == 0
+    bare = _run(root, "check", "--strict")
+    assert "orientation-missing" not in bare.stdout, bare.stdout
+
+    (root / "docs").mkdir(exist_ok=True)
+    (root / "docs" / "current-state.md").write_text(
+        "# now\n\n> **Status:** `living-ledger`\n\nstate.\n", encoding="utf-8",
+    )
+    written = _run(root, "check", "--strict")
+    assert "orientation-missing" not in written.stdout, written.stdout
+
+    # Mutant: the SHIPPED DEFAULT boot pair — what this profile carried before
+    # the fix — reds exit-affecting on the doc the shape never plants.
+    raw = json.loads((root / "substrate.config.json").read_text(encoding="utf-8"))
+    raw["readpath_docs"] = ["AGENT_ORIENTATION.md", "current-state.md"]
+    (root / "substrate.config.json").write_text(json.dumps(raw, indent=2), encoding="utf-8")
+    stale = _run(root, "check", "--strict")
+    assert "orientation-missing" in stale.stdout
+    assert "AGENT_ORIENTATION" in stale.stdout
+
+
+def test_adv_the_hubs_own_docs_are_still_reachability_checked(tmp_path):
+    """The other half of the same decision, and why the value is not ``[]``.
+
+    With no read-path roots at all the hub's own state document becomes an
+    ORPHAN instead — one false red traded for another. Naming the one entry a
+    hub plausibly writes keeps orphan detection working.
+    """
+    from engine.checks.check_docs import check_reachable
+
+    root, config, _lines = _adopt_into(tmp_path, "hub")
+    docs = root / "docs"
+    docs.mkdir(exist_ok=True)
+    (docs / "current-state.md").write_text(
+        "# now\n\n> **Status:** `living-ledger`\n\nstate.\n", encoding="utf-8",
+    )
+    assert check_reachable(docs, config.readpath_docs) == []
+    (docs / "stray.md").write_text(
+        "# stray\n\n> **Status:** `reference`\n\nunlinked.\n", encoding="utf-8",
+    )
+    orphans = [f.path for f in check_reachable(docs, config.readpath_docs)]
+    assert orphans == ["stray.md"], orphans
+
+
+def test_adv_the_seat_digest_verb_cannot_undo_the_profile(tmp_path, capsys):
+    # `adopt` gated the digest on the profile; the on-demand verb did not, so
+    # one `bootstrap.py seat-digest` re-created the doc a sparse shape exists
+    # to not have — a profile undone by a verb.
+    from engine.cli import cmd_seat_digest
+
+    root, config, _lines = _adopt_into(tmp_path, "hub")
+    save_config(root, config)
+    assert cmd_seat_digest(root) == 2
+    assert "refused" in capsys.readouterr().out
+    assert not (root / "docs" / "seat-digest.md").exists()
+    # Mutant: the default shape still writes it on demand.
+    def_root, def_config, _ = _adopt_into(tmp_path)
+    save_config(def_root, def_config)
+    assert cmd_seat_digest(def_root) == 0
+    assert (def_root / "docs" / "seat-digest.md").is_file()
+
+
+def test_adv_the_stance_route_names_no_omitted_doc():
+    # The stance briefing is injected at SessionStart, so a dead route there is
+    # the first thing a booting session is told to read.
+    from engine.stances.stances import stance_briefing
+
+    default_text = stance_briefing("analysis")
+    assert "AGENT_ORIENTATION.md" in default_text
+    hub_text = stance_briefing("analysis", HUB_PROFILE.omit_plan_dests)
+    for dead in ("AGENT_ORIENTATION.md", "architecture.md", "ownership.md"):
+        assert dead not in hub_text, dead
+    assert "plants no generic doc set" in hub_text
+
+
+def test_adv_the_stale_scan_reads_only_below_the_marker(tmp_path):
+    # It promised "only lines under the marker" and comprehended over the whole
+    # file, so a host's own unrelated ignore line could be reported as the
+    # kit's stale leftover.
+    from engine.adopt import TELEMETRY_IGNORE_MARKER
+
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / ".gitignore").write_text(
+        "# host policy\n/vendor/guard-fires.jsonl\n", encoding="utf-8",
+    )
+    config = new_config("hub")
+    lines = adopt(root, config, _backend(root, config), kit_root=tmp_path / "kit")
+    stale = [ln for ln in lines if ln.startswith("telemetry: .gitignore still carries")]
+    assert not stale, stale
+    text = (root / ".gitignore").read_text(encoding="utf-8")
+    assert "/vendor/guard-fires.jsonl" in text
+    assert TELEMETRY_IGNORE_MARKER in text
+
+
+def test_adv_the_stale_scan_matches_a_moved_ledger_path(tmp_path):
+    # It matched on the DEFAULT filename, so it missed every install that had
+    # moved the ledger via the `path` axis — the case a stale entry is most
+    # likely to arise from.
+    root = tmp_path / "repo"
+    config = new_config("hub")
+    config.telemetry = {"guard_fires": {"enabled": True, "path": "telemetry/fires.jsonl", "tracked": False, "max_records": 0}}
+    adopt(root, config, _backend(root, config), kit_root=tmp_path / "kit")
+    assert "/telemetry/fires.jsonl" in (root / ".gitignore").read_text(encoding="utf-8")
+    # Move the path: the previous entry is now stale and must be NAMED.
+    config.telemetry = {"guard_fires": {"enabled": True, "path": "telemetry/other.jsonl", "tracked": False, "max_records": 0}}
+    lines = adopt(root, config, _backend(root, config), kit_root=tmp_path / "kit")
+    stale = [ln for ln in lines if "still carries" in ln]
+    assert stale, lines
+    assert "/telemetry/fires.jsonl" in stale[0]
+
+
+def test_adv_the_lock_is_ignored_on_the_max_records_axis(tmp_path):
+    # The two artifacts ride different axes. Conflating them left a
+    # tracked+capped install with an unignored lock file in `git status`.
+    from engine.loop.telemetry import LOCK_SUFFIX
+
+    root = tmp_path / "repo"
+    config = Config()  # DEFAULT profile: tracked ledger...
+    config.telemetry = {"guard_fires": {"enabled": True, "path": "", "tracked": True, "max_records": 500}}
+    adopt(root, config, _backend(root, config), kit_root=tmp_path / "kit")
+    ignored = (root / ".gitignore").read_text(encoding="utf-8")
+    # ...the ledger is NOT ignored (tracked), but its lock is (it is machine
+    # state, never worth committing under any policy).
+    assert f"/.substrate/{GUARD_FIRES_FILENAME}{LOCK_SUFFIX}" in ignored
+    assert f"/.substrate/{GUARD_FIRES_FILENAME}\n" not in ignored
+    # And an UNCAPPED default plants neither — no lock file is ever created.
+    plain = tmp_path / "plain"
+    pconfig = Config()
+    adopt(plain, pconfig, _backend(plain, pconfig), kit_root=tmp_path / "kit")
+    if (plain / ".gitignore").exists():
+        assert GUARD_FIRES_FILENAME not in (plain / ".gitignore").read_text(encoding="utf-8")
+
+
+def test_adv_the_trim_counts_records_not_splitlines_units(tmp_path):
+    # json.dumps(ensure_ascii=False) leaves U+2028/U+2029/U+0085 raw inside
+    # string values; str.splitlines() breaks on all of them, so one record
+    # carrying one in a message would be read as two — the cap counting the
+    # wrong unit, and a trim slicing at that boundary writing back half a
+    # record.
+    from engine.loop.telemetry import _records
+
+    assert _records('{"a": "x y"}\n') == ['{"a": "x y"}']
+    assert len('{"a": "x y"}'.splitlines()) == 2  # the trap, pinned
+
+    root = tmp_path / "repo"
+    (root / ".substrate").mkdir(parents=True)
+    policy = {"enabled": True, "path": "", "tracked": False, "max_records": 5}
+    for i in range(400):
+        record_guard_fires(
+            root, ".substrate", cmd="check", surface="check", posture="advisory",
+            findings=[_finding(f"p{i}", "kind", f"line break {i}")],
+            verdict="false_positive", reason="fixture", policy=policy,
+        )
+    path = guard_fires_path(root, ".substrate", policy)
+    for line in _records(path.read_text(encoding="utf-8")):
+        json.loads(line)  # every record survives the trim intact
+
+
+def test_adv_an_unusable_telemetry_path_falls_back(tmp_path):
+    # A newline cannot be escaped in a gitignore line and would split every
+    # downstream consumer's idea of "one path" in half.
+    root = tmp_path / "repo"
+    for bad in ("a\nb.jsonl", "a\rb.jsonl", "\n"):
+        policy = {"enabled": True, "path": bad, "tracked": False, "max_records": 0}
+        assert guard_fires_path(root, ".substrate", policy) == (
+            root / ".substrate" / GUARD_FIRES_FILENAME
+        ), bad

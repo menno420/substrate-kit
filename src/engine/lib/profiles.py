@@ -158,6 +158,24 @@ HUB_PROFILE = AdoptionProfile(
     # absent docs.
     plant_seat_digest=False,
     config_defaults={
+        # The boot set a shape that plants no docs is born with. The kit's
+        # shipped default names two documents this shape guarantees it will
+        # never plant, and leaving it alone was wrong: a bare hub is clean only
+        # while it stays EMPTY. The moment it writes its own state document —
+        # which is exactly what "declare your own folders" tells it to do —
+        # `check_orientation_budget` engages on the doc that exists and reds,
+        # EXIT-AFFECTING, on the one that never will (MEASURED: 3 findings
+        # bare, 4 with an `orientation-missing` for docs/AGENT_ORIENTATION.md
+        # once docs/current-state.md is created).
+        #
+        # Empty is NOT the fix: with no read-path roots the hub's own state
+        # document becomes an orphan under `check_reachable` instead — one
+        # false red traded for another (measured both ways). Naming the one
+        # entry a hub plausibly writes keeps the boot-set gate real, keeps
+        # orphan detection working, and is a config key the adopter re-points
+        # if it files its state document elsewhere. That is configuration, not
+        # a rename.
+        "readpath_docs": ["current-state.md"],
         # K3: visible, not hidden. `sessions_dir` was already the seam — this
         # only changes which value the shape is born with, so a hub never needs
         # the rename that made this a birth-time requirement.

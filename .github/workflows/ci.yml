@@ -319,7 +319,8 @@ jobs:
             if grep -qE 'control/status\.md|docs/current-state\.md|boot-path-unresolved' check.out; then
               echo "hub check named a path the hub profile never plants:"; cat check.out; exit 1
             fi
-            grep -q "UNTRACKED by this install's policy" check.out
+            grep -q "policy says UNTRACKED" check.out
+            grep -q "no delta to commit" check.out
             # Re-adopting is idempotent and must not resurrect the omitted rooms.
             printf '%s\n' '# host-owned' > CONSTITUTION.md
             python3 bootstrap.py adopt --profile hub > readopt.out 2>&1
