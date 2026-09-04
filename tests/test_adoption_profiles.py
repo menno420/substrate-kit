@@ -1467,3 +1467,178 @@ def test_codex_r2_a_host_line_below_the_fence_is_not_claimed(tmp_path):
     stale = [ln for ln in lines if "still carries" in ln]
     assert stale and "old-fires.jsonl" in stale[0], lines
     assert "/vendor/" not in " ".join(stale)
+
+
+# --------------------------------------------------------------------------
+# Codex round 3 (PR #590, head 19d70ee) — the last round the cap allows
+# --------------------------------------------------------------------------
+
+
+def test_codex_r3_upgrade_refuses_an_unknown_profile_before_any_write(tmp_path):
+    # `adopt` resolved strictly, but `run_upgrade` only reaches it at step 6 —
+    # after archiving state, applying doc changes, refreshing derived files and
+    # replacing the vendored bootstrap. The refusal then arrived as an uncaught
+    # exception over a PARTIALLY UPGRADED repository. A refusal is only safe
+    # where nothing has happened yet.
+    from engine.lib.config import KIT_VERSION
+    from engine.upgrade import UpgradeRefused, run_upgrade
+
+    root, config, _lines = _adopt_into(tmp_path, "hub")
+    config.adoption_profile = "hubb"
+    save_config(root, config)
+    before = sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file())
+    backend = JsonStateBackend(root / config.state_dir / "state.json")
+    running = tmp_path / "bootstrap.py.new"
+    running.write_text(
+        f'"""substrate-kit bootstrap v{KIT_VERSION} — GENERATED, DO NOT EDIT."""\n',
+        encoding="utf-8",
+    )
+    with pytest.raises(UpgradeRefused) as exc:
+        run_upgrade(root, config, backend, kit_root=tmp_path / "kit", running=running)
+    assert "hubb" in str(exc.value)
+    assert "before any write" in str(exc.value)
+    after = sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file())
+    assert before == after, "the refusal must leave the tree untouched"
+
+
+def test_codex_r3_the_ledger_cannot_escape_the_repo_through_a_symlink(tmp_path):
+    # Rejecting absolute paths and literal ".." is a guess about the STRING and
+    # says nothing about the filesystem. Measured before the fix: a `telemetry`
+    # symlink pointing outside the repo plus path "telemetry/fires.jsonl" had
+    # `check` appending the ledger into the external directory.
+    root = tmp_path / "repo"
+    outside = tmp_path / "outside"
+    root.mkdir()
+    outside.mkdir()
+    (root / ".substrate").mkdir()
+    (root / "telemetry").symlink_to(outside, target_is_directory=True)
+
+    default = root / ".substrate" / GUARD_FIRES_FILENAME
+    for escape in ("telemetry/fires.jsonl", ".", "..", "/etc/x.jsonl", "a/../../b.jsonl"):
+        policy = {"enabled": True, "path": escape, "tracked": False, "max_records": 0}
+        assert guard_fires_path(root, ".substrate", policy) == default, escape
+    # A path naming an existing DIRECTORY is not a ledger either — the append
+    # would fail and, under a cap, the sidecar lock would be created beside it.
+    (root / "docs").mkdir()
+    d = {"enabled": True, "path": "docs", "tracked": False, "max_records": 0}
+    assert guard_fires_path(root, ".substrate", d) == default
+    # A genuine in-repo file path is still honoured.
+    ok = {"enabled": True, "path": "state/fires.jsonl", "tracked": False, "max_records": 0}
+    assert guard_fires_path(root, ".substrate", ok) == root / "state" / "fires.jsonl"
+
+    # End to end: nothing may land outside the tree.
+    policy = {"enabled": True, "path": "telemetry/fires.jsonl", "tracked": False, "max_records": 5}
+    for i in range(10):
+        record_guard_fires(
+            root, ".substrate", cmd="check", surface="check", posture="advisory",
+            findings=[_finding(f"p{i}", "k", f"m{i}")], verdict="v", reason="r",
+            policy=policy,
+        )
+    assert list(outside.iterdir()) == [], sorted(p.name for p in outside.iterdir())
+    assert default.is_file()
+    assert not (tmp_path / "repo.lock").exists()
+
+
+def test_codex_r3_the_upgrade_digest_refresh_honours_the_profile(tmp_path):
+    # Third call site of the same declaration. A default install that moved to
+    # a sparse profile had its retained digest REGENERATED on the next upgrade,
+    # or was told to run the one command the profile gate refuses.
+    from engine.upgrade import refresh_seat_digest
+
+    root, config, _lines = _adopt_into(tmp_path)
+    digest = root / "docs" / "seat-digest.md"
+    assert digest.is_file()
+    digest.unlink()
+    config.adoption_profile = "hub"
+    save_config(root, config)
+    backend = JsonStateBackend(root / config.state_dir / "state.json")
+    lines = refresh_seat_digest(root, config, backend)
+    assert any("skipped" in line for line in lines), lines
+    assert not digest.exists()
+    # Mutant: the default shape still refreshes.
+    def_root, def_config, _ = _adopt_into(tmp_path)
+    def_backend = JsonStateBackend(def_root / def_config.state_dir / "state.json")
+    def_lines = refresh_seat_digest(def_root, def_config, def_backend)
+    assert not any("skipped" in line for line in def_lines), def_lines
+
+
+def test_codex_r3_new_entries_land_inside_the_existing_fence(tmp_path):
+    # Appending at EOF put new entries BELOW the closing marker, where the
+    # stale-reconciliation scan can no longer see them — so a later policy
+    # change reported the old in-fence rules and silently left the new ledger
+    # ignored forever. A managed block only stays managed if everything the kit
+    # writes lands in it.
+    from engine.adopt import TELEMETRY_IGNORE_END, TELEMETRY_IGNORE_MARKER
+
+    root = tmp_path / "repo"
+    config = new_config("hub")
+    config.telemetry = {"guard_fires": {"enabled": True, "path": "", "tracked": False, "max_records": 0}}
+    adopt(root, config, _backend(root, config), kit_root=tmp_path / "kit")
+    # Move the ledger: the new entry must land INSIDE the fence.
+    config.telemetry = {"guard_fires": {"enabled": True, "path": "state/new.jsonl", "tracked": False, "max_records": 0}}
+    adopt(root, config, _backend(root, config), kit_root=tmp_path / "kit")
+    lines = [ln.strip() for ln in (root / ".gitignore").read_text(encoding="utf-8").splitlines()]
+    start = lines.index(TELEMETRY_IGNORE_MARKER)
+    end = lines.index(TELEMETRY_IGNORE_END)
+    inside = lines[start + 1 : end]
+    assert "/state/new.jsonl" in inside, lines
+    assert not [ln for ln in lines[end + 1 :] if ln.startswith("/")], lines
+    # ...and reconciliation can therefore still see and name it.
+    config.telemetry = {"guard_fires": {"enabled": True, "path": "", "tracked": True, "max_records": 0}}
+    report = adopt(root, config, _backend(root, config), kit_root=tmp_path / "kit")
+    stale = " ".join(ln for ln in report if "still carries" in ln)
+    assert "/state/new.jsonl" in stale, report
+
+
+def test_codex_r3_the_route_dedupe_keys_on_document_content(tmp_path):
+    # The key was the route LIST, shared across every scanned document, so two
+    # distinct documents citing the same omitted destinations collapsed to one
+    # report naming only the first path — while each still needs its own edit.
+    from engine.adopt import _report_omitted_routes
+
+    # Build the COLLISION the routes-only key could not distinguish: two
+    # different documents citing the same omitted destination. Asserting only
+    # that CONSTITUTION.md appears does not test this — its route set differs
+    # from the agreements', so it is never the one suppressed (the first draft
+    # of this test asserted exactly that, and the mutation survived it).
+    root, config, _lines = _adopt_into(tmp_path, "hub")
+    (root / "CONSTITUTION.md").write_text(
+        "# one\n\nsee `docs/SKILLS.md` for the index.\n", encoding="utf-8",
+    )
+    (root / ".session-journal.md").write_text(
+        "# two — a DIFFERENT document, same citation\n\n`docs/SKILLS.md`\n",
+        encoding="utf-8",
+    )
+    report: list[str] = []
+    _report_omitted_routes(root, config, HUB_PROFILE, report)
+    paths = {ln.split(": ", 1)[1].split(" ", 1)[0] for ln in report}
+    assert "CONSTITUTION.md" in paths, report
+    assert ".session-journal.md" in paths, report
+
+    # ...while the staged and live agreements, which ARE the same render,
+    # still collapse to one report.
+    both, bconfig, blines = _adopt_into(tmp_path, "hub", include_claude=True)
+    assert both
+    agreements = [
+        ln for ln in blines
+        if ln.startswith("profile 'hub':") and "CLAUDE.md" in ln
+    ]
+    assert len(agreements) == 1, agreements
+
+
+def test_codex_r3_ungroomed_ideas_reports_the_configured_path(tmp_path):
+    # The scan was fixed and the finding's PATH was not, so a real finding
+    # discovered under sessions/ was printed — and recorded in guard telemetry,
+    # and fingerprinted for the allowlist — against a path that does not exist.
+    from engine.checks.check_ungroomed_ideas import check_ungroomed_ideas
+
+    root = tmp_path / "repo"
+    (root / "sessions").mkdir(parents=True)
+    (root / "docs" / "planning").mkdir(parents=True)
+    (root / "docs" / "planning" / "2026-01-01-groom.md").write_text("# g\n", encoding="utf-8")
+    (root / "sessions" / "2026-02-01-c.md").write_text(
+        "# c\n\n\N{ELECTRIC LIGHT BULB} an idea\n", encoding="utf-8",
+    )
+    findings = check_ungroomed_ideas(root, new_config("hub"))
+    assert findings
+    assert findings[0].path == "sessions/", findings[0].path

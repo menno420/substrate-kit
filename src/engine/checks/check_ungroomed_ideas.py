@@ -84,7 +84,8 @@ def check_ungroomed_ideas(target: Path, config=None) -> list[Finding]:
     anywhere else the probe found no directory, input-gated itself off, and
     reported "no pending ideas" for a repo full of them — a silent false
     negative, which is the worst shape an advisory can take."""
-    sessions_dir = target / _sessions_reldir(config)
+    reldir = _sessions_reldir(config)
+    sessions_dir = target / reldir
     if not sessions_dir.is_dir():
         return []  # input-gated: no session cards shipped here
 
@@ -124,7 +125,13 @@ def check_ungroomed_ideas(target: Path, config=None) -> list[Finding]:
     plural = "s" if idea_lines != 1 else ""
     return [
         Finding(
-            f"{_SESSIONS_RELDIR}/",
+            # The RESOLVED directory, not the historical constant: the scan was
+            # fixed to read the configured location while the finding kept
+            # reporting `.sessions/`, so a real finding discovered under
+            # `sessions/` was printed — and recorded in guard telemetry, and
+            # fingerprinted for the allowlist — against a path that does not
+            # exist on that install.
+            f"{reldir}/",
             UNGROOMED_IDEAS_KIND,
             f"{idea_lines} un-groomed \N{ELECTRIC LIGHT BULB} idea line{plural} on "
             f"session card{plural} newer than the newest groom doc "

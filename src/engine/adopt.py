@@ -2341,17 +2341,29 @@ def _merge_marked_entries(
     if not missing:
         report.append(f"kept: {relpath} ({label} entries already present)")
         return
-    chunk = ""
-    if existing:
-        if not existing.endswith("\n"):
+    if end_marker is not None and marker in present and end_marker in present:
+        # The fence already exists: new entries belong INSIDE it. Appending at
+        # EOF put them below the closing marker, where the stale-reconciliation
+        # scan (which reads only between the fences) could no longer see them —
+        # so a later policy change reported the old in-fence rules and silently
+        # left the new ledger ignored forever. A managed block only stays
+        # managed if everything the kit writes lands in it.
+        lines = existing.splitlines()
+        at = next(i for i, line in enumerate(lines) if line.strip() == end_marker)
+        merged = lines[:at] + list(missing) + lines[at:]
+        atomic_write_text(path, "\n".join(merged) + "\n")
+    else:
+        chunk = ""
+        if existing:
+            if not existing.endswith("\n"):
+                chunk += "\n"
             chunk += "\n"
-        chunk += "\n"
-    if marker not in present:
-        chunk += marker + "\n"
-    chunk += "\n".join(missing) + "\n"
-    if end_marker is not None and end_marker not in present:
-        chunk += end_marker + "\n"
-    atomic_write_text(path, existing + chunk)
+        if marker not in present:
+            chunk += marker + "\n"
+        chunk += "\n".join(missing) + "\n"
+        if end_marker is not None and end_marker not in present:
+            chunk += end_marker + "\n"
+        atomic_write_text(path, existing + chunk)
     noun = "entry" if len(missing) == 1 else "entries"
     if existing:
         report.append(
@@ -2568,7 +2580,13 @@ def _report_omitted_routes(
     # exactly the case a host most needs told.
     scanned.append(".claude/CLAUDE.md")
     scanned.append(f"{config.state_dir}/claude/CLAUDE.md")
-    seen_reports: set[tuple[str, ...]] = set()
+    # Keyed by CONTENT, not by the route list: two different documents can
+    # legitimately cite the same omitted destinations and each still needs its
+    # own edit, so a routes-only key suppressed the second document's report
+    # entirely and named only the first path. The staged and live agreements
+    # are the same render, which is the one case worth collapsing — and byte
+    # equality is exactly the test for "same render".
+    seen_reports: set[str] = set()
     for rel in scanned:
         path = root / rel
         if not path.is_file():
@@ -2578,10 +2596,8 @@ def _report_omitted_routes(
         except (OSError, UnicodeDecodeError):
             continue
         hits = sorted({m.group(1) for m in _ROUTE_RE.finditer(text)} & omitted)
-        # The staged and live agreements are the same render; reporting both
-        # would print the identical route list twice for one problem.
-        if hits and tuple(hits) not in seen_reports:
-            seen_reports.add(tuple(hits))
+        if hits and text not in seen_reports:
+            seen_reports.add(text)
             report.append(
                 f"profile {profile.name!r}: {rel} still routes to "
                 f"{', '.join(hits)} — planted by the kit's shared doctrine and "

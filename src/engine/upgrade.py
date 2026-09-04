@@ -81,6 +81,11 @@ from engine.grammar import (
 )
 from engine.lib.atomicio import atomic_write_text
 from engine.lib.config import KIT_VERSION, Config, save_config
+from engine.lib.profiles import (
+    UnknownProfileError,
+    profile_for_config,
+    resolve_profile,
+)
 from engine.lib.state import STATE_SCHEMA_VERSION
 from engine.loop.telemetry import MODEL_LINE_NEEDLE
 from engine.render import agreement_home, build_context, load_templates, render
@@ -571,6 +576,18 @@ def refresh_seat_digest(
     hash (the file is kit-owned wholly, unlike the consumer-owned ledger).
     Missing file → nothing here (the adopt pass replants it).
     """
+    # Same gate as `cmd_check` and `cmd_seat_digest`: a shape that plants no
+    # digest must not have one REGENERATED under it either. Without this, a
+    # default install that moved to a sparse profile the way `cmd_init`'s
+    # refusal describes had its retained docs/seat-digest.md refreshed on the
+    # next upgrade — or, if hand-edited, was told to run the one command the
+    # profile gate now refuses. Three call sites, one declaration.
+    profile = profile_for_config(config)
+    if not profile.plant_seat_digest:
+        return [
+            f"seat-digest: skipped — the {profile.name!r} adoption profile "
+            "plants no seat digest.",
+        ]
     rel = seat_digest_relpath(config)
     path = root / rel
     if not path.is_file():
@@ -823,6 +840,24 @@ def newest_banked_archive(
     return archived, meta.get("from_version")
 
 
+def _require_known_profile(root: Path, config: Config) -> None:
+    """Refuse an install whose persisted profile this kit does not ship.
+
+    The strict half of the reader/writer split, hoisted to every write flow's
+    front door. ``UnknownProfileError`` is a ``ValueError``; it is re-raised as
+    ``UpgradeRefused`` so the CLI reports it the way it reports every other
+    pre-flight refusal, rather than as a traceback out of the middle of a
+    half-finished upgrade.
+    """
+    try:
+        resolve_profile(config.adoption_profile)
+    except UnknownProfileError as exc:
+        raise UpgradeRefused(
+            f"{exc} — refusing to upgrade before any write; fix "
+            "`adoption_profile` in substrate.config.json first.",
+        ) from exc
+
+
 def run_apply_docs_posthoc(
     root: Path,
     config: Config,
@@ -843,6 +878,7 @@ def run_apply_docs_posthoc(
     actionable message and nothing written (never a crash, never an impossible
     command).
     """
+    _require_known_profile(root, config)
     report: list[str] = []
     archived, from_version = newest_banked_archive(root, config)
     if archived is None:
@@ -916,8 +952,15 @@ def run_upgrade(
 ) -> list[str]:
     """Execute the §4.3 upgrade flow; return the report lines.
 
-    Raises :class:`UpgradeRefused` when release.json verification fails.
+    Raises :class:`UpgradeRefused` when release.json verification fails, or
+    when the persisted ``adoption_profile`` names a shape this kit does not
+    ship — checked HERE, before any write. `adopt` (step 6) resolves strictly
+    too, but by the time it runs this flow has already archived state, possibly
+    applied document changes, refreshed derived files and replaced the vendored
+    bootstrap; raising there left a PARTIALLY UPGRADED repository. A refusal is
+    only safe at a point where nothing has happened yet.
     """
+    _require_known_profile(root, config)
     # Post-hoc --apply-docs (idea upgrade-apply-docs-single-shot-window): when
     # the vendored dist is ALREADY at the running version there is no pending
     # transition, but a prior upgrade that skipped --apply-docs banked the

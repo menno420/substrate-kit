@@ -87,6 +87,23 @@ workflow refuses to publish a version that has no section in this file.
   serialised against trims by a sidecar lock, created only for a capped ledger
   so an uncapped install gains neither the code path nor the file.
 
+  Three review rounds ran against the change (the per-PR cap), returning 21
+  findings in total — 4 P1 + 6 P2, then 5 P2, then 2 P1 + 4 P2 — alongside an
+  independent 43-agent adversarial pass whose 37 raw findings were each handed
+  to a separate agent instructed to refute them (14 survived, 8 distinct). Two
+  classes are worth naming because they were latent rather than cosmetic. The
+  telemetry `path` axis was containment-checked by PARSING the string —
+  rejecting absolute paths and literal `..` — which says nothing about the
+  filesystem: an intermediate symlink escaped both tests and had `check`
+  appending the ledger outside the repository, and `path: "."` put the sidecar
+  lock at a sibling of the repo root. Containment is now resolved, and a
+  directory target is refused. And `upgrade` reached its strict profile
+  resolution only through `adopt`, at step 6 — after archiving state, applying
+  document changes, refreshing derived files and replacing the vendored
+  bootstrap — so an unknown persisted profile aborted over a PARTIALLY
+  upgraded repository; both upgrade flows now refuse at the front door, before
+  any write.
+
   Two residues are pinned rather than papered over. The kit does not fork its
   shared doctrine prose per shape — that would double the maintenance surface
   of its most important document — so `adopt` instead REPORTS, on every pass,

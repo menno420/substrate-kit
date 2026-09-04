@@ -94,14 +94,35 @@ def guard_fires_path(
     pre-policy behavior exactly.
     """
     rel = str((policy or {}).get("path") or "").strip()
-    # A newline in the path cannot be escaped in a gitignore line and would
-    # split every downstream consumer's idea of "one path" in half, so it is
-    # rejected at the gate rather than patched per consumer.
-    if rel and not any(ch in rel for ch in "\n\r"):
-        candidate = Path(rel)
-        if not candidate.is_absolute() and ".." not in candidate.parts:
-            return root / candidate
-    return root / state_dir / GUARD_FIRES_FILENAME
+    fallback = root / state_dir / GUARD_FIRES_FILENAME
+    if not rel or any(ch in rel for ch in "\n\r"):
+        # A newline cannot be escaped in a gitignore line and would split every
+        # downstream consumer's idea of "one path" in half.
+        return fallback
+    candidate = Path(rel)
+    if candidate.is_absolute():
+        return fallback
+    target = root / candidate
+    # CONTAINMENT IS RESOLVED, NOT PARSED. Rejecting absolute paths and literal
+    # ".." components is a guess about the string; it says nothing about the
+    # filesystem. An intermediate component that is a SYMLINK escapes both
+    # tests — measured: a `telemetry` symlink pointing outside the repo plus
+    # `path: "telemetry/fires.jsonl"` had `check` appending the ledger into the
+    # external directory. `resolve()` follows the links and answers the
+    # question actually being asked: does this write land inside the repo?
+    try:
+        resolved = target.resolve()
+        base = root.resolve()
+    except OSError:
+        return fallback
+    if resolved == base or base not in resolved.parents:
+        # `resolved == base` is the ``path: "."`` case: the "ledger" would BE
+        # the repository directory, and its sidecar lock a SIBLING of the repo
+        # — a write outside the tree from a config key that never named one.
+        return fallback
+    if resolved.is_dir():
+        return fallback
+    return target
 
 
 # How far past its cap a ledger may drift before a trim runs. Trimming is a

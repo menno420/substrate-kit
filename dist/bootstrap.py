@@ -4345,7 +4345,8 @@ def check_ungroomed_ideas(target: Path, config=None) -> list[Finding]:
     anywhere else the probe found no directory, input-gated itself off, and
     reported "no pending ideas" for a repo full of them — a silent false
     negative, which is the worst shape an advisory can take."""
-    sessions_dir = target / _sessions_reldir(config)
+    reldir = _sessions_reldir(config)
+    sessions_dir = target / reldir
     if not sessions_dir.is_dir():
         return []  # input-gated: no session cards shipped here
 
@@ -4385,7 +4386,13 @@ def check_ungroomed_ideas(target: Path, config=None) -> list[Finding]:
     plural = "s" if idea_lines != 1 else ""
     return [
         Finding(
-            f"{_SESSIONS_RELDIR}/",
+            # The RESOLVED directory, not the historical constant: the scan was
+            # fixed to read the configured location while the finding kept
+            # reporting `.sessions/`, so a real finding discovered under
+            # `sessions/` was printed — and recorded in guard telemetry, and
+            # fingerprinted for the allowlist — against a path that does not
+            # exist on that install.
+            f"{reldir}/",
             UNGROOMED_IDEAS_KIND,
             f"{idea_lines} un-groomed \N{ELECTRIC LIGHT BULB} idea line{plural} on "
             f"session card{plural} newer than the newest groom doc "
@@ -11631,14 +11638,35 @@ def guard_fires_path(
     pre-policy behavior exactly.
     """
     rel = str((policy or {}).get("path") or "").strip()
-    # A newline in the path cannot be escaped in a gitignore line and would
-    # split every downstream consumer's idea of "one path" in half, so it is
-    # rejected at the gate rather than patched per consumer.
-    if rel and not any(ch in rel for ch in "\n\r"):
-        candidate = Path(rel)
-        if not candidate.is_absolute() and ".." not in candidate.parts:
-            return root / candidate
-    return root / state_dir / GUARD_FIRES_FILENAME
+    fallback = root / state_dir / GUARD_FIRES_FILENAME
+    if not rel or any(ch in rel for ch in "\n\r"):
+        # A newline cannot be escaped in a gitignore line and would split every
+        # downstream consumer's idea of "one path" in half.
+        return fallback
+    candidate = Path(rel)
+    if candidate.is_absolute():
+        return fallback
+    target = root / candidate
+    # CONTAINMENT IS RESOLVED, NOT PARSED. Rejecting absolute paths and literal
+    # ".." components is a guess about the string; it says nothing about the
+    # filesystem. An intermediate component that is a SYMLINK escapes both
+    # tests — measured: a `telemetry` symlink pointing outside the repo plus
+    # `path: "telemetry/fires.jsonl"` had `check` appending the ledger into the
+    # external directory. `resolve()` follows the links and answers the
+    # question actually being asked: does this write land inside the repo?
+    try:
+        resolved = target.resolve()
+        base = root.resolve()
+    except OSError:
+        return fallback
+    if resolved == base or base not in resolved.parents:
+        # `resolved == base` is the ``path: "."`` case: the "ledger" would BE
+        # the repository directory, and its sidecar lock a SIBLING of the repo
+        # — a write outside the tree from a config key that never named one.
+        return fallback
+    if resolved.is_dir():
+        return fallback
+    return target
 
 
 # How far past its cap a ledger may drift before a trim runs. Trimming is a
@@ -22615,17 +22643,29 @@ def _merge_marked_entries(
     if not missing:
         report.append(f"kept: {relpath} ({label} entries already present)")
         return
-    chunk = ""
-    if existing:
-        if not existing.endswith("\n"):
+    if end_marker is not None and marker in present and end_marker in present:
+        # The fence already exists: new entries belong INSIDE it. Appending at
+        # EOF put them below the closing marker, where the stale-reconciliation
+        # scan (which reads only between the fences) could no longer see them —
+        # so a later policy change reported the old in-fence rules and silently
+        # left the new ledger ignored forever. A managed block only stays
+        # managed if everything the kit writes lands in it.
+        lines = existing.splitlines()
+        at = next(i for i, line in enumerate(lines) if line.strip() == end_marker)
+        merged = lines[:at] + list(missing) + lines[at:]
+        atomic_write_text(path, "\n".join(merged) + "\n")
+    else:
+        chunk = ""
+        if existing:
+            if not existing.endswith("\n"):
+                chunk += "\n"
             chunk += "\n"
-        chunk += "\n"
-    if marker not in present:
-        chunk += marker + "\n"
-    chunk += "\n".join(missing) + "\n"
-    if end_marker is not None and end_marker not in present:
-        chunk += end_marker + "\n"
-    atomic_write_text(path, existing + chunk)
+        if marker not in present:
+            chunk += marker + "\n"
+        chunk += "\n".join(missing) + "\n"
+        if end_marker is not None and end_marker not in present:
+            chunk += end_marker + "\n"
+        atomic_write_text(path, existing + chunk)
     noun = "entry" if len(missing) == 1 else "entries"
     if existing:
         report.append(
@@ -22842,7 +22882,13 @@ def _report_omitted_routes(
     # exactly the case a host most needs told.
     scanned.append(".claude/CLAUDE.md")
     scanned.append(f"{config.state_dir}/claude/CLAUDE.md")
-    seen_reports: set[tuple[str, ...]] = set()
+    # Keyed by CONTENT, not by the route list: two different documents can
+    # legitimately cite the same omitted destinations and each still needs its
+    # own edit, so a routes-only key suppressed the second document's report
+    # entirely and named only the first path. The staged and live agreements
+    # are the same render, which is the one case worth collapsing — and byte
+    # equality is exactly the test for "same render".
+    seen_reports: set[str] = set()
     for rel in scanned:
         path = root / rel
         if not path.is_file():
@@ -22852,10 +22898,8 @@ def _report_omitted_routes(
         except (OSError, UnicodeDecodeError):
             continue
         hits = sorted({m.group(1) for m in _ROUTE_RE.finditer(text)} & omitted)
-        # The staged and live agreements are the same render; reporting both
-        # would print the identical route list twice for one problem.
-        if hits and tuple(hits) not in seen_reports:
-            seen_reports.add(tuple(hits))
+        if hits and text not in seen_reports:
+            seen_reports.add(text)
             report.append(
                 f"profile {profile.name!r}: {rel} still routes to "
                 f"{', '.join(hits)} — planted by the kit's shared doctrine and "
@@ -26205,6 +26249,18 @@ def refresh_seat_digest(
     hash (the file is kit-owned wholly, unlike the consumer-owned ledger).
     Missing file → nothing here (the adopt pass replants it).
     """
+    # Same gate as `cmd_check` and `cmd_seat_digest`: a shape that plants no
+    # digest must not have one REGENERATED under it either. Without this, a
+    # default install that moved to a sparse profile the way `cmd_init`'s
+    # refusal describes had its retained docs/seat-digest.md refreshed on the
+    # next upgrade — or, if hand-edited, was told to run the one command the
+    # profile gate now refuses. Three call sites, one declaration.
+    profile = profile_for_config(config)
+    if not profile.plant_seat_digest:
+        return [
+            f"seat-digest: skipped — the {profile.name!r} adoption profile "
+            "plants no seat digest.",
+        ]
     rel = seat_digest_relpath(config)
     path = root / rel
     if not path.is_file():
@@ -26457,6 +26513,24 @@ def newest_banked_archive(
     return archived, meta.get("from_version")
 
 
+def _require_known_profile(root: Path, config: Config) -> None:
+    """Refuse an install whose persisted profile this kit does not ship.
+
+    The strict half of the reader/writer split, hoisted to every write flow's
+    front door. ``UnknownProfileError`` is a ``ValueError``; it is re-raised as
+    ``UpgradeRefused`` so the CLI reports it the way it reports every other
+    pre-flight refusal, rather than as a traceback out of the middle of a
+    half-finished upgrade.
+    """
+    try:
+        resolve_profile(config.adoption_profile)
+    except UnknownProfileError as exc:
+        raise UpgradeRefused(
+            f"{exc} — refusing to upgrade before any write; fix "
+            "`adoption_profile` in substrate.config.json first.",
+        ) from exc
+
+
 def run_apply_docs_posthoc(
     root: Path,
     config: Config,
@@ -26477,6 +26551,7 @@ def run_apply_docs_posthoc(
     actionable message and nothing written (never a crash, never an impossible
     command).
     """
+    _require_known_profile(root, config)
     report: list[str] = []
     archived, from_version = newest_banked_archive(root, config)
     if archived is None:
@@ -26550,8 +26625,15 @@ def run_upgrade(
 ) -> list[str]:
     """Execute the §4.3 upgrade flow; return the report lines.
 
-    Raises :class:`UpgradeRefused` when release.json verification fails.
+    Raises :class:`UpgradeRefused` when release.json verification fails, or
+    when the persisted ``adoption_profile`` names a shape this kit does not
+    ship — checked HERE, before any write. `adopt` (step 6) resolves strictly
+    too, but by the time it runs this flow has already archived state, possibly
+    applied document changes, refreshed derived files and replaced the vendored
+    bootstrap; raising there left a PARTIALLY UPGRADED repository. A refusal is
+    only safe at a point where nothing has happened yet.
     """
+    _require_known_profile(root, config)
     # Post-hoc --apply-docs (idea upgrade-apply-docs-single-shot-window): when
     # the vendored dist is ALREADY at the running version there is no pending
     # transition, but a prior upgrade that skipped --apply-docs banked the
