@@ -112,13 +112,20 @@ def _ob_split(counts: dict[str, int]) -> str:
     return " · ".join(f"{path} {words}" for path, words in docs)
 
 
-def _ob_boot_paths(root: Path, config: Config) -> list[Path]:
+def orientation_boot_paths(root: Path, config: Config) -> list[Path]:
     """Resolve the configured boot set to concrete paths.
 
     Explicit ``orientation["boot_docs"]`` entries: a bare name resolves under
     ``docs_root``, an entry with ``/`` resolves from the project root. The
     ``readpath_docs`` fallback resolves under ``docs_root`` unconditionally —
     matching ``check_reachable``, which reads the same key.
+
+    PUBLIC because ``cmd_check`` must engage this checker on exactly the paths
+    this function resolves. It previously kept its own predicate that also
+    accepted a ROOT-level match, so a repo with ``current-state.md`` at the
+    root engaged the checker and was then red for the ``docs/current-state.md``
+    the resolver had looked for and never found — the predicate recognising a
+    location the resolver will never accept. One function, one answer.
     """
     orientation = config.orientation or {}
     docs_root = root / config.docs_root
@@ -141,13 +148,13 @@ def check_orientation_budget(root: Path, config: Config) -> list[Finding]:
     (``orientation-doc-cap``).
     """
     findings: list[Finding] = []
-    boot_paths = _ob_boot_paths(root, config)
-    for doc in boot_paths:
+    resolved = orientation_boot_paths(root, config)
+    for doc in resolved:
         if not doc.is_file():
             msg = "boot doc missing — fix the path or the orientation config"
             findings.append(Finding(_ob_rel(doc, root), "orientation-missing", msg))
 
-    counts = orientation_word_count(root, boot_paths)
+    counts = orientation_word_count(root, resolved)
     budget = int((config.orientation or {}).get("budget_words", 7000))
     total = counts[_OB_TOTAL_KEY]
     if total > budget:
@@ -158,7 +165,7 @@ def check_orientation_budget(root: Path, config: Config) -> list[Finding]:
         )
         findings.append(Finding(_OB_TOTAL_KEY, "orientation-budget", msg))
 
-    for doc in boot_paths:
+    for doc in resolved:
         cap = _ob_self_cap(doc)
         if cap is None:
             continue
@@ -193,8 +200,8 @@ def check_orientation_headroom(root: Path, config: Config) -> list[Finding]:
     budget = int(orientation.get("budget_words", 7000))
     if ratio >= 1 or budget <= 0:
         return []
-    boot_paths = _ob_boot_paths(root, config)
-    counts = orientation_word_count(root, boot_paths)
+    resolved = orientation_boot_paths(root, config)
+    counts = orientation_word_count(root, resolved)
     total = counts[_OB_TOTAL_KEY]
     if not (budget * ratio <= total <= budget):
         return []

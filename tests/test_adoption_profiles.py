@@ -768,12 +768,12 @@ def test_cold_hub_adoption_through_the_generated_dist(tmp_path):
         assert absent not in checked.stdout, absent
     # K5's advice half: a session on this install is not told to commit a delta
     # that its own .gitignore guarantees does not exist.
-    assert "policy says UNTRACKED" in checked.stdout
-    assert "no delta to commit" in checked.stdout
+    assert "policy INTENDS it untracked" in checked.stdout
     assert "commit the delta with your session" not in checked.stdout
-    # ...and it does not assert a git fact it never checked: the remedy for an
-    # install that committed the ledger BEFORE the policy changed is named,
-    # because adopt deliberately never touches git's index.
+    # It must not assert an unchecked git fact in EITHER direction: it says so
+    # out loud, and names the remedy for an install that committed the ledger
+    # before the policy changed (adopt never touches git's index).
+    assert "claims nothing about your working tree" in checked.stdout
     assert "git rm --cached" in checked.stdout
     # ...and the ledger really is ignored by git, not merely named in a file.
     status = subprocess.run(
@@ -1294,3 +1294,176 @@ def test_adv_an_unusable_telemetry_path_falls_back(tmp_path):
         assert guard_fires_path(root, ".substrate", policy) == (
             root / ".substrate" / GUARD_FIRES_FILENAME
         ), bad
+
+
+# --------------------------------------------------------------------------
+# Codex round 2 (PR #590, head 7b07c1d) — five P2 findings, one test each
+# --------------------------------------------------------------------------
+
+
+def test_codex_r2_the_staged_agreement_is_scanned_for_dead_routes(tmp_path):
+    # On the NORMAL path (no --include-claude) the only working agreement
+    # produced is the STAGED one, and the scan added only the live copy — so
+    # the report said nothing in exactly the case a host most needs told, and
+    # installing the staged agreement installed dead pointers silently.
+    root, config, lines = _adopt_into(tmp_path, "hub")
+    assert not (root / ".claude" / "CLAUDE.md").exists()
+    staged = root / config.state_dir / "claude" / "CLAUDE.md"
+    assert staged.is_file()
+    body = staged.read_text(encoding="utf-8")
+    assert "`docs/SKILLS.md`" in body, "precondition: the staged agreement has dead routes"
+    # Assert the STAGED PATH is itself named. Asserting only that some report
+    # mentions docs/SKILLS.md passes via CONSTITUTION.md, which routes there
+    # too — the first draft of this test did exactly that and a mutation
+    # removing the staged scan survived it.
+    staged_rel = f"{config.state_dir}/claude/CLAUDE.md"
+    staged_reports = [
+        ln for ln in lines
+        if ln.startswith("profile 'hub':") and staged_rel in ln
+    ]
+    assert staged_reports, lines
+    assert "docs/SKILLS.md" in staged_reports[0], staged_reports
+    # Live + staged are the same render; one problem must not print twice.
+    both_root, _bc, both_lines = _adopt_into(tmp_path, "hub", include_claude=True)
+    assert both_root  # adopted
+    agreement_reports = [
+        ln for ln in both_lines
+        if ln.startswith("profile 'hub':") and "CLAUDE.md" in ln
+    ]
+    assert len(agreement_reports) == 1, agreement_reports
+
+
+def test_codex_r2_no_digest_advisory_on_a_shape_that_plants_no_digest(tmp_path):
+    # A repo that KEPT docs/seat-digest.md while moving to a sparse profile was
+    # told `seat-digest-stale` forever, and the fix that advisory names is the
+    # one command the profile gate refuses with exit 2.
+    from engine.cli import cmd_check
+
+    root, config, _lines = _adopt_into(tmp_path)
+    digest = root / "docs" / "seat-digest.md"
+    assert digest.is_file()
+    digest.write_text("# stale\n", encoding="utf-8")
+    # Move the install to the sparse shape the way cmd_init's refusal suggests.
+    config.adoption_profile = "hub"
+    save_config(root, config)
+    from engine.checks.check_seat_digest import check_seat_digest
+
+    # The checker itself still fires — the gate is in cmd_check, which is what
+    # decides whether a session ever sees advice it cannot act on.
+    assert check_seat_digest(root, config, context={}), "precondition"
+
+    def _advisory_lines(where):
+        import engine.cli as cli_mod
+
+        out = []
+        original = cli_mod._emit
+        cli_mod._emit = out.append
+        try:
+            # advisories=True is the surface the finding is ON: without it the
+            # heuristic tail is summarised as a count, so grepping the default
+            # output tests nothing (the first draft of this test did, and a
+            # mutation removing the gate survived it).
+            cmd_check(where, strict=False, advisories=True)
+        finally:
+            cli_mod._emit = original
+        return out
+
+    # Match the CHECKER's own finding kinds, not the substring "seat-digest":
+    # a hand-written fixture file also draws an unrelated `[badge]` finding
+    # naming the same path, which would make this assertion fail for the wrong
+    # reason (it did).
+    kinds = ("seat-digest-stale", "seat-digest-over-budget")
+
+    def _digest_findings(where):
+        return [ln for ln in _advisory_lines(where) if any(k in ln for k in kinds)]
+
+    assert not _digest_findings(root), "hub"
+    # Mutant: the DEFAULT shape still gets the advisory it can act on.
+    def_root, def_config, _ = _adopt_into(tmp_path)
+    (def_root / "docs" / "seat-digest.md").write_text(
+        "# stale\n\n> **Status:** `reference`\n", encoding="utf-8",
+    )
+    save_config(def_root, def_config)
+    assert _digest_findings(def_root), "default"
+
+
+def test_codex_r2_a_root_level_state_doc_does_not_red_the_hub(tmp_path):
+    # The third state I had not measured: cmd_check's own predicate counted a
+    # ROOT-level match, which the readpath fallback never resolves to, so a
+    # repo whose state document sits at the root engaged the checker and was
+    # then red for a docs/ path it deliberately never created.
+    root = _cold_repo(tmp_path)
+    assert _run(root, "adopt", "--profile", "hub").returncode == 0
+    (root / "current-state.md").write_text(
+        "# now\n\n> **Status:** `living-ledger`\n\nstate.\n", encoding="utf-8",
+    )
+    result = _run(root, "check", "--strict")
+    assert "orientation-missing" not in result.stdout, result.stdout
+
+
+def test_codex_r2_the_engagement_predicate_is_the_resolver(tmp_path):
+    # The root cause of the finding above, pinned directly: one function, one
+    # answer. Any predicate that is not this resolver can disagree with it.
+    from engine.checks.check_orientation_budget import orientation_boot_paths
+
+    config = new_config("hub")
+    resolved = orientation_boot_paths(tmp_path, config)
+    assert resolved == [tmp_path / "docs" / "current-state.md"]
+    # An explicit boot_docs entry carrying "/" resolves from the root — the
+    # supported way to name a root-level document.
+    rooted = new_config("hub")
+    rooted.orientation = dict(rooted.orientation, boot_docs=["./current-state.md"])
+    assert orientation_boot_paths(tmp_path, rooted) == [tmp_path / "./current-state.md"]
+
+
+def test_codex_r2_the_announcement_asserts_no_git_fact(tmp_path):
+    # It said "no delta to commit" before acknowledging the exact case where
+    # there IS one — still asserting the unchecked git fact the rewrite was
+    # meant to remove.
+    from engine.cli import cmd_check
+
+    root, config, _lines = _adopt_into(tmp_path, "hub")
+    save_config(root, config)
+    import engine.cli as cli_mod
+
+    out = []
+    original = cli_mod._emit
+    cli_mod._emit = out.append
+    try:
+        cmd_check(root, strict=False)
+    finally:
+        cli_mod._emit = original
+    announced = [line for line in out if "guard-fire record(s) appended" in line]
+    assert announced, out
+    line = announced[0]
+    assert "no delta to commit" not in line
+    assert "nothing to commit" not in line
+    assert "claims nothing about your working tree" in line
+    assert "git rm --cached" in line
+
+
+def test_codex_r2_a_host_line_below_the_fence_is_not_claimed(tmp_path):
+    # Without a closing fence, "the kit's lines" had no end: every
+    # root-anchored rule a host added LATER fell inside the claimed region and
+    # was reported as a stale telemetry leftover on every pass, forever.
+    from engine.adopt import TELEMETRY_IGNORE_END, TELEMETRY_IGNORE_MARKER
+
+    root = tmp_path / "repo"
+    config = new_config("hub")
+    adopt(root, config, _backend(root, config), kit_root=tmp_path / "kit")
+    text = (root / ".gitignore").read_text(encoding="utf-8")
+    assert TELEMETRY_IGNORE_MARKER in text
+    assert TELEMETRY_IGNORE_END in text
+    # A host rule appended BELOW the block is host-owned and must stay unclaimed.
+    (root / ".gitignore").write_text(text + "/vendor/\n", encoding="utf-8")
+    lines = adopt(root, config, _backend(root, config), kit_root=tmp_path / "kit")
+    assert not [ln for ln in lines if "still carries" in ln], lines
+    # ...while a genuinely stale entry INSIDE the block is still named.
+    inside = (root / ".gitignore").read_text(encoding="utf-8").replace(
+        TELEMETRY_IGNORE_END, "/.substrate/old-fires.jsonl\n" + TELEMETRY_IGNORE_END,
+    )
+    (root / ".gitignore").write_text(inside, encoding="utf-8")
+    lines = adopt(root, config, _backend(root, config), kit_root=tmp_path / "kit")
+    stale = [ln for ln in lines if "still carries" in ln]
+    assert stale and "old-fires.jsonl" in stale[0], lines
+    assert "/vendor/" not in " ".join(stale)

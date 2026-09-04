@@ -89,6 +89,7 @@ from engine.checks.check_status_current import (
     heartbeat_relpaths,
 )
 from engine.checks.check_orientation_budget import (
+    orientation_boot_paths,
     check_orientation_budget,
     check_orientation_headroom,
 )
@@ -790,9 +791,12 @@ def _extra_check_findings(target: Path, config: Config) -> list:
     # lines and CODE rules pass (see the checker's false-positive discipline).
     # Self-quiet on a bare tree (no docs / constitution / .claude to scan).
     findings += check_no_false_walls(target, config)
-    boot_docs = config.orientation.get("boot_docs") or config.readpath_docs
-    docs_root = target / config.docs_root
-    if any((docs_root / doc).exists() or (target / doc).exists() for doc in boot_docs):
+    # Engage on exactly what the checker RESOLVES — the same function it uses.
+    # A hand-rolled predicate here also counted a root-level match, which the
+    # readpath fallback never resolves to, so a repo whose state document sits
+    # at the root turned the checker on and was then red for a docs/ path it
+    # had deliberately not created.
+    if any(doc.exists() for doc in orientation_boot_paths(target, config)):
         findings += check_orientation_budget(target, config)
     # The post-adopt ENGAGEMENT gate (KL-7): red in an adopted host until the
     # planted docs are rendered, a CI workflow runs the check, and the session
@@ -1390,11 +1394,23 @@ def cmd_check(
     # from state so the fresh render matches what adopt/upgrade/regen
     # would write (only project_name matters to the render).
     digest_backend = JsonStateBackend(_state_path(target, config))
-    digest_advisories = check_seat_digest(
-        target,
-        config,
-        context=build_context(digest_backend.data, config) if digest_backend.data else {},
-    )
+    # A shape that plants no digest gets no digest advisory. Otherwise a repo
+    # that KEPT a docs/seat-digest.md while moving to a sparse profile is told
+    # `seat-digest-stale` forever, and the fix that advisory names is the one
+    # command the profile gate now refuses with exit 2 — an advisory whose
+    # advertised remediation cannot run is worse than no advisory.
+    if profile_for_config(config).plant_seat_digest:
+        digest_advisories = check_seat_digest(
+            target,
+            config,
+            context=(
+                build_context(digest_backend.data, config)
+                if digest_backend.data
+                else {}
+            ),
+        )
+    else:
+        digest_advisories = []
     # K0 headroom gauge (PR #308, the nightcap-card 💡 spec): advisory-only
     # by contract, like every nudge above — the boot set nearing (but not
     # over) the orientation budget warns with the exact headroom + per-doc
@@ -1802,10 +1818,12 @@ def cmd_check(
             _emit(
                 f"check: {fires_written} guard-fire record(s) appended to "
                 f"{fires_rel_name} — telemetry ledger{capped}; this install's "
-                "policy says UNTRACKED, so it is gitignored from birth and "
-                "there is no delta to commit. If this repository committed the "
-                f"ledger before the policy changed, `git rm --cached "
-                f"{fires_rel_name}` once — the kit never edits git's index.",
+                "policy INTENDS it untracked and adopt gitignores it. This "
+                "line does not read git, so it claims nothing about your "
+                "working tree: if this repository committed the ledger before "
+                "the policy changed, it is still tracked and this append (or a "
+                f"capped trim's deletion) is a real diff — `git rm --cached "
+                f"{fires_rel_name}` once.",
             )
 
     if suppressed:

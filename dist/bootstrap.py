@@ -8425,13 +8425,20 @@ def _ob_split(counts: dict[str, int]) -> str:
     return " · ".join(f"{path} {words}" for path, words in docs)
 
 
-def _ob_boot_paths(root: Path, config: Config) -> list[Path]:
+def orientation_boot_paths(root: Path, config: Config) -> list[Path]:
     """Resolve the configured boot set to concrete paths.
 
     Explicit ``orientation["boot_docs"]`` entries: a bare name resolves under
     ``docs_root``, an entry with ``/`` resolves from the project root. The
     ``readpath_docs`` fallback resolves under ``docs_root`` unconditionally —
     matching ``check_reachable``, which reads the same key.
+
+    PUBLIC because ``cmd_check`` must engage this checker on exactly the paths
+    this function resolves. It previously kept its own predicate that also
+    accepted a ROOT-level match, so a repo with ``current-state.md`` at the
+    root engaged the checker and was then red for the ``docs/current-state.md``
+    the resolver had looked for and never found — the predicate recognising a
+    location the resolver will never accept. One function, one answer.
     """
     orientation = config.orientation or {}
     docs_root = root / config.docs_root
@@ -8454,13 +8461,13 @@ def check_orientation_budget(root: Path, config: Config) -> list[Finding]:
     (``orientation-doc-cap``).
     """
     findings: list[Finding] = []
-    boot_paths = _ob_boot_paths(root, config)
-    for doc in boot_paths:
+    resolved = orientation_boot_paths(root, config)
+    for doc in resolved:
         if not doc.is_file():
             msg = "boot doc missing — fix the path or the orientation config"
             findings.append(Finding(_ob_rel(doc, root), "orientation-missing", msg))
 
-    counts = orientation_word_count(root, boot_paths)
+    counts = orientation_word_count(root, resolved)
     budget = int((config.orientation or {}).get("budget_words", 7000))
     total = counts[_OB_TOTAL_KEY]
     if total > budget:
@@ -8471,7 +8478,7 @@ def check_orientation_budget(root: Path, config: Config) -> list[Finding]:
         )
         findings.append(Finding(_OB_TOTAL_KEY, "orientation-budget", msg))
 
-    for doc in boot_paths:
+    for doc in resolved:
         cap = _ob_self_cap(doc)
         if cap is None:
             continue
@@ -8506,8 +8513,8 @@ def check_orientation_headroom(root: Path, config: Config) -> list[Finding]:
     budget = int(orientation.get("budget_words", 7000))
     if ratio >= 1 or budget <= 0:
         return []
-    boot_paths = _ob_boot_paths(root, config)
-    counts = orientation_word_count(root, boot_paths)
+    resolved = orientation_boot_paths(root, config)
+    counts = orientation_word_count(root, resolved)
     total = counts[_OB_TOTAL_KEY]
     if not (budget * ratio <= total <= budget):
         return []
@@ -13883,11 +13890,11 @@ def _eco_route_budget(root: Path, config: Config) -> tuple[int, int]:
     """Return (value, cap) for the boot-route word budget.
 
     Value sums word counts over the boot set resolved by the orientation
-    checker's own ``_ob_boot_paths`` (ONE resolver for both consumers — the
+    checker's own ``orientation_boot_paths`` (ONE resolver for every consumer — the
     gauge once resolved everything under docs_root and undercounted
     root-level boot docs to 0); cap is ``orientation["budget_words"]``.
     """
-    value = sum(_eco_wc(path) for path in _ob_boot_paths(root, config))
+    value = sum(_eco_wc(path) for path in orientation_boot_paths(root, config))
     cap = int(config.orientation.get("budget_words", 7000))
     return value, cap
 
@@ -22578,6 +22585,7 @@ def _merge_marked_entries(
     report: list[str],
     *,
     label: str,
+    end_marker: str | None = None,
 ) -> None:
     """Append-only merge of ``entries`` into ``root/relpath`` under ``marker``.
 
@@ -22615,6 +22623,8 @@ def _merge_marked_entries(
     if marker not in present:
         chunk += marker + "\n"
     chunk += "\n".join(missing) + "\n"
+    if end_marker is not None and end_marker not in present:
+        chunk += end_marker + "\n"
     atomic_write_text(path, existing + chunk)
     noun = "entry" if len(missing) == 1 else "entries"
     if existing:
@@ -22645,9 +22655,17 @@ def _plant_search_hygiene(
 
 
 TELEMETRY_IGNORE_MARKER = (
-    "# substrate-kit telemetry (planted by adopt/upgrade; the kit only ever "
-    "APPENDS missing entries — existing content above is host-owned)"
+    "# substrate-kit telemetry BEGIN (kit-owned; edit above or below the "
+    "block, never inside it)"
 )
+
+# The closing fence. Without it, "the kit's lines" had no end and every
+# root-anchored rule a host added LATER fell inside the kit's claimed region —
+# so an unrelated `/vendor/` appended next month was reported as a stale
+# telemetry leftover, every pass, forever. Ownership needs two boundaries, not
+# one: a marker says where the kit's lines START and proves nothing about where
+# they stop.
+TELEMETRY_IGNORE_END = "# substrate-kit telemetry END"
 
 
 # gitignore pattern metacharacters. A path is a NAME; a gitignore line is a
@@ -22723,6 +22741,7 @@ def _plant_telemetry_ignore(root: Path, config: Config, report: list[str]) -> No
             entries,
             report,
             label="telemetry",
+            end_marker=TELEMETRY_IGNORE_END,
         )
     _report_stale_telemetry_ignores(root, report, keep=entries)
 
@@ -22761,13 +22780,16 @@ def _report_stale_telemetry_ignores(
     stripped = [line.strip() for line in lines]
     if TELEMETRY_IGNORE_MARKER not in stripped:
         return
-    below = stripped[stripped.index(TELEMETRY_IGNORE_MARKER) + 1 :]
+    start = stripped.index(TELEMETRY_IGNORE_MARKER) + 1
+    # Bounded by the closing fence. An UNfenced read claimed every root-anchored
+    # line after the marker, so a host's own later `/vendor/` was reported as
+    # the kit's stale leftover on every pass. Absent an end marker the block is
+    # empty rather than unbounded: claiming nothing is the safe failure here,
+    # and the kit only ever writes the pair together.
+    end = stripped.index(TELEMETRY_IGNORE_END) if TELEMETRY_IGNORE_END in stripped else start
+    inside = stripped[start:end]
     wanted = set(keep)
-    stale = [
-        line
-        for line in below
-        if line.startswith("/") and line not in wanted
-    ]
+    stale = [line for line in inside if line.startswith("/") and line not in wanted]
     for line in sorted(set(stale)):
         report.append(
             f"telemetry: .gitignore still carries `{line}`, which this "
@@ -22812,10 +22834,15 @@ def _report_omitted_routes(
         return
     omitted = {_adopt_dest(rel, config) for rel in profile.omit_plan_dests}
     scanned = [_adopt_dest(plan_rel, config) for _tmpl, plan_rel in adoption_plan(config, profile)]
-    # The live working agreement is planted outside the plan (the include_claude
-    # opt-in) and is the document `agreement_home` then points every cold
-    # session at, so it is exactly where a dead route costs most.
+    # Both working agreements, live and staged. The live one is the document
+    # `agreement_home` points every cold session at, so a dead route costs most
+    # there — but a DEFAULT adopt only STAGES it, which is the normal path, and
+    # a host installing the staged copy would have installed dead pointers this
+    # report never mentioned. Scanning only the live copy reported nothing in
+    # exactly the case a host most needs told.
     scanned.append(".claude/CLAUDE.md")
+    scanned.append(f"{config.state_dir}/claude/CLAUDE.md")
+    seen_reports: set[tuple[str, ...]] = set()
     for rel in scanned:
         path = root / rel
         if not path.is_file():
@@ -22825,7 +22852,10 @@ def _report_omitted_routes(
         except (OSError, UnicodeDecodeError):
             continue
         hits = sorted({m.group(1) for m in _ROUTE_RE.finditer(text)} & omitted)
-        if hits:
+        # The staged and live agreements are the same render; reporting both
+        # would print the identical route list twice for one problem.
+        if hits and tuple(hits) not in seen_reports:
+            seen_reports.add(tuple(hits))
             report.append(
                 f"profile {profile.name!r}: {rel} still routes to "
                 f"{', '.join(hits)} — planted by the kit's shared doctrine and "
@@ -27368,9 +27398,12 @@ def _extra_check_findings(target: Path, config: Config) -> list:
     # lines and CODE rules pass (see the checker's false-positive discipline).
     # Self-quiet on a bare tree (no docs / constitution / .claude to scan).
     findings += check_no_false_walls(target, config)
-    boot_docs = config.orientation.get("boot_docs") or config.readpath_docs
-    docs_root = target / config.docs_root
-    if any((docs_root / doc).exists() or (target / doc).exists() for doc in boot_docs):
+    # Engage on exactly what the checker RESOLVES — the same function it uses.
+    # A hand-rolled predicate here also counted a root-level match, which the
+    # readpath fallback never resolves to, so a repo whose state document sits
+    # at the root turned the checker on and was then red for a docs/ path it
+    # had deliberately not created.
+    if any(doc.exists() for doc in orientation_boot_paths(target, config)):
         findings += check_orientation_budget(target, config)
     # The post-adopt ENGAGEMENT gate (KL-7): red in an adopted host until the
     # planted docs are rendered, a CI workflow runs the check, and the session
@@ -27968,11 +28001,23 @@ def cmd_check(
     # from state so the fresh render matches what adopt/upgrade/regen
     # would write (only project_name matters to the render).
     digest_backend = JsonStateBackend(_state_path(target, config))
-    digest_advisories = check_seat_digest(
-        target,
-        config,
-        context=build_context(digest_backend.data, config) if digest_backend.data else {},
-    )
+    # A shape that plants no digest gets no digest advisory. Otherwise a repo
+    # that KEPT a docs/seat-digest.md while moving to a sparse profile is told
+    # `seat-digest-stale` forever, and the fix that advisory names is the one
+    # command the profile gate now refuses with exit 2 — an advisory whose
+    # advertised remediation cannot run is worse than no advisory.
+    if profile_for_config(config).plant_seat_digest:
+        digest_advisories = check_seat_digest(
+            target,
+            config,
+            context=(
+                build_context(digest_backend.data, config)
+                if digest_backend.data
+                else {}
+            ),
+        )
+    else:
+        digest_advisories = []
     # K0 headroom gauge (PR #308, the nightcap-card 💡 spec): advisory-only
     # by contract, like every nudge above — the boot set nearing (but not
     # over) the orientation budget warns with the exact headroom + per-doc
@@ -28380,10 +28425,12 @@ def cmd_check(
             _emit(
                 f"check: {fires_written} guard-fire record(s) appended to "
                 f"{fires_rel_name} — telemetry ledger{capped}; this install's "
-                "policy says UNTRACKED, so it is gitignored from birth and "
-                "there is no delta to commit. If this repository committed the "
-                f"ledger before the policy changed, `git rm --cached "
-                f"{fires_rel_name}` once — the kit never edits git's index.",
+                "policy INTENDS it untracked and adopt gitignores it. This "
+                "line does not read git, so it claims nothing about your "
+                "working tree: if this repository committed the ledger before "
+                "the policy changed, it is still tracked and this append (or a "
+                f"capped trim's deletion) is a real diff — `git rm --cached "
+                f"{fires_rel_name}` once.",
             )
 
     if suppressed:

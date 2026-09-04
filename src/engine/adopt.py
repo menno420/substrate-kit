@@ -2311,6 +2311,7 @@ def _merge_marked_entries(
     report: list[str],
     *,
     label: str,
+    end_marker: str | None = None,
 ) -> None:
     """Append-only merge of ``entries`` into ``root/relpath`` under ``marker``.
 
@@ -2348,6 +2349,8 @@ def _merge_marked_entries(
     if marker not in present:
         chunk += marker + "\n"
     chunk += "\n".join(missing) + "\n"
+    if end_marker is not None and end_marker not in present:
+        chunk += end_marker + "\n"
     atomic_write_text(path, existing + chunk)
     noun = "entry" if len(missing) == 1 else "entries"
     if existing:
@@ -2378,9 +2381,17 @@ def _plant_search_hygiene(
 
 
 TELEMETRY_IGNORE_MARKER = (
-    "# substrate-kit telemetry (planted by adopt/upgrade; the kit only ever "
-    "APPENDS missing entries — existing content above is host-owned)"
+    "# substrate-kit telemetry BEGIN (kit-owned; edit above or below the "
+    "block, never inside it)"
 )
+
+# The closing fence. Without it, "the kit's lines" had no end and every
+# root-anchored rule a host added LATER fell inside the kit's claimed region —
+# so an unrelated `/vendor/` appended next month was reported as a stale
+# telemetry leftover, every pass, forever. Ownership needs two boundaries, not
+# one: a marker says where the kit's lines START and proves nothing about where
+# they stop.
+TELEMETRY_IGNORE_END = "# substrate-kit telemetry END"
 
 
 # gitignore pattern metacharacters. A path is a NAME; a gitignore line is a
@@ -2456,6 +2467,7 @@ def _plant_telemetry_ignore(root: Path, config: Config, report: list[str]) -> No
             entries,
             report,
             label="telemetry",
+            end_marker=TELEMETRY_IGNORE_END,
         )
     _report_stale_telemetry_ignores(root, report, keep=entries)
 
@@ -2494,13 +2506,16 @@ def _report_stale_telemetry_ignores(
     stripped = [line.strip() for line in lines]
     if TELEMETRY_IGNORE_MARKER not in stripped:
         return
-    below = stripped[stripped.index(TELEMETRY_IGNORE_MARKER) + 1 :]
+    start = stripped.index(TELEMETRY_IGNORE_MARKER) + 1
+    # Bounded by the closing fence. An UNfenced read claimed every root-anchored
+    # line after the marker, so a host's own later `/vendor/` was reported as
+    # the kit's stale leftover on every pass. Absent an end marker the block is
+    # empty rather than unbounded: claiming nothing is the safe failure here,
+    # and the kit only ever writes the pair together.
+    end = stripped.index(TELEMETRY_IGNORE_END) if TELEMETRY_IGNORE_END in stripped else start
+    inside = stripped[start:end]
     wanted = set(keep)
-    stale = [
-        line
-        for line in below
-        if line.startswith("/") and line not in wanted
-    ]
+    stale = [line for line in inside if line.startswith("/") and line not in wanted]
     for line in sorted(set(stale)):
         report.append(
             f"telemetry: .gitignore still carries `{line}`, which this "
@@ -2545,10 +2560,15 @@ def _report_omitted_routes(
         return
     omitted = {_adopt_dest(rel, config) for rel in profile.omit_plan_dests}
     scanned = [_adopt_dest(plan_rel, config) for _tmpl, plan_rel in adoption_plan(config, profile)]
-    # The live working agreement is planted outside the plan (the include_claude
-    # opt-in) and is the document `agreement_home` then points every cold
-    # session at, so it is exactly where a dead route costs most.
+    # Both working agreements, live and staged. The live one is the document
+    # `agreement_home` points every cold session at, so a dead route costs most
+    # there — but a DEFAULT adopt only STAGES it, which is the normal path, and
+    # a host installing the staged copy would have installed dead pointers this
+    # report never mentioned. Scanning only the live copy reported nothing in
+    # exactly the case a host most needs told.
     scanned.append(".claude/CLAUDE.md")
+    scanned.append(f"{config.state_dir}/claude/CLAUDE.md")
+    seen_reports: set[tuple[str, ...]] = set()
     for rel in scanned:
         path = root / rel
         if not path.is_file():
@@ -2558,7 +2578,10 @@ def _report_omitted_routes(
         except (OSError, UnicodeDecodeError):
             continue
         hits = sorted({m.group(1) for m in _ROUTE_RE.finditer(text)} & omitted)
-        if hits:
+        # The staged and live agreements are the same render; reporting both
+        # would print the identical route list twice for one problem.
+        if hits and tuple(hits) not in seen_reports:
+            seen_reports.add(tuple(hits))
             report.append(
                 f"profile {profile.name!r}: {rel} still routes to "
                 f"{', '.join(hits)} — planted by the kit's shared doctrine and "
