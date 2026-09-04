@@ -72,6 +72,33 @@ workflow refuses to publish a version that has no section in this file.
     while the dedupe pass reads the whole file on every `check` to look at its
     last 200 lines.
 
+  Hardening from the first review round, each with a mutation-checked
+  regression test: a WRITER (`adopt`) now refuses an unknown *persisted*
+  profile instead of inheriting the reader's lenient fallback and planting the
+  full default tree into a repository that asked for a sparse one; gitignore
+  entries are escaped to literals (a telemetry `path` of `*` planted `/*`,
+  which makes git ignore every root-level file); `_doc_plan` follows the
+  profile, so a hub upgrade no longer reports omitted destinations as
+  `missing` forever; a non-dict `telemetry` key degrades to defaults instead
+  of crashing `check`; the model-line and ungroomed-idea advisories read the
+  configured sessions directory (the second was a silent *false negative* on
+  any install that had moved it); a stale telemetry ignore entry left by a
+  policy change is reported, never deleted; and capped-ledger appends are
+  serialised against trims by a sidecar lock, created only for a capped ledger
+  so an uncapped install gains neither the code path nor the file.
+
+  Two residues are pinned rather than papered over. The kit does not fork its
+  shared doctrine prose per shape — that would double the maintenance surface
+  of its most important document — so `adopt` instead REPORTS, on every pass,
+  every surviving route from a planted document to a destination the shape
+  omits, handing an adopter an exact one-time edit list. And the shipped skill
+  bodies still name documents a sparse shape does not plant (26 advisories
+  over 8 distinct paths on a fresh hub adoption); those advisories are this
+  change working — before the profile filter reached `_known_paths` every one
+  of them passed silently as "grounded by construction" — while the remaining
+  gap, a hub-compatible skill set, belongs to the skills channel and is
+  deferred. A test pins its exact shape so it stays a tracked number.
+
   Covered by `tests/test_adoption_profiles.py` (49 tests: one positive and one
   mutant per K item, a compatibility section pinning the default shape,
   idempotence and upgrade/render, and a cold-adoption fixture that drives the
