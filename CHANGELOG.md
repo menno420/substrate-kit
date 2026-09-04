@@ -15,6 +15,71 @@ workflow refuses to publish a version that has no section in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Adoption profiles — a declared shape per install, and the five hub
+  prerequisites riding it** (K1–K5). `ADOPT_PLAN` was already a data table and
+  `Config` already carried `sessions_dir`/`docs_root`/`claims_dir`; what the kit
+  had no name for was *which shape an install was born in*, so every consumer
+  that walked the plant table assumed the one historical shape.
+
+  - `engine/lib/profiles.py` — frozen, declarative `AdoptionProfile` records:
+    which plant destinations a shape omits, whether it plants the derived
+    seat-digest render, and which config defaults it is born with. Two ship:
+    `default` (the historical shape, omitting and overriding nothing) and `hub`
+    (a router/records repository). An unknown name is refused at `init`/`adopt`,
+    never silently defaulted; readers walking a foreign tree degrade to
+    `default` rather than crashing a checker.
+  - `Config.adoption_profile` persists the shape, so `upgrade` and `render` —
+    which already re-run `adopt` with the loaded config — honor it with no
+    second orchestration path. `bootstrap.py init|adopt --profile NAME` selects
+    it at birth; re-running with a *different* name is refused, because
+    re-shaping an adopted tree is a migration, not an adopt.
+  - `adopt.adoption_plan(config)` is the single accessor. `check_engagement`,
+    `check_template_sync` and `check_skill_grounds` read it instead of the raw
+    plan. The last mattered most: it folded every plan destination into its
+    grounded-by-construction set unconditionally, so a skill body naming a doc a
+    sparse shape never plants would have passed as grounded — a false green in
+    the checker whose job is dead pointers.
+  - **K1** — the `hub` shape plants no `control/` bus. The bus checkers are
+    input-gated on those files existing, so omitting the bus quiets them by
+    construction rather than by an allowlist entry. `--lane` on a bus-less
+    profile is refused rather than half-planted.
+  - **K2** — no generic `docs/` set and no seat-digest render (it renders two
+    docs the shape does not plant). The working agreement's boot list follows
+    the shape in both agreement homes: a fixed three-document list planted into
+    a tree that plants none of them would reproduce, deliberately, the
+    dead-pointer defect measured across 11 adopter trees on 2026-08-06.
+  - **K3** — `sessions_dir` was already the seam; `hub` is born on a visible
+    `sessions/`. The advice tail four findings carried ("see
+    `.sessions/README.md`") gets one home in `engine.grammar` and names the
+    directory the install actually has.
+  - **K4** — `owner_context` (`canonical` + optional `label`) declares where the
+    broader owner profile lives; the planted per-repo doc renders one pointer
+    instead of an Nth copy of the same two answers, keeping its own local slots.
+    The kit ships the sentence, never its destination. Empty by default, and the
+    substitution site sits at the end of an existing line, so an undeclared
+    install renders byte-identically to before.
+  - **K5** — `telemetry.guard_fires` separates four axes: `enabled`, `path`,
+    `tracked`, `max_records`. The founding plan's KF-11 default (written,
+    committed, uncapped) is unchanged for every existing adopter. `hub` is
+    untracked and capped: `adopt` plants the ignore entry through the same
+    append-only merge the search-hygiene plant uses, and `check` stops telling
+    those sessions to commit a delta their own `.gitignore` guarantees does not
+    exist. Trimming is the feed's only full-file rewrite, runs only under an
+    explicit positive cap, is atomic, and fails open. Measured provenance:
+    one adopter's ledger reached 41,965 records / 26,792,756 bytes, tracked,
+    while the dedupe pass reads the whole file on every `check` to look at its
+    last 200 lines.
+
+  Covered by `tests/test_adoption_profiles.py` (49 tests: one positive and one
+  mutant per K item, a compatibility section pinning the default shape,
+  idempotence and upgrade/render, and a cold-adoption fixture that drives the
+  generated `dist/bootstrap.py` through the same public interface a hub seed
+  will use, in a genuinely empty git repository) plus a hub arm on CI's
+  cold-adoption smoke.
+
+
 ## [1.21.0] - 2026-08-13
 
 <!-- release: breaking=false state_migration=false min_upgrade_from=1.0.0 -->

@@ -292,6 +292,47 @@ jobs:
             python3 bootstrap.py check --strict --require-session-log \
               --session-log .sessions/2026-01-01-first.md
           )
+          # The hub adoption profile (K1-K5): a shape that is born WITHOUT the
+          # control bus, without the generic docs set, on a visible sessions/
+          # dir, and with an untracked ledger. Asserted here — not only in
+          # pytest — because this arm exercises the GENERATED artifact a seed
+          # actually downloads, and source/dist have diverged before.
+          scratch_hub="$(mktemp -d)"
+          cp dist/bootstrap.py "$scratch_hub/"
+          (
+            cd "$scratch_hub"
+            git init -q .
+            python3 bootstrap.py adopt --profile hub | tee adopt.out
+            grep -q "adoption profile 'hub'" adopt.out
+            test ! -d control
+            test ! -d docs
+            test -f sessions/README.md
+            test ! -d .sessions
+            grep -q '^/\.substrate/guard-fires\.jsonl$' .gitignore
+            python3 -c 'import json,sys; c=json.load(open("substrate.config.json")); g=c["telemetry"]["guard_fires"]; sys.exit(0 if (c["adoption_profile"]=="hub" and c["sessions_dir"]=="sessions" and g["tracked"] is False and g["max_records"]>0) else "config does not state the hub shape: %r" % c)'
+            # Born red like any adopt — and for the right reasons: no finding
+            # may name a control/ or docs/ path the shape never plants.
+            grep -q "NOT ENGAGED" adopt.out
+            if python3 bootstrap.py check --strict > check.out 2>&1; then
+              echo "expected RED after a bare hub adopt (engagement gate)"; exit 1
+            fi
+            if grep -qE 'control/status\.md|docs/current-state\.md|boot-path-unresolved' check.out; then
+              echo "hub check named a path the hub profile never plants:"; cat check.out; exit 1
+            fi
+            grep -q "UNTRACKED by this install's policy" check.out
+            # Re-adopting is idempotent and must not resurrect the omitted rooms.
+            printf '%s\n' '# host-owned' > CONSTITUTION.md
+            python3 bootstrap.py adopt --profile hub > readopt.out 2>&1
+            grep -q '^# host-owned$' CONSTITUTION.md
+            test ! -d control
+            test ! -d docs
+            # Re-shaping an adopted tree is a migration, not an adopt: refused.
+            if python3 bootstrap.py adopt --profile default > reshape.out 2>&1; then
+              echo "expected a REFUSAL when re-shaping an adopted tree"; exit 1
+            fi
+            grep -q "REFUSED" reshape.out
+            test ! -d docs
+          )
           scratch_we="$(mktemp -d)"
           cp dist/bootstrap.py "$scratch_we/"
           (
