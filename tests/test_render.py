@@ -42,6 +42,9 @@ def test_build_context_from_slot_values():
         # config-less render gets the historical (default-shape) block.
         "boot_read_path": boot_read_path(),
         "agreement_boot_tail": agreement_boot_tail(),
+        # Config, not an interview answer, and planted prose names it —
+        # so it is injected on every path, historical default when unset.
+        "sessions_dir": ".sessions",
     }
 
 

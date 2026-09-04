@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 import re
+from contextlib import contextmanager
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -44,6 +45,9 @@ from engine.grammar import (
 from engine.lib.atomicio import atomic_write_text
 
 GUARD_FIRES_FILENAME = "guard-fires.jsonl"
+# Sidecar lock suffix. Created only for a CAPPED ledger (see _fires_lock),
+# so an install on the default uncapped policy never gains the file.
+LOCK_SUFFIX = ".lock"
 MODEL_USAGE_RELPATH = "telemetry/model-usage.jsonl"
 
 # Guard-fire dedupe window (seconds): a re-run of the same guard over the
@@ -140,6 +144,65 @@ def _append_jsonl(path: Path, record: dict) -> None:
         handle.write(line + "\n")
 
 
+def guard_fires_lock_path(path: Path) -> Path:
+    """Return the sidecar lock file guarding a CAPPED ledger's rewrites."""
+    return path.with_name(path.name + LOCK_SUFFIX)
+
+
+@contextmanager
+def _fires_lock(path: Path, max_records: int):
+    """Serialise appends against trims — for CAPPED ledgers only.
+
+    The race this closes: a trim reads the ledger, another process appends a
+    record, and the trim then replaces the file with its now-stale snapshot.
+    Atomic replacement prevents a torn file; it does not prevent that append
+    from being lost, because the two writers never agreed on a turn.
+
+    Three deliberate constraints:
+
+    - **Capped ledgers only.** With no cap there is no rewrite, so there is no
+      race — and no lock, and no lock file. An install on the default policy
+      keeps exactly the code path and exactly the tree it had before this
+      existed; the mechanism is confined to installs that asked for a cap.
+    - **A sidecar file, not the ledger.** The trim replaces the ledger's inode
+      (that is what makes it atomic), and a lock held on a replaced inode
+      protects nothing — a late appender would write into an unlinked file. The
+      lock therefore lives on a path whose inode never changes.
+    - **Fail-open, like everything on this path.** ``fcntl`` is POSIX-only and
+      the lock file may be unwritable; either way telemetry degrades to the
+      pre-lock behaviour rather than raising into a check.
+    """
+    if max_records <= 0:
+        yield
+        return
+    handle = None
+    flock = None
+    try:
+        import fcntl  # noqa: PLC0415 — POSIX-only; a module-level import would
+        # break the generated single file on a platform without it, and this
+        # path must degrade rather than fail.
+
+        flock = fcntl
+        lock_path = guard_fires_lock_path(path)
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        handle = lock_path.open("a+")
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+    except Exception:  # noqa: BLE001 — telemetry fails open by contract
+        if handle is not None:
+            handle.close()
+        handle = None
+    try:
+        yield
+    finally:
+        if handle is not None:
+            try:
+                if flock is not None:
+                    flock.flock(handle.fileno(), flock.LOCK_UN)
+            except Exception:  # noqa: BLE001 — fail open on release too
+                pass
+            handle.close()
+
+
 def _recent_fire_keys(path: Path, now: datetime) -> set[tuple[str, str, str]]:
     """Dedupe keys ``(guard, path, message)`` of recent verdict-less records.
 
@@ -228,40 +291,75 @@ def record_guard_fires(
         path = guard_fires_path(root, state_dir, policy)
         now = datetime.now(timezone.utc)
         ts = now.isoformat(timespec="seconds")
-        recent = _recent_fire_keys(path, now) if verdict is None else set()
-        written = 0
-        for finding in findings:
-            if verdict is None:
-                key = (str(finding.kind), str(finding.path), str(finding.message))
-                if key in recent:
-                    continue
-                recent.add(key)
-            record = {
-                "ts": ts,
-                "guard": str(finding.kind),
-                "cmd": cmd,
-                "surface": surface,
-                "posture": posture,
-                "finding": {
-                    "path": str(finding.path),
-                    "kind": str(finding.kind),
-                    "message": str(finding.message),
-                },
-                "verdict": verdict,
-                "reason": reason,
-                "judge": None,
-                "outcome": None,
-            }
-            _append_jsonl(path, record)
-            written += 1
-        if written:
-            # Trim AFTER the appends, never before: a cap must never cost a
-            # record this run produced. No-ops when no cap is configured, so
-            # the default feed stays strictly append-only.
-            _trim_guard_fires(path, int((policy or {}).get("max_records") or 0))
-        return written
+        cap = int((policy or {}).get("max_records") or 0)
+        with _fires_lock(path, cap):
+            return _write_fires(
+                path,
+                findings,
+                cap,
+                ts=ts,
+                now=now,
+                cmd=cmd,
+                surface=surface,
+                posture=posture,
+                verdict=verdict,
+                reason=reason,
+            )
     except Exception:  # noqa: BLE001 — telemetry fails open by contract
         return 0
+
+
+def _write_fires(
+    path: Path,
+    findings: list,
+    max_records: int,
+    *,
+    ts: str,
+    now: datetime,
+    cmd: str,
+    surface: str,
+    posture: str,
+    verdict: str | None,
+    reason: str | None,
+) -> int:
+    """Append the records and trim, with the caller holding the lock.
+
+    Split out of :func:`record_guard_fires` so the dedupe READ happens inside
+    the same critical section as the appends and the trim: reading the recent
+    keys outside it would let two concurrent runs each decide a finding is new.
+    """
+    recent = _recent_fire_keys(path, now) if verdict is None else set()
+    written = 0
+    for finding in findings:
+        if verdict is None:
+            key = (str(finding.kind), str(finding.path), str(finding.message))
+            if key in recent:
+                continue
+            recent.add(key)
+        record = {
+            "ts": ts,
+            "guard": str(finding.kind),
+            "cmd": cmd,
+            "surface": surface,
+            "posture": posture,
+            "finding": {
+                "path": str(finding.path),
+                "kind": str(finding.kind),
+                "message": str(finding.message),
+            },
+            "verdict": verdict,
+            "reason": reason,
+            "judge": None,
+            "outcome": None,
+        }
+        _append_jsonl(path, record)
+        written += 1
+    if written:
+        # Trim AFTER the appends, never before: a cap must never cost a record
+        # this run produced. No-ops when no cap is configured, so the default
+        # feed stays strictly append-only.
+        _trim_guard_fires(path, max_records)
+    return written
 
 
 def parse_model_line(text: str) -> dict | None:

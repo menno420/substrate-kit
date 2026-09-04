@@ -14,6 +14,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from engine.grammar import DEFAULT_SESSIONS_DIRNAME
 from engine.lib.config import KIT_VERSION, owner_context_declaration
 from engine.lib.profiles import profile_for_config
 from engine.skills.skills import skills_index_table
@@ -40,6 +41,7 @@ ENGINE_CONTEXT_KEYS = frozenset(
         "agreement_boot_tail",
         "boot_read_path",
         "kit_version",
+        "sessions_dir",
         "owner_context_pointer",
         "skills_index",
     },
@@ -69,6 +71,10 @@ def agreement_home(root: Path, *, include_claude: bool = False) -> str:
 # cold session reads first, and prose assembled from a path list reads like a
 # manifest. The default block is byte-identical to the pre-profile template.
 _BOOT_READ_PATH_DEFAULT = """\
+Read in this order at session start. **This is the one list** — the task router
+at `docs/AGENT_ORIENTATION.md` points here rather than repeating it, so a boot
+set can never exist in two places that disagree.
+
 1. This file — the working agreement + autonomy rails.
 2. `docs/current-state.md` — the living status ledger. Source and merged PRs
    always win over it.
@@ -79,6 +85,10 @@ Then `docs/AGENT_ORIENTATION.md` when a task needs a route into the deeper
 docs — it is a router, not boot reading."""
 
 _BOOT_READ_PATH_SPARSE = """\
+Read in this order at session start. **This is the one list**: a router that
+repeated it could disagree with it, so nothing else in this repository carries
+a boot order.
+
 1. This file — the working agreement + autonomy rails.
 
 This install's adoption profile plants no generic doc set, so the list above is
@@ -283,6 +293,13 @@ def build_context(
     context.setdefault("owner_context_pointer", owner_context_pointer(config))
     context.setdefault("boot_read_path", boot_read_path(config))
     context.setdefault("agreement_boot_tail", agreement_boot_tail(config))
+    # The card directory is CONFIG, not an interview answer, and planted
+    # prose names it. Injected unconditionally (the historical default when
+    # no config is supplied) so no template can strand it.
+    context.setdefault(
+        "sessions_dir",
+        getattr(config, "sessions_dir", None) or DEFAULT_SESSIONS_DIRNAME,
+    )
     return context
 
 

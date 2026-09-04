@@ -49,10 +49,15 @@ from engine.lib.config import (
     guard_fires_policy,
     save_config,
 )
-from engine.lib.profiles import profile_for_config
+from engine.lib.profiles import (
+    AdoptionProfile,
+    profile_for_config,
+    resolve_profile,
+)
 from engine.lib.guardrail import assert_safe_target
 from engine.loop.telemetry import (
     GUARD_FIRES_FILENAME,
+    LOCK_SUFFIX,
     MODEL_LINE_NEEDLE,
     guard_fires_path,
 )
@@ -164,7 +169,10 @@ ADOPT_PLAN: list[tuple[str, str]] = [
     ("env-setup.sh.tmpl", "scripts/env-setup.sh"),
 ]
 
-def adoption_plan(config: Config) -> list[tuple[str, str]]:
+def adoption_plan(
+    config: Config,
+    profile: AdoptionProfile | None = None,
+) -> list[tuple[str, str]]:
     """Return :data:`ADOPT_PLAN` filtered by the install's adoption profile.
 
     THE accessor. ``ADOPT_PLAN`` is the ``default`` profile's plan and stays
@@ -179,11 +187,20 @@ def adoption_plan(config: Config) -> list[tuple[str, str]]:
     caller still applies :func:`_adopt_dest`'s ``docs_root`` remap, because the
     profile is a statement about WHICH docs, never about where a host keeps
     them.
+
+    ``profile`` lets a caller that has ALREADY resolved the shape pass it in
+    rather than re-deriving it. That distinction is load-bearing, not a
+    micro-optimisation: this function's own fallback is the READER
+    (:func:`~engine.lib.profiles.profile_for_config`, which degrades an unknown
+    name to ``default`` so a checker walking a foreign tree cannot crash), and a
+    WRITER must never inherit that leniency — it would plant the entire default
+    tree into a repository whose config declares a misspelled sparse shape.
+    :func:`adopt` therefore resolves strictly and passes the result here.
     """
-    profile = profile_for_config(config)
-    if not profile.omit_plan_dests:
+    shape = profile if profile is not None else profile_for_config(config)
+    if not shape.omit_plan_dests:
         return list(ADOPT_PLAN)
-    return [pair for pair in ADOPT_PLAN if not profile.omits(pair[1])]
+    return [pair for pair in ADOPT_PLAN if not shape.omits(pair[1])]
 
 
 # State key holding {planted relpath: sha256 hex} for every doc the kit last
@@ -2366,38 +2383,178 @@ TELEMETRY_IGNORE_MARKER = (
 )
 
 
+# gitignore pattern metacharacters. A path is a NAME; a gitignore line is a
+# PATTERN, and the two are not the same language. Escaping the difference is
+# not optional: a telemetry path of "*" would otherwise plant the line "/*" and
+# git would ignore every root-level file in the repository — including every
+# artifact adopt had just planted.
+_GITIGNORE_METACHARS = "*?[]!#\\ "
+
+
+def _gitignore_literal(relpath: str) -> str:
+    """Return ``relpath`` as a root-anchored gitignore line matching it LITERALLY.
+
+    Backslash-escapes every character gitignore would otherwise read as pattern
+    syntax. A trailing space is escaped too (gitignore strips unescaped trailing
+    whitespace), and ``#``/``!`` are escaped wherever they appear rather than
+    only at the start, which costs nothing and removes a position-dependent
+    rule from the reader's head.
+    """
+    escaped = "".join(
+        "\\" + ch if ch in _GITIGNORE_METACHARS else ch for ch in relpath
+    )
+    return "/" + escaped.lstrip("/")
+
+
 def _plant_telemetry_ignore(root: Path, config: Config, report: list[str]) -> None:
     """Keep an UNTRACKED guard-fire ledger out of git, for shapes that ask.
 
     The founding plan's KF-11 default is a TRACKED ledger — committed, never
-    gitignored — and this function does nothing at all for it: no entry, no
-    ``.gitignore`` created, no report line beyond the merge's own. It fires
-    only when the install's resolved policy sets ``tracked`` false, and then
-    only ever APPENDS a root-anchored entry through the same idempotent merge
+    gitignored — and this function plants nothing for it. It fires only when the
+    install's resolved policy sets ``tracked`` false, and then only ever APPENDS
+    a root-anchored, literal-matching entry through the same idempotent merge
     the search-hygiene plant uses.
 
-    What it deliberately does NOT do: touch git's index. A repository that has
-    already committed its ledger keeps that history — untracking a committed
-    file is a host decision with a commit attached to it, not something an
-    adopt pass may do behind the host's back. This decides what a FRESH tree is
-    born with, which is exactly what K5 is about.
+    What it deliberately does NOT do: touch git's index, and never DELETE a line
+    from a host's ``.gitignore``. A repository that has already committed its
+    ledger keeps that history — untracking a committed file is a host decision
+    with a commit attached to it. This decides what a FRESH tree is born with,
+    which is what K5 is about.
+
+    That append-only rule has a consequence worth saying out loud rather than
+    leaving for someone to discover: an install whose policy LATER changes —
+    ``tracked`` back to true, or ``path`` moved — leaves the earlier kit-planted
+    line in place, so git would keep ignoring a file ``check`` has started
+    telling the session to commit. The kit will not silently edit that line out;
+    it REPORTS the contradiction, naming the exact line to remove, on every pass
+    until the host removes it.
     """
     policy = guard_fires_policy(config)
-    if policy["tracked"]:
-        return
     ledger = guard_fires_path(root, config.state_dir, policy)
     try:
         rel = ledger.relative_to(root).as_posix()
     except ValueError:  # pragma: no cover — guard_fires_path stays in-repo
         return
-    _merge_marked_entries(
-        root,
-        ".gitignore",
-        TELEMETRY_IGNORE_MARKER,
-        ("/" + rel,),
-        report,
-        label="telemetry",
-    )
+    entry = _gitignore_literal(rel)
+    # A capped ledger also has a sidecar lock file (engine.loop.telemetry
+    # _fires_lock); an untracked ledger's lock is untracked with it. An
+    # UNCAPPED policy creates no lock file, so no entry is planted for one.
+    entries = (entry,)
+    if policy["max_records"] > 0:
+        entries += (_gitignore_literal(rel + LOCK_SUFFIX),)
+    if not policy["tracked"]:
+        _merge_marked_entries(
+            root,
+            ".gitignore",
+            TELEMETRY_IGNORE_MARKER,
+            entries,
+            report,
+            label="telemetry",
+        )
+        _report_stale_telemetry_ignores(root, report, keep=entry)
+        return
+    # Tracked policy: nothing to plant, but a leftover from a previous policy
+    # would silently defeat it.
+    _report_stale_telemetry_ignores(root, report, keep=None)
+
+
+def _report_stale_telemetry_ignores(
+    root: Path,
+    report: list[str],
+    *,
+    keep: str | None,
+) -> None:
+    """Report kit-planted ledger-ignore lines the current policy contradicts.
+
+    Only lines under :data:`TELEMETRY_IGNORE_MARKER` are considered — host-owned
+    content above it is never read as the kit's business. Reporting, never
+    editing: a ``.gitignore`` line is host policy, and the honest move when the
+    kit's own earlier line now contradicts the kit's own current advice is to
+    name it and let the host delete it in one commit.
+    """
+    path = root / ".gitignore"
+    if not path.is_file():
+        return
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return
+    if TELEMETRY_IGNORE_MARKER not in {line.strip() for line in lines}:
+        return
+    stale = [
+        line.strip()
+        for line in lines
+        if line.strip().startswith("/")
+        and (
+            line.strip().endswith(GUARD_FIRES_FILENAME)
+            or line.strip().endswith(GUARD_FIRES_FILENAME + LOCK_SUFFIX)
+        )
+        and not line.strip().startswith(str(keep or "\0"))
+    ]
+    for line in sorted(set(stale)):
+        report.append(
+            f"telemetry: .gitignore still carries `{line}`, which this "
+            "install's telemetry policy no longer wants — git would keep "
+            "ignoring a ledger `check` now treats as tracked (or at a path "
+            "the policy has moved away from). The kit never deletes a "
+            "gitignore line; remove it deliberately.",
+        )
+
+
+_ROUTE_RE = re.compile(r"`([A-Za-z0-9_][A-Za-z0-9_./<>-]*\.(?:md|json|sh|yml|yaml))`")
+
+
+def _report_omitted_routes(
+    root: Path,
+    config: Config,
+    profile: AdoptionProfile,
+    report: list[str],
+) -> None:
+    """Name planted prose that still routes to a destination this shape omits.
+
+    A sparse shape leaves the kit's doctrine documents — the working agreement
+    above all — planted but written for the full doc set, so a handful of
+    sentences still route a session to files this tree will never have. Those
+    documents are planted skip-if-exists and are the ones every adopter adapts
+    (the interview fills their slots), so the kit does not fork its own doctrine
+    prose per shape: that would double the maintenance surface of its most
+    important document, and every future edit would have to be made twice and
+    kept in agreement.
+
+    What it does instead is refuse to let the residue be DISCOVERED. Each pass
+    reports every surviving route to an omitted destination, by file, so an
+    adopter is handed an exact one-time edit list in its own adopt output rather
+    than meeting the dead pointers one at a time weeks later. Reporting only —
+    nothing is rewritten, nothing fails.
+
+    Scans backtick-quoted paths, which is how this estate's documents cite
+    files; a bare-prose mention is out of reach and this docstring says so
+    rather than implying the sweep is exhaustive.
+    """
+    if not profile.omit_plan_dests:
+        return
+    omitted = {_adopt_dest(rel, config) for rel in profile.omit_plan_dests}
+    scanned = [_adopt_dest(plan_rel, config) for _tmpl, plan_rel in adoption_plan(config, profile)]
+    # The live working agreement is planted outside the plan (the include_claude
+    # opt-in) and is the document `agreement_home` then points every cold
+    # session at, so it is exactly where a dead route costs most.
+    scanned.append(".claude/CLAUDE.md")
+    for rel in scanned:
+        path = root / rel
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        hits = sorted({m.group(1) for m in _ROUTE_RE.finditer(text)} & omitted)
+        if hits:
+            report.append(
+                f"profile {profile.name!r}: {rel} still routes to "
+                f"{', '.join(hits)} — planted by the kit's shared doctrine and "
+                "not planted by this shape. Edit those lines once; the kit "
+                "never rewrites a document it planted skip-if-exists.",
+            )
 
 
 def adopt(
@@ -2451,7 +2608,14 @@ def adopt(
     """
     include_claude = include_claude or wire_enforcement
     assert_safe_target(root, kit_root)
-    profile = profile_for_config(config)
+    # A writer refuses what a reader tolerates: `resolve_profile` raises on an
+    # unknown name (UnknownProfileError is a ValueError, which cmd_adopt already
+    # turns into "adopt: REFUSED"). Without this, a hand-edited or
+    # future-version config naming a shape this kit does not ship would plant
+    # the full default tree into a repository that asked for a sparse one — and
+    # the divergence would only be visible once the unwanted directories were
+    # committed.
+    profile = resolve_profile(config.adoption_profile)
     if lane is not None:
         validate_lane_name(lane)
         # A lane IS a control-bus concept: it names this Project's heartbeat on
@@ -2507,7 +2671,7 @@ def adopt(
 
     # (1) Plant the live docs — never clobber; a doc with unfilled ${slots}
     # is planted under the loud UNRENDERED banner (visible, never inert).
-    for template_name, plan_rel in adoption_plan(config):
+    for template_name, plan_rel in adoption_plan(config, profile):
         rel = _adopt_dest(plan_rel, config)
         if lane is not None and template_name == "control-status.md.tmpl":
             # Lane-aware adopt: the heartbeat is the ONE per-Project file on
@@ -2780,6 +2944,10 @@ def adopt(
         save_config(root, config)
     backend.set("kit_version", KIT_VERSION)
     report.append(f"recorded: kit_version {KIT_VERSION}")
+
+    # (6d) Residual routes: say, out loud and every pass, which planted
+    # doctrine still points at something this shape does not plant.
+    _report_omitted_routes(root, config, profile, report)
 
     # (7) Point the adopter at the interview loop.
     report.append(_ADOPT_NEXT_STEPS)

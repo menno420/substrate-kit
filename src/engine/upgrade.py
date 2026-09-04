@@ -63,6 +63,7 @@ from engine.adopt import (
     _branch_sweep_params,
     _merge_model_doctrine,
     adopt,
+    adoption_plan,
     archive_dist,
     automerge_enabler_workflow,
     branch_sweep_workflow,
@@ -194,8 +195,15 @@ def _normalize_dates(text: str) -> str:
 
 
 def _doc_plan(root: Path, config: Config) -> list[tuple[str, str]]:
-    """Return (template, planted relpath) pairs the diff report covers."""
-    plan = [(tpl, _adopt_dest(rel, config)) for tpl, rel in ADOPT_PLAN]
+    """Return (template, planted relpath) pairs the diff report covers.
+
+    Profile-filtered (``adoption_plan``): a destination the install's adoption
+    shape deliberately omits is not a planted doc, so classifying it would
+    report it `missing` on EVERY upgrade — with a note promising the adopt pass
+    will replant it, which that pass correctly will not. A permanent, untrue
+    line in the upgrade report is how a shape gets quietly undone by hand.
+    """
+    plan = [(tpl, _adopt_dest(rel, config)) for tpl, rel in adoption_plan(config)]
     if (root / ".claude" / "CLAUDE.md").exists():
         plan.append(("CLAUDE.md.tmpl", ".claude/CLAUDE.md"))
     return plan

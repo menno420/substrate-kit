@@ -823,3 +823,274 @@ def test_cold_dist_refuses_to_reshape_an_adopted_tree(tmp_path):
     assert reshape2.returncode == 2
     assert "REFUSED" in reshape2.stdout
     assert not (root / "docs").exists()
+
+
+# --------------------------------------------------------------------------
+# Codex round 1 (PR #590) — one regression test per finding
+# --------------------------------------------------------------------------
+
+
+def test_codex_p1_a_writer_refuses_an_unknown_persisted_profile(tmp_path):
+    # The reader/writer split was stated in the design and then violated in the
+    # one place it mattered: `adopt` called the READER, so a hand-edited or
+    # future-version config naming a shape this kit does not ship would plant
+    # the FULL default tree into a repo that asked for a sparse one.
+    root = tmp_path / "repo"
+    config = Config(adoption_profile="hubb")
+    with pytest.raises(UnknownProfileError):
+        adopt(root, config, _backend(root, config), kit_root=tmp_path / "kit")
+    assert not (root / "control").exists()
+    assert not (root / "docs").exists()
+    # The READER stays lenient — a checker walking that same tree must not crash.
+    assert profile_for_config(config) is DEFAULT_PROFILE
+    assert adoption_plan(config) == list(ADOPT_PLAN)
+
+
+def test_codex_p2_a_non_dict_telemetry_key_does_not_crash_the_command():
+    # `telemetry` is host input and the policy is resolved OUTSIDE
+    # record_guard_fires' fail-open boundary, so an unguarded .get crashed
+    # `check` itself rather than degrading to the documented defaults.
+    for garbage in ("yes", 7, [1, 2], True):
+        config = Config()
+        config.telemetry = garbage
+        assert guard_fires_policy(config) == {
+            "enabled": True,
+            "path": "",
+            "tracked": True,
+            "max_records": 0,
+        }, garbage
+
+
+def test_codex_p2_the_upgrade_doc_plan_follows_the_profile(tmp_path):
+    # _doc_plan iterated the raw plan, so every hub upgrade would report the
+    # intentionally-omitted destinations as `missing` with a note promising a
+    # replant that correctly never happens — a permanent untrue report line.
+    from engine.upgrade import _doc_plan
+
+    hub = new_config("hub")
+    hub_dests = {rel for _tmpl, rel in _doc_plan(tmp_path, hub)}
+    default_dests = {rel for _tmpl, rel in _doc_plan(tmp_path, Config())}
+    assert "docs/current-state.md" in default_dests
+    assert "docs/current-state.md" not in hub_dests
+    assert "control/status.md" in default_dests
+    assert "control/status.md" not in hub_dests
+
+
+def test_codex_p2_model_line_advice_follows_the_configured_dir():
+    from engine.checks.check_model_line import model_line_findings
+
+    card = (
+        "# c\n\n> **Status:** `complete`\n\n"
+        "- **\N{BAR CHART} Model:** opus-5 \N{MIDDLE DOT} high "
+        "\N{MIDDLE DOT} not-a-real-class\n"
+    )
+    visible = model_line_findings(card, "sessions")
+    hidden = model_line_findings(card, ".sessions")
+    assert visible and hidden
+    assert all("sessions/README.md" in m and ".sessions/README" not in m for _k, m in visible)
+    assert all(".sessions/README.md" in m for _k, m in hidden)
+
+
+def test_codex_p2_ungroomed_ideas_reads_the_configured_dir(tmp_path):
+    # It accepted `config` for signature parity and ignored it, so on any
+    # install whose cards are not in the historical hidden location the probe
+    # found no directory, gated itself off, and reported "no pending ideas"
+    # for a repo full of them — a silent false negative.
+    from engine.checks.check_ungroomed_ideas import check_ungroomed_ideas
+
+    root = tmp_path / "repo"
+    (root / "sessions").mkdir(parents=True)
+    (root / "docs" / "planning").mkdir(parents=True)
+    (root / "docs" / "planning" / "2026-01-01-groom.md").write_text("# groom\n", encoding="utf-8")
+    (root / "sessions" / "2026-02-01-card.md").write_text(
+        "# card\n\n\N{ELECTRIC LIGHT BULB} an idea worth grooming\n", encoding="utf-8",
+    )
+    hub = new_config("hub")
+    assert check_ungroomed_ideas(root, hub), "the advisory must SEE cards in sessions/"
+    # ...and the historical layout is unchanged.
+    assert check_ungroomed_ideas(root, Config()) == []
+
+
+def test_codex_p1_gitignore_patterns_are_escaped_to_literals(tmp_path):
+    # A path is a NAME; a gitignore line is a PATTERN. `path: "*"` planted the
+    # line "/*", which makes git ignore every root-level file in the repo —
+    # including everything adopt had just planted.
+    from engine.adopt import _gitignore_literal
+
+    assert _gitignore_literal(".substrate/guard-fires.jsonl") == "/.substrate/guard-fires.jsonl"
+    assert _gitignore_literal("*") == "/\\*"
+    assert _gitignore_literal("a b/c?.jsonl") == "/a\\ b/c\\?.jsonl"
+    assert _gitignore_literal("#x[1].jsonl") == "/\\#x\\[1\\].jsonl"
+    assert _gitignore_literal("trailing ") == "/trailing\\ "
+
+    root = tmp_path / "repo"
+    config = new_config("hub")
+    config.telemetry = {"guard_fires": {"enabled": True, "path": "*", "tracked": False, "max_records": 0}}
+    adopt(root, config, _backend(root, config), kit_root=tmp_path / "kit")
+    ignored = (root / ".gitignore").read_text(encoding="utf-8")
+    assert "/\\*" in ignored
+    assert "\n/*\n" not in ignored
+
+
+def test_codex_p2_a_stale_telemetry_ignore_entry_is_reported(tmp_path):
+    # Append-only means a policy change leaves the old line: git would keep
+    # ignoring a ledger `check` has started telling the session to commit.
+    root = tmp_path / "repo"
+    config = new_config("hub")
+    adopt(root, config, _backend(root, config), kit_root=tmp_path / "kit")
+    assert GUARD_FIRES_FILENAME in (root / ".gitignore").read_text(encoding="utf-8")
+    # Flip the policy to tracked and re-adopt: the leftover must be NAMED.
+    config.telemetry = {"guard_fires": {"enabled": True, "path": "", "tracked": True, "max_records": 0}}
+    lines = adopt(root, config, _backend(root, config), kit_root=tmp_path / "kit")
+    stale = [ln for ln in lines if ln.startswith("telemetry: .gitignore still carries")]
+    assert stale, lines
+    assert GUARD_FIRES_FILENAME in stale[0]
+    # Reporting, never editing — a .gitignore line is host policy.
+    assert GUARD_FIRES_FILENAME in (root / ".gitignore").read_text(encoding="utf-8")
+
+
+def test_codex_p2_a_capped_ledger_serialises_appends_against_trims(tmp_path):
+    # The lost-update race: a trim reads, another writer appends, the trim then
+    # replaces the file with its stale snapshot. Run real concurrent processes
+    # over a capped ledger and assert no acknowledged record vanishes.
+    import multiprocessing
+
+    root = tmp_path / "repo"
+    (root / ".substrate").mkdir(parents=True)
+    policy = {"enabled": True, "path": "", "tracked": False, "max_records": 40}
+
+    def worker(tag):
+        import sys as _sys
+
+        _sys.path.insert(0, str(_KIT / "src"))
+        from engine.checks.check_docs import Finding as F
+        from engine.loop.telemetry import record_guard_fires as rec
+
+        for i in range(120):
+            rec(
+                root, ".substrate", cmd="check", surface="check", posture="advisory",
+                findings=[F(f"{tag}-{i}", "kind", f"m{tag}{i}")],
+                verdict="false_positive", reason="fixture", policy=policy,
+            )
+
+    procs = [multiprocessing.Process(target=worker, args=(t,)) for t in ("a", "b", "c")]
+    for pr in procs:
+        pr.start()
+    for pr in procs:
+        pr.join(120)
+    for pr in procs:
+        assert pr.exitcode == 0, pr.exitcode
+
+    path = guard_fires_path(root, ".substrate", policy)
+    lines = path.read_text(encoding="utf-8").splitlines()
+    # Every line is intact JSON — a torn write from an unserialised rewrite
+    # would show up here first.
+    for line in lines:
+        json.loads(line)
+    # The cap held under concurrency, and the file is not empty.
+    assert 0 < len(lines) <= 40 + 128
+    # An uncapped ledger creates NO lock file: the mechanism is confined to
+    # installs that opted into a cap, so no existing adopter gains a file.
+    from engine.loop.telemetry import guard_fires_lock_path
+
+    assert guard_fires_lock_path(path).exists()
+    plain = tmp_path / "plain"
+    (plain / ".substrate").mkdir(parents=True)
+    default_policy = guard_fires_policy(Config())
+    record_guard_fires(
+        plain, ".substrate", cmd="c", surface="s", posture="p",
+        findings=[_finding("p", "k", "m")], verdict="v", reason="r", policy=default_policy,
+    )
+    assert not guard_fires_lock_path(guard_fires_path(plain, ".substrate", default_policy)).exists()
+
+
+def test_codex_p1_surviving_dead_routes_are_reported_not_discovered(tmp_path):
+    # The kit does not fork its doctrine prose per shape, but it must not let
+    # the residue be found one dead pointer at a time weeks later.
+    root, _config, lines = _adopt_into(tmp_path, "hub", include_claude=True)
+    routed = [ln for ln in lines if ln.startswith("profile 'hub':")]
+    assert routed, lines
+    named = " ".join(routed)
+    assert "CONSTITUTION.md" in named
+    assert ".claude/CLAUDE.md" in named
+    for dead in ("docs/SKILLS.md", "docs/CAPABILITIES.md", "control/README.md"):
+        assert dead in named, dead
+    # A default adopt has no omitted destinations, so it reports nothing.
+    _droot, _dconfig, dlines = _adopt_into(tmp_path)
+    assert not [ln for ln in dlines if ln.startswith("profile ")]
+
+
+def test_codex_p1_the_session_journal_names_the_configured_card_dir(tmp_path):
+    # It hardcoded `.sessions/`, which was wrong for ANY install that moved
+    # sessions_dir — not only the hub.
+    hub_root, _c, _l = _adopt_into(tmp_path, "hub")
+    journal = (hub_root / ".session-journal.md").read_text(encoding="utf-8")
+    assert "`sessions/<date>-<slug>.md`" in journal
+    assert ".sessions/" not in journal
+    def_root, _dc, _dl = _adopt_into(tmp_path)
+    assert "`.sessions/<date>-<slug>.md`" in (def_root / ".session-journal.md").read_text(encoding="utf-8")
+
+
+def test_codex_p1_the_boot_section_intro_names_no_omitted_doc(tmp_path):
+    # The list was parameterised and the INTRO one paragraph above it was not,
+    # so it still routed to docs/AGENT_ORIENTATION.md on a shape that omits it.
+    root, _config, _lines = _adopt_into(tmp_path, "hub")
+    agreement = (root / "CONSTITUTION.md").read_text(encoding="utf-8")
+    section = agreement.split("## Boot read path", 1)[1].split("\n## ", 1)[0]
+    assert "docs/AGENT_ORIENTATION.md" not in section
+    assert "docs/current-state.md" not in section
+    # Mutant: the default shape still carries the router sentence.
+    def_root, _dc, _dl = _adopt_into(tmp_path)
+    def_section = (def_root / "CONSTITUTION.md").read_text(encoding="utf-8")
+    def_section = def_section.split("## Boot read path", 1)[1].split("\n## ", 1)[0]
+    assert "docs/AGENT_ORIENTATION.md" in def_section
+
+
+def test_codex_p1_the_hub_skill_pack_gap_is_pinned_not_hidden(tmp_path):
+    """The kit's SHARED skill bodies name docs a sparse shape does not plant.
+
+    Codex round 1 on PR #590 raised this as blocking: a fresh hub adoption emits
+    skill-ground advisories naming documents its own profile omits, so the shape
+    ships procedures that cannot run against the tree it produces.
+
+    The finding is correct and the advisories are NOT the defect — they are this
+    change working. Before the profile filter reached
+    ``check_skill_grounds._known_paths``, every one of these paths was
+    "grounded by construction" and passed silently: a false green in the checker
+    whose entire job is dead pointers. Making them visible is the fix; what
+    remains is that the hub has no skill pack of its own.
+
+    That is the skills channel — K6/K7 in the estate plan — which the accepted
+    build order defers until after the first cold test. So this test does not
+    assert zero. It PINS the gap: the count and the exact set of paths, so the
+    residue is a tracked number rather than a thing someone rediscovers, and so
+    the day a hub-compatible skill set lands this test is its acceptance
+    criterion (the assertion below should then be updated to an empty set, in
+    the PR that closes the gap).
+    """
+    from engine.checks.check_skill_grounds import check_skill_grounds
+
+    root, config, _lines = _adopt_into(tmp_path, "hub")
+    findings = check_skill_grounds(root, state_dir=config.state_dir, config=config)
+    named = set()
+    for f in findings:
+        for word in f.message.replace("`", " ").split():
+            if word.startswith(("docs/", "control/")):
+                named.add(word)
+    # Every path named is one the hub profile genuinely omits — an advisory
+    # naming something else would be a bug in the filter, not a known gap.
+    omitted = set(HUB_PROFILE.omit_plan_dests)
+    assert named, "the gap is real; an empty result means the filter stopped working"
+    assert named <= omitted, sorted(named - omitted)
+    # And the DEFAULT shape has no such gap: it plants what its skills name.
+    def_root, def_config, _ = _adopt_into(tmp_path)
+    def_findings = check_skill_grounds(
+        def_root, state_dir=def_config.state_dir, config=def_config,
+    )
+    def_named = {
+        w
+        for f in def_findings
+        for w in f.message.replace("`", " ").split()
+        if w.startswith(("docs/", "control/"))
+    }
+    assert not def_named, sorted(def_named)

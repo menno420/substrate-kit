@@ -466,7 +466,13 @@ def guard_fires_policy(config: Config) -> dict:
     contract rather than crashing a check on a stray string.
     """
     resolved = dict(_default_telemetry()["guard_fires"])
-    declared = config.telemetry.get("guard_fires") if config.telemetry else None
+    # `telemetry` is host input: a hand-edited substrate.config.json can set it
+    # to a string, a number or a list. Callers resolve the policy OUTSIDE
+    # `record_guard_fires`' fail-open boundary — in `cmd_check`, in the hook
+    # dispatch, in `adopt` — so an unguarded `.get` here would crash the primary
+    # command rather than degrade to the documented defaults.
+    container = config.telemetry if isinstance(config.telemetry, dict) else {}
+    declared = container.get("guard_fires")
     if isinstance(declared, dict):
         for key in resolved:
             if key in declared:
